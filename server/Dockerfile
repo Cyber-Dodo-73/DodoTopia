@@ -10,6 +10,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+# Site vitrine : feuille de style, polices (copiées depuis ui/fonts), logo 512 px et favicon.
+COPY static ./static
 
 # Utilisateur non root ; /data (volume) lui appartient dès la création du volume.
 RUN useradd --system --uid 1000 --create-home app \

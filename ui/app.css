@@ -268,7 +268,7 @@ header{display:flex;align-items:center;gap:var(--sp-4)}
 .list::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
 
 /* ================================================================ composant .row (ligne de morceau) */
-.row{display:flex;align-items:center;gap:4px;padding:4px 6px 4px 4px;border-radius:var(--r-lg);border:2px solid transparent;transition:.1s}
+.row{position:relative;display:flex;align-items:center;gap:4px;padding:4px 6px 4px 4px;border-radius:var(--r-lg);border:2px solid transparent;transition:.1s}
 .row:hover,.row:focus-within{background:var(--panel-soft)}
 .row.active{background:var(--c-primary-soft);border-color:#f6d99a}
 .row__main{
@@ -284,10 +284,16 @@ header{display:flex;align-items:center;gap:var(--sp-4)}
 .row .tt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .row .t{font-weight:600;font-size:var(--fs-md);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-text)}
 .row .m{font-size:var(--fs-xs);color:var(--c-text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
-.row__actions{display:flex;align-items:center;gap:2px;flex:none}
-/* les actions n'apparaissent qu'au survol (ou au clavier) ; l'etoile d'un favori reste visible */
-.row__act{opacity:0;transition:.12s}
-.row:hover .row__act,.row:focus-within .row__act,.row.active .row__act{opacity:1}
+/* Les actions flottent au-dessus de la fin du titre et n'apparaissent qu'au survol (ou au clavier) : hors
+   survol, le titre dispose de toute la largeur de la ligne. L'etoile, elle, reste dans le flux : un favori
+   doit se voir sans promener la souris. */
+.row__actions{position:absolute;right:38px;top:3px;bottom:3px;display:flex;align-items:center;gap:2px;
+  padding-left:30px;border-radius:var(--r-md);opacity:0;pointer-events:none;transition:.12s;
+  background:linear-gradient(90deg,rgba(252,247,238,0),var(--panel-soft) 28%)}
+.row:hover .row__actions,.row:focus-within .row__actions,.row.active .row__actions{opacity:1;pointer-events:auto}
+.row.active .row__actions{background:linear-gradient(90deg,rgba(253,240,214,0),var(--c-primary-soft) 28%)}
+.row__fav{flex:none;display:flex;align-items:center}
+.row__act{transition:.12s}
 .row__act{
   width:var(--tap);height:var(--tap);border-radius:50%;border:none;background:transparent;display:grid;place-items:center;
   font-size:var(--fs-sm);color:var(--c-text-2);cursor:pointer;transition:.1s;padding:0
@@ -684,8 +690,8 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 /* bibliothèque en ligne : lignes, progression de téléchargement, pagination, modération */
 .row--online{padding:5px 8px;gap:8px}
 .row--online .tt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.row--online .row__actions{gap:6px}
-.row--online .row__act{opacity:1}
+/* bibliotheque en ligne : les actions sont l'interet de la ligne, elles restent visibles */
+.row--online .row__actions{position:static;opacity:1;pointer-events:auto;padding-left:0;background:none;gap:6px}
 .row--online .n{font-size:var(--fs-md)}
 .dlprog{display:flex;align-items:center;gap:6px;min-width:112px;font-size:var(--fs-xs);color:var(--c-text-2);font-variant-numeric:tabular-nums}
 .dlprog .bar{flex:1;height:8px;border-radius:var(--r-pill);background:var(--panel-soft);border:2px solid var(--line);overflow:hidden}
@@ -730,3 +736,8 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
   .account span:last-child{display:none}
   .account{padding:4px;gap:0}
 }
+
+/* ===== mentions legales dans Reglages > A propos ===== */
+.settings__legal{font-size:var(--fs-xs);color:var(--c-text-2);line-height:1.5;margin:8px 0 0;max-width:62ch}
+.settings__legal b{color:var(--c-text)}
+.about dd .btn--ghost{margin-right:4px}

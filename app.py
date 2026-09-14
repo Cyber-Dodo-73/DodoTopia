@@ -642,6 +642,22 @@ class Api:
         platform_io.open_folder(core.DATA_DIR)
         return True
 
+    # Pages ouvertes depuis « A propos ». Liste fermee : l'interface ne choisit pas une URL libre.
+    SITE_PAGES = {"site": "", "mentions": "/mentions-legales", "confidentialite": "/confidentialite",
+                  "conditions": "/conditions"}
+
+    def open_site(self, page="site"):
+        """Ouvre une page du site DodoTopia dans le navigateur (le depot n'est pas public)."""
+        if page not in self.SITE_PAGES:
+            return False
+        url = online.ensure_defaults(self._cfg)["server_url"] + self.SITE_PAGES[page]
+        try:
+            platform_io.open_url(url)
+        except Exception as e:  # noqa
+            self._notify(f"Ouverture du navigateur impossible : {e}", "warn")
+            return False
+        return True
+
     def open_log(self, name="multi"):
         """Ouvre un journal du dossier de donnees : multi | dessin | cuisine | online."""
         if name not in ("multi", "dessin", "cuisine", "online"):
@@ -1108,6 +1124,7 @@ class Api:
 def main():
     # coordonnees physiques de l'ecran (souris, captures) meme avec une mise a l'echelle Windows
     platform_io.set_dpi_aware()
+    platform_io.set_app_id()      # icone de la barre des taches liee a DodoTopia, pas au cache de l'hote
     api = Api()
     title = "DodoTopia"
     window = webview.create_window(

@@ -301,6 +301,11 @@ def set_dpi_aware():
     pass  # X11 : coordonnees physiques, rien a faire
 
 
+def set_app_id(app_id="Dodo.DodoTopia"):
+    """Sans objet sous X11 (l'icone vient de WM_CLASS et du fichier .desktop)."""
+    return False
+
+
 def set_window_icon(title, icon_path):
     pass  # l'icone est donnee a webview.start(icon=...) (voir webview_start_kwargs)
 

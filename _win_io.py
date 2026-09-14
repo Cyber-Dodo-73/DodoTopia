@@ -254,6 +254,23 @@ def set_dpi_aware():
         pass
 
 
+APP_ID = "Dodo.DodoTopia"
+
+
+def set_app_id(app_id=APP_ID):
+    """Identite de l'application pour le shell Windows (AppUserModelID).
+
+    Sans elle, Windows regroupe la fenetre sous l'identite du processus hote (python.exe ou l'exe PyInstaller
+    tel qu'il etait la premiere fois) et reutilise l'icone qu'il a mise en cache pour cette identite : on voit
+    alors l'ancien logo dans la barre des taches meme apres une mise a jour. A appeler avant la creation de
+    la fenetre."""
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        return True
+    except Exception:
+        return False
+
+
 def set_window_icon(title, icon_path):
     """Icone de la fenetre (barre de titre + barre des taches) depuis assets/logo.ico."""
     if not os.path.exists(icon_path):
@@ -263,10 +280,13 @@ def set_window_icon(title, icon_path):
         hwnd = u32.FindWindowW(None, title)
         if not hwnd:
             return
-        for size, which in ((16, 0), (32, 1)):
-            hicon = u32.LoadImageW(None, icon_path, 1, size, size, 0x00000010)
+        # tailles reellement attendues par le systeme (elles changent avec la mise a l'echelle de l'ecran)
+        small = (u32.GetSystemMetrics(49) or 16, u32.GetSystemMetrics(50) or 16)     # SM_CXSMICON / SM_CYSMICON
+        big = (u32.GetSystemMetrics(11) or 32, u32.GetSystemMetrics(12) or 32)       # SM_CXICON / SM_CYICON
+        for (w, h), which in ((small, 0), (big, 1)):                                 # ICON_SMALL / ICON_BIG
+            hicon = u32.LoadImageW(None, icon_path, 1, w, h, 0x00000010)             # LR_LOADFROMFILE
             if hicon:
-                u32.SendMessageW(hwnd, 0x0080, which, hicon)
+                u32.SendMessageW(hwnd, 0x0080, which, hicon)                         # WM_SETICON
     except Exception:
         pass
 

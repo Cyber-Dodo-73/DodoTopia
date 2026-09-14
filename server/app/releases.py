@@ -43,6 +43,16 @@ def release_dir(settings: Settings, version: str) -> Path:
     return settings.releases_dir / version
 
 
+def invalidate_site(request: Request) -> None:
+    """Jette la page d'accueil en cache : elle annonce la derniere version publiee.
+
+    Import tardif : `site` a besoin de `releases` pour construire le bloc de telechargement.
+    """
+    from . import site
+
+    site.invalidate(request.app)
+
+
 def manifest(conn: db.Connection, settings: Settings, version: str) -> dict | None:
     rel = conn.execute("SELECT * FROM releases WHERE version=?", (version,)).fetchone()
     if rel is None:
@@ -188,6 +198,7 @@ def publish(version: str, body: PublishIn, request: Request, conn: db.Connection
     conn.execute("UPDATE releases SET notes=?, mandatory=?, published_at=? WHERE version=?",
                  (body.notes, 1 if body.mandatory else 0, db.now_iso(), version))
     conn.commit()
+    invalidate_site(request)
     return manifest(conn, settings, version)
 
 
@@ -200,4 +211,5 @@ def delete_release(version: str, request: Request, conn: db.Connection = Depends
     conn.execute("DELETE FROM releases WHERE version=?", (version,))
     conn.commit()
     shutil.rmtree(release_dir(settings, version), ignore_errors=True)
+    invalidate_site(request)
     return {"ok": True, "version": version}

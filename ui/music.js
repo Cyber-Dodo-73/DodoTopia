@@ -135,6 +135,8 @@ function renderSongs(st){
         <button class="row__act sh${s.online_id ? ' on' : ''}" type="button" ${shareOn ? '' : 'disabled'} title="${s.online_id ? 'Déjà partagée en ligne' : (shareOn ? 'Partager en ligne' : 'Connecte-toi dans l’onglet En ligne pour partager')}" aria-label="Partager en ligne">${s.online_id ? '☁✓' : '☁'}</button>
         <button class="row__act p" type="button" title="Écouter ici" aria-label="Écouter ici">▶</button>
         <button class="row__act x" type="button" title="Retirer" aria-label="Retirer">×</button>
+      </div>
+      <div class="row__fav">
         <button class="row__act star${s.fav ? ' on' : ''}" type="button" aria-pressed="${s.fav ? 'true' : 'false'}" title="${s.fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}" aria-label="${s.fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${s.fav ? '★' : '☆'}</button>
       </div>`;
     const main = el.querySelector('.row__main');

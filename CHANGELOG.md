@@ -3,6 +3,12 @@
 Une section `## x.y.z` par version : la CI envoie la section de la version publiée comme notes de mise à jour
 (affichées dans DodoTopia quand une mise à jour est proposée).
 
+## 1.8.2
+- Un site public sur dodotopia.cyber-dodo.fr : présentation, téléchargement, questions fréquentes, mentions légales, confidentialité et conditions d'utilisation.
+- Réglages › À propos renvoie vers le site et ses pages légales, et rappelle ce qui est envoyé au serveur.
+- L'icône de la barre des tâches suit enfin le logo après une mise à jour : l'application déclare son identité à Windows.
+- Liste des musiques : le titre occupe toute la ligne, les actions apparaissent au survol.
+
 ## 1.8.1
 - Nouveau logo : un dodo qui tient une note de musique, aux couleurs d'Heartopia.
 - L'icône Windows est générée proprement à chaque taille, jusqu'à 16 pixels.

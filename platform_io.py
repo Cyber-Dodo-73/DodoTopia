@@ -31,7 +31,7 @@ if IS_WINDOWS:
         user_data_dir, scan_code_for, send_keys, mouse_button_down,
         cursor_pos, virtual_screen, mouse_move, mouse_down, mouse_up, grab, SCREEN_OK,
         is_admin, mouse_hint, MidiOut, open_text_file, open_folder, open_url,
-        set_dpi_aware, set_window_icon, webview_start_kwargs,
+        set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
     )
 else:
@@ -39,6 +39,6 @@ else:
         user_data_dir, scan_code_for, send_keys, mouse_button_down,
         cursor_pos, virtual_screen, mouse_move, mouse_down, mouse_up, grab, SCREEN_OK,
         is_admin, mouse_hint, MidiOut, open_text_file, open_folder, open_url,
-        set_dpi_aware, set_window_icon, webview_start_kwargs,
+        set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
     )

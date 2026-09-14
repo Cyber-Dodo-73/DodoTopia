@@ -1,4 +1,7 @@
-"""Application FastAPI : assemblage des routeurs, tâches de fond, santé, page d'accueil.
+"""Application FastAPI : assemblage des routeurs, tâches de fond, santé, fichiers statiques.
+
+Le site public (accueil, pages légales, robots/sitemap) vit dans `site.py` ; `server/static` est servi sur
+/static (feuille de style, polices locales, logo, favicon).
 
 Lancement : uvicorn app.main:app --host 0.0.0.0 --port 8000 (un seul worker : les salons vivent en mémoire).
 """
@@ -8,12 +11,12 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from html import escape
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from . import auth, db, library, releases, rooms
+from . import auth, db, library, releases, rooms, site
 from .config import SERVER_VERSION, Settings
 from .ratelimit import RateLimiter
 from .rooms import RoomManager
@@ -112,13 +115,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.ratelimiter = RateLimiter(enabled=settings.RATE_LIMIT != 0)
     app.state.rooms = RoomManager(settings)
+    app.state.site_home = None          # (expiration, html) de la page d'accueil en cache
 
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
+    app.add_middleware(site.SecurityHeadersMiddleware)
+
+    app.mount("/static", StaticFiles(directory=site.STATIC_DIR), name="static")
 
     app.include_router(auth.router)
     app.include_router(library.router)
     app.include_router(releases.router)
     app.include_router(rooms.router)
+    app.include_router(site.router)      # en dernier : '/' et les pages du site vitrine
 
     @app.get("/api/health")
     def health(request: Request):
@@ -142,28 +150,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/time")
     def server_time():
         return JSONResponse({"server_now_ms": rooms.srv_ms()}, headers={"Cache-Control": "no-store"})
-
-    @app.get("/", response_class=HTMLResponse)
-    def index():
-        conn = db.connect(settings)
-        try:
-            versions = releases.published_versions(conn)
-            latest = releases.manifest(conn, settings, versions[0]) if versions else None
-        finally:
-            conn.close()
-        if latest:
-            links = "".join(f'<li><a href="{escape(a["url"])}">{escape(p)}</a> ({a["size"] // (1024 * 1024)} Mo)</li>'
-                            for p, a in sorted(latest["assets"].items()))
-            body = f"<p>Dernière version : <strong>{escape(latest['version'])}</strong></p><ul>{links}</ul>"
-        else:
-            body = "<p>Aucune version publiée pour l'instant.</p>"
-        html = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>DodoTopia</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>body{{font-family:system-ui,sans-serif;background:#fff7ee;color:#3b2a20;max-width:560px;margin:48px auto;
-padding:0 16px}}a{{color:#1f8f88}}</style></head>
-<body><h1>DodoTopia</h1><p>Serveur de mises à jour, bibliothèque MIDI et salons pour Heartopia.</p>{body}
-<p><small>Serveur {SERVER_VERSION} · <a href="/api/health">état</a></small></p></body></html>"""
-        return HTMLResponse(html)
 
     return app
 

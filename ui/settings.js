@@ -366,8 +366,12 @@ function renderAbout(){
       <dt>Mises à jour</dt><dd><button type="button" class="btn btn--secondary btn--sm" id="btnUpdateCheck" ${sch.online_ready ? '' : 'disabled'}>Vérifier les mises à jour</button>${sch.online_ready ? '' : '<span class="chip chip--badge chip--warn">bientôt</span>'}</dd>
       <dt>Journaux</dt><dd>${logBtn('multi', 'Multi')}${logBtn('dessin', 'Dessin')}${logBtn('cuisine', 'Cuisine')}</dd>
       <dt>Données</dt><dd><span class="path">${esc(sch.data_dir || '')}</span><button type="button" class="btn btn--ghost btn--sm" id="sOpenData2">Ouvrir</button></dd>
+      <dt>Site</dt><dd><button type="button" class="btn btn--ghost btn--sm" data-site="site">dodotopia.cyber-dodo.fr</button></dd>
+      <dt>Légal</dt><dd><button type="button" class="btn btn--ghost btn--sm" data-site="mentions">Mentions légales</button><button type="button" class="btn btn--ghost btn--sm" data-site="confidentialite">Confidentialité</button><button type="button" class="btn btn--ghost btn--sm" data-site="conditions">Conditions</button></dd>
     </dl>
-    <p class="settings__intro">Boîte à outils pour Heartopia : musique, dessin et cuisine dans le jeu. Les réglages sont enregistrés dès qu’ils changent.</p>`;
+    <p class="settings__intro">Boîte à outils pour Heartopia : musique, dessin et cuisine dans le jeu. Les réglages sont enregistrés dès qu’ils changent.</p>
+    <p class="settings__legal">© ${new Date().getFullYear()} Dodo. DodoTopia est un projet indépendant, <b>sans aucun lien avec les éditeurs d’Heartopia</b> ; les marques citées appartiennent à leurs propriétaires. L’application envoie des touches et lit l’écran pour toi : tu l’utilises sous ta responsabilité, et l’automatisation peut être contraire aux conditions du jeu.</p>
+    <p class="settings__legal">Sans compte, rien n’est envoyé au serveur en dehors de la vérification de mise à jour (version installée et plateforme). Avec un compte Discord : ton pseudo, ton avatar et ton identifiant Discord, ainsi que les morceaux que tu partages. Détail dans la page Confidentialité.</p>`;
 }
 
 // ------------------------------------------------ sections
@@ -376,7 +380,7 @@ const SECTION_INTRO = {
   multi: 'À plusieurs sans réseau : F6 lance un compte à rebours, le premier joue une note repère dans le jeu, les autres la détectent et partent ensemble. Numéro de joueur et avance/retard : panneau Multi audio du lecteur.',
   draw: 'Comment DodoTopia peint dans le jeu (contours, fond et blanc : bloc « Méthode » de la page Image). Les grilles calibrées ne sont pas touchées par « Rétablir ».',
   cook: 'Boucle de cuisine : nombre de cuisinières, nombre de plats et seuils de reconnaissance des bulles.',
-  online: 'Le serveur DodoTopia n’est pas encore branché : ces réglages seront utilisés par la mise à jour, la bibliothèque et les salons.',
+  online: 'Compte Discord, bibliothèque partagée, salons et mises à jour passent par ce serveur. L’application fonctionne normalement sans lui.',
 };
 function sectionFields(id, advanced){ return FIELDS.filter(f => f.section === id && !!f.advanced === !!advanced); }
 function renderSection(id){
@@ -402,6 +406,7 @@ function renderSection(id){
   const so = pane.querySelector('#sOpenSongs'); if(so) so.onclick = () => api('open_songs_folder');
   pane.querySelectorAll('#sOpenData,#sOpenData2').forEach(b => b.onclick = () => api('open_data_folder'));
   pane.querySelectorAll('[data-log]').forEach(b => b.onclick = () => api('open_log', b.dataset.log));
+  pane.querySelectorAll('[data-site]').forEach(b => b.onclick = () => api('open_site', b.dataset.site));
   const rs = pane.querySelector('#btnSectionReset'); if(rs) rs.onclick = () => resetSection(sec.reset, sec.label);
   pane.scrollTop = top;
 }
