@@ -1,0 +1,137 @@
+# Publication d'une version de DodoTopia.
+# Déclenchée par un push sur main qui modifie version.py (ou à la main : Actions > Release > Run workflow).
+# 1. version       : lit VERSION dans version.py
+# 2. build-windows : build.bat -> release/DodoTopia-<v>-Setup.exe + -portable.zip
+# 3. build-linux   : docker/Dockerfile.linux -> release/DodoTopia-<v>-linux-x64.tar.gz
+# 4. publish       : publish_release.py -> PUT des binaires + POST publish sur le serveur (secrets PUBLISH_URL/PUBLISH_TOKEN)
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - version.py
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version attendue (doit être égale à VERSION dans version.py ; vide = lue dans version.py)"
+        required: false
+        default: ""
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lire VERSION dans version.py
+        id: read
+        env:
+          WANTED: ${{ github.event.inputs.version }}
+        run: |
+          V=$(python3 -c "import re,sys; m=re.search(r'VERSION\s*=\s*\"([^\"]+)\"', open('version.py', encoding='utf-8').read()); print(m.group(1) if m else '')")
+          if [ -z "$V" ]; then echo "VERSION introuvable dans version.py"; exit 1; fi
+          if [ -n "$WANTED" ] && [ "$WANTED" != "$V" ]; then
+            echo "La version demandée ($WANTED) ne correspond pas à version.py ($V) : modifie version.py d'abord."
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Version : $V"
+
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Inno Setup 6
+        run: choco install innosetup --no-progress -y
+
+      - name: build.bat (dépendances, PyInstaller, installeur, zip portable)
+        shell: cmd
+        env:
+          PYTHON: python
+        run: call build.bat
+
+      - name: Vérifier les artefacts
+        shell: bash
+        run: |
+          ls -la release/
+          test -f "release/DodoTopia-$VERSION-Setup.exe" || { echo "Installeur absent (Inno Setup ?)"; exit 1; }
+          test -f "release/DodoTopia-$VERSION-portable.zip" || { echo "Zip portable absent"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            release/DodoTopia-${{ env.VERSION }}-Setup.exe
+            release/DodoTopia-${{ env.VERSION }}-portable.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  build-linux:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image de construction (Ubuntu 22.04 + PyInstaller + test de fumée)
+        run: docker build -f docker/Dockerfile.linux -t dodotopia-linux .
+
+      - name: Extraire l'archive
+        run: |
+          mkdir -p release
+          docker run --rm -v "$PWD/release:/out" dodotopia-linux
+          test -f "release/DodoTopia-$VERSION-linux-x64.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: release/DodoTopia-${{ env.VERSION }}-linux-x64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: [version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Publier sur le serveur
+        env:
+          PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        run: |
+          ls -la release/
+          if [ -z "$PUBLISH_URL" ] || [ -z "$PUBLISH_TOKEN" ]; then
+            echo "::warning::Secrets PUBLISH_URL / PUBLISH_TOKEN absents : les binaires sont construits et"\
+                 "disponibles en artefacts, mais rien n'est publié. Ajoute-les dans Settings > Secrets and"\
+                 "variables > Actions, puis relance ce workflow (Actions > Release > Run workflow)."
+            exit 0
+          fi
+          if [ -f CHANGELOG.md ]; then
+            NOTES=(--notes-file CHANGELOG.md)
+          else
+            NOTES=(--notes "DodoTopia $VERSION")
+          fi
+          python3 publish_release.py --version "$VERSION" --release-dir release "${NOTES[@]}"

@@ -1,0 +1,11 @@
+mido
+pillow
+python-xlib
+mss
+python-rtmidi
+numpy
+soundcard
+websocket-client
+certifi
+pywebview[qt]
+pyinstaller

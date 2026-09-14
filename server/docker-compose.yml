@@ -1,0 +1,46 @@
+# DodoTopia - déploiement Dokploy (type « Compose »).
+# Traefik et le certificat TLS sont gérés par Dokploy : aucun reverse proxy ici, aucun port publié.
+# Dans Dokploy : Domains -> service `api`, port 8000, HTTPS (Let's Encrypt). Variables : onglet Environment (= .env).
+# En local (sans Dokploy) : docker compose up -d --build puis http://localhost:8000 via `ports:` (voir README §9).
+
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      DATABASE_URL: postgresql://dodo:${POSTGRES_PASSWORD}@db:5432/dodo
+    volumes:
+      - dodo_data:/data            # songs/, tmp/, releases/
+    expose:
+      - "8000"                     # jamais publié : Traefik (Dokploy) y accède par le réseau interne
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dodo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: dodo
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dodo -d dodo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  dodo_data:
+  pg_data:

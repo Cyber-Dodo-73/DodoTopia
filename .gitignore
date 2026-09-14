@@ -1,0 +1,34 @@
+# Sorties de construction
+build/
+dist/
+release/
+*.spec.bak
+
+# Données locales de l'app lancée depuis les sources (jamais versionnées)
+songs/
+library.json
+account.json
+updates/
+downloads/
+*.log
+*.wav
+cuisine_*.png
+
+# Secrets
+publish.env
+.env
+server/.env
+
+# Serveur : environnement virtuel et données de dev
+server/.venv/
+server/data/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+tests_client/__pycache__/
+
+# config.json = ta config personnelle (calibrages de TON écran) : jamais publiée.
+# C'est config.default.json, régénéré au build par make_default_config.py, qui est livré et versionné.
+config.json

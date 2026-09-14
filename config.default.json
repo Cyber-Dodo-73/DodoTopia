@@ -1,0 +1,301 @@
+{
+  "instrument": "piano",
+  "songs_folder": "songs",
+  "hotkeys": {
+    "play_pause": "F6",
+    "stop": "F7",
+    "next_song": "F8",
+    "prev_song": "F9",
+    "speed_down": "F10",
+    "speed_up": "F11",
+    "next_instrument": "F12",
+    "draw_point": "F3"
+  },
+  "start_delay": 1.0,
+  "speed": 1.0,
+  "hold_time": 0.04,
+  "chord_window": 0.02,
+  "transpose_semitones": 0,
+  "fold_out_of_range": true,
+  "ignore_drums": true,
+  "input_mode": "scancode",
+  "instruments": {
+    "piano": {
+      "name": "Piano",
+      "lowest_note": 48,
+      "auto_transpose": "octave",
+      "keys": [
+        ",",
+        "l",
+        ".",
+        ";",
+        "/",
+        "o",
+        "0",
+        "p",
+        "-",
+        "[",
+        "=",
+        "]",
+        "z",
+        "s",
+        "x",
+        "d",
+        "c",
+        "v",
+        "g",
+        "b",
+        "h",
+        "n",
+        "j",
+        "m",
+        "q",
+        "2",
+        "w",
+        "3",
+        "e",
+        "r",
+        "5",
+        "t",
+        "6",
+        "y",
+        "7",
+        "u",
+        "i"
+      ],
+      "gm_program": 0
+    },
+    "flute": {
+      "name": "Flûte",
+      "lowest_note": 60,
+      "auto_transpose": "key",
+      "scale": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12,
+        14,
+        16,
+        17,
+        19,
+        21,
+        23,
+        24
+      ],
+      "keys": [
+        "y",
+        "u",
+        "i",
+        "o",
+        "p",
+        "h",
+        "j",
+        "k",
+        "l",
+        ";",
+        "n",
+        "m",
+        ",",
+        ".",
+        "/"
+      ],
+      "gm_program": 73
+    },
+    "luth": {
+      "name": "Luth",
+      "lowest_note": 48,
+      "auto_transpose": "key",
+      "gm_program": 24,
+      "scale": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12,
+        14,
+        16,
+        17,
+        19,
+        21,
+        23,
+        24
+      ],
+      "keys": [
+        "y",
+        "u",
+        "i",
+        "o",
+        "p",
+        "h",
+        "j",
+        "k",
+        "l",
+        ";",
+        "n",
+        "m",
+        ",",
+        ".",
+        "/"
+      ]
+    }
+  },
+  "stop_on_input": true,
+  "preview_volume": 100,
+  "hold_mode": "note",
+  "max_hold": 4.0,
+  "draw": {
+    "palette": {
+      "pos0": null,
+      "pos1": null,
+      "cols": 2,
+      "rows": 8,
+      "colors": [
+        [
+          5,
+          22,
+          22
+        ],
+        [
+          243,
+          242,
+          242
+        ],
+        [
+          128,
+          130,
+          130
+        ],
+        [
+          231,
+          226,
+          217
+        ],
+        [
+          238,
+          111,
+          114
+        ],
+        [
+          234,
+          122,
+          82
+        ],
+        [
+          254,
+          174,
+          59
+        ],
+        [
+          235,
+          203,
+          52
+        ],
+        [
+          182,
+          201,
+          49
+        ],
+        [
+          68,
+          169,
+          113
+        ],
+        [
+          5,
+          171,
+          160
+        ],
+        [
+          17,
+          142,
+          170
+        ],
+        [
+          43,
+          131,
+          193
+        ],
+        [
+          114,
+          110,
+          168
+        ],
+        [
+          161,
+          103,
+          169
+        ],
+        [
+          190,
+          100,
+          130
+        ]
+      ],
+      "sub0": null,
+      "sub1": null,
+      "back": [
+        1807,
+        242
+      ],
+      "back_color": [
+        242,
+        221,
+        194
+      ],
+      "btn": null,
+      "strip": null,
+      "prev": null,
+      "next": null
+    },
+    "tools": {
+      "pencil": null,
+      "bucket": null,
+      "undo": null
+    },
+    "formats": {},
+    "step_delay": 0.037,
+    "click_delay": 0.05,
+    "fill_background": true,
+    "skip_white": false,
+    "verify": true,
+    "dense": true,
+    "refine": true,
+    "outline": true,
+    "mouse_glide": true,
+    "glide_speed": 1.0
+  },
+  "multi": {
+    "enabled": false,
+    "player_id": 1,
+    "countdown": 10.0,
+    "lead": 1.5,
+    "offset_ms": 0,
+    "latency": null,
+    "beacon_freqs": null,
+    "tune": 1.0,
+    "beacon_gap": 0.18,
+    "beacon_hold": 0.12,
+    "device": "",
+    "calib": null,
+    "mode": "solo"
+  },
+  "cook": {
+    "points": {},
+    "cook_btn_color": null,
+    "ring_color": null,
+    "refs": {},
+    "max_dishes": 0,
+    "cook_timeout": 240.0,
+    "poll": 0.1,
+    "match": 0.62,
+    "green_px": 60,
+    "click_delay": 0.3
+  }
+}
