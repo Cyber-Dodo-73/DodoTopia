@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -84,18 +85,31 @@ class Api:
         self.token = token
 
     def request(self, method: str, path: str, body: bytes | None = None, headers: dict | None = None,
-                timeout: float = 30) -> tuple[int, dict]:
-        req = urllib.request.Request(self.url + path, data=body, method=method)
-        req.add_header("Accept", "application/json")
-        if self.token:
-            req.add_header("X-Publish-Token", self.token)
-        for k, v in (headers or {}).items():
-            req.add_header(k, v)
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.status, _json(r.read())
-        except urllib.error.HTTPError as e:
-            return e.code, _read_error(e)
+                timeout: float = 30, retries: int = 4) -> tuple[int, dict]:
+        """Un envoi de plusieurs centaines de Mo peut saturer le serveur juste avant : le reverse proxy
+        repond alors 502/503/504 le temps qu'il redevienne joignable. On reessaie avant d'abandonner."""
+        last = (0, {})
+        for attempt in range(retries):
+            req = urllib.request.Request(self.url + path, data=body, method=method)
+            req.add_header("Accept", "application/json")
+            if self.token:
+                req.add_header("X-Publish-Token", self.token)
+            for k, v in (headers or {}).items():
+                req.add_header(k, v)
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return r.status, _json(r.read())
+            except urllib.error.HTTPError as e:
+                last = (e.code, _read_error(e))
+                if e.code not in (502, 503, 504):
+                    return last
+            except (urllib.error.URLError, OSError) as e:
+                last = (0, {"detail": {"code": "network", "message": str(getattr(e, "reason", e))}})
+            if attempt < retries - 1:
+                delay = 3 * (attempt + 1)
+                print(f"  passerelle indisponible ({last[0] or 'reseau'}), nouvelle tentative dans {delay} s...")
+                time.sleep(delay)
+        return last
 
     def json(self, method: str, path: str, obj: dict) -> tuple[int, dict]:
         return self.request(method, path, json.dumps(obj).encode("utf-8"), {"Content-Type": "application/json"})

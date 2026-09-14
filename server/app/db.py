@@ -235,6 +235,13 @@ class Connection:
             return
         self._closed = True
         if self._release is not None:
+            # Toute requete, meme un SELECT, ouvre une transaction : sans ce rollback la connexion
+            # retourne au pool en etat INTRANS (psycopg le signale a chaque requete et la solde lui-meme),
+            # ce qui garde un instantane ouvert cote PostgreSQL. Les ecritures ont deja appele commit().
+            try:
+                self._raw.rollback()
+            except Exception:  # noqa - connexion deja cassee : le pool la remplacera
+                pass
             self._release(self._raw)
         else:
             self._raw.close()
