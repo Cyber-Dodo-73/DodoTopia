@@ -3,7 +3,9 @@
 # 1. version       : lit VERSION dans version.py
 # 2. build-windows : build.bat -> release/DodoTopia-<v>-Setup.exe + -portable.zip
 # 3. build-linux   : docker/Dockerfile.linux -> release/DodoTopia-<v>-linux-x64.tar.gz
-# 4. publish       : publish_release.py -> PUT des binaires + POST publish sur le serveur (secrets PUBLISH_URL/PUBLISH_TOKEN)
+# 4. github-release: tag vX.Y.Z + release GitHub avec les binaires attaches (page de telechargement publique)
+# 5. publish       : publish_release.py -> PUT des binaires + POST publish sur le serveur (secrets PUBLISH_URL/PUBLISH_TOKEN)
+#                    C'est le serveur qui alimente la mise a jour automatique ; la release GitHub est pour les humains.
 name: Release
 
 on:
@@ -28,7 +30,7 @@ jobs:
     outputs:
       version: ${{ steps.read.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Lire VERSION dans version.py
         id: read
         env:
@@ -49,9 +51,9 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -71,7 +73,7 @@ jobs:
           test -f "release/DodoTopia-$VERSION-Setup.exe" || { echo "Installeur absent (Inno Setup ?)"; exit 1; }
           test -f "release/DodoTopia-$VERSION-portable.zip" || { echo "Zip portable absent"; exit 1; }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: |
@@ -86,7 +88,7 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Image de construction (Ubuntu 22.04 + PyInstaller + test de fumée)
         run: docker build -f docker/Dockerfile.linux -t dodotopia-linux .
@@ -97,12 +99,45 @@ jobs:
           docker run --rm -v "$PWD/release:/out" dodotopia-linux
           test -f "release/DodoTopia-$VERSION-linux-x64.tar.gz"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux
           path: release/DodoTopia-${{ env.VERSION }}-linux-x64.tar.gz
           if-no-files-found: error
           retention-days: 14
+
+  github-release:
+    needs: [version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # creation du tag et de la release
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Notes de version (section du CHANGELOG)
+        run: |
+          python3 -c "import sys,pathlib;sys.path.insert(0,'.');from publish_release import notes_for_version;f=pathlib.Path('CHANGELOG.md');t=f.read_text(encoding='utf-8') if f.exists() else '';n=notes_for_version(t,'$VERSION') if t else None;print(n or 'DodoTopia $VERSION')" > notes.md
+          cat notes.md
+
+      - name: Creer ou mettre a jour la release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la release/
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "La release v$VERSION existe : mise a jour des binaires et des notes."
+            gh release upload "v$VERSION" release/* --clobber
+            gh release edit "v$VERSION" --notes-file notes.md --latest
+          else
+            gh release create "v$VERSION" release/* --title "DodoTopia $VERSION" --notes-file notes.md --latest
+          fi
 
   publish:
     needs: [version, build-windows, build-linux]
@@ -110,9 +145,9 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: release
           merge-multiple: true

@@ -118,8 +118,8 @@ Outils : Python 3, PyInstaller et Pillow (installés par le script), Inno Setup 
 Le dépôt GitHub construit et publie les versions ; les DodoTopia installés se mettent alors à jour tout seuls (toast « Version x.y.z disponible »).
 
 1. Mets à jour `version.py` (`VERSION = "1.7.1"`) et ajoute une section `## 1.7.1` avec des puces dans `CHANGELOG.md` (ce sont les notes affichées aux joueurs).
-2. `git push` sur `main`. Comme `version.py` a changé, le workflow **Release** (`.github/workflows/release.yml`) enchaîne : lecture de la version → `build.bat` sur un runner Windows (exe + installeur Inno Setup + zip portable) et `docker/Dockerfile.linux` sur un runner Ubuntu (archive Linux) en parallèle → `publish_release.py` qui dépose les trois fichiers sur le serveur (sha256 vérifié) et publie la version. Compte 15 à 25 minutes. Les artefacts restent 14 jours dans l'onglet Actions.
-3. Vérifie `https://dodotopia.cyber-dodo.fr/api/releases/latest` : la version doit être `latest`.
+2. `git push` sur `main`. Comme `version.py` a changé, le workflow **Release** (`.github/workflows/release.yml`) enchaîne : lecture de la version → `build.bat` sur un runner Windows (exe + installeur Inno Setup + zip portable) et `docker/Dockerfile.linux` sur un runner Ubuntu (archive Linux) en parallèle → **release GitHub** (tag `vX.Y.Z`, binaires attachés, notes tirées du `CHANGELOG.md`) → `publish_release.py` qui dépose les trois fichiers sur le serveur (sha256 vérifié) et publie la version. Compte 15 à 25 minutes. Les artefacts restent 14 jours dans l'onglet Actions, la release GitHub est permanente.
+3. Vérifie `https://dodotopia.cyber-dodo.fr/api/releases/latest` : la version doit être `latest`. Les binaires sont aussi téléchargeables sur la page *Releases* du dépôt.
 
 **Secrets à créer une fois** sur GitHub (*Settings* > *Secrets and variables* > *Actions* > *New repository secret*) :
 `PUBLISH_URL` = `https://dodotopia.cyber-dodo.fr` (sans `/` final) et `PUBLISH_TOKEN` = la valeur `PUBLISH_TOKEN` du `.env` du serveur (Dokploy > Environment).
@@ -128,7 +128,7 @@ Le dépôt GitHub construit et publie les versions ; les DodoTopia installés se
 
 Un push qui ne touche pas `version.py` ne publie rien, mais tout push sur `main` redéploie le serveur (Dokploy, webhook GitHub) et lance les tests du serveur si `server/` a changé (`.github/workflows/server-tests.yml`, SQLite puis PostgreSQL).
 
-**Dépôt git** : `.gitignore` exclut les sorties de build, `songs/`, `library.json`, `account.json`, les journaux, `publish.env`, `server/.env` et `server/.venv/`. `config.json` reste versionné car c'est la configuration par défaut livrée avec l'app ; en mode source, elle contient aussi tes propres calibrages (Multi, dessin) : relis son diff avant de committer.
+**Dépôt git** : `.gitignore` exclut les sorties de build, `songs/`, `library.json`, `account.json`, les journaux, `publish.env`, `server/.env` et `server/.venv/`. `config.json` **n'est pas versionné** : en mode source c'est ta configuration personnelle, avec les calibrages de ton écran (palette, outils, grilles, cuisine). C'est `config.default.json` qui est versionné et livré dans l'installeur ; `make_default_config.py` le régénère au début de chaque build en retirant tout calibrage. Sur un runner sans `config.json`, le `config.default.json` du dépôt est conservé tel quel.
 
 ## Serveur en ligne (Dokploy)
 
