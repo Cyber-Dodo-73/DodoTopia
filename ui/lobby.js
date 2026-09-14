@@ -209,10 +209,10 @@ function roomSessionSpec(st, R, hk){
     const cur = st.songs && st.songs[st.current];
     return {live: st.state === 'playing', role: host ? 'Dans le jeu · salon · chef' : 'Dans le jeu · salon',
             text: (D.song && D.song.name) || (cur ? cur.name : ''),
-            meta: `${code} · une touche ou un clic gauche t'arrête`,
+            meta: `${code} · ${host ? (hk.stop || 'F7') + ' arrête tout le monde' : "une touche ou un clic gauche t'arrête"}`,
             progress: {pct: dur ? pos / dur * 100 : 0, left: fmt(pos), right: fmt(dur)},
-            actions: host ? [{label: 'Arrêter pour tous', api: 'room_stop'},
-                             {label: 'Arrêter pour moi', kbd: hk.stop || 'F7', api: 'stop', cls: 'btn--secondary'}]
+            actions: host ? [{label: 'Arrêter pour tous', kbd: hk.stop || 'F7', api: 'room_stop'},
+                             {label: 'Arrêter pour moi', api: 'room_stop_local', cls: 'btn--secondary'}]
                           : [{label: LABELS.stop, kbd: hk.stop || 'F7', api: 'stop'}]};
   }
   return null;

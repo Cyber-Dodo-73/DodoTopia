@@ -311,3 +311,26 @@ def test_real_websockets_server(tmp_path):
 def test_normalize_code():
     assert roommod.normalize_code(" ab-cd ef ") == "ABCDEF"
     assert roommod.normalize_code(None) == ""
+
+def test_stop_request_host_stops_everyone(tmp_path):
+    """F7 / bouton Arreter : le chef coupe tout le salon, un invite ne coupe que lui."""
+    e = Env(tmp_path, play_duration=5.0)
+    try:
+        e.lobby()
+        e.choose_song()
+        assert e.A.start()
+        wait_for(lambda: e.A.state == "playing" and e.B.state == "playing", timeout=3, what="lecture")
+
+        # invite : arret local seulement, le chef continue
+        assert e.B.stop_request("stop") is False       # pas de diffusion
+        wait_for(lambda: e.pB.stop_calls, timeout=2, what="arret de B")
+        assert not e.pA.stop_calls                     # le chef joue toujours
+        assert e.A.state == "playing"
+
+        # chef : arret diffuse (le Player n'est pas coupe par stop_request, le serveur fixe l'instant)
+        assert e.A.stop_request("stop") is True
+        wait_for(lambda: e.pA.stop_calls, timeout=2, what="arret de A")
+        assert e.pA.stop_calls[0][0] == "stop du salon"
+        wait_for(lambda: e.A.state == "lobby", what="lobby")
+    finally:
+        e.close()

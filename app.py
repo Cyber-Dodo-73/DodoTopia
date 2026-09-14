@@ -93,11 +93,11 @@ class Api:
                 self._music_toggle()
 
         def stop():
-            # salon : d'abord l'arret local (armement annule / lecture stoppee), puis p.stop() ; Player.stop ->
-            # _abort_sessions -> room.on_player_stop ne fait plus rien (le salon n'est plus arme) : pas de doublon
-            self._room.stop_local("stop")
-            p.stop()
-            self._sync.abort("stop")
+            # En salon, le chef arrete tout le monde (comme F6) : le serveur fixe l'instant et chacun se coupe
+            # en le recevant, donc on ne touche pas au Player ici. Un invite ne coupe que lui.
+            if not self._room.stop_request("stop"):
+                p.stop()
+                self._sync.abort("stop")
             d.stop("stop")
             c.stop("stop")
 
@@ -701,9 +701,16 @@ class Api:
         return self.get_state()
 
     def stop(self):
+        """Bouton Arreter et F7 : en salon, le chef arrete tout le monde ; un invite ne coupe que lui."""
+        if not self._room.stop_request("stop"):
+            self._player.stop()
+            self._sync.abort("stop")
+        return self.get_state()
+
+    def room_stop_local(self):
+        """Salon : ne couper que soi-meme, meme quand on est chef (bouton « Arreter pour moi »)."""
         self._room.stop_local("stop")
         self._player.stop()
-        self._sync.abort("stop")
         return self.get_state()
 
     # ---------------------------------------------------------- mode de jeu (solo | audio | room)

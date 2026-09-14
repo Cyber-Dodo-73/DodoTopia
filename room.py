@@ -416,6 +416,15 @@ class RoomSession:
             return self.start()
         return self.set_ready(not bool(self.me().get("ready")))
 
+    def stop_request(self, reason="stop"):
+        """Arrêt demandé par l'utilisateur (F7, bouton Arrêter). Le chef arrête tout le salon au même
+        instant, un invité s'arrête seul. Renvoie True quand l'arrêt est diffusé : l'appelant ne doit alors
+        PAS arrêter le Player lui-même, sinon le chef se couperait avant les autres."""
+        if self.is_host() and self.state in ("armed", "playing"):
+            return bool(self.cancel() if self.state == "armed" else self.stop())
+        self.stop_local(reason)
+        return False
+
     def stop_local(self, reason="stop"):
         """F7 : arrêt local seulement (les autres continuent)."""
         if self.state == "armed":
