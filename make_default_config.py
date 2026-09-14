@@ -67,6 +67,15 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     src = src if os.path.isabs(src) else os.path.join(here, src)
     dst = dst if os.path.isabs(dst) else os.path.join(here, dst)
+
+    # config.json n'est pas versionne (il contient le calibrage de la machine de developpement) : sur un
+    # runner d'integration continue il n'existe pas, et config.default.json du depot fait deja foi.
+    if not os.path.exists(src):
+        if os.path.exists(dst):
+            print(f"{os.path.basename(src)} absent : {os.path.basename(dst)} du depot conserve tel quel.")
+            return
+        sys.exit(f"ERREUR : ni {os.path.basename(src)} ni {os.path.basename(dst)} dans {here}.")
+
     with open(src, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     clean = sanitize(cfg)
