@@ -24,17 +24,37 @@ COARSE = 8          # recherche large : pas (px) de la grille
 RING = 56           # rayon (px) de la zone ou l'on compte le vert de l'anneau
 WHITE = 200         # seuil pixel blanc (sur les 3 canaux)
 
+MAX_COOKERS = 4     # nombre maximal de cuisinieres servies par la boucle (borne du reglage cook.cookers)
+SEP = REF           # deux detections a moins de SEP px l'une de l'autre sont la meme bulle
+ASSOC = 60          # tolerance (px) pour rattacher une detection a une cuisiniere deja suivie
+WIDE_EVERY = 2.0    # secondes entre deux recherches larges quand toutes les bulles sont suivies
+PEAKS_MAX = 12      # pics gardes par une recherche large avant l'affinage (garde-fou)
+
 DEFAULT_COOK = {
     "points": {},            # search [x1,y1,x2,y2] ; cook, tile, cook_btn, ready, neutral, spatula : [x, y]
     "cook_btn_color": None,  # couleur du bouton Cuisiner quand le menu est ouvert
     "ring_color": None,      # couleur de l'anneau vert lue au calibrage (etape spatule)
     "refs": {},              # cook / spatula / ready : {"png": masque 1 bit en base64}
+    "cookers": 1,            # nombre de cuisinieres a servir (1 a MAX_COOKERS) ; leurs bulles doivent
+                             # toutes tenir dans la zone de recherche calibree
     "max_dishes": 0,         # 0 = sans fin
     "cook_timeout": 240.0,   # secondes max pour qu'un plat soit pret
     "poll": 0.1,             # secondes entre deux lectures de l'ecran
     "match": 0.62,           # score minimal (Jaccard) pour reconnaitre une icone
     "green_px": 60,          # pixels verts minimum pour l'anneau de la spatule
     "click_delay": 0.3,      # secondes apres un clic
+    # --- ordonnanceur multi-cuisinieres (voir Cooker._may_launch)
+    # INCERTITUDE ASSUMEE : la duree reelle de l'anneau vert (« Ajuste le feu ») n'a jamais ete chronometree
+    # dans le jeu. Lancer une cuisson occupe la souris ET couvre l'ecran avec le menu Recettes pendant
+    # quelques secondes : pendant ce temps on ne verrait pas un anneau vert sur une autre cuisiniere et le
+    # plat serait rate. On considere donc qu'une cuisiniere « peut demander un ajustement » pendant
+    # launch_guard secondes apres son lancement ou apres son dernier feu ajuste, et on ne commence aucun
+    # lancement ailleurs tant que c'est le cas. Reglage sans interface (config.json) :
+    #   launch_guard >= cook_timeout  -> boucle strictement sequentielle (le plus prudent, pas de gain)
+    #   launch_guard = 0              -> aucune attente (le plus rapide, un plat peut se rater)
+    # Des que l'anneau sera chronometre en jeu, mettre ici la duree mesuree + une marge.
+    "launch_guard": 8.0,     # secondes de « fenetre de risque » apres un lancement / un feu ajuste
+    "launch_anytime": False, # True : lancer une cuisson meme si une autre cuisiniere est dans sa fenetre
 }
 
 STEPS = [
@@ -74,6 +94,10 @@ def ensure_defaults(cfg):
             c[k] = v if not isinstance(v, (dict, list)) else __import__("copy").deepcopy(v)
     if c.get("match") == 0.55:
         c["match"] = DEFAULT_COOK["match"]     # ancien defaut, trop proche des scores entre icones (0.53)
+    try:
+        c["cookers"] = max(1, min(MAX_COOKERS, int(c.get("cookers", 1) or 1)))
+    except (TypeError, ValueError):
+        c["cookers"] = 1
     return c
 
 
@@ -175,6 +199,42 @@ def make_ref(x, y):
     return m.crop(crop), im.crop(crop), (x - half + int(round(cx)), y - half + int(round(cy))), radius
 
 
+# ---------------------------------------------------------------- une cuisiniere suivie
+class Burner:
+    """Une cuisiniere servie par la boucle : sa bulle (identifiee par sa position, qui bouge un peu d'un plat
+    a l'autre), l'etat lu a l'ecran et les instants qui servent a l'ordonnanceur."""
+
+    def __init__(self, index, pos, state="none"):
+        now = time.perf_counter()
+        self.index = index          # 1, 2, 3... (de gauche a droite a la decouverte)
+        self.pos = tuple(pos)       # centre absolu de la bulle
+        self.state = state          # cook | ready | spatula (anneau vert) | cooking | none
+        self.scores = {}
+        self.seen = now             # derniere fois ou la bulle a ete reconnue
+        self.since = now            # depuis quand l'etat ne change plus
+        self.lost = 0               # suivis locaux consecutifs sans reconnaissance
+        self.launched = 0.0         # instant du dernier « Cuisiner » clique
+        self.fired = 0.0            # instant du dernier feu ajuste
+        self.dishes = 0
+        self.fires = 0
+        self.clicks = 0             # feux ajustes pour le plat en cours
+        self.fails = 0              # lancements de suite ou le menu est reste ouvert
+
+    def risky(self, guard):
+        """Vrai si l'anneau vert peut surgir sur cette cuisiniere dans les secondes qui viennent (voir
+        DEFAULT_COOK : la duree reelle de l'anneau n'a jamais ete mesuree, `guard` est une estimation)."""
+        if self.state == "spatula":
+            return True
+        if self.state not in ("cooking", "none"):
+            return False
+        ref = max(self.launched, self.fired)
+        return bool(ref) and (time.perf_counter() - ref) < guard
+
+    def to_dict(self):
+        return {"i": self.index, "state": self.state, "dishes": self.dishes, "fires": self.fires,
+                "pos": [int(self.pos[0]), int(self.pos[1])]}
+
+
 # ---------------------------------------------------------------- module
 class Cooker(MouseBot):
     ACTIVE_STATES = ("cooking",)
@@ -210,11 +270,35 @@ class Cooker(MouseBot):
         self._masks_key = None
         self._last_state = None
         self._last_im = None
+        self._burners = []           # multi-cuisinieres : une machine a etats par cuisiniere (Burner)
+        self._wide_at = 0.0          # instant de la derniere recherche large
         ensure_defaults(cfg)
 
     @property
     def cook_cfg(self):
         return ensure_defaults(self.cfg)
+
+    @property
+    def cookers(self):
+        """Nombre de cuisinieres a servir (borne 1..MAX_COOKERS). 1 = comportement historique."""
+        try:
+            return max(1, min(MAX_COOKERS, int(self.cook_cfg.get("cookers", 1) or 1)))
+        except (TypeError, ValueError):
+            return 1
+
+    def apply_cookers(self):
+        """Reglage cook.cookers change : arrete une boucle en cours (les machines a etats sont refaites au
+        prochain demarrage). Renvoie (nombre, boucle arretee)."""
+        n = self.cookers
+        stopped = False
+        if self.state == "cooking":
+            self.stop("nombre de cuisinières changé")
+            stopped = True
+        else:
+            self._burners = []
+        self.log(f"cuisine : {n} cuisinière(s) à servir")
+        self.on_change()
+        return n, stopped
 
     def _mouse_cfg(self):
         d = dict(self.cfg.get("draw", {}))
@@ -406,6 +490,8 @@ class Cooker(MouseBot):
         self.phase = ""
         self._pos = None
         self._last_state = None
+        self._burners = []
+        self._wide_at = 0.0
         self._stop.clear()
         self.countdown = float(delay)
         self._thread = threading.Thread(target=self._run, args=(float(delay),), daemon=True)
@@ -482,10 +568,17 @@ class Cooker(MouseBot):
         return False
 
     def _loop(self):
-        c = self.cook_cfg
-        p = c["points"]
-        max_dishes = int(c.get("max_dishes", 0) or 0)
+        """Une seule cuisiniere : boucle sequentielle historique. Plusieurs : ordonnanceur (_loop_multi)."""
+        p = self.cook_cfg["points"]
         self._check_mouse(*p["neutral"])
+        if self.cookers > 1:
+            self.log(f"cuisine : {self.cookers} cuisinières à servir")
+            return self._loop_multi()
+        return self._loop_single()
+
+    def _loop_single(self):
+        c = self.cook_cfg
+        max_dishes = int(c.get("max_dishes", 0) or 0)
         while not self._stop.is_set():
             if max_dishes and self.dishes >= max_dishes:
                 self.message = f"{self.dishes} plat(s) cuisiné(s), objectif atteint."
@@ -508,6 +601,145 @@ class Cooker(MouseBot):
             return False
         self.dishes += 1
         self.log(f"plat {self.dishes} récupéré")
+        self.on_change()
+        return True
+
+    # ---- boucle multi-cuisinieres
+    def _loop_multi(self):
+        """Ordonnanceur : il n'y a qu'une souris et qu'un menu Recettes a l'ecran, donc les actions sont
+        serialisees, mais chaque cuisiniere garde sa propre machine a etats. Priorite stricte :
+          (a) anneau vert quelque part  -> cliquer tout de suite (c'est minute, sinon le plat est rate) ;
+          (b) plat pret (gants)         -> le recuperer ;
+          (c) cuisiniere au repos       -> lancer une cuisson, si aucune autre ne risque de demander un
+                                           ajustement pendant l'operation (voir _may_launch).
+        Apres chaque action on re-scanne ; quand il n'y a rien a faire on attend par petits pas (poll) pour
+        ne jamais rester aveugle plus d'un poll devant un anneau vert."""
+        c = self.cook_cfg
+        p = c["points"]
+        poll = float(c.get("poll", 0.1))
+        max_dishes = int(c.get("max_dishes", 0) or 0)
+        timeout = float(c.get("cook_timeout", 240.0))
+        self._burners = []
+        self._wide_at = 0.0
+        last_action = time.perf_counter()
+        last_neutral = time.perf_counter()
+        while not self._stop.is_set():
+            if max_dishes and self.dishes >= max_dishes:
+                self.message = f"{self.dishes} plat(s) cuisiné(s), objectif atteint."
+                return
+            if self._menu_open():
+                # un menu Recettes reste ouvert (clic manque, plus d'ingredients) : il cache les bulles
+                self.phase = "menu"
+                if not self._click(*p["neutral"], delay=0.3):
+                    return
+                continue
+            burners = self._scan()
+            if self._guard():
+                return
+            now = time.perf_counter()
+            # (a) anneau vert : minute, tout le reste attend
+            b = next((x for x in burners if x.state == "spatula"), None)
+            if b is not None:
+                self.phase = "feu"
+                if b.clicks >= 8:
+                    raise RuntimeError(f"le feu ne se règle pas sur la cuisinière {b.index} "
+                                       f"(8 clics sur la spatule sans effet)")
+                if not self._click(*b.pos, delay=0.5):
+                    return
+                b.clicks += 1
+                b.fires += 1
+                b.fired = time.perf_counter()
+                self.fires += 1
+                last_action = b.fired
+                self.log(f"bulle {b.index} : feu ajusté ({b.clicks})")
+                self.on_change()
+                continue
+            # (b) plat pret
+            b = next((x for x in burners if x.state == "ready"), None)
+            if b is not None:
+                self.phase = "récupération"
+                if not self._click(*b.pos, delay=0.8):
+                    return
+                b.dishes += 1
+                b.clicks = 0
+                b.launched = b.fired = 0.0
+                self.dishes += 1
+                last_action = time.perf_counter()
+                self.log(f"bulle {b.index} : plat {b.dishes} récupéré ({self.dishes} en tout)")
+                self.on_change()
+                continue
+            # (c) cuisiniere au repos : bulle « cuisiner » stable depuis un instant (pas un scintillement)
+            b = next((x for x in burners if x.state == "cook" and now - x.since >= 0.3), None)
+            if b is not None and self._may_launch(b, burners):
+                self.phase = "lancement"
+                if not self._launch_one(b):
+                    return
+                last_action = time.perf_counter()
+                continue
+            # plus rien de reconnu (aucune bulle, ou toutes perdues) : animation d'un plat ameliore,
+            # fenetre du jeu -> clic a cote pour la fermer
+            if all(x.state == "none" for x in burners) and now - last_neutral > 1.5:
+                if not self._click(*p["neutral"], delay=0.2):
+                    return
+                last_neutral = time.perf_counter()
+                continue
+            self.phase = "cuisson"
+            if now - last_action > timeout:
+                raise RuntimeError(f"aucune cuisinière n'a bougé depuis {timeout:.0f} s (plats pas prêts ?)")
+            if not self._sleep(poll):
+                return
+
+    def _may_launch(self, b, burners):
+        """Vrai si on peut lancer une cuisson sur `b` sans risquer de rater un anneau vert ailleurs.
+        Le lancement (clic sur la bulle -> menu Recettes -> tuile -> Cuisiner) dure quelques secondes pendant
+        lesquelles le menu couvre l'ecran : les autres bulles sont invisibles. Par prudence on ne le commence
+        donc pas tant qu'une autre cuisiniere est dans sa « fenetre de risque » (launch_guard secondes apres
+        son lancement ou son dernier feu ajuste).
+        ATTENTION : la duree reelle de l'anneau vert dans le jeu n'a jamais ete chronometree ; launch_guard
+        est une estimation prudente, reglable dans config.json (voir DEFAULT_COOK), et launch_anytime la
+        desactive completement."""
+        c = self.cook_cfg
+        if c.get("launch_anytime"):
+            return True
+        try:
+            guard = float(c.get("launch_guard", 8.0) or 0.0)
+        except (TypeError, ValueError):
+            guard = 8.0
+        if guard <= 0:
+            return True
+        return not any(o is not b and o.risky(guard) for o in burners)
+
+    def _launch_one(self, b):
+        """Lance une cuisson sur la cuisiniere `b` : clic sur sa bulle, tuile de la derniere recette, bouton
+        Cuisiner. False seulement si la boucle doit s'arreter (un echec est journalise et retente au tour
+        suivant)."""
+        p = self.cook_cfg["points"]
+        if not self._click(*b.pos, delay=0.3):
+            return False
+        if not self._wait_menu(True, 6.0):
+            self.log(f"bulle {b.index} : le menu ne s'est pas ouvert après le clic sur la bulle")
+            return not self._stop.is_set()
+        if not self._click(*p["tile"], delay=0.4):
+            return False
+        if not self._menu_open():
+            self.log(f"bulle {b.index} : le menu a disparu avant Cuisiner (animation ?)")
+            return not self._stop.is_set()
+        if not self._click(*p["cook_btn"], delay=0.5):
+            return False
+        if not self._wait_menu(False, 5.0):
+            if self._stop.is_set():
+                return False
+            b.fails += 1
+            self.log(f"bulle {b.index} : le menu reste ouvert après Cuisiner ({b.fails})")
+            if b.fails >= 3:
+                raise RuntimeError(f"le menu Recettes reste ouvert sur la cuisinière {b.index} : "
+                                   f"plus d'ingrédients pour cette recette ?")
+            return True
+        b.launched = time.perf_counter()
+        b.clicks = 0
+        b.fails = 0
+        b.state, b.since = "cooking", b.launched
+        self.log(f"bulle {b.index} : cuisson lancée")
         self.on_change()
         return True
 
@@ -779,23 +1011,236 @@ class Cooker(MouseBot):
             self.log(f"bulle : {state} {scores} à {pos}")
         return state, pos, scores
 
+    # ---- detection de plusieurs bulles (multi-cuisinieres)
+    def _all_at(self, wm, masks, cands, floor):
+        """Tous les triplets (score, nom, coin haut-gauche) au-dessus de `floor` : contrairement a _best_at,
+        on ne garde pas seulement le meilleur candidat par icone, sinon deux bulles n'en font qu'une."""
+        out = []
+        for (x, y) in cands:
+            win = wm.crop((x, y, x + REF, y + REF))
+            n = count(win)
+            for name, (m, nref, _halo) in masks.items():
+                if not (0.4 * nref <= n <= 2.5 * nref):
+                    continue
+                s = jaccard(m, win)
+                if s >= floor:
+                    out.append((s, name, (x, y)))
+        return out
+
+    @staticmethod
+    def _peaks(raw, sep=SEP, limit=PEAKS_MAX):
+        """Un pic par bulle : on parcourt les detections de la meilleure a la moins bonne et on ignore celles
+        qui tombent a moins de `sep` px d'un pic deja retenu (c'est la meme bulle)."""
+        kept = []
+        for s, name, (x, y) in sorted(raw, key=lambda t: -t[0]):
+            if all((x - kx) ** 2 + (y - ky) ** 2 >= sep * sep for _s, _n, (kx, ky) in kept):
+                kept.append((s, name, (x, y)))
+                if len(kept) >= limit:
+                    break
+        return kept
+
+    def _around(self, wm, masks, x, y, span, step):
+        """Meilleur score de chaque icone autour de (x, y), affine au pixel pres."""
+        cands = [(x + dx, y + dy) for dy in range(-span, span + 1, step) for dx in range(-span, span + 1, step)]
+        best = self._best_at(wm, masks, cands, plausible=False)
+        for name, (s, (bx, by)) in list(best.items()):
+            fine = [(bx + dx, by + dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
+            r = self._best_at(wm, {name: masks[name]}, fine, plausible=False).get(name)
+            if r and r[0] > s:
+                best[name] = r
+        return best
+
+    def _add_green(self, det, im, ox, oy):
+        """Compte le vert autour d'une bulle reconnue : la spatule entouree de vert demande un clic."""
+        c = self.cook_cfg
+        x, y = det["pos"]
+        ring = None
+        if im is not None:
+            gx, gy = x - ox, y - oy
+            if gx - RING >= 0 and gy - RING >= 0 and gx + RING <= im.size[0] and gy + RING <= im.size[1]:
+                ring = im.crop((gx - RING, gy - RING, gx + RING, gy + RING))
+        if ring is None:
+            ring = grab((x - RING, y - RING, x + RING, y + RING))
+        green = count(green_mask(ring, c.get("ring_color"))) if ring is not None else 0
+        det["scores"]["vert"] = green
+        if green >= int(c.get("green_px", 60)):
+            det["state"] = "spatula"
+        return green
+
+    def _scan_wide(self):
+        """Recherche large : TOUTES les bulles reconnues dans la zone calibree, separees spatialement.
+        Renvoie une liste de dicts {pos, state, scores} (etats : cook, ready, spatula, cooking)."""
+        c = self.cook_cfg
+        rect = [int(v) for v in c["points"]["search"]]
+        masks = self._load_masks()
+        if not masks:
+            raise RuntimeError("aucune icône de référence : refais le calibrage")
+        match = float(c.get("match", 0.55))
+        im = grab(tuple(rect))
+        if im is None:
+            raise RuntimeError("capture d'écran impossible")
+        self._last_im = im
+        wm = dilate(white_mask(im))
+        W, H = im.size
+        cands = [(x, y) for y in range(0, max(1, H - REF + 1), COARSE) for x in range(0, max(1, W - REF + 1), COARSE)]
+        out = []
+        for _s, _name, (x, y) in self._peaks(self._all_at(wm, masks, cands, 0.2)):
+            best = self._around(wm, masks, x, y, COARSE, 2)
+            scores = {k: round(v[0], 2) for k, v in best.items()}
+            found = self._pick(wm, masks, best, rect[0], rect[1], match, scores)
+            if not found:
+                continue
+            name, s, pos = found
+            # l'affinage peut faire converger deux pics vers la meme bulle : on garde la meilleure
+            if any((pos[0] - d["pos"][0]) ** 2 + (pos[1] - d["pos"][1]) ** 2 < SEP * SEP for d in out):
+                continue
+            det = {"pos": pos, "state": "cooking" if name == "spatula" else name, "scores": scores}
+            self._add_green(det, im, rect[0], rect[1])
+            out.append(det)
+        out.sort(key=lambda d: (d["pos"][0], d["pos"][1]))
+        return out
+
+    def _scan_local(self, burner):
+        """Suivi local d'une bulle connue : petite capture autour de sa derniere position (rapide).
+        Renvoie {pos, state, scores} ou None si la bulle n'est plus reconnue la."""
+        c = self.cook_cfg
+        masks = self._load_masks()
+        if not masks:
+            raise RuntimeError("aucune icône de référence : refais le calibrage")
+        match = float(c.get("match", 0.55))
+        r = REF // 2 + LOCAL + 48
+        ox, oy = burner.pos[0] - r, burner.pos[1] - r
+        im = grab((ox, oy, ox + 2 * r, oy + 2 * r))
+        if im is None:
+            raise RuntimeError("capture d'écran impossible")
+        self._last_im = im
+        wm = dilate(white_mask(im))
+        cx, cy = r - REF // 2, r - REF // 2
+        cands = [(cx + dx, cy + dy) for dy in range(-LOCAL, LOCAL + 1, 4) for dx in range(-LOCAL, LOCAL + 1, 4)]
+        best = self._best_at(wm, masks, cands, plausible=True)
+        if best:
+            name, (s, (x, y)) = max(best.items(), key=lambda kv: kv[1][0])
+            fine = [(x + dx, y + dy) for dy in range(-3, 4) for dx in range(-3, 4)]
+            best[name] = self._best_at(wm, {name: masks[name]}, fine, plausible=False).get(name) or best[name]
+        scores = {k: round(v[0], 2) for k, v in best.items()}
+        found = self._pick(wm, masks, best, ox, oy, match, scores)
+        if not found:
+            return None
+        name, s, pos = found
+        det = {"pos": pos, "state": "cooking" if name == "spatula" else name, "scores": scores}
+        self._add_green(det, im, ox, oy)
+        return det
+
+    def _scan(self, wide=False):
+        """Met a jour les cuisinieres suivies. Suivi local tant que toutes les bulles sont retrouvees ;
+        recherche large quand il en manque une, quand il reste des cuisinieres a decouvrir, ou toutes les
+        WIDE_EVERY secondes (les bulles bougent un peu d'un plat a l'autre)."""
+        now = time.perf_counter()
+        age = now - self._wide_at
+        manque = len(self._burners) < self.cookers     # cuisinieres pas encore reperees
+        if wide or not self._burners or age > WIDE_EVERY or (manque and age > 0.5):
+            self._wide_at = now
+            self._assign(self._scan_wide())
+            return self._burners
+        for b in list(self._burners):
+            det = self._scan_local(b)
+            if det is None:
+                b.lost += 1
+                if b.lost >= 2:                 # bulle perdue : on refait tout de suite une recherche large
+                    self._wide_at = time.perf_counter()
+                    self._assign(self._scan_wide())
+                    return self._burners
+            else:
+                self._apply(b, det)
+        return self._burners
+
+    def _assign(self, dets):
+        """Rattache chaque detection a la cuisiniere connue la plus proche (tolerance ASSOC px), cree les
+        nouvelles tant qu'il en manque, et passe a « none » celles qui n'ont pas ete vues."""
+        free = list(self._burners)
+        pairs, news = [], []
+        for det in dets:
+            best, bd = None, ASSOC * ASSOC
+            for b in free:
+                d2 = (det["pos"][0] - b.pos[0]) ** 2 + (det["pos"][1] - b.pos[1]) ** 2
+                if d2 <= bd:
+                    best, bd = b, d2
+            if best is None:
+                news.append(det)
+            else:
+                free.remove(best)
+                pairs.append((best, det))
+        for b, det in pairs:
+            self._apply(b, det)
+        for det in sorted(news, key=lambda d: (d["pos"][0], d["pos"][1])):
+            if len(self._burners) >= self.cookers:
+                break
+            b = Burner(len(self._burners) + 1, det["pos"])
+            if det["state"] in ("cooking", "spatula"):
+                b.launched = time.perf_counter()   # cuisson deja en cours : elle a droit a sa fenetre de risque
+            self._burners.append(b)
+            self.log(f"cuisinière {b.index} repérée en {b.pos[0]},{b.pos[1]}")
+            self._apply(b, det)
+        for b in free:
+            self._apply(b, None)
+
+    def _apply(self, b, det):
+        """Applique une detection (ou son absence) a une cuisiniere et journalise les changements d'etat."""
+        now = time.perf_counter()
+        state = det["state"] if det else "none"
+        if det:
+            b.pos = det["pos"]
+            b.scores = det["scores"]
+            b.seen = now
+            b.lost = 0
+        if state != b.state:
+            b.state = state
+            b.since = now
+            self.log(f"bulle {b.index} : {state} {b.scores} à {b.pos[0]},{b.pos[1]}")
+
     def test(self):
         """Lecture immediate de l'ecran (bouton « Tester la détection ») : phrase pour l'interface."""
         if self.state != "idle":
             return "Occupé (cuisine ou calibrage en cours)."
         if not self.calibrated():
             return "La cuisine n'est pas calibrée."
+        names = {"cook": "bulle « cuisiner »", "ready": "bulle « récupérer »", "spatula": "spatule avec anneau vert",
+                 "cooking": "spatule sans anneau", "none": "aucune bulle reconnue"}
+        if self.cookers > 1:
+            return self._test_multi(names)
         try:
             self._last_state = None
             st, pos, sc = self._find(wide=True)
         except Exception as e:  # noqa
             self.test_result = f"Échec : {e}"
             return self.test_result
-        names = {"cook": "bulle « cuisiner »", "ready": "bulle « récupérer »", "spatula": "spatule avec anneau vert",
-                 "cooking": "spatule sans anneau", "none": "aucune bulle reconnue"}
         detail = ", ".join(f"{k} {v}" for k, v in sc.items())
         menu = "menu Recettes ouvert" if self._menu_open() else "menu fermé"
         self.test_result = f"{names.get(st, st)}" + (f" en {pos[0]},{pos[1]}" if pos and st != "none" else "") + f" ({detail}) ; {menu}."
+        self.log("test : " + self.test_result)
+        return self.test_result
+
+    def _test_multi(self, names):
+        """« Tester la détection » avec plusieurs cuisinières : une ligne par bulle trouvée dans la zone."""
+        n = self.cookers
+        try:
+            dets = self._scan_wide()
+        except Exception as e:  # noqa
+            self.test_result = f"Échec : {e}"
+            return self.test_result
+        menu = "menu Recettes ouvert" if self._menu_open() else "menu fermé"
+        if not dets:
+            self.test_result = f"Aucune bulle reconnue dans la zone ({n} cuisinières attendues) ; {menu}."
+        else:
+            parts = []
+            for i, d in enumerate(dets[:n], 1):
+                detail = ", ".join(f"{k} {v}" for k, v in d["scores"].items())
+                parts.append(f"{i}. {names.get(d['state'], d['state'])} en {d['pos'][0]},{d['pos'][1]} ({detail})")
+            extra = f" — {len(dets) - n} bulle(s) en trop ignorée(s)" if len(dets) > n else ""
+            if len(dets) < n:
+                extra = (f" — {n} cuisinières attendues : aucune autre bulle dans la zone calibrée "
+                         f"(élargis-la ou rapproche les cuisinières)")
+            self.test_result = f"{len(dets)} bulle(s) : " + " ; ".join(parts) + extra + f" ; {menu}."
         self.log("test : " + self.test_result)
         return self.test_result
 
@@ -803,7 +1248,11 @@ class Cooker(MouseBot):
     def status(self):
         c = self.cook_cfg
         elapsed = (time.perf_counter() - self.started_at) if self.started_at else 0.0
+        burners = [b.to_dict() for b in list(self._burners)]
         return {
+            "cookers": self.cookers,
+            "burners": burners,
+            "tracked": len(burners),
             "state": self.state,
             "phase": self.phase,
             "step": self.step,
@@ -818,7 +1267,8 @@ class Cooker(MouseBot):
             "refs": {k: (k in c["refs"]) for k in ("cook", "spatula", "ready")},
             "ring_color": c.get("ring_color"),
             "test_result": self.test_result,
-            "settings": {"max_dishes": int(c.get("max_dishes", 0) or 0), "cook_timeout": float(c.get("cook_timeout", 240.0)),
+            "settings": {"cookers": self.cookers,
+                         "max_dishes": int(c.get("max_dishes", 0) or 0), "cook_timeout": float(c.get("cook_timeout", 240.0)),
                          "match": float(c.get("match", 0.55)), "click_delay": float(c.get("click_delay", 0.3)),
                          "green_px": int(c.get("green_px", 60))},
             "screen_ok": SCREEN_OK,

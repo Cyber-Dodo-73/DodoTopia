@@ -48,6 +48,7 @@ import time
 from collections import deque
 
 import core
+import online          # SHA256_RE / SONG_MAX_BYTES (online n'importe room qu'à l'appel)
 from platform_io import mouse_button_down
 from sync import _Aborted, choose_common_extra, ensure_defaults
 from version import VERSION
@@ -842,11 +843,14 @@ class RoomSession:
         threading.Thread(target=self._ensure_run, args=(dict(song), gen), name="room-file", daemon=True).start()
 
     def _ensure_run(self, song, gen):
-        sha = str(song.get("sha256") or "")
+        sha = str(song.get("sha256") or "").lower()
         key_shift = int(song.get("key_shift") or 0)
-        name = song.get("name") or "musique"
+        # `name` vient du chef du salon : nettoyé avant tout affichage et tout usage comme nom de fichier.
+        name = core.clean_display_text(song.get("name"), 200) or "musique"
         tmpdir = None
         try:
+            if not online.SHA256_RE.match(sha):
+                raise RuntimeError("empreinte du morceau invalide")
             lib = self.player.library
             sid = lib.find_by_sha(sha)
             path = os.path.join(self.player.songs_folder, sid) if sid else None
@@ -856,15 +860,18 @@ class RoomSession:
                 self.message = f"Téléchargement de « {name} »…"
                 self.log(f"salon : téléchargement de {name} ({sha[:12]}…)")
                 tmpdir = tempfile.mkdtemp(prefix="dodotopia-salon-")
-                tmp = os.path.join(tmpdir, sha + ".mid")
+                tmp = os.path.join(tmpdir, sha + ".mid")   # nom dérivé du sha256 validé, pas d'un texte
                 if song.get("source") == "library" and song.get("online_id") is not None:
                     url = f"/api/songs/{song['online_id']}/download"
                 else:
                     url = f"/api/rooms/{self.code}/song/{sha}"
-                self.client.download(url, tmp, sha)
+                got = self.client.download(url, tmp, sha, max_bytes=online.SONG_MAX_BYTES)
+                if str(got).lower() != sha:
+                    raise RuntimeError("empreinte du fichier reçu différente de celle annoncée")
                 if self.import_file is None:
                     raise RuntimeError("import de fichier indisponible")
-                sid = self.import_file(tmp, {"title": name, "sha256": sha, "online_id": song.get("online_id")})
+                title = core.safe_song_filename(name)[:-4]
+                sid = self.import_file(tmp, {"title": title, "sha256": sha, "online_id": song.get("online_id")})
                 if isinstance(sid, (list, tuple)):        # _import_files(paths) -> (added, skipped)
                     sid = sid[0][0] if sid and sid[0] else None
                 if not sid:
@@ -980,20 +987,25 @@ class RoomSession:
         if sid and os.path.isfile(os.path.join(p.songs_folder, sid)):
             return os.path.join(p.songs_folder, sid), online_id
         info = self.client.get(f"/api/songs/{online_id}", auth=False)
-        sha = str(info.get("sha256") or "")
+        sha = str(info.get("sha256") or "").lower()
+        if not online.SHA256_RE.match(sha):
+            raise RuntimeError("le serveur n'annonce pas d'empreinte pour ce morceau")
         tmpdir = tempfile.mkdtemp(prefix="dodotopia-salon-")
         try:
-            tmp = os.path.join(tmpdir, (sha or str(online_id)) + ".mid")
-            self.client.download(f"/api/songs/{online_id}/download", tmp, sha or None)
+            tmp = os.path.join(tmpdir, sha + ".mid")
+            got = self.client.download(f"/api/songs/{online_id}/download", tmp, sha,
+                                       max_bytes=online.SONG_MAX_BYTES)
+            if str(got).lower() != sha:
+                raise RuntimeError("empreinte du fichier reçu différente de celle annoncée")
             if self.import_file is None:
                 raise RuntimeError("import de fichier indisponible")
-            sid = self.import_file(tmp, {"title": info.get("title"), "sha256": sha or core.file_sha256(tmp),
-                                         "online_id": online_id})
+            title = core.safe_song_filename(core.clean_display_text(info.get("title")))[:-4]
+            sid = self.import_file(tmp, {"title": title, "sha256": sha, "online_id": online_id})
             if isinstance(sid, (list, tuple)):
                 sid = sid[0][0] if sid and sid[0] else None
             if not sid:
                 raise RuntimeError("import du fichier refusé")
-            p.library.set_online(sid, online_id=online_id, sha256=sha or None)
+            p.library.set_online(sid, online_id=online_id, sha256=sha)
             return os.path.join(p.songs_folder, sid), online_id
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)

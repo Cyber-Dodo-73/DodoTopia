@@ -55,6 +55,7 @@ GET /api/releases/latest?current=&platform= -> {version, notes, mandatory, updat
 import hashlib
 import json
 import os
+import re
 import secrets
 import ssl
 import stat
@@ -73,10 +74,12 @@ from version import VERSION
 
 IS_WINDOWS = sys.platform == "win32"
 DEFAULT_SERVER_URL = "https://dodotopia.cyber-dodo.fr"     # serveur DodoTopia (modifiable dans Reglages > En ligne)
-DEFAULT_ONLINE = {"server_url": DEFAULT_SERVER_URL, "check_updates": True}
+DEFAULT_ONLINE = {"server_url": DEFAULT_SERVER_URL, "check_updates": True, "auto_update": True}
 HEALTH_TIMEOUT = 3          # secondes : sante du serveur
 API_TIMEOUT = 5             # secondes : appels API
 DOWNLOAD_TIMEOUT = 60       # secondes par bloc de telechargement
+SONG_MAX_BYTES = 8 * 1024 * 1024   # plafond d'un .mid telecharge (le serveur en accepte 2 Mo au depot)
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 LOGIN_POLL_S = 1.5
 LOGIN_MAX_S = 600
 PER_PAGE = 50
@@ -94,6 +97,7 @@ def ensure_defaults(cfg):
         o.setdefault(k, v)
     o["server_url"] = normalize_url(o.get("server_url")) or DEFAULT_SERVER_URL
     o["check_updates"] = bool(o.get("check_updates", True))
+    o["auto_update"] = bool(o.get("auto_update", True))
     return o
 
 
@@ -262,7 +266,10 @@ class OnlineClient:
             parts.append(str(v).encode("utf-8") + crlf)
         with open(filepath, "rb") as f:
             content = f.read()
-        fname = os.path.basename(filepath).replace('"', "_")
+        # Nom de partie multipart : liste blanche ASCII. Un nom local contenant un guillemet ou un
+        # retour a la ligne casserait sinon l'en-tete Content-Disposition envoye au serveur.
+        fname = re.sub(r"[^A-Za-z0-9 ._-]+", "", core.clean_display_text(os.path.basename(filepath), 120))
+        fname = fname.strip(" .") or "morceau.mid"
         parts.append(b"--" + boundary.encode() + crlf)
         parts.append(f'Content-Disposition: form-data; name="{filefield}"; filename="{fname}"'.encode() + crlf)
         parts.append(f"Content-Type: {content_type}".encode() + crlf + crlf)
@@ -273,9 +280,13 @@ class OnlineClient:
                             headers={"Content-Type": f"multipart/form-data; boundary={boundary}",
                                      "Content-Length": str(len(body))})
 
-    def download(self, path, dest, expected_sha256=None, on_progress=None, timeout=DOWNLOAD_TIMEOUT):
+    def download(self, path, dest, expected_sha256=None, on_progress=None, timeout=DOWNLOAD_TIMEOUT,
+                 max_bytes=None):
         """Telecharge dans `dest` via `dest.part`, sha256 calcule au fil de l'eau (verifie si attendu),
-        on_progress(done_bytes, total_bytes|None). Renvoie le sha256 hex."""
+        on_progress(done_bytes, total_bytes|None). Renvoie le sha256 hex.
+
+        `max_bytes` coupe net un serveur (ou un intermediaire) qui enverrait un flux sans fin : le fichier
+        partiel est efface et rien n'est remis a l'appelant."""
         os.makedirs(os.path.dirname(os.path.abspath(dest)) or ".", exist_ok=True)
         part = dest + ".part"
         h = hashlib.sha256()
@@ -285,6 +296,8 @@ class OnlineClient:
             with self._open(req, timeout) as resp, open(part, "wb") as out:
                 total = resp.headers.get("Content-Length")
                 total = int(total) if total and total.isdigit() else None
+                if max_bytes and total and total > max_bytes:
+                    raise OnlineError(f"Fichier trop gros ({total // 1024} Ko)")
                 while True:
                     chunk = resp.read(256 * 1024)
                     if not chunk:
@@ -292,6 +305,8 @@ class OnlineClient:
                     out.write(chunk)
                     h.update(chunk)
                     done += len(chunk)
+                    if max_bytes and done > max_bytes:
+                        raise OnlineError(f"Fichier trop gros (plus de {max_bytes // 1024} Ko)")
                     if on_progress:
                         on_progress(done, total)
         except OnlineError:
@@ -507,6 +522,7 @@ class Updater:
         self.done_mb = 0.0
         self.size_mb = 0.0
         self.checked_at = 0
+        self.auto = False       # installer seul au demarrage (Reglages > En ligne)
         self._notified = None   # version deja annoncee par un toast (une fois par session)
         self._dismissed = None
         self._lock = threading.Lock()
@@ -588,6 +604,26 @@ class Updater:
         if self._notified != latest or manual:
             self._notified = latest
             self.notify(f"Version {latest} disponible", "info")
+        # Mise a jour automatique : seulement au demarrage (pas sur une verification manuelle) et seulement
+        # pour une installation par installeur, qui sait fermer l'app, s'installer en silence et la relancer.
+        # En portable ou sous Linux il faudrait remplacer des fichiers en cours d'usage : on s'en tient au toast.
+        if self.auto and not manual and self.install_kind() == "setup" and self.asset:
+            self._auto_install(latest)
+
+    def _auto_install(self, latest):
+        """Telecharge puis lance l'installeur sans rien demander : on est au demarrage, rien n'est en cours."""
+        self.notify(f"Mise à jour vers {latest} : téléchargement…", "info")
+        if self.state != "ready":
+            self.state = "downloading"
+            self.progress = self.done_mb = 0.0
+            self.size_mb = float((self.asset or {}).get("size") or 0) / 1e6
+            self._download()
+        if self.state != "ready":
+            return
+        self.log(f"installation automatique de {latest}")
+        self.notify(f"Installation de {latest} : DodoTopia va redémarrer", "info")
+        time.sleep(1.5)                  # laisser le toast s'afficher avant la fermeture
+        self.install()
 
     def _file_ok(self, path, asset):
         try:
@@ -729,6 +765,7 @@ class OnlineService:
                                     on_done=self._on_login_done)
         self.updater = Updater(self.client, cfg, log=self.log, notify=self.notify, request_quit=self.request_quit,
                                open_folder=self._open_folder)
+        self.updater.auto = bool(ensure_defaults(cfg).get("auto_update", True))
         from room import RoomSession
         self.room = RoomSession(self.client, player, cfg, self.account, log=self._ui_log, notify=self.notify,
                                 logfile=os.path.join(os.path.dirname(logfile), "salon.log") if logfile else None,
@@ -792,9 +829,11 @@ class OnlineService:
         import shutil
         p = self.player
         meta = meta or {}
-        title = str(meta.get("title") or core.clean_title(path)).strip() or core.clean_title(path)
-        base = "".join(ch for ch in title if ch not in '\\/:*?"<>|').strip() or "musique"
-        dst = os.path.join(p.songs_folder, base + ".mid")
+        # Le nom vient d'un titre fourni par un autre joueur : core.safe_join l'assainit (ni separateur,
+        # ni `..`, ni caractere reserve Windows, ni nom de peripherique) et verifie par realpath que le
+        # chemin final reste bien dans songs/.
+        title = core.clean_display_text(meta.get("title") or core.clean_title(path)) or core.clean_title(path)
+        dst = core.safe_join(p.songs_folder, title)
         stem, ext = os.path.splitext(dst)
         n = 2
         while os.path.exists(dst):
@@ -882,6 +921,7 @@ class OnlineService:
     def apply_config(self):
         """Apres modification des reglages en ligne : nouvelle URL -> nouveau client, compte recharge."""
         o = ensure_defaults(self.cfg)
+        self.updater.auto = bool(o.get("auto_update", True))
         if o["server_url"] != self.server_url:
             self.server_url = o["server_url"]
             self.client.server_url = self.server_url
@@ -983,8 +1023,12 @@ class OnlineService:
             item = next((it for it in self.library["items"] if str(it.get("id")) == oid), None)
             if not item or not item.get("sha256"):
                 item = self.client.get(f"/api/songs/{oid}", auth=False)
-            sha = str(item.get("sha256") or "")
-            local = self.player.library.find_by_sha(sha) if sha else None
+            sha = str(item.get("sha256") or "").lower()
+            # Empreinte obligatoire : sans elle le fichier recu ne serait verifie par rien, et le nom du
+            # fichier temporaire ne serait plus derive d'une valeur sure.
+            if not SHA256_RE.match(sha):
+                raise OnlineError("Le serveur n'annonce pas d'empreinte pour ce morceau")
+            local = self.player.library.find_by_sha(sha)
             if local and os.path.isfile(os.path.join(self.player.songs_folder, local)):
                 self.player.library.set_online(local, online_id=item.get("id"))
                 self._set_job("downloads", oid, state="done", progress=1.0, song_id=local)
@@ -992,16 +1036,22 @@ class OnlineService:
                 return
             ddir = DOWNLOADS_DIR
             os.makedirs(ddir, exist_ok=True)
-            tmp = os.path.join(ddir, f"{sha or oid}.mid")
+            tmp = os.path.join(ddir, f"{sha}.mid")   # nom derive du sha256, jamais d'un texte du serveur
             self._set_job("downloads", oid, state="downloading")
 
             def progress(done, total):
                 if total:
                     self._set_job("downloads", oid, progress=min(1.0, done / total))
-            self.client.download(f"/api/songs/{oid}/download", tmp, sha or None, progress)
+            got = self.client.download(f"/api/songs/{oid}/download", tmp, sha, progress,
+                                       max_bytes=SONG_MAX_BYTES)
+            if str(got).lower() != sha:             # ceinture et bretelles : download verifie deja
+                raise OnlineError("Fichier corrompu (empreinte differente de celle annoncee)")
             self._set_job("downloads", oid, state="importing", progress=1.0)
-            meta = {"title": item.get("title"), "artist": item.get("artist"), "sha256": sha or core.file_sha256(tmp),
-                    "online_id": item.get("id", oid)}
+            # Titre et artiste sont des textes d'un autre joueur, et le titre sert de nom de fichier a
+            # l'import : nettoyes ici pour qu'aucun invisible ni bidi n'atteigne le disque.
+            meta = {"title": core.safe_song_filename(core.clean_display_text(item.get("title")))[:-4],
+                    "artist": core.clean_display_text(item.get("artist")),
+                    "sha256": sha, "online_id": item.get("id", oid)}
             sid = import_cb(tmp, meta)
             if isinstance(sid, (list, tuple)):     # _import_files(paths, extra_meta) -> (added, skipped)
                 sid = sid[0][0] if sid and sid[0] else None

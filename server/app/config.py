@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     DATA_DIR: str = "/data"                             # volume : songs/, tmp/, releases/ (+ dodo.db en SQLite)
     MAX_MIDI_BYTES: int = 2 * 1024 * 1024               # bibliothèque
     ROOM_SONG_MAX_BYTES: int = 512 * 1024               # morceau éphémère d'un salon
+    # Plafonds de validation d'un fichier MIDI (voir library.scan_midi). Un fichier hostile de 2 Mo en
+    # running status contient des centaines de milliers d'évènements : sans plafond, le parsing fige le
+    # serveur comme le client.
+    MAX_MIDI_TRACKS: int = 64                           # SMF type 1 réaliste : < 32 pistes
+    MAX_MIDI_EVENTS: int = 100_000                      # gros morceau orchestral : 30 000 à 60 000
+    MAX_MIDI_NOTES: int = 50_000                        # 30 min de piano dense : ~20 000 notes
+    MIN_MIDI_NOTES: int = 10
+    MIN_MIDI_DURATION_S: float = 1.0
+    MAX_MIDI_DURATION_S: float = 30 * 60
+    MAX_TEXT_LEN: int = 120                             # titre, artiste, pseudo affichés dans l'interface
+    MAX_REASON_LEN: int = 500                           # motif de signalement / de refus
+    REQUEST_OVERHEAD_BYTES: int = 64 * 1024             # en-têtes multipart autour du fichier
     RATE_LIMIT: int = 1                                 # 0 = limitation désactivée (tests)
     SESSION_DAYS: int = 90
     LOGIN_TICKET_S: int = 600
@@ -57,3 +69,8 @@ class Settings(BaseSettings):
     @property
     def releases_dir(self) -> Path:
         return self.data_dir / "releases"
+
+    @property
+    def max_request_bytes(self) -> int:
+        """Taille maximale du corps d'une requête ordinaire (les envois de binaires de release sont exemptés)."""
+        return max(self.MAX_MIDI_BYTES, self.ROOM_SONG_MAX_BYTES) + self.REQUEST_OVERHEAD_BYTES

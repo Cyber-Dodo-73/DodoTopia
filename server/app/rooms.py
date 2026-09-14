@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import re
 import secrets
 import time
@@ -27,7 +28,7 @@ from . import db
 from .auth import api_error, get_current_user, user_from_token
 from .config import Settings
 from .library import MidiError, read_upload, validate_midi
-from .ratelimit import TokenBucket
+from .ratelimit import TokenBucket, limit
 from .schemas import WS_MODELS
 
 log = logging.getLogger("dodo.rooms")
@@ -115,6 +116,7 @@ class Room:
         self.countdown_s = COUNTDOWN_DEFAULT
         self.start_at_ms: int | None = None
         self.song: dict | None = None
+        self.files: set[str] = set()    # sha256 des fichiers éphémères déposés pour CE salon
         self.seq = 0
         self.empty_since: float | None = time.monotonic()
         self.timer: asyncio.Task | None = None
@@ -590,30 +592,53 @@ def _member(request: Request, code: str, user) -> tuple[Room, Seat]:
     return room, seat
 
 
-@router.post("/api/rooms/{code}/song", status_code=201)
+@router.post("/api/rooms/{code}/song", status_code=201,
+             dependencies=[Depends(limit("room_song", 30, 3600, by="user"))])
 async def room_upload_song(code: str, request: Request, file: UploadFile = File(...), user=Depends(get_current_user)):
+    """Morceau éphémère d'un salon : même validation que la bibliothèque, plafond de taille propre au salon.
+
+    `get_current_user` écarte déjà les bannis (user_from_token les exclut) ; seul le chef du salon dépose.
+    """
     settings: Settings = request.app.state.settings
     room, seat = _member(request, code, user)
     if seat.id != room.host_id:
         raise api_error(403, "not_host", "Seul le chef peut envoyer le morceau.")
     data = await read_upload(file, settings.ROOM_SONG_MAX_BYTES)
+    if not data:
+        raise api_error(422, "invalid_midi", "Fichier vide.")
     try:
-        info = validate_midi(data)
+        info = validate_midi(data, settings)
     except MidiError as e:
         raise api_error(422, "invalid_midi", str(e))
     sha = hashlib.sha256(data).hexdigest()
-    (settings.tmp_dir / f"{sha}.mid").write_bytes(data)
+    settings.tmp_dir.mkdir(parents=True, exist_ok=True)
+    path = settings.tmp_dir / f"{sha}.mid"     # nom dérivé du sha256, jamais du nom envoyé par le client
+    tmp = settings.tmp_dir / f"{sha}.{secrets.token_hex(8)}.part"
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, path)                  # pas de fichier à moitié écrit visible au téléchargement
+    finally:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+    room.files.add(sha)
     return {"sha256": sha, "size": len(data), **info}
 
 
 @router.get("/api/rooms/{code}/song/{sha256}")
 def room_download_song(code: str, sha256: str, request: Request, user=Depends(get_current_user)):
+    """Servi aux seuls membres du salon, et seulement pour un fichier de CE salon (déposé ici ou morceau
+    courant) : connaître un sha256 ne suffit pas à piocher dans les fichiers éphémères d'un autre salon."""
     settings: Settings = request.app.state.settings
-    _member(request, code, user)
+    room, _seat = _member(request, code, user)
     if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        raise api_error(404, "not_found", "Fichier introuvable.")
+    current = (room.song or {}).get("sha256")
+    if sha256 not in room.files and sha256 != current:
         raise api_error(404, "not_found", "Fichier introuvable.")
     path = settings.tmp_dir / f"{sha256}.mid"
     if not path.is_file():
         raise api_error(404, "not_found", "Fichier introuvable.")
-    return FileResponse(path, media_type="audio/midi", filename=f"{sha256[:12]}.mid",
-                        headers={"ETag": f'"{sha256}"', "X-Sha256": sha256})
+    return FileResponse(path, media_type="audio/midi",
+                        headers={"ETag": f'"{sha256}"', "X-Sha256": sha256,
+                                 "Content-Disposition": f'attachment; filename="{sha256[:12]}.mid"',
+                                 "X-Content-Type-Options": "nosniff"})

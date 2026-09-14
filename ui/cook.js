@@ -4,6 +4,20 @@
 // ------------------------------------------------ page Cuisine
 function cookState(){ return (S && S.cook) ? S.cook : null; }
 function cookTestOk(c){ return !!(c.test_result && !/aucune|introuvable|pas reconnue|rien|erreur|impossible/i.test(c.test_result)); }
+// « 2 cuisinières suivies · 1 en cuisson, 1 prête » : resume sobre de l'etat de chaque cuisinière (status.burners)
+const COOK_BURNER_LABELS = {cook: ['au repos', 'au repos'], cooking: ['en cuisson', 'en cuisson'],
+  spatula: ['feu à régler', 'feux à régler'], ready: ['prête', 'prêtes'], none: ['non vue', 'non vues']};
+function cookBurnersText(c){
+  const n = (c.settings && c.settings.cookers) || c.cookers || 1;
+  if(n < 2) return '';
+  const list = c.burners || [];
+  if(!list.length) return `${n} cuisinières · aucune bulle repérée pour l'instant`;
+  const order = ['spatula', 'ready', 'cooking', 'cook', 'none'], by = {};
+  list.forEach(b => { by[b.state] = (by[b.state] || 0) + 1; });
+  const parts = order.filter(k => by[k]).map(k => `${by[k]} ${COOK_BURNER_LABELS[k][by[k] > 1 ? 1 : 0]}`);
+  return `${list.length} cuisinière${list.length > 1 ? 's' : ''} suivie${list.length > 1 ? 's' : ''}`
+    + (parts.length ? ' · ' + parts.join(', ') : '');
+}
 function renderCook(st){
   const c = st.cook; if(!c) return;
   const hk = st.hotkeys || {};
@@ -35,6 +49,10 @@ function renderCook(st){
   $('btnCookTest').disabled = cooking || calib || !c.calibrated;
   txt('cookStopKey', hk.stop || 'F7');
   setNotice('cookTest', c.test_result ? {text: c.test_result, kind: tested ? 'ok' : 'warn', icon: '🔍'} : null);
+  // segmenté « Cuisinières : 1 2 3 4 » (réglage cook.cookers, aussi dans Réglages › Cuisine)
+  const nCook = Number(s.cookers || c.cookers || 1);
+  segMark($('cookCookers'), b => Number(b.dataset.v) === nCook);
+  $('cookCookers').querySelectorAll('button').forEach(b => { b.disabled = cooking || calib; });
 
   // colonne de droite : stepper, bouton principal, compteurs, bandeau
   const done = [];
@@ -68,8 +86,10 @@ function renderCook(st){
   txt('cookTitle', cooking ? `Plat ${c.dishes + 1} en cours` : 'Cuisine automatique');
   txt('cookSub', cooking ? (c.phase ? cap(c.phase) : 'Démarrage…') : (c.calibrated ? 'Place-toi devant la cuisinière, puis lance la boucle' : 'Calibre, puis lance la boucle devant la cuisinière'));
   const lastState = c.stop_reason ? `arrêt : ${c.stop_reason}` : (c.message || (c.calibrated ? 'prêt' : 'à calibrer'));
+  const burners = cookBurnersText(c);
   html('cookStats', `<span class="stat">🍽️ <b>${c.dishes}</b>${s.max_dishes ? ` / ${s.max_dishes}` : ''} plat${c.dishes > 1 ? 's' : ''}</span>`
     + `<span class="stat">🔥 <b>${c.fires}</b> feu${c.fires > 1 ? 'x' : ''} ajusté${c.fires > 1 ? 's' : ''}</span>`
+    + (burners ? `<span class="stat" title="Une machine à états par cuisinière">🍳 ${esc(burners)}</span>` : '')
     + (cooking ? `<span class="stat">⏱️ <b>${fmtDur(c.elapsed)}</b></span>` : `<span class="stat" title="Dernier état">🛈 ${esc(lastState)}</span>`));
 
   let spec = null;
@@ -90,6 +110,7 @@ function renderCook(st){
     else if(c.screen_ok === false) notice = {text: 'Capture d’écran indisponible : la cuisine automatique ne peut pas fonctionner ici.', kind: 'danger'};
     else if(!c.calibrated) notice = {text: 'Pas encore calibré : place-toi devant la cuisinière dans le jeu, puis clique sur Calibrer.', kind: 'warn'};
     else if(!tested) notice = {text: 'Devant la cuisinière (bulle « cuisiner » visible), teste la détection une fois pour vérifier le calibrage.', kind: 'info'};
+    else if(nCook > 1) notice = {text: `Place-toi de façon à voir les ${nCook} bulles dans la zone calibrée, puis appuie sur ${hk.play_pause || 'F6'} : DodoTopia sert les cuisinières à tour de rôle et clique l'anneau vert dès qu'il apparaît.`, kind: 'ok', icon: '✓'};
     else notice = {text: `Devant la cuisinière avec les ingrédients de la dernière recette, appuie sur ${hk.play_pause || 'F6'} : le dernier plat est refait en boucle.`, kind: 'ok', icon: '✓'};
   }
   setNotice('cookNotice', notice);
@@ -112,6 +133,10 @@ $('btnCook').onclick = () => {
           html: `Dans Heartopia, place ton personnage <b>devant la cuisinière</b>, bulle « cuisiner » visible, avec les ingrédients de la <b>dernière recette cuisinée</b>.<br><small>La boucle démarre 3 s après : ne touche plus à la souris ni au clavier. Toute touche l'arrête.</small>`})
     .then(yes => { if(yes) api('cook_start'); });
 };
+document.querySelectorAll('#cookCookers > button').forEach(b => b.onclick = () => {
+  segMark($('cookCookers'), x => x === b);
+  api('set_setting', 'cook.cookers', Number(b.dataset.v));
+});
 $('btnCookCalib').onclick = () => api('cook_calibrate', 'all');
 $('btnCookIcons').onclick = () => api('cook_calibrate', 'icons');
 $('btnCookTest').onclick = () => api('cook_test');

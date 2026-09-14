@@ -37,6 +37,7 @@ const FIELDS = [
   {path: 'draw.step_delay', section: 'draw', control: 'number', advanced: true, label: 'Délai entre deux points', help: 'Augmente-le si le jeu coupe les angles des traits.'},
   {path: 'draw.click_delay', section: 'draw', control: 'number', advanced: true, label: 'Délai après un clic', help: 'Changement de couleur, case isolée.'},
   // ---- Cuisine (aides tirées des commentaires de DEFAULT_COOK)
+  {path: 'cook.cookers', section: 'cook', control: 'seg', label: 'Cuisinières', options: [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']], help: 'Nombre de cuisinières servies à tour de rôle ; leurs bulles doivent toutes être dans la zone calibrée.'},
   {path: 'cook.max_dishes', section: 'cook', control: 'number', label: 'Nombre de plats', help: '0 = sans fin, jusqu’à l’arrêt ou la fin des ingrédients.'},
   {path: 'cook.cook_timeout', section: 'cook', control: 'number', label: 'Durée maximale d’une cuisson', help: 'Au-delà, la boucle s’arrête (plat pas prêt).'},
   {path: 'cook.match', section: 'cook', control: 'number', advanced: true, label: 'Seuil de reconnaissance', help: 'Score minimal pour reconnaître une icône : baisse-le si la bulle n’est pas vue, monte-le si autre chose est prise pour elle.'},
@@ -45,6 +46,7 @@ const FIELDS = [
   // ---- En ligne
   {path: 'online.server_url', section: 'online', control: 'text', wide: true, label: 'Adresse du serveur', help: 'Serveur DodoTopia : mises à jour, bibliothèque, salons.'},
   {path: 'online.check_updates', section: 'online', control: 'switch', label: 'Vérifier les mises à jour', help: 'Au lancement, propose la nouvelle version quand il y en a une.'},
+  {path: 'online.auto_update', section: 'online', control: 'switch', label: 'Installer automatiquement', help: 'Au lancement, installe la nouvelle version et redémarre DodoTopia (version installée uniquement).'},
 ];
 
 const INSTALL_KIND = {setup: 'Installée (installeur)', portable: 'Portable', targz: 'Archive Linux', source: 'Depuis les sources'};
@@ -373,7 +375,7 @@ const SECTION_INTRO = {
   hotkeys: 'Raccourcis globaux, actifs même quand le jeu a le focus. « Jouer / pause » joue, dessine ou cuisine selon l’onglet ouvert ; « Arrêter » arrête tout.',
   multi: 'À plusieurs sans réseau : F6 lance un compte à rebours, le premier joue une note repère dans le jeu, les autres la détectent et partent ensemble. Numéro de joueur et avance/retard : panneau Multi audio du lecteur.',
   draw: 'Comment DodoTopia peint dans le jeu (contours, fond et blanc : bloc « Méthode » de la page Image). Les grilles calibrées ne sont pas touchées par « Rétablir ».',
-  cook: 'Boucle de cuisine : nombre de plats et seuils de reconnaissance des bulles.',
+  cook: 'Boucle de cuisine : nombre de cuisinières, nombre de plats et seuils de reconnaissance des bulles.',
   online: 'Le serveur DodoTopia n’est pas encore branché : ces réglages seront utilisés par la mise à jour, la bibliothèque et les salons.',
 };
 function sectionFields(id, advanced){ return FIELDS.filter(f => f.section === id && !!f.advanced === !!advanced); }

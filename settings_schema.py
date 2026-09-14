@@ -85,6 +85,7 @@ SCHEMA = {
     "draw.formats.*.cols": Int(4, 400, section="grids", after="_refresh_draw_stats"),
     "draw.formats.*.rows": Int(4, 400, section="grids", after="_refresh_draw_stats"),
     # ---- cuisine
+    "cook.cookers": Int(1, 4, section="cook", after="_on_cookers"),
     "cook.max_dishes": Int(0, 999, section="cook"),
     "cook.cook_timeout": Num(30.0, 900.0, "s", step=10, section="cook"),
     "cook.match": Num(0.3, 0.9, "", step=0.05, section="cook"),
@@ -93,6 +94,7 @@ SCHEMA = {
     # ---- en ligne
     "online.server_url": Str(200, section="online", after="_on_server_url"),
     "online.check_updates": Bool(section="online", after="_on_check_updates"),
+    "online.auto_update": Bool(section="online"),
 }
 
 SECTIONS = ("lecture", "hotkeys", "multi", "draw", "grids", "cook", "online")
@@ -120,10 +122,11 @@ def defaults():
         cols, rows = draw.DEFAULT_GRIDS[fmt]
         out[f"draw.formats.{fmt}.cols"] = cols
         out[f"draw.formats.{fmt}.rows"] = rows
-    for k in ("max_dishes", "cook_timeout", "match", "green_px", "click_delay"):
-        out["cook." + k] = cook.DEFAULT_COOK[k]
+    for k in ("cookers", "max_dishes", "cook_timeout", "match", "green_px", "click_delay"):
+        out["cook." + k] = cook.DEFAULT_COOK.get(k, 1)
     out["online.server_url"] = _ONLINE_DEFAULTS.get("server_url", "")
     out["online.check_updates"] = bool(_ONLINE_DEFAULTS.get("check_updates", True))
+    out["online.auto_update"] = bool(_ONLINE_DEFAULTS.get("auto_update", True))
     return out
 
 

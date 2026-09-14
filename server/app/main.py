@@ -20,6 +20,52 @@ from .rooms import RoomManager
 
 log = logging.getLogger("dodo")
 CLEANUP_INTERVAL_S = 60
+# Envoi des binaires de release (jeton de publication) : corps volumineux streamé, exempté du plafond.
+BIG_BODY_PREFIXES = ("/api/admin/releases/",)
+
+
+class BodySizeLimitMiddleware:
+    """Coupe une requête dès que son corps dépasse `max_bytes`, avant que quiconque le lise.
+
+    Sans ce rempart, Starlette déverse la totalité d'un envoi multipart dans un fichier temporaire
+    (SpooledTemporaryFile, sans plafond pour les parties « fichier ») avant d'appeler le handler : le
+    compteur d'octets de `library.read_upload` arrive alors trop tard et le disque est déjà rempli.
+    """
+
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope.get("path", "").startswith(BIG_BODY_PREFIXES):
+            return await self.app(scope, receive, send)
+        headers = {k.lower(): v for k, v in scope.get("headers", [])}
+        declared = headers.get(b"content-length")
+        if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
+            return await self._too_large(send)
+        seen = 0
+
+        async def limited_receive():
+            """Corps tronqué net dès le dépassement (cas `Transfer-Encoding: chunked`, sans Content-Length) :
+            le parseur multipart s'arrête là et le handler répond 400 au lieu de remplir le disque."""
+            nonlocal seen
+            message = await receive()
+            if message.get("type") == "http.request":
+                seen += len(message.get("body", b""))
+                if seen > self.max_bytes:
+                    log.warning("corps de requête tronqué (plus de %d octets) sur %s",
+                                self.max_bytes, scope.get("path"))
+                    return {"type": "http.request", "body": b"", "more_body": False}
+            return message
+
+        return await self.app(scope, limited_receive, send)
+
+    async def _too_large(self, send) -> None:
+        body = (b'{"detail":{"code":"too_large","message":"Requ\\u00eate trop volumineuse."}}')
+        await send({"type": "http.response.start", "status": 413,
+                    "headers": [(b"content-type", b"application/json"),
+                                (b"content-length", str(len(body)).encode())]})
+        await send({"type": "http.response.body", "body": body})
 
 
 def cleanup_once(settings: Settings, limiter: RateLimiter) -> None:
@@ -66,6 +112,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.ratelimiter = RateLimiter(enabled=settings.RATE_LIMIT != 0)
     app.state.rooms = RoomManager(settings)
+
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
 
     app.include_router(auth.router)
     app.include_router(library.router)

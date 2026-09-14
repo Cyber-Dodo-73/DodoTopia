@@ -20,7 +20,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from . import db
 from .config import Settings
 from .ratelimit import limit
-from .schemas import AuthPoll, AuthStart
+from .schemas import AuthPoll, AuthStart, clean_text
 
 router = APIRouter()
 
@@ -93,7 +93,9 @@ def upsert_user(conn: db.Connection, settings: Settings, du: dict) -> db.Row:
     """Crée ou met à jour l'utilisateur depuis le profil Discord ; is_admin recalculé à chaque login."""
     now = db.now_iso()
     discord_id = str(du["id"])
-    username = (du.get("global_name") or du.get("username") or "?")[:64]
+    # Le pseudo Discord est affiché (uploader_name, joueurs d'un salon) : nettoyé comme tout texte
+    # d'utilisateur, sans quoi un pseudo à surcharge bidi déguise le nom du déposant d'un morceau.
+    username = clean_text(du.get("global_name") or du.get("username"), 64) or "?"
     is_admin = 1 if discord_id in settings.admin_ids else 0
     conn.execute(
         """INSERT INTO users (discord_id, username, avatar_url, is_admin, created_at, last_seen_at)

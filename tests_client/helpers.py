@@ -168,7 +168,7 @@ class FakeClient:
         self.uploads.append((path, fields, sha))
         return {"sha256": sha, "_status": 201}
 
-    def download(self, path, dest, expected_sha256=None, on_progress=None, timeout=60):
+    def download(self, path, dest, expected_sha256=None, on_progress=None, timeout=60, max_bytes=None):
         self.downloads.append(path)
         sha = path.rsplit("/", 1)[-1]
         data = self.server.files.get(sha)
@@ -179,6 +179,9 @@ class FakeClient:
         if data is None:
             from online import OnlineError
             raise OnlineError("introuvable", code=404)
+        if max_bytes and len(data) > max_bytes:
+            from online import OnlineError
+            raise OnlineError("trop gros")
         with open(dest, "wb") as f:
             f.write(data)
         got = hashlib.sha256(data).hexdigest()

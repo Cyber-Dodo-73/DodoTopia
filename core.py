@@ -110,13 +110,54 @@ def save_config(cfg):
 
 
 # ---------------------------------------------------------------- MIDI
+# Garde-fous sur les fichiers ouverts : un .mid vient parfois d'internet (bibliotheque en ligne, salon).
+# Un fichier hostile de quelques Mo en running status contient des centaines de milliers d'evenements et
+# figerait l'application dans parse_midi. Plafonds volontairement plus larges que ceux du serveur
+# (server/app/config.py) : les fichiers locaux de l'utilisateur ne doivent pas etre refuses a tort.
+MAX_MIDI_BYTES = 16 * 1024 * 1024
+MAX_MIDI_EVENTS = 200_000
+MAX_MIDI_NOTES = 100_000
+
+
+class MidiRefused(ValueError):
+    """Fichier MIDI illisible ou hors des plafonds : message pret a afficher."""
+
+
+def _open_midi(path):
+    """mido.MidiFile avec verification prealable de la taille et de l'entete magique."""
+    try:
+        size = os.path.getsize(path)
+    except OSError as e:
+        raise MidiRefused(f"fichier illisible ({e.strerror or e})") from None
+    if size > MAX_MIDI_BYTES:
+        raise MidiRefused(f"fichier trop gros ({size // (1024 * 1024)} Mo, maximum {MAX_MIDI_BYTES // (1024 * 1024)} Mo)")
+    with open(path, "rb") as f:
+        if f.read(4) != b"MThd":
+            raise MidiRefused("ce n'est pas un fichier MIDI (en-tete « MThd » absent)")
+    try:
+        mid = mido.MidiFile(path)
+    except Exception as e:  # noqa : mido leve un peu de tout
+        raise MidiRefused(f"fichier MIDI illisible ({type(e).__name__})") from None
+    if mid.type not in (0, 1):
+        raise MidiRefused(f"fichier MIDI de type {mid.type} non pris en charge (type 0 ou 1 attendu)")
+    return mid
+
+
 def parse_midi(path, cfg):
-    """Liste triee [(t, [(note, duree, velocite), ...])], accords regroupes."""
-    mid = mido.MidiFile(path)
+    """Liste triee [(t, [(note, duree, velocite), ...])], accords regroupes.
+
+    Leve MidiRefused (ValueError) si le fichier n'est pas un MIDI exploitable ou depasse les plafonds."""
+    mid = _open_midi(path)
     notes = []          # (t_on, note, dur, vel)
     pending = {}        # (channel, note) -> (t_on, vel)
     t = 0.0
+    events = 0
     for msg in mid:
+        events += 1
+        if events > MAX_MIDI_EVENTS:
+            raise MidiRefused(f"fichier MIDI trop charge (plus de {MAX_MIDI_EVENTS} evenements)")
+        if len(notes) > MAX_MIDI_NOTES:
+            raise MidiRefused(f"fichier MIDI trop charge (plus de {MAX_MIDI_NOTES} notes)")
         t += msg.time
         if msg.type == "note_on" and msg.velocity > 0:
             if cfg.get("ignore_drums", True) and msg.channel == 9:
@@ -147,7 +188,7 @@ def parse_midi(path, cfg):
 
 def midi_duration(path):
     try:
-        return mido.MidiFile(path).length
+        return _open_midi(path).length
     except Exception:
         return 0.0
 
@@ -283,6 +324,57 @@ def clean_title(filename):
     name = _JUNK.sub(" ", name)
     name = re.sub(r"\s+", " ", name).strip(" -_.,")
     return name or os.path.splitext(os.path.basename(filename))[0]
+
+
+# Caracteres retires de tout texte venu du reseau avant affichage ou usage dans un nom de fichier :
+# commandes C0/C1 (dont \n et \r), surcharges bidirectionnelles (U+202A..U+202E, U+2066..U+2069 :
+# « innocent + U+202E + dim.exe » s'affiche « innocentexe.mid »), largeurs nulles et separateurs de ligne.
+_INVISIBLE = re.compile("[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e"
+                        "\u200b-\u200f\u202a-\u202e\u2060-\u2064"
+                        "\u2066-\u206f\ufeff\ufff9-\ufffb]")
+_LINES = re.compile("[\t\n\v\f\r\u0085\u2028\u2029]")
+_FS_FORBIDDEN = re.compile(r'[<>:"/\\|?*]')
+# Noms de peripherique Windows : ouvrir « CON.mid » parle a la console, pas a un fichier.
+_RESERVED_NAMES = {"CON", "PRN", "AUX", "NUL", "COM0", "LPT0",
+                   *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+MAX_FILENAME_STEM = 100
+
+
+def clean_display_text(value, max_len=120):
+    """Texte sur a afficher et a reutiliser : sans caractere de controle ni de formatage invisible,
+    espaces normalises, longueur bornee."""
+    s = _LINES.sub(" ", str(value or ""))
+    s = _INVISIBLE.sub("", s)
+    s = re.sub("[ \u00a0\u1680\u2000-\u200a\u205f\u3000]+", " ", s).strip()
+    return s[:max_len].strip()
+
+
+def safe_song_filename(name, default="musique", ext=".mid"):
+    """Nom de fichier assaini pour songs/ : pas de dossier, pas de `..`, pas de caractere reserve Windows,
+    pas de nom de peripherique, pas de point ni d'espace final, longueur bornee. Toujours non vide."""
+    stem = clean_display_text(name, 400)
+    stem = stem.replace("\\", "/").rsplit("/", 1)[-1]        # jamais de composant de chemin
+    for suffix in (".mid", ".midi"):
+        if stem.lower().endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    stem = _FS_FORBIDDEN.sub("", stem).strip(" .")
+    stem = re.sub(r"\s+", " ", stem)[:MAX_FILENAME_STEM].strip(" .")
+    if not stem or set(stem) <= {"."}:
+        stem = default
+    if stem.upper() in _RESERVED_NAMES or stem.upper().split(".")[0] in _RESERVED_NAMES:
+        stem = "_" + stem
+    return stem + ext
+
+
+def safe_join(folder, name, default="musique", ext=".mid"):
+    """Chemin d'un fichier assaini garanti a l'interieur de `folder` (verifie par os.path.realpath).
+    Leve ValueError si le resultat sortait du dossier : rien n'est ecrit ailleurs."""
+    base = os.path.realpath(folder)
+    path = os.path.realpath(os.path.join(base, safe_song_filename(name, default, ext)))
+    if path != base and not path.startswith(base + os.sep):
+        raise ValueError("chemin hors du dossier des musiques")
+    return path
 
 
 def file_sha256(path, block=1024 * 1024):

@@ -18,7 +18,9 @@ router = APIRouter()
 
 PLATFORMS = ("windows-setup", "windows-portable", "linux-x64")
 VERSION_RE = re.compile(r"^[0-9]+(\.[0-9]+){1,3}$")
-FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+# Doit commencer par un caractere alphanumerique : exclut ".", ".." et les noms caches, donc tout
+# nom qui designerait le dossier de la version au lieu d'un fichier dedans.
+FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 

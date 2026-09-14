@@ -556,11 +556,16 @@ class Api:
             if not src.lower().endswith((".mid", ".midi")):
                 skipped.append(os.path.basename(src))
                 continue
-            name = os.path.basename(src)
-            if title:
-                safe = "".join(ch for ch in title if ch not in '\\/:*?"<>|').strip(" .")
-                name = (safe or os.path.splitext(name)[0])[:120] + ".mid"
-            dst = os.path.join(self._player.songs_folder, name)
+            # Le nom vient parfois d'un titre depose par un autre joueur : core.safe_join garantit un nom de
+            # fichier sain (pas de separateur, pas de « .. », pas de nom reserve Windows) et un chemin qui
+            # reste dans songs/ (defense en profondeur : online.py et room.py assainissent deja le titre).
+            base_name = title or os.path.splitext(os.path.basename(src))[0]
+            try:
+                dst = core.safe_join(self._player.songs_folder, base_name)
+            except ValueError:
+                skipped.append(os.path.basename(src))
+                continue
+            name = os.path.basename(dst)
             if os.path.abspath(src) != os.path.abspath(dst):
                 base, ext = os.path.splitext(dst)
                 n = 2
@@ -824,6 +829,13 @@ class Api:
         if mode != "room" and self._room.active():
             self._log("salon : changement de mode, on quitte")
             self._room.leave()
+
+    def _on_cookers(self):
+        """Nombre de cuisinieres servies par la boucle de cuisine : applique au module Cuisine. Une boucle en
+        cours est arretee proprement (les machines a etats sont refaites au prochain demarrage)."""
+        n, stopped = self._cook.apply_cookers()
+        if stopped:
+            self._notify(f"Cuisine arrêtée : relance-la pour servir {n} cuisinière{'s' if n > 1 else ''}.", "warn")
 
     def _on_server_url(self):
         """Adresse du serveur : nouveau client HTTP, compte recharge (invalide si l'URL change), sante refaite."""
