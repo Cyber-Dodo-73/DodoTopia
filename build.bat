@@ -20,12 +20,14 @@ if errorlevel 1 goto :error
 echo [2/4] Config livree (sans calibrage perso) et icone...
 %PYTHON% make_default_config.py
 if errorlevel 1 goto :error
+%PYTHON% make_version_info.py
+if errorlevel 1 goto :error
 %PYTHON% -c "from PIL import Image; im=Image.open('assets/logo.png').convert('RGBA'); im.save('assets/logo.ico', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
 if errorlevel 1 goto :error
 
 echo [3/4] PyInstaller (dist\DodoTopia\)...
 %PYTHON% -m PyInstaller --noconfirm --clean --windowed --name "DodoTopia" ^
-  --icon assets\logo.ico ^
+  --icon assets\logo.ico --noupx --version-file build\version_info.txt ^
   --add-data "ui;ui" --add-data "assets;assets" --add-data "config.default.json;." ^
   --hidden-import keyboard --hidden-import mido --hidden-import webview ^
   --hidden-import numpy --hidden-import soundcard --collect-data soundcard ^

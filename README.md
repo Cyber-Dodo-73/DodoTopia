@@ -113,6 +113,37 @@ Produit `dist\DodoTopia\` (exe et fichiers), puis dans `release\` l'installeur `
 
 Outils : Python 3, PyInstaller et Pillow (installés par le script), Inno Setup 6 (`winget install JRSoftware.InnoSetup`). Variable `PYTHON` pour choisir l'interpréteur (défaut `py`).
 
+## Antivirus : « Windows a protégé votre ordinateur »
+
+Windows affiche un avertissement, et Defender peut mettre l'exe en quarantaine. Ce n'est pas un virus, mais
+ce n'est pas non plus arbitraire ; trois raisons se cumulent.
+
+1. **L'exécutable n'est pas signé.** Sans certificat de signature de code, SmartScreen affiche
+   « éditeur inconnu » pour tout fichier qu'il n'a pas encore vu, et chaque nouvelle version repart de zéro.
+2. **C'est un binaire PyInstaller.** Le lanceur de PyInstaller est aussi utilisé par des logiciels
+   malveillants : les moteurs le reconnaissent et sortent des détections génériques (`Wacatac`, `Sabsik`…).
+3. **DodoTopia fait vraiment ce que fait un logiciel espion** : il installe un hook clavier global, injecte
+   des frappes, pilote la souris et capture l'écran. Pour une analyse comportementale, c'est indiscernable
+   d'un enregistreur de frappes. C'est le facteur aggravant propre à ce projet.
+
+**Ce qui est déjà fait dans le build** : pas de compression UPX (`--noupx`, `upx=False` dans le `.spec` :
+un binaire compressé multiplie les détections), mode un dossier plutôt qu'un fichier unique (pas de
+décompression dans `%TEMP%` au lancement), et des métadonnées d'éditeur complètes
+(`make_version_info.py` → `--version-file`), visibles dans les propriétés du fichier.
+
+**Ce qui réglerait vraiment le problème** : signer l'exe *et* l'installeur avec un certificat de signature
+de code. Depuis juin 2023 la clé doit être sur un support matériel ou un HSM, y compris pour un particulier.
+Un certificat OV coûte de l'ordre de 200 à 400 € par an et supprime le « éditeur inconnu », la réputation
+SmartScreen se construisant ensuite sur quelques centaines de téléchargements ; un certificat EV, de l'ordre
+de 400 à 700 € par an, donne cette réputation immédiatement. La signature s'ajouterait dans `build.bat`
+(`signtool sign /fd sha256 /tr <horodateur> ...`) sur `DodoTopia.exe` puis sur le `-Setup.exe`.
+
+**En attendant, gratuit et efficace** : signale chaque version en faux positif sur
+<https://www.microsoft.com/en-us/wdsi/filesubmission> (compte Microsoft, réponse en un à trois jours,
+l'empreinte est mise en liste sûre). Publie aussi le lien VirusTotal de la release pour que les joueurs
+puissent vérifier. Un joueur bloqué peut ajouter une exclusion : *Sécurité Windows* > *Protection contre les
+virus et menaces* > *Gérer les paramètres* > *Exclusions* > le dossier d'installation de DodoTopia.
+
 ## Publier une version (GitHub Actions)
 
 Le dépôt GitHub construit et publie les versions ; les DodoTopia installés se mettent alors à jour tout seuls (toast « Version x.y.z disponible »).

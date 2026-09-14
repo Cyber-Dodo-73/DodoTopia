@@ -2,7 +2,7 @@
 // Tout vient de get_state().online (online.OnlineService.status()) ; aucune requête réseau n'est faite depuis le JS :
 // les actions passent par les méthodes Api online_* / update_* et l'état revient au tick suivant.
 
-const ONL = {q: '', sort: 'recent', page: 1, timer: null, searched: false, loginUrl: '', pendingAsked: false, reportsAsked: false};
+const ONL = {q: '', sort: 'recent', page: 1, timer: null, searched: false, loginUrl: '', pendingAt: 0, reportsAt: 0};
 try{ ONL.sort = localStorage.getItem('online.sort') || 'recent'; }catch(e){}
 
 const UPDATE_KIND = {setup: 'installée', portable: 'portable', targz: 'archive Linux', source: 'sources'};
@@ -289,6 +289,16 @@ function pendingRowHtml(it){
       </div>
     </div>`;
 }
+// Les listes d'administration se chargent seules dès qu'on est admin, puis se rafraîchissent au plus
+// toutes les 30 s. Avant, elles n'étaient demandées qu'à l'ouverture du volet, une seule fois : si cette
+// unique tentative échouait ou n'avait pas lieu, le compteur restait à 0 jusqu'au redémarrage.
+function loadAdminLists(o, force){
+  const now = Date.now();
+  const pend = o.pending || {}, reps = o.reports || {};
+  if(force){ ONL.pendingAt = 0; ONL.reportsAt = 0; }
+  if(!pend.loading && now - ONL.pendingAt > 30000){ ONL.pendingAt = now; api('online_pending', 1); }
+  if(!reps.loading && now - ONL.reportsAt > 30000){ ONL.reportsAt = now; api('online_reports'); }
+}
 function viewOnlineAdmin(st){
   const o = onlineOf(st);
   const box = $('onlineAdminBox');
@@ -296,6 +306,7 @@ function viewOnlineAdmin(st){
   const admin = !!(o && o.is_admin);
   box.hidden = !admin;
   if(!admin) return;
+  loadAdminLists(o);
   const pend = o.pending || {items: [], loading: false, page: 1, pages: 0, total: 0};
   const reps = o.reports || {items: [], loading: false, error: ''};
   const items = pend.items || [];
@@ -399,10 +410,14 @@ if($('onlineSearch')){
   };
   $('onlinePrev').onclick = () => onlineSearchNow(Math.max(1, ONL.page - 1));
   $('onlineNext').onclick = () => onlineSearchNow(ONL.page + 1);
-  $('btnOnlineRefresh').onclick = () => { api('online_refresh'); ONL.searched = true; onlineSearchNow(ONL.page); };
+  $('btnOnlineRefresh').onclick = () => {
+    api('online_refresh');                       // santé du serveur + /api/me
+    ONL.searched = true; onlineSearchNow(ONL.page);
+    const o = onlineOf(S); if(o && o.is_admin) loadAdminLists(o, true);   // file de modération et signalements
+  };
   $('onlineSort').value = ONL.sort;
-  // les listes d'administration ne sont chargées qu'à l'ouverture du volet
-  $('onlinePendingDisc').ontoggle = () => { if($('onlinePendingDisc').open && !ONL.pendingAsked){ ONL.pendingAsked = true; api('online_pending', 1); } };
-  $('onlineReportsDisc').ontoggle = () => { if($('onlineReportsDisc').open && !ONL.reportsAsked){ ONL.reportsAsked = true; api('online_reports'); } };
+  // ouvrir un volet force un rafraîchissement immédiat (le chargement automatique a lieu de toute façon)
+  $('onlinePendingDisc').ontoggle = () => { if($('onlinePendingDisc').open){ ONL.pendingAt = Date.now(); api('online_pending', 1); } };
+  $('onlineReportsDisc').ontoggle = () => { if($('onlineReportsDisc').open){ ONL.reportsAt = Date.now(); api('online_reports'); } };
 }
 if($('accountPill')) $('accountPill').onclick = () => showTab('online');

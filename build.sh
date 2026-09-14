@@ -25,7 +25,7 @@ echo "[2/3] Config livree (sans calibrage perso)..."
 "$VENV/bin/python" "$PWD/make_default_config.py"
 
 echo "[2/3] PyInstaller ($BUILD/dist/DodoTopia)..."
-"$VENV/bin/pyinstaller" --noconfirm --clean --windowed --name DodoTopia \
+"$VENV/bin/pyinstaller" --noconfirm --clean --windowed --name DodoTopia --noupx \
   --workpath "$BUILD/work" --distpath "$BUILD/dist" --specpath "$BUILD" \
   --add-data "$PWD/ui:ui" --add-data "$PWD/assets:assets" --add-data "$PWD/config.default.json:." \
   --hidden-import mido --collect-all rtmidi --collect-all mss --collect-submodules Xlib \
