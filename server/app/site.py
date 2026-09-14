@@ -47,6 +47,27 @@ PAGES = {
 }
 
 
+# --------------------------------------------------------------------------------------------------
+# Identite de l'editeur et de l'hebergeur (mentions legales, confidentialite, conditions d'utilisation).
+# Ces informations sont obligatoires : LCEN art. 6-III pour l'editeur et l'hebergeur, RGPD art. 13 pour
+# le responsable de traitement. Un seul endroit a modifier si quelque chose change.
+EDITEUR_NOM = "Dorian Breuillard"
+EDITEUR_MARQUE = "Cyber-Dodo"
+EDITEUR_STATUT = "entrepreneur individuel (micro-entreprise)"
+EDITEUR_SIRET = "925 110 132 00022"
+EDITEUR_TVA = "TVA non applicable, article 293 B du code général des impôts"
+EDITEUR_ADRESSE = "718 chemin de la Cassine, 73000 Chambéry, France"
+EDITEUR_COURRIEL = "contact@cyber-dodo.fr"
+EDITEUR_TEL = "07 72 28 20 62"
+HEBERGEUR_NOM = "OUIHEBERG SARL"
+HEBERGEUR_ADRESSE = "9 rue des Colonnes, 75002 Paris, France"
+HEBERGEUR_CONTACT = "RCS Paris 888 341 997 — ouiheberg.com"
+HEBERGEUR_PAYS = "France, dans le centre de données de Marseille"
+LICENCE = ("usage personnel gratuit. La redistribution, la modification, la décompilation et la "
+           "commercialisation de l'application ne sont pas autorisées.")
+DROIT = "français"
+
+
 def esc(value) -> str:
     return escape(str(value if value is not None else ""), quote=True)
 
@@ -152,7 +173,7 @@ def foot(version_line: str) -> str:
     <li><a href="/confidentialite">Confidentialité</a></li>
     <li><a href="/conditions">Conditions d'utilisation</a></li>
   </ul>
-  <p>Contact : {todo("adresse de contact")}</p>
+  <p>Contact : {EDITEUR_COURRIEL}</p>
   <p>{version_line}</p>
   <p class="disclaimer">DodoTopia est un projet indépendant, sans aucun lien avec les éditeurs d'Heartopia.
      Heartopia et les marques citées appartiennent à leurs propriétaires respectifs.</p>
@@ -483,7 +504,7 @@ def render_home(settings) -> str:
     <details>
       <summary>Comment signaler un problème ?</summary>
       <div class="faq__body">
-        <p>Écrivez à {todo("adresse de courriel de contact / support")} en décrivant ce que vous faisiez, ce qui
+        <p>Écrivez à {EDITEUR_COURRIEL} en décrivant ce que vous faisiez, ce qui
            s'est passé et votre version de l'application. Joignez les journaux : ils se trouvent dans le dossier
            <code>%APPDATA%\\DodoTopia</code> sous les noms <code>dessin.log</code>, <code>cuisine.log</code> et
            <code>multi.log</code>, et se rouvrent depuis les liens en bas de chaque onglet.</p>
@@ -515,37 +536,36 @@ def render_mentions(settings) -> str:
   <h2>Éditeur du site et de l'application</h2>
   <p>Le site <strong>dodotopia.cyber-dodo.fr</strong> et l'application DodoTopia sont édités par :</p>
   <ul>
-    <li>Nom ou raison sociale : {todo("nom et prénom, ou raison sociale de l'éditeur")}</li>
-    <li>Statut : {todo("statut juridique — particulier, auto-entrepreneur, association loi 1901, SAS…")}</li>
-    <li>Numéro d'immatriculation, le cas échéant :
-        {todo("SIREN / SIRET / RCS, ou numéro RNA pour une association ; « sans objet » si particulier")}</li>
-    <li>Numéro de TVA intracommunautaire, le cas échéant : {todo("numéro de TVA, ou « non assujetti »")}</li>
-    <li>Adresse : {todo("adresse postale complète de l'éditeur")}</li>
-    <li>Courriel : {todo("adresse de courriel de contact")}</li>
-    <li>Téléphone : {todo("numéro de téléphone, ou « sans objet » si l'éditeur est un particulier")}</li>
+    <li>Nom ou raison sociale : {EDITEUR_NOM}, sous le nom commercial {EDITEUR_MARQUE}</li>
+    <li>Statut : {EDITEUR_STATUT}</li>
+    <li>Immatriculation : SIRET {EDITEUR_SIRET}</li>
+    <li>TVA : {EDITEUR_TVA}</li>
+    <li>Adresse : {EDITEUR_ADRESSE}</li>
+    <li>Courriel : {EDITEUR_COURRIEL}</li>
+    <li>Téléphone : {EDITEUR_TEL}</li>
   </ul>
 
   <h2>Directeur de la publication</h2>
-  <p>{todo("nom et prénom du directeur de la publication (en général l'éditeur lui-même)")}</p>
+  <p>{EDITEUR_NOM}</p>
 
   <h2>Hébergeur</h2>
   <p>Le site et le serveur de DodoTopia sont hébergés par :</p>
   <ul>
-    <li>Raison sociale : {todo("raison sociale de l'hébergeur")}</li>
-    <li>Adresse : {todo("adresse postale de l'hébergeur")}</li>
-    <li>Téléphone : {todo("numéro de téléphone de l'hébergeur")}</li>
-    <li>Pays d'hébergement des serveurs : {todo("pays où sont physiquement hébergées les données")}</li>
+    <li>Raison sociale : {HEBERGEUR_NOM}</li>
+    <li>Adresse : {HEBERGEUR_ADRESSE}</li>
+    <li>Immatriculation et contact : {HEBERGEUR_CONTACT}</li>
+    <li>Pays d'hébergement des serveurs : {HEBERGEUR_PAYS}</li>
   </ul>
 
   <h2>Contact</h2>
   <p>Pour toute question sur le site, l'application, une anomalie technique ou un contenu publié dans la
      bibliothèque partagée, écrivez à l'adresse suivante :</p>
-  <p>{todo("adresse de courriel de contact")}</p>
+  <p>{EDITEUR_COURRIEL}</p>
 
   <h2>Propriété intellectuelle</h2>
   <p>L'application DodoTopia, son code source, ses éléments graphiques et sa documentation sont la propriété de
      l'éditeur et sont protégés par le droit d'auteur. Le code source n'est pas public.
-     {todo("conditions de licence de l'application — par exemple « usage personnel gratuit, sans droit de redistribution, de modification ni de décompilation », ou le nom d'une licence si vous en adoptez une")}</p>
+     L'application est mise à disposition pour un {LICENCE}</p>
   <p>Les textes, la mise en page, la charte graphique et le logo de ce site (le dodo turquoise) sont la
      propriété de l'éditeur. Toute reproduction, même partielle, nécessite son accord préalable.</p>
   <p>Les contenus déposés par les utilisateurs dans la bibliothèque partagée (fichiers MIDI, titres, noms
@@ -587,9 +607,9 @@ def render_privacy(settings) -> str:
 
   <h2>1. Responsable du traitement</h2>
   <ul>
-    <li>Responsable : {todo("nom et prénom, ou raison sociale du responsable de traitement")}</li>
-    <li>Adresse : {todo("adresse postale du responsable de traitement")}</li>
-    <li>Contact : {todo("adresse de courriel pour les demandes relatives aux données personnelles")}</li>
+    <li>Responsable : {EDITEUR_NOM} ({EDITEUR_MARQUE})</li>
+    <li>Adresse : {EDITEUR_ADRESSE}</li>
+    <li>Contact : {EDITEUR_COURRIEL}</li>
   </ul>
 
   <h2>2. L'essentiel en trois phrases</h2>
@@ -698,8 +718,8 @@ def render_privacy(settings) -> str:
         échange avec Discord selon
         <a href="https://discord.com/privacy" rel="noopener external nofollow">sa propre politique de
         confidentialité</a>. Les images d'avatar sont servies par les serveurs de Discord.</li>
-    <li><strong>l'hébergeur</strong> du serveur : {todo("raison sociale de l'hébergeur")}, dont les serveurs se
-        situent en {todo("pays d'hébergement des données")}.</li>
+    <li><strong>l'hébergeur</strong> du serveur : {HEBERGEUR_NOM}, dont les serveurs se
+        situent en {HEBERGEUR_PAYS}.</li>
   </ul>
 
   <h2>7. Sécurité</h2>
@@ -721,7 +741,7 @@ def render_privacy(settings) -> str:
     <li>la déconnexion supprime immédiatement la session correspondante ;</li>
     <li>pour toute autre demande — copie de vos données, suppression complète de votre compte et des contenus
         associés — écrivez à
-        {todo("adresse de courriel pour les demandes relatives aux données personnelles")} en précisant votre
+        {EDITEUR_COURRIEL} en précisant votre
         pseudo Discord. Une réponse vous sera apportée dans un délai maximal d'un mois.</li>
   </ul>
   <p>Si vous estimez, après nous avoir contactés, que vos droits ne sont pas respectés, vous pouvez introduire
@@ -802,7 +822,7 @@ def render_terms(settings) -> str:
      masquer ou supprimer sans préavis tout contenu contraire aux présentes conditions ou à la loi, et
      conserver la trace de la décision.</p>
   <p>Pour signaler un contenu en dehors de l'application, ou pour toute demande de retrait fondée sur un droit
-     d'auteur, écrivez à {todo("adresse de courriel de contact / modération")} en précisant le morceau concerné,
+     d'auteur, écrivez à {EDITEUR_COURRIEL} en précisant le morceau concerné,
      le motif et, pour une demande de retrait, les éléments justifiant vos droits.</p>
 
   <h2>6. Suspension et suppression de compte</h2>
@@ -837,9 +857,9 @@ def render_terms(settings) -> str:
 
   <h2>11. Droit applicable et juridiction</h2>
   <p>Les présentes conditions sont soumises au droit
-     {todo("droit applicable — par exemple « français », selon le pays de l'éditeur")}. En cas de litige, et à
+     {DROIT}. En cas de litige, et à
      défaut de résolution amiable, compétence est attribuée aux tribunaux
-     {todo("juridiction compétente — par exemple « français », ou le ressort du siège de l'éditeur")}, sous
+     {DROIT}s, sous
      réserve des règles impératives applicables aux consommateurs.</p>
 </article></div></section>
 """

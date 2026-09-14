@@ -3,6 +3,9 @@
 Une section `## x.y.z` par version : la CI envoie la section de la version publiée comme notes de mise à jour
 (affichées dans DodoTopia quand une mise à jour est proposée).
 
+## 1.8.3
+- Les mentions légales, la politique de confidentialité et les conditions d'utilisation du site sont complètes et publiées.
+
 ## 1.8.2
 - Un site public sur dodotopia.cyber-dodo.fr : présentation, téléchargement, questions fréquentes, mentions légales, confidentialité et conditions d'utilisation.
 - Réglages › À propos renvoie vers le site et ses pages légales, et rappelle ce qui est envoyé au serveur.

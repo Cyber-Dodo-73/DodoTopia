@@ -111,7 +111,22 @@ def test_legal_pages(client):
         assert f"<h1>{h1}</h1>" in html
         assert html.count("<h1") == 1
         assert f'<link rel="canonical" href="http://testserver{path}">' in html
-        assert "[[À COMPLÉTER" in html          # aucune donnée personnelle inventée
+        # les mentions obligatoires sont renseignées : plus aucun marqueur ne doit subsister en ligne
+        assert "[[À COMPLÉTER" not in html, f"marqueur non rempli sur {path}"
+
+
+def test_legal_identity_is_published(client):
+    """LCEN art. 6-III : éditeur identifiable et hébergeur nommé ; RGPD art. 13 : responsable joignable."""
+    mentions = client.get("/mentions-legales").text
+    for expected in ("Dorian Breuillard", "Cyber-Dodo", "925 110 132 00022", "Chambéry",
+                     "contact@cyber-dodo.fr", "07 72 28 20 62", "293 B", "OUIHEBERG"):
+        assert expected in mentions, expected
+    conf = client.get("/confidentialite").text
+    for expected in ("Dorian Breuillard", "contact@cyber-dodo.fr", "Marseille"):
+        assert expected in conf, expected
+    conditions = client.get("/conditions").text
+    for expected in ("contact@cyber-dodo.fr", "français"):
+        assert expected in conditions, expected
 
 
 def test_privacy_describes_the_real_data(client):
