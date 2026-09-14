@@ -3,6 +3,11 @@
 Une section `## x.y.z` par version : la CI envoie la section de la version publiée comme notes de mise à jour
 (affichées dans DodoTopia quand une mise à jour est proposée).
 
+## 1.8.1
+- Nouveau logo : un dodo qui tient une note de musique, aux couleurs d'Heartopia.
+- L'icône Windows est générée proprement à chaque taille, jusqu'à 16 pixels.
+- Démarrage plus rapide : le logo envoyé à l'interface passe de 1,6 Mo à 16 Ko.
+
 ## 1.8.0
 - Cuisine : plusieurs cuisinières à la fois (réglage « Cuisinières » de 1 à 4). L'anneau vert passe avant tout, les cuisinières sont servies à tour de rôle.
 - Mise à jour automatique au démarrage : la nouvelle version s'installe seule et DodoTopia redémarre (désactivable dans Réglages › En ligne).

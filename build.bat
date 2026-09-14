@@ -22,7 +22,7 @@ echo [2/4] Config livree (sans calibrage perso) et icone...
 if errorlevel 1 goto :error
 %PYTHON% make_version_info.py
 if errorlevel 1 goto :error
-%PYTHON% -c "from PIL import Image; im=Image.open('assets/logo.png').convert('RGBA'); im.save('assets/logo.ico', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
+%PYTHON% make_icon.py
 if errorlevel 1 goto :error
 
 echo [3/4] PyInstaller (dist\DodoTopia\)...

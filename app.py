@@ -676,13 +676,33 @@ class Api:
         return {"name": os.path.splitext(os.path.basename(path))[0],
                 "data": f"data:{IMAGE_MIME[ext]};base64,{data}"}
 
+    LOGO_PX = 96        # affiche vers 40 px : 96 couvre les ecrans a forte densite
+
     def get_logo(self):
-        """Logo en data URL : la page est servie depuis ui/, assets/ n'est pas accessible en relatif."""
+        """Logo en data URL : la page est servie depuis ui/, assets/ n'est pas accessible en relatif.
+        Reduit et mis en cache : le fichier source fait plus d'un Mo, inutile de le passer en entier
+        a chaque demarrage a travers le pont JS."""
+        if getattr(self, "_logo_url", None) is not None:
+            return self._logo_url
         path = os.path.join(core.RES_DIR, "assets", "logo.png")
         if not os.path.isfile(path):
+            self._logo_url = None
             return None
-        with open(path, "rb") as f:
-            return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+        try:
+            import io as _io
+            from PIL import Image
+            im = Image.open(path).convert("RGBA")
+            if max(im.size) > self.LOGO_PX:
+                im.thumbnail((self.LOGO_PX, self.LOGO_PX), Image.LANCZOS)
+            buf = _io.BytesIO()
+            im.save(buf, format="PNG", optimize=True)
+            data = buf.getvalue()
+        except Exception as e:  # noqa - Pillow absent ou image illisible : on envoie le fichier tel quel
+            self._log(f"logo non redimensionné : {e}")
+            with open(path, "rb") as f:
+                data = f.read()
+        self._logo_url = "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+        return self._logo_url
 
     # ---------------------------------------------------------- lecture
     def select_song(self, index):
