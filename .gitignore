@@ -32,3 +32,11 @@ tests_client/__pycache__/
 # config.json = ta config personnelle (calibrages de TON écran) : jamais publiée.
 # C'est config.default.json, régénéré au build par make_default_config.py, qui est livré et versionné.
 config.json
+
+# Outils et captures de vérification locale
+.tools/
+artifacts/ux-review/
+
+# Artefacts de livraison et briefs de travail : hors du depot public
+DodoTopia-Instruments-Pack.zip
+Prompt-Claude-Code-*.md

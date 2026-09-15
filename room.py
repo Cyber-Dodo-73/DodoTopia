@@ -506,6 +506,9 @@ class RoomSession:
             return "Déjà en cours"
         if not self.song:
             return "Choisis d'abord une musique"
+        inst = getattr(self.player, "instrument", None)
+        if inst is not None and not getattr(inst, "ready", True):
+            return f"{getattr(inst, 'name', 'Instrument')} : {getattr(inst, 'blocked_reason', '')}"
         missing = [p.get("name") or str(p.get("id")) for p in self.players
                    if p.get("connected", True) and not p.get("have_song")]
         if missing:
@@ -911,10 +914,14 @@ class RoomSession:
                 shutil.rmtree(tmpdir, ignore_errors=True)
 
     def _prepare(self, path, sha, key_shift):
-        """Chronologie prête à jouer, en cache par (sha256, instrument, tonalité, durée d'appui, mode d'appui)."""
+        """Chronologie prête à jouer, en cache par (sha256, profil d'instrument, tonalité, durée et mode d'appui).
+
+        L'empreinte du profil (et non le simple identifiant) : changer de disposition ou personnaliser une
+        touche doit invalider la chronologie déjà préparée."""
         p = self.player
         inst = p.instrument
-        key = (sha, getattr(inst, "id", ""), int(key_shift), p.cfg.get("hold_time", 0.04), p.cfg.get("hold_mode", "note"))
+        ident = getattr(inst, "fingerprint", None) or getattr(inst, "id", "")
+        key = (sha, ident, int(key_shift), p.cfg.get("hold_time", 0.04), p.cfg.get("hold_mode", "note"))
         if self._prep_key == key and self._prepared is not None:
             return self._prepared
         prepared = p.prepare(path, inst, "game", extra=int(key_shift))
@@ -1026,6 +1033,11 @@ class RoomSession:
             if self.clock.offset_ms is None:
                 self.notify("Horloge non synchronisée : impossible de se caler", "warn")
                 self._send({"type": "player_state", "status": "aborted", "reason": "horloge"})
+                return False
+            if not getattr(p.instrument, "ready", True):
+                # profil sans touches : preparer une chronologie vide laisserait le lecteur en « sync »
+                self.notify(f"{p.instrument.name} : {p.instrument.blocked_reason}", "warn")
+                self._send({"type": "player_state", "status": "aborted", "reason": "instrument"})
                 return False
             try:
                 prepared = self._prepare(self._song_path, *self._have)

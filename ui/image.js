@@ -1,5 +1,7 @@
-// DodoTopia : onglet Image (import, pixellisation sur la palette du jeu, dessin dans le jeu, calibrage).
-// ------------------------------------------------ page Image : import
+// DodoTopia : activite Dessin (import, pixellisation sur la palette du jeu, dessin dans le jeu,
+// configuration de la zone du jeu). L'assistant de configuration (renderCalibOverlay) est partage
+// avec la Cuisine : une etape active dominante, un schema qui designe la cible, un recapitulatif replie.
+// ------------------------------------------------ activite Dessin : import
 const IMG = {name: null, img: null, w: 0, h: 0};
 let PIX = null;   // resultat : {w, h, cells: Int16Array (index palette du jeu ou -1 = vide), palette, counts, format}
 const IOPT = {format: 'auto', fit: 'contain', colors: 126, dither: false, bright: 0, contrast: 0, sat: 100, grid: true};
@@ -47,8 +49,6 @@ function loadImageData(payload){
   const img = new Image();
   img.onload = () => {
     IMG.name = payload.name || 'image'; IMG.img = img; IMG.w = img.naturalWidth; IMG.h = img.naturalHeight;
-    $('thumbImg').src = payload.data; $('thumb').classList.add('has');
-    $('thumbDim').textContent = IMG.w + ' × ' + IMG.h + ' px';
     showTab('image');
     renderPixels();
   };
@@ -57,10 +57,12 @@ function loadImageData(payload){
 }
 window.loadImageData = loadImageData;
 
-$('btnImportImg').onclick = () => {
+function pickImage(){
   if(window.pywebview){ window.pywebview.api.import_image_dialog().then(r => { if(r) loadImageData(r); }); }
   else { $('fileImg').click(); }
-};
+}
+$('btnImportImg').onclick = pickImage;
+$('btnImportImgBig').onclick = pickImage;
 $('fileImg').onchange = e => { const f = e.target.files[0]; if(f) readLocalImage(f); e.target.value = ''; };
 function readLocalImage(file){
   const rd = new FileReader();
@@ -68,7 +70,7 @@ function readLocalImage(file){
   rd.readAsDataURL(file);
 }
 
-// ------------------------------------------------ page Image : pixellisation sur la palette du jeu
+// ------------------------------------------------ pixellisation sur la palette du jeu
 // comparaison des couleurs dans l'espace CIELAB (perceptuel) : une distance RGB envoie toutes les teintes
 // ternes (peau, bois, murs beiges) sur le gris.
 function rgb2lab(c){
@@ -163,6 +165,13 @@ function computePixels(){
 function renderPixels(){
   const wrap = $('canvasWrap');
   syncFormatChips();
+  // état vide : une seule zone d'import domine la page, les réglages restent masqués
+  $('drawEmpty').hidden = !!IMG.img;
+  $('drawWork').hidden = !IMG.img;
+  $('drawOpts').hidden = !IMG.img;
+  $('drawMain').classList.toggle('is-empty', !IMG.img);
+  $('pageImage').classList.toggle('is-empty', !IMG.img);
+  txt('drawHeadTitle', IMG.img ? 'Dessin' : 'Dessiner une image dans Heartopia');
   if(!IMG.img){
     wrap.classList.remove('has'); PIX = null;
     $('imgTitle').textContent = 'Aucune image';
@@ -192,14 +201,35 @@ function renderPixels(){
   wrap.classList.add('has');
   const painted = counts.reduce((a, b) => a + b, 0), empty = w * h - painted;
   const used = counts.filter(n => n > 0).length;
-  $('imgTitle').textContent = IMG.name;
-  $('imgSub').innerHTML = `Source <b>${IMG.w} × ${IMG.h}</b> px · format <b>${format}</b> · <b>${w} × ${h}</b> cases`;
+  const sd = (S && S.settings && S.settings.draw) || {};
+  const fills = sd.fill_background !== false;     // défaut du moteur : le fond est rempli au pot
+  // Un nom qui ressemble à un identifiant technique ne fait pas un titre : on garde le fichier en détail.
+  const human = /[aeiouyàâéèêëîïôöùûü]/i.test(IMG.name) && !/^[A-Z0-9][A-Z0-9 _-]{5,}$/.test(IMG.name);
+  $('imgTitle').textContent = human ? IMG.name : 'Mon dessin';
+  $('imgTitle').title = IMG.name;
+  $('imgSub').innerHTML = `${human ? '' : esc(IMG.name) + ' · '}format <b>${format}</b> · <b>${w} × ${h}</b> cases`
+    + ` <span class="imgsrc">— source ${IMG.w} × ${IMG.h} px</span>`;
+  // « à peindre » ne vaut pas largeur × hauteur : les cases transparentes, et le blanc si « Ne pas peindre
+  // le blanc » est coché, sont écartées par le moteur.
+  const skipW = !!sd.skip_white;
+  const whiteIdx = skipW ? palette.reduce((bi, c, i) => (c[0] + c[1] + c[2] > palette[bi][0] + palette[bi][1] + palette[bi][2] ? i : bi), 0) : -1;
+  const whiteCells = whiteIdx >= 0 ? counts[whiteIdx] : 0;
+  const colored = painted - whiteCells;
   $('imgStats').innerHTML = [
-    `<span class="stat">📐 <b>${w} × ${h}</b> cases</span>`,
-    `<span class="stat">🖌️ <b>${painted}</b> à peindre</span>`,
-    empty ? `<span class="stat">⬜ <b>${empty}</b> vides</span>` : '',
+    `<span class="stat" title="Taille de la toile dans le jeu à la finesse maximale">📐 grille <b>${w} × ${h}</b></span>`,
+    `<span class="stat" title="Cases auxquelles DodoTopia donnera une couleur">🖌️ <b>${colored}</b> cases colorées</span>`,
+    empty ? `<span class="stat" title="${fills ? 'Le fond étant rempli au pot, ces cases prendront la couleur de fond' : 'Ces cases resteront telles quelles'}">⬜ <b>${empty}</b> transparente${empty > 1 ? 's' : ''}</span>` : '',
+    whiteCells ? `<span class="stat" title="Blanc ignoré (option « Ne pas peindre le blanc »)">⬜ <b>${whiteCells}</b> blanche${whiteCells > 1 ? 's' : ''} ignorée${whiteCells > 1 ? 's' : ''}</span>` : '',
     `<span class="stat">🎨 <b>${used}</b> couleur${used > 1 ? 's' : ''}</span>`,
-  ].join('');
+  ].filter(Boolean).join('');
+  // le damier dit la vérité sur l'image, pas forcément sur le rendu en jeu
+  const alpha = $('alphaNote');
+  if(alpha){
+    alpha.hidden = !empty;
+    if(empty) txt('alphaNote', fills
+      ? `Les ${empty} cases transparentes apparaissent en damier ici, mais le fond du dessin est rempli au pot avant de peindre : dans le jeu, elles prendront la couleur de fond. Décoche « Remplir le fond au pot » pour les laisser vides.`
+      : `Les ${empty} cases transparentes ne seront pas peintes : la toile du jeu restera telle quelle à ces endroits.`);
+  }
   const order = palette.map((c, i) => i).filter(i => counts[i] > 0).sort((a, b) => counts[b] - counts[a]);
   $('swatches').innerHTML = order.map(i => `<span class="sw" title="${hex(palette[i])}"><i style="background:${hex(palette[i])}"></i>${counts[i]}</span>`).join('') || '<span class="none">—</span>';
   if(S) renderDraw(S);
@@ -231,26 +261,60 @@ function syncFormatChips(){
   segMark($('formats'), c => c.dataset.f === IOPT.format);
   document.querySelectorAll('#formats > button').forEach(c => {
     const f = c.dataset.f;
-    if(f === 'auto'){ c.textContent = IMG.img ? `Auto (${cur})` : 'Auto'; }
+    // « Auto » montre le format réellement retenu : pas de sélection contradictoire
+    // Une seule sélection : la puce ne porte QUE le format. L'état du calibrage est dit à part, sous le
+    // groupe, pour ne pas mélanger « ce que je choisis » et « ce qui est déjà configuré ».
+    if(f === 'auto'){ c.textContent = 'Auto'; c.title = 'Format déduit des proportions de l’image'; }
     else {
-      const [gw, gh] = gridFor(f); const d = drawState(); const val = !!(d && d.validated && d.validated[f]);
-      c.innerHTML = `${f}${val ? '<span class="ok">✓✓</span>' : isCalibrated(f) ? '<span class="ok">✓</span>' : ''}`;
-      c.title = `${gw} × ${gh} cases` + (val ? ' · calibrage auto validé' : isCalibrated(f) ? ' · calibré à la main (lance le calibrage auto)' : ' · pas encore calibré');
+      const [gw, gh] = gridFor(f);
+      c.textContent = f;
+      c.title = `${gw} × ${gh} cases`;
     }
   });
   segMark($('fits'), c => c.dataset.fit === IOPT.fit);
+  const [gw, gh] = gridFor(cur);
+  txt('fmtHelp', IMG.img
+    ? `Format retenu : ${cur} — ${gw} × ${gh} cases à la finesse maximale. Ouvre une toile de ce format dans Heartopia.`
+    : 'Le format doit correspondre à celui de la toile ouverte dans Heartopia.');
+  // disponibilité du calibrage : une phrase séparée, jamais une coche dans la puce du format
+  const cal = $('fmtCalib');
+  if(cal){
+    const d = drawState(); const val = !!(d && d.validated && d.validated[cur]);
+    const ok = isCalibrated(cur);
+    cal.className = 'hint left fmtcalib ' + (ok ? 'is-ok' : 'is-todo');
+    txt('fmtCalib', !ok ? `Zone du jeu pas encore configurée pour le format ${cur}.`
+      : val ? `Configuration enregistrée pour le format ${cur}, et mesurée automatiquement.`
+      : `Configuration enregistrée pour le format ${cur} (mesure automatique jamais faite).`);
+  }
+  txt('fitHelp', IOPT.fit === 'contain'
+    ? 'Ajuster : toute l’image tient dans la toile ; des cases restent vides sur les côtés.'
+    : 'Remplir : la toile est entièrement couverte ; les bords de l’image sont coupés.');
 }
 document.querySelectorAll('#formats > button').forEach(c => c.onclick = () => { IOPT.format = c.dataset.f; schedulePixels(); });
 document.querySelectorAll('#fits > button').forEach(c => c.onclick = () => { IOPT.fit = c.dataset.fit; schedulePixels(); });
 window.addEventListener('resize', () => { if(TAB === 'image') schedulePixels(); });
 
-// ------------------------------------------------ page Image : dessin dans le jeu + calibrage
+// remise à zéro par groupe de réglages (aperçu seulement : rien n'est écrit côté Python)
+const IOPT_DEFAULTS = {format: 'auto', fit: 'contain', colors: 126, dither: false, bright: 0, contrast: 0, sat: 100, grid: true};
+const RESET_GROUPS = {frame: ['format', 'fit'], colors: ['colors', 'bright', 'contrast', 'sat', 'dither']};
+document.querySelectorAll('#drawOpts [data-reset]').forEach(b => b.onclick = () => {
+  (RESET_GROUPS[b.dataset.reset] || []).forEach(k => { IOPT[k] = IOPT_DEFAULTS[k]; });
+  [['optColors', 'colors', v => v >= 126 ? 'toutes' : v], ['optBright', 'bright', v => (v > 0 ? '+' : '') + v],
+   ['optContrast', 'contrast', v => (v > 0 ? '+' : '') + v], ['optSat', 'sat', v => v + ' %']].forEach(([id, k, f]) => {
+    if($(id)){ $(id).value = IOPT[k]; txt(id + 'V', String(f(IOPT[k]))); }
+  });
+  $('optDither').checked = IOPT.dither;
+  schedulePixels();
+  toast(b.dataset.reset === 'frame' ? 'Toile et cadrage remis par défaut' : 'Couleurs et rendu remis par défaut', 'ok');
+});
+
+// ------------------------------------------------ page Dessin : dessin dans le jeu + configuration de la zone
 let drawSig = '';
-// prochaine etape du dessin pour le format courant : calib | valid | draw
+// prochaine etape pour le format courant : image | calib | draw
 function drawNext(fmt){
+  if(!IMG.img) return 'image';
   const d = drawState();
   if(!isCalibrated(fmt) || !shadesOk()) return 'calib';
-  if(!(d && d.validated && d.validated[fmt])) return 'valid';
   return 'draw';
 }
 function renderDraw(st){
@@ -260,36 +324,55 @@ function renderDraw(st){
   const drawing = d.state === 'drawing', calib = d.state === 'calibrating', auto = d.state === 'autocal';
   const busy = drawing || auto;
   const next = drawNext(fmt);
+  const ready = isCalibrated(fmt) && shadesOk();
   const validated = !!(d.validated && d.validated[fmt]);
 
-  // stepper (1) Calibrer (2) Valider (3) Dessiner
+  // progression (1) Préparer l'image (2) Configurer la zone du jeu (3) Dessiner
   const done = [];
-  if(isCalibrated(fmt) && shadesOk()) done.push('calib');
-  if(validated) done.push('valid');
-  stepsMark($('drawSteps'), done, busy ? (auto ? 'valid' : 'draw') : next, {calib: done.includes('calib') ? fmt : '', valid: validated ? '✓✓' : ''});
+  if(IMG.img) done.push('image');
+  if(ready) done.push('calib');
+  stepsMark($('drawSteps'), done, busy ? (auto ? 'calib' : 'draw') : next,
+            {image: IMG.img ? `${PIX ? PIX.w + '×' + PIX.h : ''}` : '',
+             calib: ready ? (validated ? fmt + ' ✓✓' : fmt + ' ✓') : ''});
 
-  // un seul bouton principal = prochaine etape
+  // un seul bouton principal = prochaine étape ; un calibrage valide n'est jamais refait tout seul
   const b = $('btnDraw');
   let label, cls = 'btn btn--lg btn--cta';
-  if(busy){ label = auto ? 'Arrêter le calibrage auto' : 'Arrêter le dessin'; cls = 'btn btn--lg btn--danger'; }
+  if(busy){ label = auto ? 'Arrêter la mesure' : 'Arrêter le dessin'; cls = 'btn btn--lg btn--danger'; }
   else if(!IMG.img) label = LABELS.draw;
-  else if(next === 'calib') label = `Calibrer ${fmt}`;
-  else if(next === 'valid') label = 'Valider (calibrage auto)';
+  else if(next === 'calib') label = `Configurer la zone du jeu (${fmt})`;
   else label = LABELS.draw;
   if(b.className !== cls) b.className = cls;
   txt('drawLabel', label);
   txt('drawKey', busy ? (hk.stop || 'F7') : (hk.play_pause || 'F6'));
   $('drawKey').hidden = !busy && next !== 'draw';
   b.disabled = calib || (!busy && !IMG.img);
-  $('btnDrawMore').disabled = busy || calib;
-  $('drawSteps').hidden = busy;
+  b.title = b.disabled && !calib ? 'Importe d’abord une image.' : '';
+  // tant que rien n'est configuré, le bouton principal EST l'entrée vers la configuration : pas de doublon
+  $('btnDrawConfig').hidden = !ready;
+  $('btnDrawConfig').disabled = busy || calib;
+  txt('btnDrawConfig', 'Configuration…');
+  $('btnDrawLog').hidden = busy || calib;
+  // Le parcours en trois étapes n'a d'intérêt qu'au premier usage. Une fois la zone configurée, il laisse
+  // la place à une synthèse d'état : on ne réaffiche pas un assistant à chaque dessin.
+  $('drawSteps').hidden = busy || ready;
+  const rs = $('drawReady');
+  if(rs){
+    rs.hidden = busy || !ready;
+    if(!rs.hidden) html('drawReady', `<span class="ok" aria-hidden="true">✓</span> Image prête · zone du jeu configurée pour le format <b>${esc(fmt)}</b>`
+      + (validated ? ' et mesurée' : '') + ` · <b>${PIX ? PIX.w + ' × ' + PIX.h : ''}</b> cases`);
+  }
+  // pendant le dessin, le bandeau de session porte seul l'action Arreter (comme la Musique et la Cuisine)
+  $('drawCta').hidden = busy;
 
   const pill = $('imgPill');
-  let pc = 'pill', pt = 'Prêt';
+  let pc = 'pill', pt = 'À configurer';
   if(drawing){ pc = 'pill game'; pt = '🎨 Dessin en cours'; }
-  else if(calib){ pc = 'pill paused'; pt = '🎯 Calibrage'; }
-  else if(auto){ pc = 'pill game'; pt = '🧪 Calibrage auto'; }
-  else if(PIX){ pc = 'pill preview'; pt = '🧩 Aperçu'; }
+  else if(calib){ pc = 'pill paused'; pt = '🎯 Configuration'; }
+  else if(auto){ pc = 'pill game'; pt = '📏 Mesure en cours'; }
+  else if(!IMG.img){ pc = 'pill'; pt = 'Aucune image'; }
+  else if(!ready){ pc = 'pill'; pt = 'À configurer'; }
+  else { pc = 'pill preview'; pt = '✓ Prêt à dessiner'; }
   if(pill.className !== pc) pill.className = pc;
   txt('imgPill', pt);
   $('imgDisc').classList.toggle('spin', drawing);
@@ -297,30 +380,31 @@ function renderDraw(st){
   // bandeau de session : compte a rebours puis progression
   let spec = null;
   if(busy && d.countdown > 0){
-    spec = {count: Math.ceil(d.countdown), unit: 's', role: auto ? 'Calibrage auto' : 'Dessin',
+    spec = {count: Math.ceil(d.countdown), unit: 's', role: auto ? 'Mesure automatique' : 'Dessin',
             text: auto ? `Passe sur Heartopia avec un dessin VIDE au format ${d.format}, crayon sélectionné, zoom au minimum.` : 'Passe sur Heartopia, crayon sélectionné, et ne touche plus à rien.',
             meta: `${hk.stop || 'F7'} annule`, actions: [{label: LABELS.cancel, kbd: hk.stop || 'F7', api: 'draw_stop'}]};
   } else if(drawing){
     const pct = d.total ? d.done / d.total * 100 : 0;
     spec = {live: true, role: 'Dessin dans Heartopia', text: d.progress_msg || 'Dessin en cours…',
-            meta: `${d.done} / ${d.total} · ${d.eta != null ? 'reste ~' + fmtDur(d.eta) : fmtDur(d.elapsed)} · ${hk.stop || 'F7'} arrête · ne touche pas à la souris`,
+            meta: `${d.done} / ${d.total} cases · ${d.eta != null ? 'reste ~' + fmtDur(d.eta) + ' (estimation)' : fmtDur(d.elapsed)} · ${hk.stop || 'F7'} arrête · ne touche pas à la souris`,
             progress: {pct, left: `${Math.round(pct)} %`, right: d.eta != null ? `~${fmtDur(d.eta)}` : fmtDur(d.elapsed)},
             actions: [{label: LABELS.stop, kbd: hk.stop || 'F7', api: 'draw_stop'}]};
   } else if(auto){
-    spec = {live: true, role: 'Calibrage automatique', text: d.progress_msg || 'Mesure en cours…', meta: `${hk.stop || 'F7'} ou une touche arrête`,
+    spec = {live: true, role: 'Mesure automatique', text: d.progress_msg || 'Mesure en cours…', meta: `${hk.stop || 'F7'} ou une touche arrête`,
             actions: [{label: LABELS.stop, kbd: hk.stop || 'F7', api: 'draw_stop'}]};
   }
   renderSession($('drawSession'), spec);
 
-  // notice courte
+  // notice courte : elle dit toujours ce qui manque et comment l'obtenir
   let notice = null;
   if(!busy){
-    if(d.message && /impossible|arrêté|erreur/i.test(d.message)) notice = {text: d.message, kind: 'warn'};
+    if(d.screen_ok === false) notice = {text: 'Lecture d’écran indisponible sur cet ordinateur : le dessin automatique ne peut pas fonctionner ici.', kind: 'danger'};
+    else if(d.message && /impossible|arrêté|erreur/i.test(d.message)) notice = {text: d.message, kind: 'warn'};
     else if(!IMG.img) notice = {text: 'Importe une image : DodoTopia la transforme en dessin case par case.', kind: 'info'};
-    else if(!isCalibrated(fmt)) notice = {text: `Format ${fmt} pas encore calibré : indique où sont le canevas et la palette dans le jeu.`, kind: 'warn'};
-    else if(!shadesOk()) notice = {text: 'Les nuances de la palette ne sont pas calibrées : refais les 6 étapes « nuances » (Autres… › Recalibrer).', kind: 'warn'};
-    else if(!validated) notice = {text: `Calibré à la main. Lance le calibrage auto une fois (dessin vide dans le jeu) pour mesurer et valider.`, kind: 'info'};
-    else notice = {text: `Ouvre un dessin vide dans Heartopia (format ${fmt}, finesse au maximum, crayon), puis ${hk.play_pause || 'F6'}.`, kind: 'ok', icon: '✓'};
+    else if(!isCalibrated(fmt)) notice = {text: `Le format ${fmt} n’est pas encore configuré : montre une fois à DodoTopia où sont la toile, la palette et les outils dans Heartopia. Bouton « Configurer la zone du jeu ».`, kind: 'warn'};
+    else if(!shadesOk()) notice = {text: 'Les nuances de la palette ne sont pas configurées : refais les 6 étapes « nuances » (Calibrage et journal… › Refaire la configuration).', kind: 'warn'};
+    else if(!validated) notice = {text: `Zone configurée à la main : tu peux dessiner. Pour un résultat plus précis, lance une fois « Mesurer automatiquement » (Calibrage et journal…), sur un dessin vide.`, kind: 'info'};
+    else notice = {text: `Ouvre un dessin vide dans Heartopia (format ${fmt}, finesse au maximum, crayon), puis ${hk.play_pause || 'F6'}. La reprise d’un dessin interrompu n’est pas prise en charge : il faudra recommencer.`, kind: 'ok', icon: '✓'};
   }
   setNotice('drawNotice', notice);
 
@@ -332,42 +416,170 @@ function renderDraw(st){
   const os = st.draw_stats;
   const outlineOn = sd.outline !== false;
   let ostat = '';
-  if(!outlineOn) ostat = 'Tout au crayon, case par case.';
-  else if(!PIX) ostat = 'Trace les contours de chaque zone puis la remplit d’un clic.';
+  if(!outlineOn) ostat = 'Chaque case est peinte au crayon, une par une.';
+  else if(!PIX) ostat = 'Trace le bord de chaque zone au crayon, puis la remplit d’un clic au pot.';
   else if(!os) ostat = 'Calcul des zones…';
-  else if(os.available) ostat = `✏️ ${os.pencil_cells} cases au crayon + 🪣 ${os.fill_zones} zone${os.fill_zones > 1 ? 's' : ''} au pot (${os.fill_cells} cases) au lieu de ${os.total_cells} au crayon.`;
-  else ostat = 'Indisponible : calibre le crayon et le pot de peinture.';
+  else if(os.available) ostat = `Sur cette image : ${os.pencil_cells} cases au crayon + ${os.fill_zones} zone${os.fill_zones > 1 ? 's' : ''} remplie${os.fill_zones > 1 ? 's' : ''} au pot (${os.fill_cells} cases), au lieu de ${os.total_cells} cases au crayon. Le rendu est identique tant que les zones sont bien fermées ; sinon la couleur déborde et DodoTopia la reprend au crayon.`;
+  else ostat = 'Indisponible : le crayon et le pot de peinture ne sont pas configurés (étapes « outils » de la configuration).';
   txt('outlineStat', ostat);
 
-  // assistant de calibrage
+  // assistant de configuration
   if(calib){
     renderCalibOverlay({
-      title: `Calibrer le dessin <span class="fmt">${esc(d.format)}</span>`,
-      intro: `Dans Heartopia, ouvre un dessin au format <b>${esc(d.format)}</b>, mets la <b>finesse des détails au maximum</b> et <b>active la grille</b> (bouton grille en haut du canevas). Puis, pour chaque étape, place la souris sur la cible <b>dans le jeu</b> et appuie sur <kbd>${esc(hk.draw_point || 'F3')}</kbd>.`,
-      steps: d.steps || [], step: d.step, hk,
+      kind: 'draw',
+      title: `Configurer la zone du jeu — ${esc(d.format)}`,
+      prep: `<p>Dans Heartopia, avant de commencer :</p>
+        <ol class="steps">
+          <li><span class="n">1</span>Ouvre un dessin au format <b>${esc(d.format)}</b></li>
+          <li><span class="n">2</span>Mets la <b>finesse des détails au maximum</b></li>
+          <li><span class="n">3</span><b>Active la grille</b> (bouton grille au-dessus de la toile)</li>
+          <li><span class="n">4</span>Garde la fenêtre du jeu à la même taille pendant toute la configuration</li>
+        </ol>
+        <p class="hint left">Ces réglages ne sont demandés qu'une fois. Les positions sont enregistrées ensuite, étape par étape.</p>`,
+      steps: d.steps || [], step: d.step, hk, message: d.message,
       skippable: s => s.key === 'pencil' || s.key === 'bucket' || s.key === 'undo',
-      cancel: 'draw_calibrate_cancel', skip: 'draw_calibrate_skip'});
+      cancel: 'draw_calibrate_cancel', skip: 'draw_calibrate_skip', back: 'draw_calibrate_back', goto: 'draw_calibrate_goto'});
   } else if(!(st.cook && st.cook.state === 'calibrating')){
-    $('calibOverlay').classList.remove('open');
+    closeCalibOverlay();
   }
   // palette ou grilles changees (fin de calibrage) : on recalcule l'apercu
   const sig = JSON.stringify([d.palette, d.formats, d.shades_ok]);
   if(sig !== drawSig){ drawSig = sig; if(IMG.img) schedulePixels(); else syncFormatChips(); }
 }
 view('draw', {draw: renderDraw});
-let CALIB = {cancel: 'draw_calibrate_cancel', skip: 'draw_calibrate_skip'};
+
+// ------------------------------------------------ assistant de configuration (dessin et cuisine)
+// Une seule étape active, montrée en grand avec un schéma qui désigne la cible. Le récapitulatif complet
+// reste disponible, replié. Les schémas sont des dessins de DodoTopia, pas des captures du jeu : ils
+// montrent où chercher, l'écran réel peut différer.
+const CAL_ART = {
+  // --- dessin : vue de l'outil de dessin (toile rayée, outils à gauche, palette en bas)
+  draw: {
+    view: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma de l'outil de dessin du jeu ; la cible est entourée">
+      <rect x="2" y="2" width="296" height="186" rx="14" fill="#fbf5ea" stroke="#e4d4ba" stroke-width="2"/>
+      <rect x="72" y="30" width="180" height="108" rx="6" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
+      <g stroke="#e9ded0" stroke-width="1">${Array.from({length: 17}, (_, i) => `<path d="M${76 + i * 11} 30V138"/>`).join('')}${Array.from({length: 9}, (_, i) => `<path d="M72 ${34 + i * 12}H252"/>`).join('')}</g>
+      <circle cx="86" cy="16" r="9" fill="#f6f1e6" stroke="#c7b9ad" stroke-width="2"/><path d="M82 16h7m-3-3-4 3 4 3" stroke="#9c8a7f" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <g fill="#f6f1e6" stroke="#c7b9ad" stroke-width="2">
+        <rect x="40" y="38" width="24" height="24" rx="8"/><rect x="40" y="70" width="24" height="24" rx="8"/><rect x="40" y="102" width="24" height="24" rx="8"/></g>
+      <path d="M47 57l10-10 3 3-10 10z" fill="#b56f3f"/>
+      <path d="M46 84c3-6 9-8 13-4s2 10-4 12z" fill="#46cbc4"/>
+      <circle cx="52" cy="114" r="7" fill="#e8a531"/><circle cx="50" cy="112" r="1.6" fill="#fff"/>
+      <g>${[0, 1].map(r => Array.from({length: 8}, (_, c) => `<rect x="${90 + c * 20}" y="${150 + r * 16}" width="15" height="12" rx="4" fill="${['#c94f5a', '#e8a531', '#edca16', '#a8bc16', '#05a25d', '#058781', '#05729c', '#534da1'][c]}" opacity="${r ? .55 : 1}"/>`).join('')).join('')}</g>
+      ${hi}</svg>`,
+    shades: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma du panneau de nuances du jeu ; la cible est entourée">
+      <rect x="2" y="2" width="296" height="186" rx="14" fill="#fbf5ea" stroke="#e4d4ba" stroke-width="2"/>
+      <rect x="54" y="28" width="192" height="134" rx="14" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
+      <text x="150" y="20" text-anchor="middle" font-size="11" fill="#9c8a7f">panneau des nuances</text>
+      <path d="M70 52l-7 7 7 7" stroke="#b56f3f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M230 52l7 7-7 7" stroke="#b56f3f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <g>${Array.from({length: 5}, (_, i) => `<circle cx="${102 + i * 24}" cy="59" r="9" fill="${['#c94f5a', '#e8a531', '#05a25d', '#058781', '#534da1'][i]}"/>`).join('')}</g>
+      <rect x="141" y="48" width="22" height="22" rx="11" fill="none" stroke="#fff" stroke-width="3"/>
+      <rect x="141" y="48" width="22" height="22" rx="11" fill="none" stroke="#9c8a7f" stroke-width="1"/>
+      <g>${Array.from({length: 10}, (_, i) => `<rect x="${112 + (i % 2) * 40}" y="${84 + Math.floor(i / 2) * 15}" width="34" height="12" rx="4" fill="#058781" opacity="${1 - Math.floor(i / 2) * .15}"/>`).join('')}</g>
+      ${hi}</svg>`},
+  // --- cuisine : vue du monde (cuisinière + bulle) et vue du menu Recettes
+  cook: {
+    world: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma de la cuisinière et de sa bulle dans le jeu ; la cible est entourée">
+      <rect x="2" y="2" width="296" height="186" rx="14" fill="#eef2da" stroke="#d7e0b8" stroke-width="2"/>
+      <path d="M2 140h296v46a14 14 0 0 1-14 14H16a14 14 0 0 1-14-14z" fill="#cfdca6"/>
+      <rect x="108" y="96" width="84" height="48" rx="10" fill="#c98644"/>
+      <rect x="118" y="106" width="64" height="26" rx="6" fill="#fbe7bd"/>
+      <circle cx="150" cy="58" r="26" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
+      <path d="M140 80l10 12 10-12z" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
+      <path d="M140 52h20m-16 6h12" stroke="#6b5a52" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="150" cy="58" r="32" fill="none" stroke="#9fb356" stroke-width="4" stroke-dasharray="5 5"/>
+      <circle cx="232" cy="160" r="8" fill="#9fb356"/><circle cx="252" cy="168" r="6" fill="#9fb356"/>
+      ${hi}</svg>`,
+    menu: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma du menu Recettes du jeu ; la cible est entourée">
+      <rect x="2" y="2" width="296" height="186" rx="14" fill="#fbf5ea" stroke="#e4d4ba" stroke-width="2"/>
+      <rect x="22" y="16" width="256" height="158" rx="16" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
+      <text x="42" y="40" font-size="12" fill="#9c8a7f">Utilisation récente</text>
+      <g>${Array.from({length: 4}, (_, i) => `<rect x="${42 + i * 44}" y="${50}" width="36" height="36" rx="8" fill="#fbe7bd" stroke="#e4d4ba" stroke-width="2"/>`).join('')}</g>
+      <g>${Array.from({length: 4}, (_, i) => `<rect x="${42 + i * 44}" y="${98}" width="36" height="36" rx="8" fill="#f6f1e6" stroke="#e4d4ba" stroke-width="2"/>`).join('')}</g>
+      <rect x="196" y="132" width="66" height="26" rx="13" fill="#e8a531"/>
+      <text x="229" y="149" text-anchor="middle" font-size="11" fill="#4a3527" font-weight="700">Cuisiner</text>
+      ${hi}</svg>`}};
+// cible : anneau + flèche, posés sur le schéma
+function calMark(x, y, r){
+  r = r || 16;
+  return `<g class="calmark"><circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#c94f5a" stroke-width="3"/>
+    <circle cx="${x}" cy="${y}" r="2.5" fill="#c94f5a"/></g>`;
+}
+function calRect(x, y, w, h){
+  return `<g class="calmark"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="none" stroke="#c94f5a" stroke-width="3" stroke-dasharray="7 5"/></g>`;
+}
+// step -> schéma. Une clé inconnue ne dessine rien plutôt qu'un schéma faux.
+const CAL_STEP_ART = {
+  draw: {
+    tl: () => CAL_ART.draw.view(calMark(72, 30, 13)),
+    br: () => CAL_ART.draw.view(calMark(252, 138, 13)),
+    pal0: () => CAL_ART.draw.view(calMark(97, 156, 13)),
+    pal1: () => CAL_ART.draw.view(calMark(237, 172, 13)),
+    palbtn: () => CAL_ART.draw.view(calMark(52, 114, 16)),
+    pencil: () => CAL_ART.draw.view(calMark(52, 50, 16)),
+    bucket: () => CAL_ART.draw.view(calMark(52, 82, 16)),
+    undo: () => CAL_ART.draw.view(calMark(86, 16, 13)),
+    strip: () => CAL_ART.draw.shades(calMark(150, 59, 16)),
+    prev: () => CAL_ART.draw.shades(calMark(66, 59, 14)),
+    next: () => CAL_ART.draw.shades(calMark(234, 59, 14)),
+    sub0: () => CAL_ART.draw.shades(calMark(129, 90, 14)),
+    sub1: () => CAL_ART.draw.shades(calMark(169, 150, 14))},
+  cook: {
+    search_tl: () => CAL_ART.cook.world(calRect(86, 14, 128, 92) + calMark(86, 14, 11)),
+    search_br: () => CAL_ART.cook.world(calRect(86, 14, 128, 92) + calMark(214, 106, 11)),
+    cook: () => CAL_ART.cook.world(calMark(150, 58, 20)),
+    spatula: () => CAL_ART.cook.world(calMark(150, 58, 20)),
+    ready: () => CAL_ART.cook.world(calMark(150, 58, 20)),
+    neutral: () => CAL_ART.cook.world(calMark(240, 163, 16)),
+    tile: () => CAL_ART.cook.menu(calMark(60, 68, 21)),
+    cook_btn: () => CAL_ART.cook.menu(calMark(229, 145, 20))}};
+
+let CALIB = {cancel: 'draw_calibrate_cancel', skip: 'draw_calibrate_skip', back: 'draw_calibrate_back', goto: 'draw_calibrate_goto'};
+function closeCalibOverlay(){ if($('calibOverlay').classList.contains('open')) closeModal($('calibOverlay')); }
 function renderCalibOverlay(spec){
+  const fresh = !$('calibOverlay').classList.contains('open');
   CALIB = spec;
-  $('calibTitle').innerHTML = spec.title;
-  $('calibIntro').innerHTML = spec.intro;
   const steps = spec.steps || [];
-  $('calibSteps').innerHTML = steps.map((s, i) => `<li class="${i < spec.step ? 'done' : i === spec.step ? 'now' : ''}"><span class="n">${i < spec.step ? '✓' : i + 1}</span>${esc(s.title)}</li>`).join('');
-  const cur = steps[spec.step];
+  const n = steps.length, i = Math.min(spec.step, n - 1);
+  const cur = steps[i];
   const hk = spec.hk || {};
-  if(cur) $('calibNow').innerHTML = `<b>Étape ${spec.step + 1} / ${steps.length}</b> · ${esc(cur.help)}<br>Puis appuie sur <kbd>${esc(hk.draw_point || 'F3')}</kbd> (ou sur ${esc(hk.play_pause || 'F6')}).`;
+  txt('calibTitle', spec.title.replace(/<[^>]+>/g, ''));
+  txt('calibCount', `Étape ${i + 1} sur ${n}`);
+  $('calibFill').style.width = (n ? (i / n * 100) : 0).toFixed(1) + '%';
+  $('calibBar').setAttribute('aria-valuenow', String(i + 1));
+  $('calibBar').setAttribute('aria-valuemin', '1');
+  $('calibBar').setAttribute('aria-valuemax', String(n));
+  html('calibPrepBody', spec.prep || '');
+  if(fresh) $('calibPrep').open = spec.step === 0;
+  // étape active : titre, consigne et schéma de la cible
+  if(cur){
+    txt('calibStepTitle', cur.title);
+    txt('calibStepHelp', cur.help);
+    const art = (CAL_STEP_ART[spec.kind] || {})[cur.key];
+    const svg = art ? art() : '';
+    html('calibArt', svg ? svg + '<span class="calib__artnote">Schéma : l’écran du jeu peut être disposé un peu différemment.</span>' : '');
+    $('calibArt').hidden = !svg;
+  }
+  txt('calibKey', hk.draw_point || 'F3');
+  txt('calibState', 'En attente : place la souris sur la cible dans le jeu, la position n’est pas encore enregistrée.');
+  setNotice('calibMsg', spec.message ? {text: spec.message, kind: 'warn'} : null);
+  // récapitulatif complet, replié : chaque étape faite est cliquable pour y revenir
+  const sig = JSON.stringify([steps.map(s => s.title), i]);
+  if(changed($('calibSteps'), sig)){
+    $('calibSteps').innerHTML = steps.map((s, k) => {
+      const cls = k < i ? 'done' : k === i ? 'now' : '';
+      const mark = k < i ? '✓' : k + 1;
+      return k < i
+        ? `<li class="${cls}"><button type="button" class="stepback" data-goto="${k}" title="Revenir à cette étape"><span class="n">${mark}</span>${esc(s.title)}</button></li>`
+        : `<li class="${cls}"><span class="n">${mark}</span>${esc(s.title)}</li>`;
+    }).join('');
+    $('calibSteps').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => api(CALIB.goto, Number(b.dataset.goto)));
+  }
+  txt('calibAllSum', `Voir les ${n} étapes`);
   $('calibSkip').hidden = !(cur && spec.skippable(cur));
-  $('calibOverlay').classList.add('open');
-  const now = $('calibSteps').querySelector('li.now'); if(now && now.scrollIntoView) now.scrollIntoView({block: 'nearest'});
+  $('calibBack').disabled = i <= 0;
+  if(fresh){ openModal($('calibOverlay')); setTimeout(() => $('calibStepTitle').focus && $('calibStepTitle').focus(), 30); }
 }
 function fmtDur(s){ s = Math.max(0, Math.round(s || 0)); return s >= 60 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; }
 
@@ -375,13 +587,18 @@ function fmtDur(s){ s = Math.max(0, Math.round(s || 0)); return s >= 60 ? `${Mat
 function drawCalibrate(){ api('draw_calibrate', currentFormat()); }
 function drawAutoCalibrate(){
   if(!isCalibrated(currentFormat())){ drawCalibrate(); return; }
-  dialog({title: 'Calibrage automatique', icon: '🧪', ok: 'Lancer',
-          html: `Dans Heartopia, ouvre un dessin <b>vide</b> au format <b>${currentFormat()}</b>, finesse au maximum, crayon sélectionné, zoom au minimum.<br><small>DodoTopia va remplir le fond, peindre des pastilles et des repères, mesurer l'écran, tester le rythme des traits, puis valider. Le canevas de test sera annulé si le bouton Annuler est calibré, sinon ouvre un nouveau dessin ensuite.</small>`})
+  dialog({title: 'Mesurer automatiquement', icon: '📏', ok: 'Lancer la mesure',
+          html: `Dans Heartopia, ouvre un dessin <b>vide</b> au format <b>${currentFormat()}</b>, finesse au maximum, crayon sélectionné, zoom au minimum.<br><small>DodoTopia va remplir le fond, peindre des pastilles et des repères, mesurer la taille exacte des cases à l'écran, tester le rythme des traits, puis enregistrer le résultat. Le dessin de test est annulé si le bouton Annuler du jeu est configuré ; sinon, ouvre un nouveau dessin ensuite.</small>`})
     .then(yes => { if(yes) api('draw_auto_calibrate', currentFormat()); });
 }
 function drawStart(){
+  const fmt = currentFormat();
+  const [gw, gh] = gridFor(fmt);
+  const painted = PIX ? PIX.counts.reduce((a, b) => a + b, 0) : 0;
   dialog({title: LABELS.draw, icon: '🎨', ok: 'Dessiner',
-          html: `Dans Heartopia, ouvre un dessin au format <b>${currentFormat()}</b>, finesse des détails <b>au maximum</b>, outil crayon sélectionné, sans zoom.<br><small>Le dessin démarre 3 s après : ne touche plus à la souris ni au clavier. Toute touche l'arrête.</small>`})
+          html: `<p>À dessiner : <b>${esc(IMG.name || 'image')}</b> — format <b>${fmt}</b>, ${gw} × ${gh} cases, <b>${painted}</b> cases à peindre.</p>
+            <p>Dans Heartopia, ouvre un dessin au format <b>${fmt}</b>, finesse des détails <b>au maximum</b>, outil crayon sélectionné, sans zoom.</p>
+            <small>Le dessin démarre 3 s après : ne touche plus à la souris ni au clavier. Toute touche l'arrête, et un dessin interrompu ne peut pas être repris là où il s'est arrêté.</small>`})
     .then(yes => { if(yes) api('draw_start'); });
 }
 $('btnDraw').onclick = () => {
@@ -390,19 +607,21 @@ $('btnDraw').onclick = () => {
   if(!IMG.img){ toast("Importe d'abord une image", 'warn'); return; }
   const next = drawNext(currentFormat());
   if(next === 'calib') drawCalibrate();
-  else if(next === 'valid') drawAutoCalibrate();
   else drawStart();
 };
-$('btnDrawMore').onclick = () => {
+// « Configuration » est une tâche de préparation ; « Journal » est un outil de diagnostic. Deux boutons.
+$('btnDrawConfig').onclick = () => {
   const fmt = currentFormat(), cal = isCalibrated(fmt), d = drawState();
-  menu($('btnDrawMore'), [
-    {label: cal ? `Recalibrer ${fmt} à la main` : `Calibrer ${fmt} à la main`, help: 'canevas, palette, nuances', fn: drawCalibrate},
-    {label: 'Calibrage auto (mesure et valide)', help: 'dessin vide dans le jeu', fn: drawAutoCalibrate, disabled: !cal},
-    {label: 'Dessiner sans valider', help: (d && d.validated && d.validated[fmt]) ? '' : 'déconseillé', fn: drawStart, disabled: !cal || !IMG.img},
-    {label: 'Journal du dessin', fn: () => api('open_draw_log')},
+  const val = !!(d && d.validated && d.validated[fmt]);
+  if(!cal){ drawCalibrate(); return; }
+  menu($('btnDrawConfig'), [
+    {label: `Refaire la configuration de ${fmt}`, help: 'toile, palette, nuances, outils', fn: drawCalibrate},
+    {label: 'Mesurer automatiquement', help: val ? 'déjà mesuré · à refaire si l’écran change' : 'conseillé une fois, sur une toile vide', fn: drawAutoCalibrate},
   ]);
 };
+$('btnDrawLog').onclick = () => api('open_draw_log');
 $('calibCancel').onclick = $('calibCancel2').onclick = () => api(CALIB.cancel);
 $('calibSkip').onclick = () => api(CALIB.skip);
+$('calibBack').onclick = () => api(CALIB.back);
 // bloc Methode : interrupteurs -> set_setting (sans toast)
 ['mOutline', 'mFill', 'mSkipWhite'].forEach(id => { const cb = $(id); cb.onchange = () => api('set_setting', cb.dataset.path, cb.checked); });

@@ -59,6 +59,9 @@ SCHEMA = {
     "input_mode": Choice("scancode", "vk"),
     "transpose_semitones": Int(-24, 24, "½ ton", after="_on_transpose"),
     "preview_volume": Int(0, 100, "%", after="_on_volume"),
+    # Disposition du clavier physique : ne change que les légendes affichées, jamais la position envoyée
+    # au jeu. « auto » = détection système quand elle est fiable, sinon QWERTY.
+    "keyboard_layout": Choice("auto", "qwerty", "azerty", after="_on_keyboard_layout"),
     # ---- raccourcis
     "hotkeys.*": {"type": "hotkey", "section": "hotkeys", "after": "_bind_hotkeys"},
     # ---- multi audio
@@ -105,7 +108,7 @@ def defaults():
     """Dict plat chemin → valeur par défaut (seulement les chemins décrits dans SCHEMA)."""
     out = {}
     for k in ("start_delay", "stop_on_input", "hold_mode", "hold_time", "input_mode",
-              "transpose_semitones", "preview_volume"):
+              "transpose_semitones", "preview_volume", "keyboard_layout"):
         out[k] = core.DEFAULT_CONFIG[k]
     for k, v in core.DEFAULT_CONFIG["hotkeys"].items():
         out["hotkeys." + k] = v

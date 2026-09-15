@@ -1,0 +1,710 @@
+{
+  "schemaVersion": 1,
+  "octaveConvention": "C4 = MIDI 60",
+  "warning": "Les codes physiques sont une traduction des positions QWERTY, pas une validation du jeu en AZERTY. Aucune gamme absolue sonore ni polyphonie propre aux instruments n’a été mesurée.",
+  "layouts": [
+    {
+      "layoutId": "diatonic-15-2row",
+      "labelFr": "15 notes, 2 rangées",
+      "descriptionFr": "Do4 à Do6, gamme de do majeur, touches sur deux rangées.",
+      "noteCount": 15,
+      "rows": [
+        7,
+        8
+      ],
+      "autoTranspose": "key",
+      "keyboardReference": "QWERTY US",
+      "status": "community-documented-not-tested-in-game",
+      "sourceUrls": [
+        "https://github.com/DonElf/Heartopia-Midi-Player/blob/main/HeartopiaMidiPlayer.cpp"
+      ],
+      "inGameLayoutMustMatch": true,
+      "notes": [
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "key": "a",
+          "position": "KeyA"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "key": "s",
+          "position": "KeyS"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "key": "d",
+          "position": "KeyD"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "key": "f",
+          "position": "KeyF"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "key": "g",
+          "position": "KeyG"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "key": "h",
+          "position": "KeyH"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "key": "j",
+          "position": "KeyJ"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "key": "q",
+          "position": "KeyQ"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "key": "w",
+          "position": "KeyW"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "key": "e",
+          "position": "KeyE"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "key": "r",
+          "position": "KeyR"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "key": "t",
+          "position": "KeyT"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "key": "y",
+          "position": "KeyY"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "key": "u",
+          "position": "KeyU"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "key": "i",
+          "position": "KeyI"
+        }
+      ]
+    },
+    {
+      "layoutId": "diatonic-15-3row",
+      "labelFr": "15 notes, 3 rangées",
+      "descriptionFr": "Do4 à Do6, gamme de do majeur, touches sur trois rangées.",
+      "noteCount": 15,
+      "rows": [
+        5,
+        5,
+        5
+      ],
+      "autoTranspose": "key",
+      "keyboardReference": "QWERTY US",
+      "status": "community-documented-not-tested-in-game",
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support"
+      ],
+      "inGameLayoutMustMatch": true,
+      "notes": [
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "key": "y",
+          "position": "KeyY"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "key": "u",
+          "position": "KeyU"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "key": "i",
+          "position": "KeyI"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "key": "o",
+          "position": "KeyO"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "key": "p",
+          "position": "KeyP"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "key": "h",
+          "position": "KeyH"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "key": "j",
+          "position": "KeyJ"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "key": "k",
+          "position": "KeyK"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "key": "l",
+          "position": "KeyL"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "key": ";",
+          "position": "Semicolon"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "key": "n",
+          "position": "KeyN"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "key": "m",
+          "position": "KeyM"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "key": ",",
+          "position": "Comma"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "key": ".",
+          "position": "Period"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "key": "/",
+          "position": "Slash"
+        }
+      ]
+    },
+    {
+      "layoutId": "piano-diatonic-22",
+      "labelFr": "22 notes, piano diatonique",
+      "descriptionFr": "Do3 à Do6, gamme de do majeur, trois rangées.",
+      "noteCount": 22,
+      "rows": [
+        7,
+        7,
+        8
+      ],
+      "autoTranspose": "key",
+      "keyboardReference": "QWERTY US",
+      "status": "community-documented-not-tested-in-game",
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support"
+      ],
+      "inGameLayoutMustMatch": true,
+      "notes": [
+        {
+          "midi": 48,
+          "note": "C3",
+          "solfege": "Do3",
+          "key": "z",
+          "position": "KeyZ"
+        },
+        {
+          "midi": 50,
+          "note": "D3",
+          "solfege": "Ré3",
+          "key": "x",
+          "position": "KeyX"
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "solfege": "Mi3",
+          "key": "c",
+          "position": "KeyC"
+        },
+        {
+          "midi": 53,
+          "note": "F3",
+          "solfege": "Fa3",
+          "key": "v",
+          "position": "KeyV"
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "solfege": "Sol3",
+          "key": "b",
+          "position": "KeyB"
+        },
+        {
+          "midi": 57,
+          "note": "A3",
+          "solfege": "La3",
+          "key": "n",
+          "position": "KeyN"
+        },
+        {
+          "midi": 59,
+          "note": "B3",
+          "solfege": "Si3",
+          "key": "m",
+          "position": "KeyM"
+        },
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "key": "a",
+          "position": "KeyA"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "key": "s",
+          "position": "KeyS"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "key": "d",
+          "position": "KeyD"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "key": "f",
+          "position": "KeyF"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "key": "g",
+          "position": "KeyG"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "key": "h",
+          "position": "KeyH"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "key": "j",
+          "position": "KeyJ"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "key": "q",
+          "position": "KeyQ"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "key": "w",
+          "position": "KeyW"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "key": "e",
+          "position": "KeyE"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "key": "r",
+          "position": "KeyR"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "key": "t",
+          "position": "KeyT"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "key": "y",
+          "position": "KeyY"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "key": "u",
+          "position": "KeyU"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "key": "i",
+          "position": "KeyI"
+        }
+      ]
+    },
+    {
+      "layoutId": "piano-chromatic-37",
+      "labelFr": "37 notes, piano chromatique",
+      "descriptionFr": "Do3 à Do6, toutes les altérations, trois rangées.",
+      "noteCount": 37,
+      "rows": [
+        12,
+        12,
+        13
+      ],
+      "autoTranspose": "octave",
+      "keyboardReference": "QWERTY US",
+      "status": "community-documented-not-tested-in-game",
+      "sourceUrls": [
+        "https://github.com/DonElf/Heartopia-Midi-Player/blob/main/HeartopiaMidiPlayer.cpp",
+        "https://github.com/sp0oby/heartopia-midi#heartopia-key-mapping"
+      ],
+      "inGameLayoutMustMatch": true,
+      "notes": [
+        {
+          "midi": 48,
+          "note": "C3",
+          "solfege": "Do3",
+          "key": ",",
+          "position": "Comma"
+        },
+        {
+          "midi": 49,
+          "note": "C#3",
+          "solfege": "Do♯3",
+          "key": "l",
+          "position": "KeyL"
+        },
+        {
+          "midi": 50,
+          "note": "D3",
+          "solfege": "Ré3",
+          "key": ".",
+          "position": "Period"
+        },
+        {
+          "midi": 51,
+          "note": "D#3",
+          "solfege": "Ré♯3",
+          "key": ";",
+          "position": "Semicolon"
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "solfege": "Mi3",
+          "key": "/",
+          "position": "Slash"
+        },
+        {
+          "midi": 53,
+          "note": "F3",
+          "solfege": "Fa3",
+          "key": "o",
+          "position": "KeyO"
+        },
+        {
+          "midi": 54,
+          "note": "F#3",
+          "solfege": "Fa♯3",
+          "key": "0",
+          "position": "Digit0"
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "solfege": "Sol3",
+          "key": "p",
+          "position": "KeyP"
+        },
+        {
+          "midi": 56,
+          "note": "G#3",
+          "solfege": "Sol♯3",
+          "key": "-",
+          "position": "Minus"
+        },
+        {
+          "midi": 57,
+          "note": "A3",
+          "solfege": "La3",
+          "key": "[",
+          "position": "BracketLeft"
+        },
+        {
+          "midi": 58,
+          "note": "A#3",
+          "solfege": "La♯3",
+          "key": "=",
+          "position": "Equal"
+        },
+        {
+          "midi": 59,
+          "note": "B3",
+          "solfege": "Si3",
+          "key": "]",
+          "position": "BracketRight"
+        },
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "key": "z",
+          "position": "KeyZ"
+        },
+        {
+          "midi": 61,
+          "note": "C#4",
+          "solfege": "Do♯4",
+          "key": "s",
+          "position": "KeyS"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "key": "x",
+          "position": "KeyX"
+        },
+        {
+          "midi": 63,
+          "note": "D#4",
+          "solfege": "Ré♯4",
+          "key": "d",
+          "position": "KeyD"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "key": "c",
+          "position": "KeyC"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "key": "v",
+          "position": "KeyV"
+        },
+        {
+          "midi": 66,
+          "note": "F#4",
+          "solfege": "Fa♯4",
+          "key": "g",
+          "position": "KeyG"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "key": "b",
+          "position": "KeyB"
+        },
+        {
+          "midi": 68,
+          "note": "G#4",
+          "solfege": "Sol♯4",
+          "key": "h",
+          "position": "KeyH"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "key": "n",
+          "position": "KeyN"
+        },
+        {
+          "midi": 70,
+          "note": "A#4",
+          "solfege": "La♯4",
+          "key": "j",
+          "position": "KeyJ"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "key": "m",
+          "position": "KeyM"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "key": "q",
+          "position": "KeyQ"
+        },
+        {
+          "midi": 73,
+          "note": "C#5",
+          "solfege": "Do♯5",
+          "key": "2",
+          "position": "Digit2"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "key": "w",
+          "position": "KeyW"
+        },
+        {
+          "midi": 75,
+          "note": "D#5",
+          "solfege": "Ré♯5",
+          "key": "3",
+          "position": "Digit3"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "key": "e",
+          "position": "KeyE"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "key": "r",
+          "position": "KeyR"
+        },
+        {
+          "midi": 78,
+          "note": "F#5",
+          "solfege": "Fa♯5",
+          "key": "5",
+          "position": "Digit5"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "key": "t",
+          "position": "KeyT"
+        },
+        {
+          "midi": 80,
+          "note": "G#5",
+          "solfege": "Sol♯5",
+          "key": "6",
+          "position": "Digit6"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "key": "y",
+          "position": "KeyY"
+        },
+        {
+          "midi": 82,
+          "note": "A#5",
+          "solfege": "La♯5",
+          "key": "7",
+          "position": "Digit7"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "key": "u",
+          "position": "KeyU"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "key": "i",
+          "position": "KeyI"
+        }
+      ]
+    }
+  ]
+}

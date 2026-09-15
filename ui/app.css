@@ -25,7 +25,7 @@
   /* ambre : boutons standards, texte brun fonce 5,2:1 */
   --c-primary:var(--amber); --c-primary-dark:var(--amber-dark); --c-primary-soft:var(--amber-soft); --c-primary-ink:#4a3527;
   /* teal fonce : appel a l'action principal, blanc 4,6:1 */
-  --c-cta:#1f8f88; --c-cta-dark:#15706a; --c-cta-soft:var(--teal-soft); --c-cta-ink:#ffffff;
+  --c-cta:#187b75; --c-cta-dark:#125e59; --c-cta-soft:var(--teal-soft); --c-cta-ink:#ffffff;
   --c-danger:#c94f5a; --c-danger-dark:#a83b46; --c-danger-soft:var(--pink-soft); --c-danger-ink:#ffffff;
   --c-ok:#5e6f2b; --c-ok-soft:var(--olive-soft); --c-ok-line:#d6e0b0;
   --c-warn:#8a5f0f; --c-warn-soft:var(--amber-soft); --c-warn-line:#f3d79a;
@@ -35,7 +35,7 @@
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
   --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:26px; --r-pill:999px;
   --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-2xl:24px;
-  --tap:32px;
+  --tap:36px;
   --sh-1:0 3px 10px rgba(107,90,82,.12); --sh-2:0 10px 30px rgba(107,90,82,.10); --sh-3:0 20px 50px rgba(107,90,82,.25);
   --radius:var(--r-xl);
 }
@@ -44,7 +44,7 @@
 *{box-sizing:border-box;user-select:none}
 html,body{height:100%;margin:0}
 body{
-  font-family:"Fredoka","Nunito","Segoe UI",system-ui,sans-serif;color:var(--c-text);font-size:var(--fs-md);
+  font-family:"Nunito","Segoe UI",system-ui,sans-serif;color:var(--c-text);font-size:var(--fs-md);line-height:1.45;
   background:
     radial-gradient(900px 420px at 15% -10%, #fff8ea 0%, transparent 60%),
     radial-gradient(800px 500px at 105% 110%, #f0dcc0 0%, transparent 55%),
@@ -53,12 +53,14 @@ body{
 }
 #app{display:flex;flex-direction:column;height:100vh;padding:var(--sp-4) var(--sp-5) var(--sp-3);gap:var(--sp-3)}
 button{font:inherit;color:inherit}
-:focus-visible{outline:3px solid var(--c-focus);outline-offset:2px;border-radius:var(--r-sm)}
+/* Un seul anneau de focus dans toute l'application. Pas de border-radius ici : l'outline suit celui
+   de l'élément. La sélection, elle, est ambre ; le focus ne l'imite jamais. */
+:focus-visible{outline:3px solid var(--c-focus);outline-offset:2px}
 :focus:not(:focus-visible){outline:none}
 [hidden]{display:none !important}
 .spacer{flex:1}
 /* titres, messages et champs restent copiables */
-.now .title,.now .sub,.status .msg,.toast__msg,.dlg-body,.notice__text,.hint,.calib-intro,.calib-now,.empty,.stat,
+.now .title,.now .sub,.status .msg,.toast__msg,.dlg-body,.notice__text,.hint,.calib__txt,.empty,.stat,
 input,textarea,select{user-select:text}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important}
@@ -86,7 +88,7 @@ kbd,.kbd{
 .btn:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--btn-shadow)}
 .btn:disabled,.btn.is-loading{cursor:not-allowed;opacity:.55;transform:none;filter:none;box-shadow:0 3px 0 var(--btn-shadow)}
-.btn:focus-visible{outline-offset:3px;border-radius:var(--r-pill)}
+.btn:focus-visible{outline-offset:3px}
 .btn--primary{--btn-bg:var(--c-primary);--btn-ink:var(--c-primary-ink);--btn-shadow:var(--c-primary-dark)}
 .btn--cta{--btn-bg:var(--c-cta);--btn-ink:var(--c-cta-ink);--btn-shadow:var(--c-cta-dark)}
 .btn--secondary{--btn-bg:var(--c-surface-2);--btn-ink:var(--c-text);--btn-shadow:var(--c-line-2)}
@@ -151,17 +153,55 @@ kbd,.kbd{
 .chip--info{background:var(--c-info-soft);border-color:var(--c-info-line);color:var(--c-info)}
 
 /* ================================================================ composant .card */
-main{display:none;grid-template-columns:minmax(300px,370px) 1fr;gap:14px;flex:1;min-height:0}
+/* Chaque activite a sa repartition : une bibliotheque justifie une colonne, la cuisine non. */
+/* UNE SEULE MESURE par carte. La carte porte la largeur lisible et son contenu l'occupe en entier ;
+   sur un grand écran le fond ambiant reste visible autour. Le piège evité ici : borner AUSSI les lignes
+   internes (l'ancien --w-field à 640 px) dans une carte bien plus large — les contrôles se tassaient à
+   gauche, les barres de titre poussaient leurs boutons à droite, et le milieu restait vide.
+   Les listes (catalogue, salon) font exception : un tableau gagne à prendre toute la fenêtre. */
+:root{--w-lib:340px; --w-catalog:100%; --w-together:100%; --w-cook:100%}
+main{display:none;gap:14px;flex:1;min-height:0}
 main.active{display:grid}
+/* Musique : une seule page, trois destinations, une grille par destination. */
+#pageMusic.active{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+.musicviews{display:grid;min-height:0;gap:14px;grid-column:1/-1}
+.musicview{display:none;min-height:0}
+.musicview.active{display:grid;gap:14px;min-height:0}
+/* Ma bibliothèque : colonne de gauche + espace du morceau, tous deux bornés. */
+#viewLibrary.active{grid-template-columns:minmax(280px,var(--w-lib)) minmax(0,1fr);align-items:stretch}
+/* l'espace du morceau prend la hauteur de son contenu, pas celle de l'écran */
+#musicPlayer{align-self:stretch;max-height:100%;overflow-x:hidden;justify-self:stretch}
+/* le catalogue est une liste : il prend la hauteur, sa liste défile. « Jouer ensemble » aussi. */
+#viewDiscover.active > .card{align-self:stretch;max-height:100%}
+/* Tant qu'aucune methode n'est choisie, la carte ne contient que deux boutons : l'etirer sur toute
+   la hauteur donnerait un grand blanc. Elle epouse son contenu et se borne quand un panneau s'ouvre. */
+#viewTogether.active > .card{align-self:start;max-height:100%}
+#onlineList{flex:1;min-height:0;overflow:auto}
+#togetherPanel{flex:1;min-height:0;overflow:auto}
+/* Découvrir et Jouer ensemble : une seule colonne, large mais bornée. */
+#viewDiscover.active,#viewTogether.active{grid-template-columns:minmax(0,1fr)}
+.musicview > .card{min-width:0}
+/* Dessin : l'apercu est la zone centrale, les reglages tiennent dans un panneau confortable */
+#pageImage.active{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}
+#pageImage.is-empty.active{grid-template-columns:minmax(0,1fr)}
+/* Cuisine : une seule colonne, centree */
+#pageCook.active{grid-template-columns:minmax(0,1fr)}
+main > .card{min-width:0}
 .card{
   background:var(--c-surface);border-radius:var(--radius);border:3px solid #fff;
   box-shadow:var(--sh-2);display:flex;flex-direction:column;min-height:0
 }
-.card__head,.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}
-.card__head h2,.card-h h2{margin:0;font-size:17px;font-weight:600}
+.card__head,.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px 8px;flex-wrap:wrap}
+.card__head h2,.card-h h2{margin:0;font-size:17px;font-weight:600;white-space:nowrap}
+.card__head .btn{flex:0 1 auto;min-width:0}
 .card__section{padding:8px 16px;display:flex;flex-direction:column;gap:var(--sp-2)}
 .card__section + .card__section{border-top:1px solid var(--c-line)}
-.card__section h4,.opts h4{margin:4px 0 -2px;font-size:var(--fs-xs);color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+/* Titre de section : casse normale, taille du corps. Les capitales orange rendaient chaque sous-titre
+   aussi criant que le bouton de lancement. */
+/* Casse normale (plus de capitales criardes) mais la couleur chaude de Heartopia est conservée :
+   c'est elle qui donne son caractère aux menus du jeu. */
+.card__section h4,.opts h4{margin:2px 0 6px;font-size:var(--fs-lg);color:var(--accent);font-weight:600;letter-spacing:0;
+  font-family:"Fredoka","Nunito","Segoe UI",system-ui,sans-serif}
 .count{font-size:var(--fs-xs);color:var(--c-text-2);background:var(--panel-soft);padding:3px 9px;border-radius:var(--r-pill);border:1px solid var(--line)}
 
 /* ================================================================ composant .field (+ .switch .stepper .select) */
@@ -204,6 +244,9 @@ input[type=range]{flex:1;accent-color:var(--amber);height:6px;min-height:var(--t
 .line{display:flex;align-items:center;gap:12px}
 .line .label{font-size:var(--fs-sm);color:var(--c-text-2);font-weight:600;width:74px;flex:none}
 .slider{display:flex;align-items:center;gap:8px;flex:1}
+/* Une course de 1 100 px n'apporte aucune précision : 220-320 px suffisent et gardent la valeur près du libellé. */
+.slider--speed{flex:0 1 320px;min-width:220px}
+.listenhint{margin:0;text-align:left;color:var(--c-text-2)}
 
 /* ================================================================ composant .notice */
 .notice{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:var(--r-lg);border:2px solid var(--c-line);background:var(--c-surface-2);font-size:var(--fs-sm);line-height:1.5}
@@ -224,6 +267,10 @@ input[type=range]{flex:1;accent-color:var(--amber);height:6px;min-height:var(--t
 .disclosure[open] > summary::before{transform:rotate(90deg)}
 .disclosure[open] > summary{color:var(--c-text)}
 .disclosure__body{padding:4px 14px 12px}
+/* Chrome masque le contenu d'un <details> ferme par un display:none de sa feuille par defaut.
+   Toute regle qui redefinit display sur .disclosure__body (flex, grid...) le demasque : le bloc se
+   dessine alors par-dessus la suite de la page. Ce garde-fou reprend la main dans tous les cas. */
+.disclosure:not([open]) > .disclosure__body{display:none}
 
 /* ================================================================ composant .countdown */
 .countdown{font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--accent);min-width:64px;text-align:center}
@@ -304,21 +351,20 @@ header{display:flex;align-items:center;gap:var(--sp-4)}
 .row__act.x:hover{background:var(--c-danger-soft);color:var(--c-danger)}
 .row__act.e:hover{background:var(--c-primary-soft);color:var(--c-warn)}
 .row__act.star{font-size:16px}
+.row__act.more{font-size:18px;letter-spacing:1px}
 .row__act.star.on{color:var(--amber-dark);opacity:1}
 .row__act.star:hover{background:var(--c-primary-soft);color:var(--c-warn)}
 .row input.rename{font:inherit;font-size:var(--fs-md);font-weight:600;color:var(--c-text);background:#fff;border:2px solid var(--amber);border-radius:10px;padding:5px 8px;flex:1;min-width:0;outline:none;user-select:text;margin:2px 0}
-
-.drop{
-  margin:4px 10px 12px;padding:14px;border-radius:18px;border:2px dashed var(--line2);background:var(--panel-soft);
-  text-align:center;color:var(--c-text-2);font-size:var(--fs-sm);line-height:1.5;transition:.15s
-}
-.drop b{color:var(--c-text)}
-body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:var(--c-cta)}
 .empty{padding:30px 20px;text-align:center;color:var(--c-text-2);font-size:var(--fs-md);line-height:1.6}
 .empty .big{font-size:40px;margin-bottom:6px}
 
 /* ================================================================ lecteur */
-.player{display:flex;flex-direction:column;padding:12px 20px 8px;gap:5px;overflow:auto;width:100%;justify-self:stretch}
+.player{display:flex;flex-direction:column;padding:16px 22px 14px;gap:10px;overflow:auto;width:100%}
+/* La carte porte la mesure ; son contenu l'occupe entierement. Plafonner en plus les lignes
+   internes les laissait flotter a gauche d'une carte bien plus large. Seuls les curseurs
+   gardent une course propre (flex-basis de .slider--speed / .slider--vol). */
+/* les blocs ne se compriment pas : le panneau defile, et l'action principale reste collee en bas */
+.player > *,.cookbody > *{flex:0 0 auto}
 .player::-webkit-scrollbar{width:8px}
 .player::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
 .now{display:flex;align-items:center;gap:14px}
@@ -343,22 +389,37 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .progress[hidden],.line[hidden]{display:none}
 
 /* transport : boutons ronds */
-.controls{display:flex;align-items:center;justify-content:center;gap:16px;padding:2px 0 2px}
+/* le volume passe à la ligne plutôt que d'être rogné quand la fenêtre est étroite */
+.controls{display:flex;align-items:center;gap:10px;padding:2px 0;flex-wrap:wrap}
 .ctl{border:2px solid var(--line);position:relative;flex-direction:column;gap:0;line-height:1}
-.ctl.main{width:60px;height:60px;font-size:22px;border-color:#fff;box-shadow:0 0 0 4px var(--c-primary-soft),0 5px 0 4px #d9b46a}
-.ctl.main:active{box-shadow:0 0 0 4px var(--c-primary-soft),0 1px 0 4px #d9b46a}
+.ctl.main{width:44px;height:44px;font-size:18px;border-color:var(--line2)}
 .ctl .lbl{font-size:9px;color:var(--c-text-2);font-weight:700;white-space:nowrap;line-height:1;margin-top:1px;letter-spacing:.2px}
-.ctl.main .lbl{color:var(--c-primary-ink);font-size:9px}
+.playlbl{font-size:var(--fs-sm);font-weight:600;color:var(--c-text-2)}
+.slider--vol{flex:0 1 auto;min-width:0}
+.slider--vol input[type=range]{flex:0 1 130px;min-width:90px}
+.slider--vol .v{flex:none}
+.slider--vol .label{width:auto;flex:none}
+.listen.is-dim{opacity:.55;pointer-events:none}
+/* préécoute repliée : une seule ligne de transport, sans barre de progression ni sous-titre */
+.listen.is-compact{padding:6px 14px;gap:0}
+.listen.is-compact .sectionhead .hint,.listen.is-compact .progress{display:none}
+.listen.is-compact .sectionhead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 .gamebtn{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px;padding:2px 0 0}
 .hint{font-size:var(--fs-xs);color:var(--c-text-2);text-align:center;margin-top:-2px;line-height:1.45}
+.hint.left,.notice__text,.field__help{max-width:96ch}
 .hint.left{text-align:left;margin:0}
 .player .seg{align-self:flex-start}
 
 /* bloc « Dans Heartopia » : mode + appel a l'action + panneau du mode (ou bandeau de session) */
-.card__section.game{border:2px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-surface-2);padding:8px 14px 8px;gap:5px}
-.card__section.game .moderow{display:flex;align-items:center;gap:10px}
-.card__section.game .moderow h4{margin:0;flex:none}
+.card__section.game{border:2px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-surface-2);padding:10px 14px;gap:6px}
+.card__section.game.is-room{flex:1;min-height:0}
+.card__section.listen{border:2px solid var(--c-line);border-radius:var(--r-lg);background:#fff;padding:10px 14px;gap:6px}
+.sectionhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sectionhead h4{margin:0;flex:none}
+.sectionhead .hint{margin:0;text-align:left;flex:1;min-width:120px}
+.card__section.game .moderow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card__section.game .moderow .label{flex:none}
 .card__section.game .seg{align-self:center;justify-content:center;padding:3px;flex-wrap:nowrap;flex:none;gap:2px}
 .card__section.game .seg > button{min-height:30px;padding:2px 9px;gap:6px}
 .line > .seg{flex:none}
@@ -368,19 +429,24 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .modepanel .seg,.card__section .seg{background:#fff;border-color:var(--line)}
 .modepanel .seg{padding:2px}
 .modepanel .seg > button{min-height:26px;padding:1px 10px}
-.playrow{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;max-width:980px}
-.playrow .slider{min-width:80px}
-.playrow .line{flex:1;min-width:0}
-.playrow .line .label{width:auto;min-width:0}
-.playrow .line--full{flex:1 1 100%}
-.playrow .line--auto{flex:0 0 auto}
+.songset{margin-top:6px}
+.songset .disclosure__body{display:flex;flex-direction:column;gap:10px}
+.songset .line--auto{align-items:center;gap:10px;flex-wrap:wrap}
+/* base de 220px pour les hints des LIGNES horizontales du bloc. .keyboard etant en colonne,
+   flex-basis y designerait la hauteur : un texte d'une ligne se reserverait 220px de vide. */
+.songset .line > .hint{text-align:left;margin:0;flex:1 1 220px}
+.songset .keyboard > .hint{text-align:left;margin:0;flex:0 0 auto}
+/* les rangees s'alignent sous le resume, pas au centre d'une colonne large */
+.keysblock .keyboard{align-items:flex-start}
+.keysblock{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.label--wide{width:auto;min-width:112px;flex:none}
+.line--stack{flex-wrap:wrap}
+.line--stack > .seg{flex:0 1 auto}
+.btnrow--center{justify-content:center}
 .transp{display:inline-flex;align-items:center;gap:6px}
 .transp .stepper__v{min-width:46px;padding:3px 8px}
 .transp .stepper__btn{width:28px;height:28px}
-.playerfoot{display:flex;align-items:center;gap:8px}
-.playerfoot .disclosure{flex:1}
 .disclosure--inline > summary{padding:3px 12px;min-height:28px}
-.playerfoot .btn--sm{min-height:28px;padding:3px 10px}
 .hklist{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:center;font-size:var(--fs-sm);margin:4px 0}
 .hklist .kbd{justify-self:start}
 
@@ -389,6 +455,57 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .offsetctl input[type=range]{flex:1;min-width:80px}
 .offsetctl .stepper__v{min-width:76px}
 .offsetctl .stepper__btn{width:28px;height:28px;font-size:var(--fs-xs)}
+
+/* ================================================================ destination « Jouer ensemble » */
+.methods{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.method{
+  display:flex;align-items:flex-start;gap:12px;text-align:left;padding:12px 14px;border-radius:var(--r-lg);
+  border:2px solid var(--c-line);background:var(--c-surface);cursor:pointer;font:inherit;color:var(--c-text);transition:.12s
+}
+.method:hover{background:#fff;border-color:var(--c-line-2)}
+.method.active,.method[aria-checked="true"]{border-color:var(--amber);background:var(--c-primary-soft);box-shadow:0 3px 10px rgba(232,165,49,.20)}
+.method:disabled{opacity:.55;cursor:not-allowed}
+.method__ic{font-size:22px;line-height:1.2;flex:none}
+.method__txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.method__nm{font-weight:700;font-size:var(--fs-md)}
+.method__tag{margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--c-primary-soft);
+  color:var(--accent);font-size:var(--fs-xs);font-weight:700;vertical-align:middle}
+.method__sub{font-size:var(--fs-sm);color:var(--c-text-2);line-height:1.45}
+#togetherPanel{gap:var(--sp-3)}
+
+/* rappel discret dans le lecteur : une session à plusieurs est armée */
+.moderecall{
+  display:inline-flex;align-items:center;gap:8px;align-self:flex-start;min-height:32px;padding:4px 12px;
+  border-radius:var(--r-pill);border:2px solid var(--c-info-line);background:var(--c-cta-soft);color:var(--c-info);
+  font:inherit;font-weight:700;font-size:var(--fs-sm);cursor:pointer
+}
+.moderecall:hover{filter:brightness(1.03)}
+.moderecall__go{font-weight:600;text-decoration:underline}
+
+/* ================================================================ catalogue : des lignes régulières */
+.search--wide{flex:1 1 260px;max-width:420px}
+.cataloghead{
+  display:grid;grid-template-columns:minmax(0,1fr) 200px 70px 230px;gap:12px;align-items:center;
+  padding:2px 14px 6px;font-size:var(--fs-xs);font-weight:700;color:var(--c-text-2);letter-spacing:.2px
+}
+.subnav{justify-self:center}
+.cataloghead .c-dur{text-align:right}
+.cataloghead .c-act{text-align:right}
+.list--catalog .row--online{
+  display:grid;grid-template-columns:minmax(0,1fr) 200px 70px 230px;gap:12px;align-items:center;
+  padding:7px 14px;flex-wrap:nowrap
+}
+.list--catalog .row--online .tt{min-width:0;display:flex;flex-direction:column;gap:1px}
+.list--catalog .row--online .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list--catalog .c-by{font-size:var(--fs-sm);color:var(--c-text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list--catalog .c-dur{font-size:var(--fs-sm);color:var(--c-text-2);text-align:right;font-variant-numeric:tabular-nums}
+/* la zone d'action a une largeur fixe : un badge ne pousse jamais le titre des lignes voisines */
+.list--catalog .row__actions{justify-content:flex-end;gap:8px;min-width:0;position:static;opacity:1;pointer-events:auto;background:none;padding:0}
+@media (max-width:900px){
+  .cataloghead{display:none}
+  .list--catalog .row--online{grid-template-columns:minmax(0,1fr) 180px}
+  .list--catalog .c-by,.list--catalog .c-dur{grid-column:1;font-size:var(--fs-xs)}
+}
 
 /* ================================================================ composant .card--session (bandeau de session : compte a rebours, lecture, dessin, cuisine) */
 .card--session{
@@ -453,26 +570,41 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .status .dot{width:9px;height:9px;border-radius:50%;background:var(--ink3);flex:none}
 .status.preview .dot{background:var(--teal);box-shadow:0 0 0 4px var(--teal-soft)}
 .status.game .dot{background:var(--olive);box-shadow:0 0 0 4px var(--olive-soft)}
-.status .msg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status .msg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .status .ver{color:var(--c-text-2);font-size:var(--fs-xs)}
+.status .stopbtn{min-height:28px;padding:3px 14px}
 
-/* ================================================================ page Image */
-.thumb{
-  margin:4px 10px 0;height:150px;border-radius:18px;border:2px solid var(--line);background:var(--panel-soft);
-  display:grid;place-items:center;overflow:hidden;position:relative;flex:none
-}
-.thumb img{max-width:100%;max-height:100%;object-fit:contain;display:none}
-.thumb.has img{display:block}
-.thumb.has .empty{display:none}
-.thumb .empty{padding:14px 20px;font-size:var(--fs-sm)}
-.thumb .empty .big{font-size:34px;margin-bottom:2px}
-.thumb .dim{position:absolute;right:8px;bottom:8px;font-size:var(--fs-xs);font-weight:700;background:rgba(255,255,255,.9);color:var(--c-text-2);padding:3px 8px;border-radius:var(--r-pill);border:1px solid var(--line);display:none}
-.thumb.has .dim{display:block}
-.opts{padding:8px 14px 6px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;overflow-x:hidden}
-.opts .label{width:84px}
-/* la colonne est etroite : les segmentes (formats, cadrage) se replient au lieu de deborder */
-.opts .line{flex-wrap:wrap}
-.opts .line > .seg{flex:1 1 auto;min-width:0}
+/* ================================================================ activite Dessin */
+.optsbody{padding:6px 16px 14px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;overflow-x:hidden}
+.optsbody::-webkit-scrollbar{width:8px}
+.optsbody::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.optgroup{display:flex;flex-direction:column;gap:8px}
+.optgroup + .optgroup{border-top:1px solid var(--c-line);padding-top:12px}
+.optgroup__head{display:flex;align-items:center;gap:8px}
+.optgroup__head h4{margin:0;flex:1}
+.optgroup__head .btn--ghost{min-height:28px;padding:2px 10px;font-size:var(--fs-md)}
+.optgroup .line{flex-wrap:wrap;gap:8px 12px}
+.optgroup .line > .seg{flex:0 1 auto;min-width:0}
+.optgroup .hint{text-align:left;margin:-2px 0 0}
+.fmtcalib{font-weight:600}
+.fmtcalib.is-ok{color:var(--c-ok)}
+.fmtcalib.is-todo{color:var(--c-warn)}
+.alphanote{margin:0;padding:0 2px;color:var(--c-text-2);line-height:1.45}
+.imgsrc{color:var(--c-text-2);font-weight:500}
+.drawready{margin:0;font-size:var(--fs-sm);color:var(--c-ok);font-weight:600;display:flex;align-items:center;gap:8px;justify-content:center}
+.drawready b{color:var(--c-text)}
+.optgroup .switch{font-size:var(--fs-sm)}
+.drawwork{display:flex;flex-direction:column;gap:8px;padding:0 16px 12px;flex:1;min-height:0}
+.now--slim .disc{width:40px;height:40px;font-size:18px;box-shadow:0 0 0 4px var(--caramel-ring)}
+.now--slim .title{font-size:var(--fs-lg)}
+/* etat vide : une seule zone d'import, dominante */
+.emptystate{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;
+  margin:8px 16px 18px;padding:28px 24px;border-radius:var(--r-xl);border:3px dashed var(--c-line-2);background:var(--c-surface-2)}
+.emptystate__art{font-size:56px;line-height:1}
+.emptystate h3{margin:0;font-size:var(--fs-xl);font-weight:600}
+.emptystate p{margin:0;max-width:52ch;font-size:var(--fs-md);color:var(--c-text-2);line-height:1.5}
+.emptystate .hint{margin:0}
+body.dragging .emptystate{border-color:var(--teal);background:var(--c-cta-soft)}
 
 .canvaswrap{
   flex:1;min-height:180px;border-radius:18px;border:2px solid var(--line);background:var(--panel-soft);
@@ -498,16 +630,30 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 }
 .sw i{width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line2);display:block}
 .swatches .none{font-size:var(--fs-xs);color:var(--c-text-2);font-weight:600}
-.player.image{gap:8px}
-.opts .switch{font-size:var(--fs-sm)}
-.opts .method{display:flex;flex-direction:column;gap:4px}
-.opts .method .hint{margin:-2px 0 2px 48px}
 
-/* assistant de calibrage */
-.modal.calib{width:600px}
-.modal.calib h2 .fmt{display:inline-block;margin-left:6px;padding:2px 10px;border-radius:var(--r-pill);background:var(--c-primary-soft);color:var(--c-warn);font-size:var(--fs-sm);vertical-align:middle}
-.calib-intro{font-size:var(--fs-sm);line-height:1.55;color:var(--c-text-2);margin:4px 0 12px}
-.calib-intro b{color:var(--c-text)}
+/* assistant de configuration (dessin et cuisine) */
+.modal.calib{width:660px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:10px;padding:18px 22px 20px}
+.calib__head{display:flex;align-items:flex-start;gap:12px}
+.calib__head h2{margin:0}
+.calib__count{margin:2px 0 0;font-size:var(--fs-sm);font-weight:700;color:var(--accent)}
+.modal.calib .close{position:static;flex:none}
+.calib__bar{height:8px;border-radius:var(--r-pill);background:var(--panel-soft);border:1px solid var(--line);overflow:hidden;flex:none}
+.calib__fill{height:100%;background:linear-gradient(90deg,#7fd6d0,var(--c-cta));transition:width .2s linear}
+.calib__prep .disclosure__body ol{margin:0}
+.calib__now{display:flex;gap:16px;align-items:flex-start;padding:14px;border-radius:var(--r-lg);background:var(--c-cta-soft);border:2px solid var(--c-info-line)}
+.calib__art{flex:0 0 240px;max-width:44%;display:flex;flex-direction:column;gap:4px}
+.calib__art svg{width:100%;height:auto;border-radius:var(--r-md);background:#fff}
+.calib__artnote{font-size:11px;color:var(--c-text-2);line-height:1.35}
+.calib__txt{flex:1;min-width:0}
+.modal.calib .calib__txt h3{margin:0 0 6px;font-size:var(--fs-xl);font-weight:600;color:var(--c-text);text-transform:none;letter-spacing:0}
+.calib__txt p{margin:0 0 8px;font-size:var(--fs-md);line-height:1.5;color:var(--c-text)}
+.calib__txt .calib__key{font-size:var(--fs-md);font-weight:600}
+.calib__txt .calib__state{font-size:var(--fs-sm);color:var(--c-info);font-weight:600;margin:0}
+.calmark{animation:calpulse 1.4s ease-in-out infinite;transform-origin:center}
+@keyframes calpulse{50%{opacity:.35}}
+.stepback{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.stepback:hover{color:var(--accent)}
+.modal.calib .actions{margin-top:0;justify-content:flex-start;align-items:center;flex-wrap:wrap}
 .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .steps li{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:14px;font-size:var(--fs-md);font-weight:600;color:var(--c-text-2);border:2px solid transparent;opacity:.75}
 .steps li .n{width:24px;height:24px;border-radius:50%;background:var(--panel-soft);border:2px solid var(--line);display:grid;place-items:center;font-size:var(--fs-xs);font-weight:700;flex:none}
@@ -516,22 +662,22 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .steps li.now{color:var(--c-text);background:var(--c-primary-soft);border-color:#f6d99a;opacity:1}
 .steps li.now .n{background:var(--amber);border-color:var(--amber);color:var(--c-primary-ink);animation:bounce 1s infinite}
 .cook-steps li{opacity:1;color:var(--c-text-2);padding:4px 10px;font-size:var(--fs-sm)}
-.calib-now{margin-top:12px;font-size:var(--fs-md);font-weight:600}
-.calib-now .notice__text{line-height:1.5}
-.modal.calib .steps{max-height:38vh;overflow:auto}
-.modal.calib .steps li{padding:5px 10px;font-size:var(--fs-sm)}
+.modal.calib .steps{max-height:30vh;overflow:auto}
+.modal.calib .steps li{padding:4px 8px;font-size:var(--fs-sm)}
 
 /* ================================================================ reglages v2 : panneau a sections, sauvegarde automatique */
 .overlay{position:fixed;inset:0;background:rgba(244,234,216,.75);display:none;place-items:center;z-index:10;backdrop-filter:blur(3px)}
 .overlay.open{display:grid}
 .modal{width:540px;max-height:92vh;overflow:auto;background:var(--panel);border-radius:var(--radius);border:3px solid #fff;padding:20px 24px 22px;box-shadow:var(--sh-3);position:relative}
 .modal h2{margin:0 0 10px;font-size:var(--fs-xl);font-weight:600}
-.modal h3{margin:14px 0 6px;font-size:var(--fs-xs);color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.modal h3{margin:14px 0 6px;font-size:var(--fs-lg);color:var(--c-text);font-weight:600;letter-spacing:0}
 .close{position:absolute;top:14px;right:16px;width:38px;height:38px;border-radius:50%;background:var(--panel-soft);border:2px solid #fff;box-shadow:0 3px 8px rgba(107,90,82,.15);display:grid;place-items:center;cursor:pointer;color:var(--c-text);font-size:18px;font-weight:700;padding:0}
 .close:hover{background:var(--c-danger-soft);color:var(--c-danger)}
 .modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 
-.modal.settings{width:720px;max-width:calc(100vw - 32px);height:92vh;padding:0;display:flex;flex-direction:column;overflow:hidden}
+/* Hauteur STABLE entre catégories : « Stockage » ne doit pas faire sauter la fenêtre à 900 px de haut,
+   ni chaque clic de catégorie la redimensionner. */
+.modal.settings{width:min(960px,calc(100vw - 32px));height:min(82vh,720px);padding:0;display:flex;flex-direction:column;overflow:hidden}
 .settings__head{display:flex;align-items:center;gap:12px;padding:14px 18px 12px 22px;border-bottom:1px solid var(--c-line);flex:none}
 .settings__head h2{margin:0;flex:1}
 .settings__saved{
@@ -542,20 +688,26 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .settings__saved.err{color:var(--c-danger);background:var(--c-danger-soft);border-color:#f0b9b9}
 .modal.settings .close{position:static;width:var(--tap);height:var(--tap);flex:none}
 .settings__body{display:flex;flex:1;min-height:0}
-.settings__nav{width:176px;flex:none;display:flex;flex-direction:column;gap:2px;padding:12px 10px;border-right:1px solid var(--c-line);background:var(--c-surface-2);overflow:auto}
+.settings__nav{width:216px;flex:none;display:flex;flex-direction:column;gap:2px;padding:12px 10px;border-right:1px solid var(--c-line);background:var(--c-surface-2);overflow-y:auto;overflow-x:hidden}
 .settings__nav button{
   display:flex;align-items:center;gap:8px;min-height:36px;padding:6px 10px;border-radius:var(--r-md);border:2px solid transparent;background:transparent;
-  color:var(--c-text-2);font-weight:600;font-size:var(--fs-sm);cursor:pointer;text-align:left;white-space:nowrap
+  color:var(--c-text-2);font-weight:600;font-size:var(--fs-sm);cursor:pointer;text-align:left;line-height:1.3
 }
+.settings__nav .ic{flex:none}
+/* survol : fond blanc seul ; selection : fond ambre + barre laterale ; focus clavier : anneau (jamais supprime) */
 .settings__nav button:hover{background:#fff;color:var(--c-text)}
-.settings__nav button.active{background:#fff;color:var(--c-text);border-color:var(--amber);box-shadow:var(--sh-1)}
+.settings__nav button.active{background:var(--c-primary-soft);color:var(--c-text);border-color:var(--amber);box-shadow:inset 3px 0 0 var(--accent-dark)}
+.settings__nav button.active:hover{background:var(--c-primary-soft)}
 .settings__nav .ic{width:20px;text-align:center;font-size:15px}
 .settings__pane{flex:1;min-width:0;overflow:auto;padding:14px 22px 22px;display:flex;flex-direction:column;gap:2px;outline:none}
 .settings__pane::-webkit-scrollbar{width:8px}
 .settings__pane::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
 .settings__pane h3{margin:2px 0 4px;font-size:var(--fs-xl);font-weight:600;color:var(--c-text);text-transform:none;letter-spacing:0}
 .settings__intro{font-size:var(--fs-sm);color:var(--c-text-2);margin:0 0 8px;line-height:1.45}
-.settings__group{margin:10px 0 2px;font-size:var(--fs-xs);color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.settings__group{display:block;margin:14px 0 0}
+.settings__group + .settings__group{border-top:2px solid var(--c-line);padding-top:8px;margin-top:20px}
+.settings__grouphead{margin:6px 0 2px;font-size:var(--fs-lg);color:var(--c-text);font-weight:600;text-transform:none;letter-spacing:0}
+.settings__actions{flex-wrap:wrap}
 .settings__actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--c-line)}
 .settings__pane .disclosure{margin-top:12px}
 .settings__pane .disclosure .sfield{padding:6px 0}
@@ -596,7 +748,9 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .about{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:4px 0 8px;font-size:var(--fs-sm);align-items:center}
 .about dt{color:var(--c-text-2);font-weight:600;margin:0}
 .about dd{margin:0;user-select:text;overflow-wrap:anywhere;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.about .path{font-family:Consolas,"Cascadia Mono",monospace;font-size:var(--fs-xs);color:var(--c-text-2);background:var(--panel-soft);padding:3px 8px;border-radius:var(--r-sm);border:1px solid var(--line)}
+.about .path,.path{font-family:Consolas,"Cascadia Mono",monospace;font-size:var(--fs-xs);color:var(--c-text-2);background:var(--panel-soft);padding:5px 9px;border-radius:var(--r-sm);border:1px solid var(--line);user-select:text}
+.pathrow{gap:8px;flex-wrap:wrap}
+.path--wide{flex:1 1 260px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ================================================================ composant .dialog (boite de dialogue style Heartopia) */
 .dlg-overlay{position:fixed;inset:0;background:rgba(120,140,200,.28);display:none;place-items:center;z-index:30;backdrop-filter:blur(2px)}
@@ -647,15 +801,13 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .gamebtn .btn.cream,.gamebtn .btn--secondary{font-size:var(--fs-md);min-height:40px}
 .card-h .btn{min-height:var(--tap)}
 
-/* ===== En ligne / Salon ===== */
-/* page En ligne : carte Compte + Mise à jour à gauche, bibliothèque en ligne à droite */
-#pageOnline.active{grid-template-columns:minmax(280px,360px) minmax(0,1fr)}
-#pageOnline > .card{min-width:0}
-.onlineside{overflow:auto}
-.onlineside::-webkit-scrollbar{width:8px}
-.onlineside::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
-.onlinefoot{margin-top:auto}
-.onlinefoot .hint{margin:0;overflow-wrap:anywhere}
+/* ===== Decouvrir des morceaux / Compte / Salon ===== */
+/* navigation locale de la Musique : Ma bibliotheque | Decouvrir des morceaux */
+/* Navigation locale de la Musique, au-dessus de tout l'espace musical. */
+.subnav{align-self:start;justify-self:start;flex-wrap:nowrap;background:rgba(181,111,63,.10);margin:0}
+.subnav > button{justify-content:center;min-height:34px;font-size:var(--fs-sm);padding:4px 18px}
+.subview{display:flex;flex-direction:column;flex:1;min-height:0}
+.discover-notice{margin:0 12px 6px}
 
 /* avatar Discord (compte, joueurs du salon) : image ou initiale */
 .avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none;background:var(--panel-soft);border:2px solid #fff;display:inline-grid;place-items:center;font-weight:700}
@@ -665,15 +817,11 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .spinner{width:16px;height:16px;border-radius:50%;border:3px solid var(--c-line-2);border-right-color:var(--c-cta);animation:spin .8s linear infinite;flex:none}
 
 /* carte Compte */
-.account-box{display:flex;flex-direction:column;gap:var(--sp-2)}
 .account-card{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .account-card__id{flex:1 1 110px;min-width:0}
 .account-card .chip,.account-card .btn{flex:none}
 .account-card__id .nm{font-weight:700;font-size:var(--fs-lg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .account-card__id .m{font-size:var(--fs-xs);color:var(--c-text-2)}
-.account-out{display:flex;flex-direction:column;gap:8px;align-items:stretch}
-.account-out .btn{justify-content:center}
-.account-out .hint{margin:0}
 .account-wait{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .account-wait__top{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);line-height:1.4}
 .account-wait .field{width:100%;margin:0}
@@ -688,8 +836,8 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .update-box .bar{height:10px}
 
 /* bibliothèque en ligne : lignes, progression de téléchargement, pagination, modération */
-.row--online{padding:5px 8px;gap:8px}
-.row--online .tt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.row--online{padding:5px 8px;gap:8px 8px;flex-wrap:wrap}
+.row--online .tt{flex:1 1 150px;min-width:0;display:flex;flex-direction:column;gap:1px}
 /* bibliotheque en ligne : les actions sont l'interet de la ligne, elles restent visibles */
 .row--online .row__actions{position:static;opacity:1;pointer-events:auto;padding-left:0;background:none;gap:6px}
 .row--online .n{font-size:var(--fs-md)}
@@ -698,10 +846,6 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .dlprog .fill{height:100%;background:linear-gradient(90deg,#7fd6d0,var(--c-cta));border-radius:var(--r-pill)}
 .pager{display:flex;align-items:center;justify-content:center;gap:10px;padding:2px 12px 4px;font-size:var(--fs-sm);color:var(--c-text-2);font-variant-numeric:tabular-nums}
 .onlinehint{padding:0 14px 6px;margin:0}
-.onlineadmin{display:flex;flex-direction:column;gap:6px;padding:0 12px 12px}
-.onlineadmin .disclosure__body{padding:2px 6px 8px;max-height:220px;overflow:auto}
-.onlineadmin .empty{padding:12px;font-size:var(--fs-sm)}
-.onlineadmin .hint{text-align:left;margin:4px 2px 0}
 .dlg-input{width:100%}
 
 /* panneau Salon (#roomBox) : code, horloge, joueurs, morceau */
@@ -719,7 +863,11 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .roomsong .ic{color:var(--accent);flex:none}
 .roomsong .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .roomsong .m{color:var(--c-text-2);font-size:var(--fs-xs);font-variant-numeric:tabular-nums;flex:none}
-.roomplayers{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;max-height:130px;overflow:auto}
+.roomplayers{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;max-height:112px;overflow:auto}
+/* l'action principale du salon reste visible même quand le panneau défile */
+.roomcta{position:sticky;bottom:0;z-index:1;flex-direction:column;gap:2px;padding:8px 0 2px;margin-top:2px;
+  background:var(--c-surface-2);box-shadow:0 -8px 10px -6px rgba(107,90,82,.18)}
+.roomcta .hint{margin:0}
 .roomplayer{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);padding:2px 8px;border-radius:var(--r-md);background:#fff;border:1px solid var(--c-line);min-height:32px}
 .roomplayer.is-off{opacity:.62}
 .roomplayer .nm{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -729,15 +877,381 @@ body.dragging .drop{border-color:var(--teal);background:var(--teal-soft);color:v
 .roomplayer .bdg .wait{color:var(--c-warn)}
 .roomplayer .bdg .off{color:var(--c-danger)}
 
-/* en-tête à l'étroit (960 px) : la pastille de compte garde l'avatar, la marque perd son sous-titre */
-@media (max-width:1015px){
+/* ================================================================ panneau generique (compte, aide, administration) */
+.modal.panel{width:560px;max-width:calc(100vw - 32px);max-height:88vh;padding:0;display:flex;flex-direction:column;overflow:hidden}
+.modal.panel--wide{width:760px}
+.modal.panel .close{position:static;flex:none}
+.panel__body{padding:16px 22px 22px;overflow:auto;outline:none;display:flex;flex-direction:column;gap:10px}
+.panel__body::-webkit-scrollbar{width:8px}
+.panel__body::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.panel__body p{margin:0;font-size:var(--fs-md);line-height:1.5}
+.helpsec{display:flex;flex-direction:column;gap:8px}
+.helpsec h3{margin:6px 0 0;font-size:var(--fs-lg);font-weight:600;color:var(--c-text);text-transform:none;letter-spacing:0}
+.helpsec + .helpsec{border-top:1px solid var(--c-line);padding-top:10px}
+/* aide : rubriques à gauche du contenu, raccourcis en deux colonnes stables */
+.helpnav{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--c-line);margin-bottom:4px}
+.helpnav button{
+  min-height:34px;padding:4px 14px;border-radius:var(--r-pill);border:2px solid transparent;background:var(--c-surface-2);
+  color:var(--c-text-2);font:inherit;font-weight:600;font-size:var(--fs-sm);cursor:pointer
+}
+.helpnav button:hover{background:#fff;color:var(--c-text)}
+.helpnav button.active{background:var(--c-primary-soft);border-color:var(--amber);color:var(--c-text)}
+.helpbody{display:flex;flex-direction:column;gap:14px}
+.helptask{display:flex;flex-direction:column;gap:6px}
+.helptask h4{margin:0;font-size:var(--fs-lg);font-weight:600;color:var(--c-text)}
+.helptask ol{margin:0;padding-left:20px;font-size:var(--fs-md);line-height:1.55}
+.helptask li{margin:3px 0}
+.helptask .hint{margin:0}
+.hklist{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-sm);margin:0}
+.hkrow{display:grid;grid-template-columns:minmax(72px,auto) 1fr;gap:12px;align-items:center}
+.hklist .kbd{justify-self:start}
+.gloss{margin:0;display:flex;flex-direction:column;gap:8px}
+.gloss dt{font-weight:700;font-size:var(--fs-md);color:var(--c-text)}
+.gloss dd{margin:2px 0 0;font-size:var(--fs-sm);color:var(--c-text-2);line-height:1.5}
+.list--panel{max-height:220px;overflow:auto;border:1px solid var(--c-line);border-radius:var(--r-md);background:var(--c-surface-2);padding:4px}
+
+/* ================================================================ indicateur de tache en cours (en-tete) */
+.runpill{
+  display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:4px 12px;border-radius:var(--r-pill);
+  border:2px solid var(--c-ok-line);background:var(--c-ok-soft);color:var(--c-ok);font-weight:700;font-size:var(--fs-sm);cursor:pointer;white-space:nowrap
+}
+.runpill:hover{filter:brightness(1.03)}
+.runpill__dot{width:9px;height:9px;border-radius:50%;background:var(--olive);animation:calpulse 1.2s infinite}
+.runpill__go{text-decoration:underline}
+
+/* ================================================================ activite Cuisine : une seule colonne, centree */
+.cookmain{max-width:var(--w-cook);width:100%;justify-self:center;align-self:stretch;max-height:100%}
+
+.cookbody{display:flex;flex-direction:column;gap:10px;padding:0 18px 16px;overflow:auto}
+.cookbody::-webkit-scrollbar{width:8px}
+.cookbody::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.cookbody .card__section{border:2px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-surface-2);padding:10px 14px}
+.cookbody .card__section + .card__section{border-top:2px solid var(--c-line)}
+.qtynum{display:inline-flex;align-items:center;gap:8px}
+/* « Plats » heritait de la colonne fixe de 74px des lignes : 44px de vide avant le champ */
+.qtynum .label{width:auto;flex:none}
+/* hors .field, l'input n'heritait d'aucun style : bordure grise fine du navigateur */
+.qtynum input{
+  width:96px;text-align:center;font:inherit;font-size:var(--fs-md);font-weight:700;min-height:var(--tap);
+  padding:5px 10px;border-radius:var(--r-md);border:2px solid var(--line);background:var(--panel-soft);
+  color:var(--c-text);font-variant-numeric:tabular-nums;user-select:text
+}
+.qtynum input:focus{outline:none;border-color:var(--amber);background:#fff}
+.cookbody .hint{text-align:left;margin:0}
+#cookConfig .sectionhead{gap:8px}
+
+/* ================================================================ en-tête à l'étroit : la marque et la pastille se compactent */
+@media (max-width:1180px){
   header{gap:var(--sp-2)}
   .brand small{display:none}
+  #btnHelp{padding:6px 10px}
+}
+@media (max-width:1015px){
   .account span:last-child{display:none}
   .account{padding:4px;gap:0}
+  .runpill span:not(.runpill__dot){display:none}
+  .runpill{padding:4px 10px}
 }
+/* petites fenetres (1280x720 et moins, ou mise a l'echelle 125/150 %) : on empile plutot que de rogner */
+@media (max-width:1000px){
+  /* deux colonnes ne tiennent plus : on empile, chaque zone garde son propre defilement */
+  #pageMusic.active{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  #pageImage.active{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  #pageMusic.active > .card:first-child{max-height:36vh}
+  #pageImage.active > .card:last-child{max-height:38vh}
+  .calib__now{flex-direction:column}
+  .calib__art{flex:none;max-width:100%;align-self:center;width:260px}
+}
+/* Le bandeau de session (et donc l'arret) reste visible quand le panneau defile : rien d'utile n'est
+   dessous, le panneau du mode etant masque pendant une session. */
+.card--session{position:sticky;bottom:0;z-index:2}
+
+/* fenetres basses (720 px a 125/150 %, 768 px a 150 %) : on compacte au lieu de rogner */
+@media (max-height:660px){
+  #app{padding:8px 12px 6px;gap:8px}
+  .brand img{width:34px;height:34px}
+  .brand h1{font-size:19px}
+  .disc{width:42px;height:42px;font-size:18px;box-shadow:0 0 0 4px var(--caramel-ring)}
+  .now .title{font-size:var(--fs-xl)}
+  .sectionhead .hint{display:none}
+  .card__section.listen,.card__section.game{padding:7px 12px;gap:4px}
+  .card__head,.card-h{padding:10px 14px 6px}
+  .status{min-height:34px;padding:4px 12px}
+  .player{padding:10px 16px 6px}
+}
+@media (max-height:560px){
+  .listen .progress{display:none}
+  .keyboard{display:none}
+}
+
 
 /* ===== mentions legales dans Reglages > A propos ===== */
 .settings__legal{font-size:var(--fs-xs);color:var(--c-text-2);line-height:1.5;margin:8px 0 0;max-width:62ch}
 .settings__legal b{color:var(--c-text)}
 .about dd .btn--ghost{margin-right:4px}
+
+
+/* ================================================================ instruments (instruments.js)
+   Une carte par TYPE d'instrument : aucun skin, aucune couleur, aucune variante esthetique.
+   Selection marquee par bordure + coche + texte accessible, jamais par la couleur seule. */
+
+/* texte reserve aux lecteurs d'ecran (etat de la carte : « Instrument actif ») */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* image d'instrument : ratio conserve, marge coherente, pas de fond damier.
+   Image manquante : instImgFail() pose une pastille de famille generique de meme taille, la grille ne bouge pas. */
+.instimg{display:block;object-fit:contain;background:transparent}
+.instimg.is-fb{opacity:.9}
+
+/* ---- controle compact du lecteur : Instrument · [icone] Piano · Changer */
+.instpick{
+  flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:5px 6px 5px 5px;border-radius:var(--r-pill);
+  border:2px solid var(--c-line);background:#fff;cursor:pointer;text-align:left;min-height:48px;transition:.12s
+}
+.instpick:hover{border-color:var(--c-line-2);box-shadow:var(--sh-1)}
+.instpick.is-blocked{border-color:var(--c-warn-line);background:var(--c-warn-soft)}
+.instpick__img{width:38px;height:38px;object-fit:contain;flex:none;border-radius:50%;background:var(--panel-soft)}
+.instpick__txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.instpick__name{font-weight:600;font-size:var(--fs-md);color:var(--c-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.instpick__status{align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.instpick__go{
+  flex:none;font-size:var(--fs-sm);font-weight:700;color:var(--c-primary-ink);background:var(--c-primary);
+  border-radius:var(--r-pill);padding:5px 14px;box-shadow:0 3px 0 var(--c-primary-dark)
+}
+.instsum{display:flex;align-items:center;gap:6px;padding:0 0 0 86px;margin-top:-4px;min-width:0}
+.instsum__txt{font-size:var(--fs-xs);color:var(--c-text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.instsum .linkbtn{flex:none;font-size:var(--fs-xs)}
+
+/* ---- selecteur : vraie modale confortable (850-1050 px), hauteur bornee a la fenetre */
+.modal.instsel{width:min(1040px,calc(100vw - 48px));max-height:88vh;padding:0;display:flex;flex-direction:column;overflow:hidden;gap:0}
+.instsel__head{display:flex;align-items:flex-start;gap:12px;padding:16px 20px 8px}
+.instsel__ttl h2{margin:0}
+.instsel__help{margin:2px 0 0;font-size:var(--fs-sm);color:var(--c-text-2)}
+.modal.instsel .close{position:static;flex:none}
+.instsel__warn{margin:0 20px 8px}
+.instsel__bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 20px 10px}
+.instsel__bar .search{flex:1 1 240px;min-width:180px}
+.instsel__bar .chips{flex:0 1 auto}
+.instsel__body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,340px);gap:14px;padding:0 20px 6px}
+.instsel__grid{min-height:0;overflow:auto;padding:2px 4px 6px 2px}
+.instsel__grid::-webkit-scrollbar{width:8px}
+.instsel__grid::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.instsel__foot{display:flex;align-items:center;gap:10px;padding:8px 20px 14px;border-top:1px solid var(--c-line);flex-wrap:wrap}
+.instsel__foot .hint{margin:0}
+
+.instgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:stretch}
+.instcell{position:relative;display:flex}
+.instcard{
+  flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px 10px;
+  border-radius:var(--r-lg);border:2px solid var(--c-line);background:var(--panel);cursor:pointer;text-align:center;transition:.12s
+}
+.instcard:hover{border-color:var(--c-line-2);transform:translateY(-2px);box-shadow:var(--sh-1)}
+.instcard.is-sel{border-color:var(--c-cta);box-shadow:0 0 0 3px var(--c-cta-soft)}
+.instcard.is-active{border-color:var(--amber-dark);background:var(--c-primary-soft)}
+.instcard.is-active.is-sel{box-shadow:0 0 0 3px var(--c-cta-soft)}
+.instcard__check{
+  display:none;position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;place-items:center;
+  background:var(--amber-dark);color:#fff;font-size:var(--fs-xs);font-weight:700;line-height:1
+}
+.instcard.is-active .instcard__check{display:grid}
+.instcard__img{width:62px;height:62px;flex:none}
+.instcard__name{font-weight:600;font-size:var(--fs-md);color:var(--c-text);line-height:1.2;overflow-wrap:anywhere}
+.instcard__cat{font-size:var(--fs-xs);color:var(--c-text-2);font-weight:600}
+.instcard__st{white-space:normal;line-height:1.25;text-align:center;font-size:11px;margin-top:auto}
+.instfav{
+  position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:none;background:transparent;
+  color:var(--ink3);font-size:15px;line-height:1;cursor:pointer;padding:0;display:grid;place-items:center;z-index:1
+}
+.instfav:hover{background:var(--c-primary-soft);color:var(--c-warn)}
+.instfav.on{color:var(--amber-dark)}
+
+/* ---- fiche de detail */
+.instdet{
+  min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:14px;outline:none;
+  background:var(--c-surface-2);border:2px solid var(--c-line);border-radius:var(--r-lg)
+}
+.instdet::-webkit-scrollbar{width:8px}
+.instdet::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.instdet__top{display:flex;align-items:flex-start;gap:12px;position:relative}
+.instdet__img{width:72px;height:72px;flex:none;border-radius:var(--r-md);background:#fff;border:2px solid var(--c-line);padding:4px}
+.instdet__id{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.instdet__id h3{margin:0;font-size:var(--fs-lg);font-weight:600;color:var(--c-text);text-transform:none;letter-spacing:0}
+.instdet__en{margin:0;font-size:var(--fs-xs);color:var(--c-text-2);font-weight:600}
+.instdet .instfav{position:static;width:var(--tap);height:var(--tap);font-size:18px;flex:none}
+/* la fiche tient en une ligne : nombre de notes, etendue, disposition */
+.instdet__facts1{margin:0;font-size:var(--fs-sm);color:var(--c-text-2);line-height:1.5}
+.instdet__facts{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:var(--fs-sm)}
+.instdet__facts dt{color:var(--c-text-2);font-weight:600}
+.instdet__facts dd{margin:0;color:var(--c-text);font-weight:600;min-width:0;overflow-wrap:anywhere}
+.instdet__facts--tech dd{font-weight:500}
+.instdet__sub{display:block;font-weight:500;font-size:var(--fs-xs);color:var(--c-text-2);line-height:1.4}
+.instdet__warnline{
+  margin:0;font-size:var(--fs-xs);color:var(--c-warn);background:var(--c-warn-soft);border:1px solid var(--c-warn-line);
+  border-radius:var(--r-md);padding:6px 10px;line-height:1.45
+}
+.instdet__acts{display:flex;flex-wrap:wrap;gap:8px}
+.instdet__acts .btn{flex:0 1 auto;min-width:0}
+.instdet .hint{margin:0}
+.instsrc{margin:4px 0 8px;padding-left:18px;font-size:11px;color:var(--c-text-2);display:flex;flex-direction:column;gap:3px}
+.instsrc code{overflow-wrap:anywhere;user-select:text}
+
+/* dispositions candidates d'un type : un reglage DANS sa fiche, jamais une carte de plus */
+.instlays,.wizlays{display:flex;flex-direction:column;gap:6px}
+.instlay,.wizlay{
+  display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;padding:8px 12px;border-radius:var(--r-md);
+  border:2px solid var(--c-line);background:#fff;cursor:pointer;font:inherit;color:var(--c-text);width:100%
+}
+.instlay:hover,.wizlay:hover{border-color:var(--c-line-2)}
+.instlay.active,.wizlay.active{border-color:var(--amber-dark);background:var(--c-primary-soft)}
+.instlay span,.wizlay__d{font-size:var(--fs-xs);color:var(--c-text-2);font-weight:500;line-height:1.4}
+.instlay__n,.wizlay__n{font-size:11px;color:var(--accent);font-weight:700}
+.wizlay__k{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.wizlay__k i{
+  font-style:normal;min-width:20px;padding:1px 4px;border-radius:5px;background:var(--key);color:var(--key-ink);
+  border:1px solid var(--line2);font-size:10px;font-weight:700;text-align:center
+}
+
+/* ---- panneau « Voir les touches » et tableaux de l'assistant */
+.instkeys__head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.instkeys__img{width:44px;height:44px;flex:none}
+.instkeys__name{margin:0;font-size:var(--fs-lg);font-weight:600;color:var(--c-text);text-transform:none;letter-spacing:0}
+.tablewrap{overflow:auto;border:2px solid var(--c-line);border-radius:var(--r-md);background:#fff}
+.tablewrap--tall{max-height:40vh}
+.tablewrap::-webkit-scrollbar{width:8px;height:8px}
+.tablewrap::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+table.instkeys{border-collapse:collapse;width:100%;font-size:var(--fs-sm);user-select:text}
+table.instkeys th,table.instkeys td{padding:5px 10px;text-align:left;border-bottom:1px solid var(--c-line);vertical-align:middle}
+table.instkeys thead th{
+  position:sticky;top:0;background:var(--c-surface-2);color:var(--c-text-2);font-size:var(--fs-xs);
+  font-weight:700;text-transform:uppercase;letter-spacing:.4px;z-index:1
+}
+table.instkeys tbody tr:last-child td{border-bottom:none}
+table.instkeys tbody tr:nth-child(even){background:rgba(251,245,234,.55)}
+table.instkeys tr.is-bad{background:var(--c-danger-soft)}
+.instkeys__note{font-weight:700;white-space:nowrap}
+.instkeys__en,.instkeys__oct{color:var(--c-text-2);white-space:nowrap}
+table.instkeys--tech code{font-size:var(--fs-xs);background:var(--panel-soft);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.keycap--static{cursor:default}
+.keyboard--wide{align-items:flex-start;flex:none}
+.instrowx{
+  width:24px;height:24px;border-radius:50%;border:none;background:transparent;color:var(--c-text-2);cursor:pointer;
+  font-size:15px;line-height:1;padding:0;margin-left:4px
+}
+.instrowx:hover{background:var(--c-danger-soft);color:var(--c-danger)}
+.wizconf{display:flex;flex-direction:column;gap:3px;padding:4px 10px}
+.wizconf .chip{white-space:normal;text-align:left;line-height:1.3;font-weight:600;font-size:11px}
+
+/* ---- assistant de configuration des touches */
+.modal.instwiz{width:min(760px,calc(100vw - 32px));max-height:92vh;display:flex;flex-direction:column;gap:10px;padding:18px 22px 20px}
+.modal.instwiz .close{position:static;flex:none}
+.instwiz__body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;outline:none;padding-right:2px}
+.instwiz__body::-webkit-scrollbar{width:8px}
+.instwiz__body::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.instwiz__body p{margin:0;font-size:var(--fs-md);line-height:1.5}
+.instwiz__body .hint{margin:0}
+.wiz__lead{display:flex;align-items:center;gap:14px}
+.wiz__img{width:72px;height:72px;flex:none;border-radius:var(--r-md);background:#fff;border:2px solid var(--c-line);padding:4px}
+.wiz__lead h3{margin:0 0 4px;font-size:var(--fs-lg);font-weight:600;color:var(--c-text);text-transform:none;letter-spacing:0}
+.wizbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wizask{
+  border:2px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-surface-2);padding:10px 14px 12px;margin:0;
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center
+}
+.wizask legend{font-size:var(--fs-xs);color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:0 4px}
+.wizask .hint{flex:1 1 100%}
+.modal.instwiz .actions{margin-top:0;align-items:center;flex-wrap:wrap}
+
+/* petites fenetres : la fiche passe en pleine largeur AU-DESSUS de la grille (jamais un drawer etroit) */
+@media (max-width:880px){
+  /* un SEUL defilement : la fiche puis la grille entiere. En deux pistes, la fiche prenait toute la
+     hauteur disponible et la grille des 19 cartes tombait a quelques pixels en forte mise a l'echelle. */
+  .instsel__body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:start;overflow:auto}
+  .instsel__grid{overflow:visible;min-height:auto}
+  .instdet{order:-1;max-height:none;overflow:visible;min-height:auto}
+  .instgrid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+}
+@media (max-width:620px){
+  .instsum{padding-left:0;flex-wrap:wrap}
+  .instsel__head,.instsel__bar,.instsel__body,.instsel__foot{padding-left:12px;padding-right:12px}
+  .instsel__warn{margin-left:12px;margin-right:12px}
+}
+/* fenetres basses (1280x720, forte mise a l'echelle) : aucun bouton essentiel ne doit deborder */
+@media (max-height:660px){
+  .modal.instsel{max-height:94vh}
+  .instsel__warn{margin-bottom:6px}
+  .instcard__img{width:48px;height:48px}
+  .instdet__img,.wiz__img{width:56px;height:56px}
+  .modal.instwiz{max-height:96vh;padding:12px 16px 14px;gap:8px}
+  .tablewrap--tall{max-height:30vh}
+}
+
+/* Lisibilité et adaptation aux fenêtres redimensionnées et au zoom système. */
+h1,h2,h3,.tab{font-family:"Fredoka","Nunito",sans-serif}
+#app{height:100dvh;max-width:1440px;margin-inline:auto}
+.card{border:1px solid var(--c-line);box-shadow:0 4px 18px rgba(107,90,82,.07)}
+.card__head,.card-h{padding-top:18px;padding-bottom:12px}
+.btn{white-space:normal;text-align:center}
+.btn--ghost,.btn--secondary{box-shadow:none;border:1px solid var(--c-line-2)}
+.btn--ghost{border-color:transparent}
+.menu{max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow:auto}
+.modal,.dlg{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+.modal h2{padding-right:32px}
+.modal .close{flex-shrink:0}
+.input:focus-visible,.select:focus-visible,.field input:focus-visible,.field select:focus-visible{
+  outline:3px solid var(--c-focus);outline-offset:2px
+}
+.hint,.notice__text,.field__help,.session__text{overflow-wrap:anywhere}
+.status{flex-shrink:0}
+.status .msg{white-space:normal;overflow-wrap:anywhere}
+.row__act{min-width:32px;min-height:32px}
+.shotfig{margin:0}
+
+@media (max-width:1000px){
+  header{flex-wrap:wrap}
+  #viewLibrary.active{grid-template-columns:minmax(0,300px) minmax(0,1fr)}
+  .gamebtn{flex-wrap:wrap}
+  .line{flex-wrap:wrap;gap:8px}
+  .slider--speed{min-width:0;flex:1 1 180px}
+}
+@media (max-width:760px){
+  #app{padding:12px;gap:12px}
+  header .tabs{order:2;flex:1 0 100%;justify-content:center}
+  .tabs .tab{flex:1;justify-content:center;padding:8px}
+  header .spacer{display:none}
+  header .brand{margin-right:auto}
+  .brand small{display:none}
+  main.active{overflow-y:auto;align-content:start}
+  #pageMusic.active{grid-template-rows:auto minmax(0,1fr);overflow:visible}
+  .musicviews{overflow:auto}
+  #viewLibrary.active{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:start}
+  #musicSide{min-height:240px;max-height:38dvh}
+  #musicPlayer,#viewDiscover.active > .card,#viewTogether.active > .card{max-height:none;overflow:visible}
+  .subnav{width:100%;justify-content:center;border-radius:var(--r-lg)}
+  .subnav > button{flex:1;padding:6px;white-space:normal}
+  #pageImage.active{grid-template-rows:auto auto}
+  #pageImage.active > .card:last-child{max-height:none}
+  .preview{min-height:240px}
+  .cookmain{max-height:none}
+  .cookbody,.optsbody{overflow:visible}
+  .settings__body{flex-direction:column}
+  .settings__nav{width:100%;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid var(--c-line);padding:8px}
+  .settings__nav button{flex-shrink:0}
+  .settings__pane{padding:14px}
+  .field__control{flex-wrap:wrap}
+  .field.sfield .field__control input[type=text]{min-width:0}
+  .list--catalog .row--online{grid-template-columns:minmax(0,1fr)}
+  .list--catalog .row__actions{justify-content:flex-start;flex-wrap:wrap}
+  .card--session{flex-wrap:wrap}
+  .session__actions{flex-wrap:wrap}
+  .instsum{padding-left:0}
+  .status{flex-wrap:wrap;gap:6px}
+  .status .msg{flex:1 1 160px}
+  .dlg-btn{min-width:0;padding:10px 18px}
+}
+@media (pointer:coarse){
+  :root{--tap:44px}
+  .row__act{min-width:44px;min-height:44px}
+  .row__actions{position:static;opacity:1;pointer-events:auto;background:none;padding:0}
+  .row{flex-wrap:wrap}
+  .row__main{flex-basis:65%}
+}

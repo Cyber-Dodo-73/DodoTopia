@@ -540,6 +540,33 @@ class Drawer(MouseBot):
         pal["pos0"], pal["pos1"] = old
         return colors
 
+    def back_point(self):
+        """Revient a l'etape precedente : la position qui y avait ete enregistree est oubliee, pour etre
+        reprise. Le calibrage deja en place dans la config n'est pas touche (il ne l'est qu'a la validation)."""
+        if self.state != "calibrating" or self.step <= 0:
+            return False
+        self.step -= 1
+        key = STEPS[self.step][0]
+        self.points.pop(key, None)
+        if key == "pal1":
+            self.points.pop("_colors", None)
+        self.message = ""
+        self.log(f"calibrage : retour a l'etape {self.step + 1}")
+        self.on_change()
+        return True
+
+    def goto_step(self, index):
+        """Revient a une etape deja faite (clic dans le recapitulatif). On ne saute jamais en avant."""
+        try:
+            index = int(index)
+        except (TypeError, ValueError):
+            return False
+        if self.state != "calibrating" or not 0 <= index < self.step:
+            return False
+        while self.step > index:
+            self.back_point()
+        return True
+
     def skip_point(self):
         """Etape facultative (outils) : passe sans memoriser."""
         if self.state != "calibrating":

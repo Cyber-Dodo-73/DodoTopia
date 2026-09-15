@@ -1,0 +1,675 @@
+{
+  "schemaVersion": 1,
+  "octaveConvention": "C4 = MIDI 60",
+  "warning": "Les codes physiques sont une traduction des positions QWERTY, pas une validation du jeu en AZERTY. Aucune gamme absolue sonore ni polyphonie propre aux instruments n’a été mesurée.",
+  "layouts": [
+    {
+      "id": "diatonic-15-2row",
+      "status": "community-documented-not-tested-in-game",
+      "keyboardReference": "QWERTY US",
+      "sources": [
+        "https://github.com/DonElf/Heartopia-Midi-Player/blob/main/HeartopiaMidiPlayer.cpp"
+      ],
+      "inGameLayoutMustMatch": true,
+      "bindings": [
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "qwertyLabel": "A",
+          "physicalCodeCandidate": "KeyA"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "qwertyLabel": "S",
+          "physicalCodeCandidate": "KeyS"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "qwertyLabel": "D",
+          "physicalCodeCandidate": "KeyD"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "qwertyLabel": "F",
+          "physicalCodeCandidate": "KeyF"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "qwertyLabel": "G",
+          "physicalCodeCandidate": "KeyG"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "qwertyLabel": "H",
+          "physicalCodeCandidate": "KeyH"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "qwertyLabel": "J",
+          "physicalCodeCandidate": "KeyJ"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "qwertyLabel": "Q",
+          "physicalCodeCandidate": "KeyQ"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "qwertyLabel": "W",
+          "physicalCodeCandidate": "KeyW"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "qwertyLabel": "E",
+          "physicalCodeCandidate": "KeyE"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "qwertyLabel": "R",
+          "physicalCodeCandidate": "KeyR"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "qwertyLabel": "T",
+          "physicalCodeCandidate": "KeyT"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "qwertyLabel": "Y",
+          "physicalCodeCandidate": "KeyY"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "qwertyLabel": "U",
+          "physicalCodeCandidate": "KeyU"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "qwertyLabel": "I",
+          "physicalCodeCandidate": "KeyI"
+        }
+      ]
+    },
+    {
+      "id": "diatonic-15-3row",
+      "status": "community-documented-not-tested-in-game",
+      "keyboardReference": "QWERTY US",
+      "sources": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support"
+      ],
+      "inGameLayoutMustMatch": true,
+      "bindings": [
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "qwertyLabel": "Y",
+          "physicalCodeCandidate": "KeyY"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "qwertyLabel": "U",
+          "physicalCodeCandidate": "KeyU"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "qwertyLabel": "I",
+          "physicalCodeCandidate": "KeyI"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "qwertyLabel": "O",
+          "physicalCodeCandidate": "KeyO"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "qwertyLabel": "P",
+          "physicalCodeCandidate": "KeyP"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "qwertyLabel": "H",
+          "physicalCodeCandidate": "KeyH"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "qwertyLabel": "J",
+          "physicalCodeCandidate": "KeyJ"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "qwertyLabel": "K",
+          "physicalCodeCandidate": "KeyK"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "qwertyLabel": "L",
+          "physicalCodeCandidate": "KeyL"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "qwertyLabel": ";",
+          "physicalCodeCandidate": "Semicolon"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "qwertyLabel": "N",
+          "physicalCodeCandidate": "KeyN"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "qwertyLabel": "M",
+          "physicalCodeCandidate": "KeyM"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "qwertyLabel": ",",
+          "physicalCodeCandidate": "Comma"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "qwertyLabel": ".",
+          "physicalCodeCandidate": "Period"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "qwertyLabel": "/",
+          "physicalCodeCandidate": "Slash"
+        }
+      ]
+    },
+    {
+      "id": "piano-diatonic-22",
+      "status": "community-documented-not-tested-in-game",
+      "keyboardReference": "QWERTY US",
+      "sources": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support"
+      ],
+      "inGameLayoutMustMatch": true,
+      "bindings": [
+        {
+          "midi": 48,
+          "note": "C3",
+          "solfege": "Do3",
+          "qwertyLabel": "Z",
+          "physicalCodeCandidate": "KeyZ"
+        },
+        {
+          "midi": 50,
+          "note": "D3",
+          "solfege": "Ré3",
+          "qwertyLabel": "X",
+          "physicalCodeCandidate": "KeyX"
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "solfege": "Mi3",
+          "qwertyLabel": "C",
+          "physicalCodeCandidate": "KeyC"
+        },
+        {
+          "midi": 53,
+          "note": "F3",
+          "solfege": "Fa3",
+          "qwertyLabel": "V",
+          "physicalCodeCandidate": "KeyV"
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "solfege": "Sol3",
+          "qwertyLabel": "B",
+          "physicalCodeCandidate": "KeyB"
+        },
+        {
+          "midi": 57,
+          "note": "A3",
+          "solfege": "La3",
+          "qwertyLabel": "N",
+          "physicalCodeCandidate": "KeyN"
+        },
+        {
+          "midi": 59,
+          "note": "B3",
+          "solfege": "Si3",
+          "qwertyLabel": "M",
+          "physicalCodeCandidate": "KeyM"
+        },
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "qwertyLabel": "A",
+          "physicalCodeCandidate": "KeyA"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "qwertyLabel": "S",
+          "physicalCodeCandidate": "KeyS"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "qwertyLabel": "D",
+          "physicalCodeCandidate": "KeyD"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "qwertyLabel": "F",
+          "physicalCodeCandidate": "KeyF"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "qwertyLabel": "G",
+          "physicalCodeCandidate": "KeyG"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "qwertyLabel": "H",
+          "physicalCodeCandidate": "KeyH"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "qwertyLabel": "J",
+          "physicalCodeCandidate": "KeyJ"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "qwertyLabel": "Q",
+          "physicalCodeCandidate": "KeyQ"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "qwertyLabel": "W",
+          "physicalCodeCandidate": "KeyW"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "qwertyLabel": "E",
+          "physicalCodeCandidate": "KeyE"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "qwertyLabel": "R",
+          "physicalCodeCandidate": "KeyR"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "qwertyLabel": "T",
+          "physicalCodeCandidate": "KeyT"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "qwertyLabel": "Y",
+          "physicalCodeCandidate": "KeyY"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "qwertyLabel": "U",
+          "physicalCodeCandidate": "KeyU"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "qwertyLabel": "I",
+          "physicalCodeCandidate": "KeyI"
+        }
+      ]
+    },
+    {
+      "id": "piano-chromatic-37",
+      "status": "community-documented-not-tested-in-game",
+      "keyboardReference": "QWERTY US",
+      "sources": [
+        "https://github.com/DonElf/Heartopia-Midi-Player/blob/main/HeartopiaMidiPlayer.cpp",
+        "https://github.com/sp0oby/heartopia-midi#heartopia-key-mapping"
+      ],
+      "inGameLayoutMustMatch": true,
+      "bindings": [
+        {
+          "midi": 48,
+          "note": "C3",
+          "solfege": "Do3",
+          "qwertyLabel": ",",
+          "physicalCodeCandidate": "Comma"
+        },
+        {
+          "midi": 49,
+          "note": "C#3",
+          "solfege": "Do♯3",
+          "qwertyLabel": "L",
+          "physicalCodeCandidate": "KeyL"
+        },
+        {
+          "midi": 50,
+          "note": "D3",
+          "solfege": "Ré3",
+          "qwertyLabel": ".",
+          "physicalCodeCandidate": "Period"
+        },
+        {
+          "midi": 51,
+          "note": "D#3",
+          "solfege": "Ré♯3",
+          "qwertyLabel": ";",
+          "physicalCodeCandidate": "Semicolon"
+        },
+        {
+          "midi": 52,
+          "note": "E3",
+          "solfege": "Mi3",
+          "qwertyLabel": "/",
+          "physicalCodeCandidate": "Slash"
+        },
+        {
+          "midi": 53,
+          "note": "F3",
+          "solfege": "Fa3",
+          "qwertyLabel": "O",
+          "physicalCodeCandidate": "KeyO"
+        },
+        {
+          "midi": 54,
+          "note": "F#3",
+          "solfege": "Fa♯3",
+          "qwertyLabel": "0",
+          "physicalCodeCandidate": "Digit0"
+        },
+        {
+          "midi": 55,
+          "note": "G3",
+          "solfege": "Sol3",
+          "qwertyLabel": "P",
+          "physicalCodeCandidate": "KeyP"
+        },
+        {
+          "midi": 56,
+          "note": "G#3",
+          "solfege": "Sol♯3",
+          "qwertyLabel": "-",
+          "physicalCodeCandidate": "Minus"
+        },
+        {
+          "midi": 57,
+          "note": "A3",
+          "solfege": "La3",
+          "qwertyLabel": "[",
+          "physicalCodeCandidate": "BracketLeft"
+        },
+        {
+          "midi": 58,
+          "note": "A#3",
+          "solfege": "La♯3",
+          "qwertyLabel": "=",
+          "physicalCodeCandidate": "Equal"
+        },
+        {
+          "midi": 59,
+          "note": "B3",
+          "solfege": "Si3",
+          "qwertyLabel": "]",
+          "physicalCodeCandidate": "BracketRight"
+        },
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "qwertyLabel": "Z",
+          "physicalCodeCandidate": "KeyZ"
+        },
+        {
+          "midi": 61,
+          "note": "C#4",
+          "solfege": "Do♯4",
+          "qwertyLabel": "S",
+          "physicalCodeCandidate": "KeyS"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "qwertyLabel": "X",
+          "physicalCodeCandidate": "KeyX"
+        },
+        {
+          "midi": 63,
+          "note": "D#4",
+          "solfege": "Ré♯4",
+          "qwertyLabel": "D",
+          "physicalCodeCandidate": "KeyD"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "qwertyLabel": "C",
+          "physicalCodeCandidate": "KeyC"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "qwertyLabel": "V",
+          "physicalCodeCandidate": "KeyV"
+        },
+        {
+          "midi": 66,
+          "note": "F#4",
+          "solfege": "Fa♯4",
+          "qwertyLabel": "G",
+          "physicalCodeCandidate": "KeyG"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "qwertyLabel": "B",
+          "physicalCodeCandidate": "KeyB"
+        },
+        {
+          "midi": 68,
+          "note": "G#4",
+          "solfege": "Sol♯4",
+          "qwertyLabel": "H",
+          "physicalCodeCandidate": "KeyH"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "qwertyLabel": "N",
+          "physicalCodeCandidate": "KeyN"
+        },
+        {
+          "midi": 70,
+          "note": "A#4",
+          "solfege": "La♯4",
+          "qwertyLabel": "J",
+          "physicalCodeCandidate": "KeyJ"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "qwertyLabel": "M",
+          "physicalCodeCandidate": "KeyM"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "qwertyLabel": "Q",
+          "physicalCodeCandidate": "KeyQ"
+        },
+        {
+          "midi": 73,
+          "note": "C#5",
+          "solfege": "Do♯5",
+          "qwertyLabel": "2",
+          "physicalCodeCandidate": "Digit2"
+        },
+        {
+          "midi": 74,
+          "note": "D5",
+          "solfege": "Ré5",
+          "qwertyLabel": "W",
+          "physicalCodeCandidate": "KeyW"
+        },
+        {
+          "midi": 75,
+          "note": "D#5",
+          "solfege": "Ré♯5",
+          "qwertyLabel": "3",
+          "physicalCodeCandidate": "Digit3"
+        },
+        {
+          "midi": 76,
+          "note": "E5",
+          "solfege": "Mi5",
+          "qwertyLabel": "E",
+          "physicalCodeCandidate": "KeyE"
+        },
+        {
+          "midi": 77,
+          "note": "F5",
+          "solfege": "Fa5",
+          "qwertyLabel": "R",
+          "physicalCodeCandidate": "KeyR"
+        },
+        {
+          "midi": 78,
+          "note": "F#5",
+          "solfege": "Fa♯5",
+          "qwertyLabel": "5",
+          "physicalCodeCandidate": "Digit5"
+        },
+        {
+          "midi": 79,
+          "note": "G5",
+          "solfege": "Sol5",
+          "qwertyLabel": "T",
+          "physicalCodeCandidate": "KeyT"
+        },
+        {
+          "midi": 80,
+          "note": "G#5",
+          "solfege": "Sol♯5",
+          "qwertyLabel": "6",
+          "physicalCodeCandidate": "Digit6"
+        },
+        {
+          "midi": 81,
+          "note": "A5",
+          "solfege": "La5",
+          "qwertyLabel": "Y",
+          "physicalCodeCandidate": "KeyY"
+        },
+        {
+          "midi": 82,
+          "note": "A#5",
+          "solfege": "La♯5",
+          "qwertyLabel": "7",
+          "physicalCodeCandidate": "Digit7"
+        },
+        {
+          "midi": 83,
+          "note": "B5",
+          "solfege": "Si5",
+          "qwertyLabel": "U",
+          "physicalCodeCandidate": "KeyU"
+        },
+        {
+          "midi": 84,
+          "note": "C6",
+          "solfege": "Do6",
+          "qwertyLabel": "I",
+          "physicalCodeCandidate": "KeyI"
+        }
+      ]
+    }
+  ]
+}

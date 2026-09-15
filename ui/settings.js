@@ -1,34 +1,35 @@
 // DodoTopia : Réglages v2 — panneau à sections, sauvegarde automatique champ par champ (set_setting),
-// « Avancé » replié, keycaps pour les raccourcis, « Rétablir » par section.
+// « Avancé » replié, keycaps pour les raccourcis, réinitialisation à portée explicite.
 // Chaque champ est déclaré UNE fois dans FIELDS ; bornes, unités, défaut et valeur viennent de get_settings_schema().
-// Les champs en contexte ne sont plus ici : transposition et volume (lecteur), joueur n° et avance/retard (panneau
-// Multi audio du lecteur), contours / fond / blanc (bloc « Méthode » de la page Image).
+// Les réglages qui appartiennent à une tâche restent près d'elle et ne sont pas ici : transposition et volume
+// (lecteur), joueur n° et avance/retard (panneau de synchronisation), format, cadrage, couleurs et méthode
+// (activité Dessin), quantité de plats et nombre de cuisinières (activité Cuisine).
 
 const SETTINGS_SECTIONS = [
-  {id: 'general', label: 'Général', ic: '🏠'},
-  {id: 'lecture', label: 'Lecture', ic: '🎮', reset: 'lecture'},
-  {id: 'hotkeys', label: 'Raccourcis', ic: '⌨️', reset: 'hotkeys'},
-  {id: 'multi', label: 'Multi audio', ic: '👥', reset: 'multi'},
-  {id: 'draw', label: 'Dessin', ic: '🎨', reset: 'draw'},
-  {id: 'cook', label: 'Cuisine', ic: '🍳', reset: 'cook'},
-  {id: 'online', label: 'En ligne', ic: '🌐', reset: 'online'},
-  {id: 'about', label: 'À propos', ic: 'ℹ️'},
+  {id: 'general', label: 'Stockage', ic: '🗂️'},
+  {id: 'audio', label: 'Musique et audio', ic: '🎵',
+   resets: [['lecture', 'la lecture dans le jeu'], ['multi', 'la synchronisation par le son']]},
+  {id: 'hotkeys', label: 'Raccourcis', ic: '⌨️', resets: [['hotkeys', 'les raccourcis']]},
+  {id: 'draw', label: 'Dessin et calibrage', ic: '🎨', resets: [['draw', 'le dessin']]},
+  {id: 'cook', label: 'Cuisine', ic: '🍳', resets: [['cook', 'la cuisine']]},
+  {id: 'online', label: 'Compte et connexion', ic: '🌐', resets: [['online', 'la connexion']]},
+  {id: 'about', label: 'À propos et mises à jour', ic: 'ℹ️'},
 ];
 
 // {path, section, control: switch|slider|number|seg|select|text, label, help, advanced, wide, options}
 const FIELDS = [
-  // ---- Lecture
-  {path: 'stop_on_input', section: 'lecture', control: 'switch', label: 'Reprendre la main', help: 'Une touche ou un clic pendant la lecture dans le jeu l’arrête aussitôt.'},
-  {path: 'start_delay', section: 'lecture', control: 'slider', label: 'Délai avant lecture', help: 'Le temps de revenir dans le jeu après F6.'},
-  {path: 'hold_mode', section: 'lecture', control: 'seg', advanced: true, label: 'Mode d’appui', options: [['note', 'Suivre la musique'], ['tap', 'Tap bref']], help: 'Suivre la musique : appuis longs sur les notes tenues. Tap : la même durée pour toutes.'},
-  {path: 'hold_time', section: 'lecture', control: 'number', advanced: true, label: 'Durée d’appui', help: 'Durée minimale d’une touche enfoncée.'},
-  {path: 'input_mode', section: 'lecture', control: 'seg', advanced: true, label: 'Envoi des touches', options: [['scancode', 'Position (recommandé)'], ['vk', 'Lettre affichée']], help: 'Passe en « Lettre affichée » seulement si les notes jouées sont fausses.'},
+  // ---- Musique et audio : lecture dans le jeu (groupe « lecture »)
+  {path: 'stop_on_input', section: 'audio', group: 'lecture', control: 'switch', label: 'Reprendre la main à tout moment', help: 'Une touche ou un clic pendant la lecture dans le jeu l’arrête aussitôt.'},
+  {path: 'start_delay', section: 'audio', group: 'lecture', control: 'slider', label: 'Délai avant lecture', help: 'Le temps de revenir dans le jeu après le raccourci de lancement.'},
+  {path: 'hold_mode', section: 'audio', group: 'lecture', control: 'seg', advanced: true, label: 'Mode d’appui', options: [['note', 'Suivre la musique'], ['tap', 'Tap bref']], help: 'Suivre la musique : appuis longs sur les notes tenues. Tap : la même durée pour toutes.'},
+  {path: 'hold_time', section: 'audio', group: 'lecture', control: 'number', advanced: true, label: 'Durée d’appui', help: 'Durée minimale d’une touche enfoncée.'},
+  {path: 'input_mode', section: 'audio', group: 'lecture', control: 'seg', advanced: true, label: 'Envoi des touches', options: [['scancode', 'Position (recommandé)'], ['vk', 'Lettre affichée']], help: 'Passe en « Lettre affichée » seulement si les notes jouées sont fausses.'},
+  // ---- Musique et audio : synchronisation par le son (groupe « multi »)
+  {path: 'multi.device', section: 'audio', group: 'multi', control: 'select', wide: true, label: 'Sortie audio écoutée', help: 'Celle où le jeu joue le son ; la liste est relue à chaque ouverture. Si l’appareil choisi a été débranché, il reste proposé, marqué « absente ».', options: () => [['', 'Sortie par défaut (recommandé)'], ...(SET.sch.multi_devices || []).map(n => [n, n])]},
+  {path: 'multi.countdown', section: 'audio', group: 'multi', control: 'slider', label: 'Durée d’écoute avant le départ', help: 'Temps pendant lequel DodoTopia écoute le jeu en attendant la note repère.'},
+  {path: 'multi.lead', section: 'audio', group: 'multi', control: 'number', advanced: true, label: 'Délai après la note repère', help: 'Temps entre le motif repère et le départ de la musique.'},
   // ---- Raccourcis : générés depuis hotkey_labels (control keycap)
-  // ---- Multi audio
-  {path: 'multi.device', section: 'multi', control: 'select', wide: true, label: 'Sortie audio écoutée', help: 'Celle où le jeu joue le son ; la liste est relue à chaque ouverture.', options: () => [['', 'Sortie par défaut (recommandé)'], ...(SET.sch.multi_devices || []).map(n => [n, n])]},
-  {path: 'multi.countdown', section: 'multi', control: 'slider', label: 'Compte à rebours', help: 'Durée d’écoute du jeu avant de devenir meneur.'},
-  {path: 'multi.lead', section: 'multi', control: 'number', advanced: true, label: 'Délai après la note repère', help: 'Temps entre le motif repère et le départ de la musique.'},
-  // ---- Dessin (contours / fond / blanc : bloc « Méthode » de la page Image)
+  // ---- Dessin (contours / fond / blanc : « Options avancées » de la page Dessin)
   {path: 'draw.verify', section: 'draw', control: 'switch', label: 'Vérifier et corriger', help: 'Relit l’écran après chaque couleur et repeint les cases manquantes.'},
   {path: 'draw.mouse_glide', section: 'draw', control: 'switch', label: 'Souris naturelle', help: 'Le curseur glisse jusqu’à chaque cible au lieu de sauter.'},
   {path: 'draw.glide_speed', section: 'draw', control: 'number', advanced: true, label: 'Durée des glissements', help: '1 = environ 0,1 s pour 100 px ; 2 = deux fois plus lent.'},
@@ -37,8 +38,6 @@ const FIELDS = [
   {path: 'draw.step_delay', section: 'draw', control: 'number', advanced: true, label: 'Délai entre deux points', help: 'Augmente-le si le jeu coupe les angles des traits.'},
   {path: 'draw.click_delay', section: 'draw', control: 'number', advanced: true, label: 'Délai après un clic', help: 'Changement de couleur, case isolée.'},
   // ---- Cuisine (aides tirées des commentaires de DEFAULT_COOK)
-  {path: 'cook.cookers', section: 'cook', control: 'seg', label: 'Cuisinières', options: [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']], help: 'Nombre de cuisinières servies à tour de rôle ; leurs bulles doivent toutes être dans la zone calibrée.'},
-  {path: 'cook.max_dishes', section: 'cook', control: 'number', label: 'Nombre de plats', help: '0 = sans fin, jusqu’à l’arrêt ou la fin des ingrédients.'},
   {path: 'cook.cook_timeout', section: 'cook', control: 'number', label: 'Durée maximale d’une cuisson', help: 'Au-delà, la boucle s’arrête (plat pas prêt).'},
   {path: 'cook.match', section: 'cook', control: 'number', advanced: true, label: 'Seuil de reconnaissance', help: 'Score minimal pour reconnaître une icône : baisse-le si la bulle n’est pas vue, monte-le si autre chose est prise pour elle.'},
   {path: 'cook.green_px', section: 'cook', control: 'number', advanced: true, label: 'Pixels verts de l’anneau', help: 'Minimum de pixels verts pour reconnaître l’anneau de la spatule.'},
@@ -165,10 +164,10 @@ function renderField(f){
   </div>`;
 }
 function renderFieldList(list){ return list.map(renderField).join(''); }
-function renderAdvanced(list, extraHtml){
+function renderAdvanced(list, extraHtml, suffix){
   const body = renderFieldList(list) + (extraHtml || '');
   if(!body.trim()) return '';
-  return `<details class="disclosure" ${SET.advOpen ? 'open' : ''} id="settingsAdv"><summary>Avancé</summary><div class="disclosure__body">${body}</div></details>`;
+  return `<details class="disclosure" ${SET.advOpen ? 'open' : ''} id="settingsAdv${suffix ? '_' + suffix : ''}"><summary>Avancé</summary><div class="disclosure__body">${body}</div></details>`;
 }
 function bindFields(root){
   root.querySelectorAll('.sfield[data-path]').forEach(box => {
@@ -311,16 +310,21 @@ function refreshGridBadges(){
 // ------------------------------------------------ blocs spécifiques
 function renderFolders(){
   const sch = SET.sch;
-  return `<div class="field sfield sfield--wide">
-      <span class="field__label">Dossier des musiques</span>
-      <span class="field__help">Les fichiers .mid importés sont copiés ici.</span>
-      <div class="field__control"><input type="text" class="input" readonly value="${esc(sch.songs_folder || '')}" aria-label="Dossier des musiques"><button type="button" class="btn btn--secondary btn--sm" id="sOpenSongs">Ouvrir le dossier</button></div>
-    </div>
-    <div class="field sfield sfield--wide">
-      <span class="field__label">Dossier de données</span>
-      <span class="field__help">Réglages, bibliothèque et journaux.</span>
-      <div class="field__control"><input type="text" class="input" readonly value="${esc(sch.data_dir || '')}" aria-label="Dossier de données"><button type="button" class="btn btn--secondary btn--sm" id="sOpenData">Ouvrir</button></div>
+  // Ces deux chemins sont imposés par l'installation : ils ne sont modifiables nulle part dans le moteur.
+  // Ils sont donc présentés comme des valeurs, pas comme des champs de saisie.
+  const row = (label, help, value, openId, copyId) => `<div class="field sfield sfield--wide">
+      <span class="field__label">${esc(label)}</span>
+      <span class="field__help">${esc(help)}</span>
+      <div class="field__control pathrow">
+        <code class="path path--wide" title="${esc(value)}">${esc(value)}</code>
+        <button type="button" class="btn btn--secondary btn--sm" id="${copyId}">Copier</button>
+        <button type="button" class="btn btn--secondary btn--sm" id="${openId}">Ouvrir le dossier</button>
+      </div>
     </div>`;
+  return row('Dossier des musiques', 'Les fichiers .mid importés y sont copiés. Emplacement fixe.',
+             sch.songs_folder || '', 'sOpenSongs', 'sCopySongs')
+    + row('Dossier de données', 'Réglages, bibliothèque, profils d’instruments et journaux. Emplacement fixe.',
+          sch.data_dir || '', 'sOpenData', 'sCopyData');
 }
 function multiDiagText(st){
   const mu = (st && st.settings && st.settings.multi) || {};
@@ -352,19 +356,31 @@ function bindMultiDiag(root){
   if(l) l.onclick = () => { $('multiTestResult').textContent = 'Écoute de 30 s lancée…'; api('multi_listen_test', 30); };
 }
 view('settingsMulti', {draw: st => {
-  if(!settingsOpen() || SET.section !== 'multi') return;
-  html('multiDiagInfo', multiDiagText(st));
-  const r = multiResultText(st); if(r) txt('multiTestResult', r);
-  const busy = st.multi && st.multi.state !== 'idle';
-  ['btnMultiTest', 'btnMultiListen'].forEach(id => { const b = $(id); if(b) b.disabled = !!busy; });
+  if(!settingsOpen()) return;
+  if(SET.section === 'audio' && $('multiDiagInfo')){
+    html('multiDiagInfo', multiDiagText(st));
+    const r = multiResultText(st); if(r) txt('multiTestResult', r);
+    const busy = st.multi && st.multi.state !== 'idle';
+    ['btnMultiTest', 'btnMultiListen'].forEach(id => { const b = $(id); if(b) b.disabled = !!busy; });
+  }
+  // la carte « Mise à jour » vit dans « À propos et mises à jour » : elle suit la progression en direct
+  if(SET.section === 'about'){
+    const box = $('settingsPane').querySelector('.update-box');
+    const o = st.online || null;
+    if(box && o){ const h = updateHtml(o); if(box.dataset.h !== h){ box.dataset.h = h; box.innerHTML = h; wireUpdate(box); } }
+  }
 }});
 function renderAbout(){
   const sch = SET.sch, logs = sch.logs || {};
   const logBtn = (name, label) => `<button type="button" class="btn btn--secondary btn--sm" data-log="${name}" ${logs[name] === false ? 'disabled title="Pas encore de journal"' : ''}>${label}</button>`;
-  return `<dl class="about">
+  const o = (S && S.online) || null;
+  const upd = o ? `<section class="settings__group"><h4 class="settings__grouphead">Mise à jour</h4>
+      <div class="update-box">${updateHtml(o)}</div></section>`
+    : `<section class="settings__group"><h4 class="settings__grouphead">Mise à jour</h4>
+      <p class="hint left">Le client réseau n'est pas disponible dans cette version.</p></section>`;
+  return upd + `<dl class="about">
       <dt>Version</dt><dd><b>DodoTopia ${esc(sch.version || '')}</b><span class="chip chip--badge">${esc(INSTALL_KIND[sch.install_kind] || sch.install_kind || '')}</span></dd>
-      <dt>Mises à jour</dt><dd><button type="button" class="btn btn--secondary btn--sm" id="btnUpdateCheck" ${sch.online_ready ? '' : 'disabled'}>Vérifier les mises à jour</button>${sch.online_ready ? '' : '<span class="chip chip--badge chip--warn">bientôt</span>'}</dd>
-      <dt>Journaux</dt><dd>${logBtn('multi', 'Multi')}${logBtn('dessin', 'Dessin')}${logBtn('cuisine', 'Cuisine')}</dd>
+      <dt>Journaux</dt><dd>${logBtn('multi', 'Synchronisation')}${logBtn('dessin', 'Dessin')}${logBtn('cuisine', 'Cuisine')}</dd>
       <dt>Données</dt><dd><span class="path">${esc(sch.data_dir || '')}</span><button type="button" class="btn btn--ghost btn--sm" id="sOpenData2">Ouvrir</button></dd>
       <dt>Site</dt><dd><button type="button" class="btn btn--ghost btn--sm" data-site="site">dodotopia.cyber-dodo.fr</button></dd>
       <dt>Légal</dt><dd><button type="button" class="btn btn--ghost btn--sm" data-site="mentions">Mentions légales</button><button type="button" class="btn btn--ghost btn--sm" data-site="confidentialite">Confidentialité</button><button type="button" class="btn btn--ghost btn--sm" data-site="conditions">Conditions</button></dd>
@@ -376,46 +392,77 @@ function renderAbout(){
 
 // ------------------------------------------------ sections
 const SECTION_INTRO = {
-  hotkeys: 'Raccourcis globaux, actifs même quand le jeu a le focus. « Jouer / pause » joue, dessine ou cuisine selon l’onglet ouvert ; « Arrêter » arrête tout.',
-  multi: 'À plusieurs sans réseau : F6 lance un compte à rebours, le premier joue une note repère dans le jeu, les autres la détectent et partent ensemble. Numéro de joueur et avance/retard : panneau Multi audio du lecteur.',
-  draw: 'Comment DodoTopia peint dans le jeu (contours, fond et blanc : bloc « Méthode » de la page Image). Les grilles calibrées ne sont pas touchées par « Rétablir ».',
-  cook: 'Boucle de cuisine : nombre de cuisinières, nombre de plats et seuils de reconnaissance des bulles.',
-  online: 'Compte Discord, bibliothèque partagée, salons et mises à jour passent par ce serveur. L’application fonctionne normalement sans lui.',
+  hotkeys: 'Raccourcis globaux, actifs même quand le jeu a le focus. « Lancer / pause » joue, dessine ou cuisine selon l’activité ouverte ; « Tout arrêter » arrête tout, partout.',
+  draw: 'Comment DodoTopia peint dans le jeu. Le format, le cadrage et les couleurs se règlent dans l’activité Dessin. Les zones de jeu configurées ne sont pas touchées par « Réinitialiser ».',
+  cook: 'Seuils de reconnaissance et délais de la boucle de cuisine. La quantité de plats et le nombre de cuisinières se règlent dans l’activité Cuisine.',
+  online: 'Compte Discord, catalogue partagé, salons et mises à jour passent par ce serveur. L’application fonctionne normalement sans lui.',
 };
-function sectionFields(id, advanced){ return FIELDS.filter(f => f.section === id && !!f.advanced === !!advanced); }
+const GROUP_TITLES = {
+  lecture: ['Lecture dans le jeu', 'Comment les touches sont envoyées à Heartopia.'],
+  multi: ['Synchronisation par le son', 'Jouer à plusieurs sans réseau : le premier joue une note repère dans le jeu, DodoTopia l’entend sur la sortie audio et tout le monde démarre ensemble. Numéro de joueur et avance/retard : panneau du lecteur.'],
+};
+function sectionFields(id, advanced, group){
+  return FIELDS.filter(f => f.section === id && !!f.advanced === !!advanced && (group === undefined || f.group === group));
+}
+function renderGroup(sec, group){
+  const [title, intro] = GROUP_TITLES[group] || [group, ''];
+  let body = `<h4 class="settings__grouphead">${esc(title)}</h4>`
+    + (intro ? `<p class="settings__intro">${esc(intro)}</p>` : '')
+    + renderFieldList(sectionFields(sec.id, false, group));
+  if(group === 'multi') body += renderMultiDiag();
+  body += renderAdvanced(sectionFields(sec.id, true, group), '', group);
+  return `<section class="settings__group">${body}</section>`;
+}
 function renderSection(id){
   const pane = $('settingsPane'); const top = pane.scrollTop;
   const sec = SETTINGS_SECTIONS.find(s => s.id === id) || SETTINGS_SECTIONS[0];
   SET.section = sec.id;
   hotkeyCancel();
   try{ localStorage.setItem('settingsSection', sec.id); }catch(e){}
-  $('settingsNav').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.section === sec.id));
+  $('settingsNav').querySelectorAll('button').forEach(b => {
+    const on = b.dataset.section === sec.id;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-current', on ? 'true' : 'false');
+  });
   let body = `<h3>${esc(sec.label)}</h3>` + (SECTION_INTRO[sec.id] ? `<p class="settings__intro">${esc(SECTION_INTRO[sec.id])}</p>` : '');
   if(sec.id === 'general') body += renderFolders();
   else if(sec.id === 'hotkeys') body += renderHotkeyFields();
   else if(sec.id === 'about') body += renderAbout();
+  else if(sec.id === 'audio') body += renderGroup(sec, 'lecture') + renderGroup(sec, 'multi');
   else {
     body += renderFieldList(sectionFields(sec.id, false));
-    if(sec.id === 'multi') body += renderMultiDiag();
     body += renderAdvanced(sectionFields(sec.id, true), sec.id === 'draw' ? renderGrids() : '');
   }
-  if(sec.reset) body += `<div class="settings__actions"><button type="button" class="btn btn--ghost btn--sm" id="btnSectionReset">↺ Rétablir les valeurs par défaut</button></div>`;
+  // portée explicite de chaque réinitialisation
+  if(sec.resets && sec.resets.length){
+    body += `<div class="settings__actions">` + sec.resets.map(([s, lab]) =>
+      `<button type="button" class="btn btn--ghost btn--sm" data-reset-sec="${esc(s)}" data-reset-label="${esc(lab)}">↺ Réinitialiser ${esc(lab)}</button>`).join('') + `</div>`;
+  }
   pane.innerHTML = body;
   bindFields(pane); bindHotkeys(pane); bindGrids(pane); bindMultiDiag(pane);
-  const adv = pane.querySelector('#settingsAdv'); if(adv) adv.ontoggle = () => { SET.advOpen = adv.open; };
+  if(sec.id === 'about') wireUpdate(pane);
+  pane.querySelectorAll('.disclosure[id^="settingsAdv"]').forEach(adv => { adv.ontoggle = () => { SET.advOpen = adv.open; }; });
   const so = pane.querySelector('#sOpenSongs'); if(so) so.onclick = () => api('open_songs_folder');
+  const cs = pane.querySelector('#sCopySongs'); if(cs) cs.onclick = () => copyText((SET.sch || {}).songs_folder || '', 'Chemin copié');
+  const cd = pane.querySelector('#sCopyData'); if(cd) cd.onclick = () => copyText((SET.sch || {}).data_dir || '', 'Chemin copié');
   pane.querySelectorAll('#sOpenData,#sOpenData2').forEach(b => b.onclick = () => api('open_data_folder'));
   pane.querySelectorAll('[data-log]').forEach(b => b.onclick = () => api('open_log', b.dataset.log));
   pane.querySelectorAll('[data-site]').forEach(b => b.onclick = () => api('open_site', b.dataset.site));
-  const rs = pane.querySelector('#btnSectionReset'); if(rs) rs.onclick = () => resetSection(sec.reset, sec.label);
+  pane.querySelectorAll('[data-reset-sec]').forEach(b => b.onclick = () => resetSection(b.dataset.resetSec, b.dataset.resetLabel));
   pane.scrollTop = top;
 }
+const RESET_SCOPE = {
+  lecture: 'Délai avant lecture, reprise de la main, mode d’appui et envoi des touches reviennent à leur valeur d’origine. Ta bibliothèque et tes morceaux ne bougent pas.',
+  multi: 'Sortie audio écoutée, durée d’écoute et délai après la note repère reviennent à leur valeur d’origine. La latence mesurée et le calage entre joueurs sont conservés.',
+  hotkeys: 'Toutes les touches de raccourci reviennent à leur valeur d’origine.',
+  draw: 'Méthode de dessin, vérification et délais reviennent à leur valeur d’origine. Les zones de jeu configurées et le nombre de cases par format ne sont pas touchés.',
+  cook: 'Quantité de plats, nombre de cuisinières, durée maximale et seuils de reconnaissance reviennent à leur valeur d’origine. La configuration de la zone du jeu et les icônes enregistrées ne sont pas touchées.',
+  online: 'Adresse du serveur et options de mise à jour reviennent à leur valeur d’origine. Tu restes connecté à ton compte.',
+  grids: 'Le nombre de cases de chacun des 5 formats revient à sa valeur d’origine ; une mesure automatique sera à refaire.',
+};
 function resetSection(section, label){
-  const grids = section === 'grids';
-  dialog({title: 'Rétablir les valeurs par défaut', icon: '↺', ok: 'Rétablir',
-    html: `Remettre ${grids ? '' : 'les réglages de '}<b>${esc(label)}</b> à leurs valeurs d’origine ?` +
-      (section === 'draw' ? '<br><small>Les grilles calibrées ne sont pas touchées.</small>' : '') +
-      (grids ? '<br><small>Les grilles validées par le calibrage seront à refaire.</small>' : '')
+  dialog({title: 'Réinitialiser', icon: '↺', ok: 'Réinitialiser',
+    html: `<p>Remettre <b>${esc(label)}</b> aux valeurs d’origine ?</p><small>${esc(RESET_SCOPE[section] || '')}</small>`
   }).then(ok => {
     if(!ok) return;
     api('reset_settings', section).then(r => {
@@ -435,21 +482,21 @@ function buildNav(){
 }
 
 // ------------------------------------------------ ouverture / fermeture
-function openSettings(schema){
+function openSettings(schema, section){
   const go = sch => {
     if(!sch || !sch.fields) return;
     SET.sch = sch; SET.lastSent = {};
-    try{ const s0 = localStorage.getItem('settingsSection'); if(s0 && SETTINGS_SECTIONS.some(s => s.id === s0)) SET.section = s0; }catch(e){}
+    if(section && SETTINGS_SECTIONS.some(s => s.id === section)) SET.section = section;
+    else { try{ const s0 = localStorage.getItem('settingsSection'); if(s0 && SETTINGS_SECTIONS.some(s => s.id === s0)) SET.section = s0; }catch(e){} }
     buildNav(); renderSection(SET.section);
-    $('overlay').classList.add('open');
+    if(!settingsOpen()) openModal($('overlay'), $('btnSettings'), () => { hotkeyCancel(); flushPending(); });
     setTimeout(() => { const b = $('settingsNav').querySelector('button.active'); if(b) b.focus(); }, 30);
   };
   if(schema) go(schema); else api('get_settings_schema').then(go);
 }
 function closeSettings(){
-  hotkeyCancel(); flushPending();
-  $('overlay').classList.remove('open');
-  $('btnSettings').focus();
+  if(!settingsOpen()) return;
+  closeModal($('overlay'));
 }
 $('btnSettings').onclick = () => openSettings();
 $('btnSettingsClose').onclick = closeSettings;

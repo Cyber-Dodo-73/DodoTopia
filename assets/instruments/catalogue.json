@@ -1,0 +1,708 @@
+{
+  "schemaVersion": 1,
+  "retrievedAt": "2026-09-15",
+  "octaveConvention": "C4 = MIDI 60",
+  "notes": [
+    "Catalogue communautaire, pas une liste officielle exhaustive.",
+    "Les noms français sont des traductions proposées.",
+    "Disponibilité brute non fiable seule : les pages calculent aussi les fenêtres temporelles.",
+    "Les variantes ne prouvent pas un comportement identique.",
+    "Visuels de référence : provenance conservée, aucune licence de redistribution présumée.",
+    "Une seule entree par type : les variantes esthetiques du catalogue brut sont dedupliquees.",
+    "Les libelles francais sont proposes, pas confirmes comme libelles officiels du jeu."
+  ],
+  "sourceUrls": [
+    "https://build-heartopia.com/data/catalog.json",
+    "https://build-heartopia.com/items"
+  ],
+  "sourceSha256": "728f5a79c75317a036c87e991c597b5cd402d5acfebb175dc4bad17b54724405",
+  "categories": [
+    {
+      "id": "strings",
+      "labelFr": "Cordes"
+    },
+    {
+      "id": "winds",
+      "labelFr": "Vents"
+    },
+    {
+      "id": "keys",
+      "labelFr": "Claviers"
+    },
+    {
+      "id": "percussion",
+      "labelFr": "Percussions"
+    }
+  ],
+  "instruments": [
+    {
+      "instrumentId": "piano",
+      "labelFr": "Piano",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Piano",
+      "aliases": [
+        "clavier",
+        "piano"
+      ],
+      "category": "keys",
+      "image": "instruments/piano.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row",
+        "piano-diatonic-22",
+        "piano-chromatic-37"
+      ],
+      "defaultLayoutId": "piano-chromatic-37",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 0,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50001/piano"
+      ],
+      "catalogItemIds": [
+        "50001",
+        "50002",
+        "50003",
+        "50004",
+        "50005",
+        "50009",
+        "50006",
+        "50007",
+        "50008"
+      ],
+      "variantCount": 9,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_1.png?v=21b5c76bf4d5",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "recorder",
+      "labelFr": "Flûte à bec",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Recorder",
+      "aliases": [
+        "flute",
+        "flute a bec",
+        "flute droite",
+        "recorder"
+      ],
+      "category": "winds",
+      "image": "instruments/recorder.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 74,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50601/recorder"
+      ],
+      "catalogItemIds": [
+        "50601",
+        "50602",
+        "50603",
+        "50604"
+      ],
+      "variantCount": 4,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_recorder_1.png?v=73cd72919767",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "xiao",
+      "labelFr": "Xiao en bambou",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Bamboo Xiao",
+      "aliases": [
+        "bamboo xiao",
+        "flute chinoise",
+        "flute en bambou",
+        "xiao"
+      ],
+      "category": "winds",
+      "image": "instruments/xiao.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 77,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50656/bamboo-xiao"
+      ],
+      "catalogItemIds": [
+        "50656"
+      ],
+      "variantCount": 1,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_xiao_2.png?v=22ab12e0f2eb",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "lute",
+      "labelFr": "Luth",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Lute",
+      "aliases": [
+        "guitare",
+        "lute",
+        "luth"
+      ],
+      "category": "strings",
+      "image": "instruments/lute.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 24,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50501/lute"
+      ],
+      "catalogItemIds": [
+        "50501",
+        "50502",
+        "50503",
+        "50504",
+        "50505"
+      ],
+      "variantCount": 5,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lute_1.png?v=1cb4920eab79",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "wooden-bass",
+      "labelFr": "Basse en bois",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Wooden Bass",
+      "aliases": [
+        "basse",
+        "contrebasse",
+        "wooden bass"
+      ],
+      "category": "strings",
+      "image": "instruments/wooden-bass.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 43,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50551/wooden-bass"
+      ],
+      "catalogItemIds": [
+        "50551",
+        "50552",
+        "50553",
+        "50554"
+      ],
+      "variantCount": 4,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_wbass_1.png?v=e64952c4f4a4",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "bagpipe",
+      "labelFr": "Cornemuse",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Bagpipe",
+      "aliases": [
+        "bagpipe",
+        "biniou",
+        "cornemuse"
+      ],
+      "category": "winds",
+      "image": "instruments/bagpipe.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 109,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50681/bagpipe"
+      ],
+      "catalogItemIds": [
+        "50681",
+        "50682"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_bagpipes_1.png?v=f65458f71439",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "concertina",
+      "labelFr": "Concertina",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Concertina",
+      "aliases": [
+        "accordeon",
+        "bandoneon",
+        "concertina"
+      ],
+      "category": "keys",
+      "image": "instruments/concertina.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 23,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50651/concertina"
+      ],
+      "catalogItemIds": [
+        "50651",
+        "50652",
+        "50653",
+        "50654"
+      ],
+      "variantCount": 4,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_concertina_1.png?v=02e6a6b8368e",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "mbira",
+      "labelFr": "Mbira",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Mbira",
+      "aliases": [
+        "kalimba",
+        "mbira",
+        "piano a pouces",
+        "sanza"
+      ],
+      "category": "percussion",
+      "image": "instruments/mbira.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 108,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50661/mbira"
+      ],
+      "catalogItemIds": [
+        "50661",
+        "50662"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_kalimba_1.png?v=c3a339634095",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "lyre",
+      "labelFr": "Lyre",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Lyre",
+      "aliases": [
+        "cithare",
+        "lyre"
+      ],
+      "category": "strings",
+      "image": "instruments/lyre.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 46,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50671/lyre"
+      ],
+      "catalogItemIds": [
+        "50723",
+        "50724",
+        "50725",
+        "50671",
+        "50672"
+      ],
+      "variantCount": 5,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lila_1.png?v=bd9b92ee0d88",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "violin",
+      "labelFr": "Violon",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Violin",
+      "aliases": [
+        "violin",
+        "violon"
+      ],
+      "category": "strings",
+      "image": "instruments/violin.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 40,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50711/violin"
+      ],
+      "catalogItemIds": [
+        "50712",
+        "50711"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_violin_1.png?v=e0cf93f2ab44",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "cello",
+      "labelFr": "Violoncelle",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Cello",
+      "aliases": [
+        "cello",
+        "violoncelle"
+      ],
+      "category": "strings",
+      "image": "instruments/cello.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": false,
+      "previewProgram": 42,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50691/cello"
+      ],
+      "catalogItemIds": [
+        "50691",
+        "50692",
+        "50693",
+        "50694"
+      ],
+      "variantCount": 4,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_cello_5.png?v=b5ca152399de",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "conga",
+      "labelFr": "Conga",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Conga",
+      "aliases": [
+        "conga",
+        "congas",
+        "djembe",
+        "tambour"
+      ],
+      "category": "percussion",
+      "image": "instruments/conga.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": true,
+      "previewProgram": 117,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50051/conga"
+      ],
+      "catalogItemIds": [
+        "50051",
+        "50052",
+        "50053",
+        "50054"
+      ],
+      "variantCount": 4,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_conga_1.png?v=ae0e90c319ca",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "cajon",
+      "labelFr": "Cajón",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Cajón",
+      "aliases": [
+        "boite a rythme",
+        "caisse",
+        "cajon",
+        "cajón"
+      ],
+      "category": "percussion",
+      "image": "instruments/cajon.png",
+      "supportedLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "defaultLayoutId": "diatonic-15-3row",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "percussive": true,
+      "previewProgram": 116,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+        "https://build-heartopia.com/items/50071/caj-n"
+      ],
+      "catalogItemIds": [
+        "50071",
+        "50073",
+        "50072"
+      ],
+      "variantCount": 3,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cajon_2.png?v=63902ac17b40",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "xylophone",
+      "labelFr": "Xylophone à 8 notes",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "8-Note Xylophone w/ Stand",
+      "aliases": [
+        "8 note xylophone",
+        "8-note xylophone w/ stand",
+        "lames",
+        "xylophone"
+      ],
+      "category": "percussion",
+      "image": "instruments/xylophone.png",
+      "supportedLayoutIds": [],
+      "defaultLayoutId": null,
+      "mappingStatus": "unknown",
+      "percussive": false,
+      "previewProgram": 13,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://build-heartopia.com/items/50091/8-note-xylophone-w-stand"
+      ],
+      "catalogItemIds": [
+        "50091",
+        "50092"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cylinder_1.png?v=4598d3be261e",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "saxophone",
+      "labelFr": "Saxophone",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Saxophone",
+      "aliases": [
+        "sax",
+        "saxo",
+        "saxophone"
+      ],
+      "category": "winds",
+      "image": "instruments/saxophone.png",
+      "supportedLayoutIds": [],
+      "defaultLayoutId": null,
+      "mappingStatus": "unknown",
+      "percussive": false,
+      "previewProgram": 65,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://build-heartopia.com/items/50721/saxophone"
+      ],
+      "catalogItemIds": [
+        "50721",
+        "50722"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_saxophone_1.png?v=c59ada334b0e",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "harp",
+      "labelFr": "Harpe",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Harp",
+      "aliases": [
+        "harp",
+        "harpe"
+      ],
+      "category": "strings",
+      "image": "instruments/harp.png",
+      "supportedLayoutIds": [],
+      "defaultLayoutId": null,
+      "mappingStatus": "unknown",
+      "percussive": false,
+      "previewProgram": 46,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://build-heartopia.com/items/50121/harp"
+      ],
+      "catalogItemIds": [
+        "50122",
+        "50123",
+        "50124",
+        "50121"
+      ],
+      "variantCount": 4,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_harp_1.png?v=c06a3990eee8",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "steel-tongue-drum",
+      "labelFr": "Tambour à langues métalliques",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Steel Tongue Drum",
+      "aliases": [
+        "handpan",
+        "steel tongue drum",
+        "tambour a langues"
+      ],
+      "category": "percussion",
+      "image": "instruments/steel-tongue-drum.png",
+      "supportedLayoutIds": [],
+      "defaultLayoutId": null,
+      "mappingStatus": "unknown",
+      "percussive": false,
+      "previewProgram": 114,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://build-heartopia.com/items/50101/steel-tongue-drum"
+      ],
+      "catalogItemIds": [
+        "50102",
+        "50101"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_eterealdrum_1.png?v=037184c5d8a0",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "ocarina",
+      "labelFr": "Ocarina",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Ocarina",
+      "aliases": [
+        "ocarina",
+        "ocarine"
+      ],
+      "category": "winds",
+      "image": "instruments/ocarina.png",
+      "supportedLayoutIds": [],
+      "defaultLayoutId": null,
+      "mappingStatus": "unknown",
+      "percussive": false,
+      "previewProgram": 79,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://build-heartopia.com/items/50751/ocarina"
+      ],
+      "catalogItemIds": [
+        "50752",
+        "50751"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_ocarina_1.png?v=94c1d6b4511b",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    },
+    {
+      "instrumentId": "conch",
+      "labelFr": "Conque",
+      "labelFrStatus": "proposed-not-confirmed-in-game",
+      "labelEn": "Conch",
+      "aliases": [
+        "conch",
+        "conque",
+        "coquillage",
+        "trompe"
+      ],
+      "category": "winds",
+      "image": "instruments/conch.png",
+      "supportedLayoutIds": [],
+      "defaultLayoutId": null,
+      "mappingStatus": "unknown",
+      "percussive": false,
+      "previewProgram": 60,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "gameVersion": null,
+      "sourceUrls": [
+        "https://build-heartopia.com/items/50741/conch"
+      ],
+      "catalogItemIds": [
+        "50742",
+        "50741"
+      ],
+      "variantCount": 2,
+      "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_conch_1.png?v=8ae8a504f573",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls"
+    }
+  ]
+}

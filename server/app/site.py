@@ -10,7 +10,10 @@ La page d'accueil interroge la base (dernière version publiée) : le HTML rendu
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
+import re
+import struct
 import time
 from datetime import datetime
 from html import escape
@@ -23,6 +26,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Res
 from . import db, releases
 from .config import SERVER_VERSION
 
+log = logging.getLogger("dodo")
 router = APIRouter()
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -39,8 +43,13 @@ LAST_UPDATE = "14 septembre 2026"
 MONTHS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
           "septembre", "octobre", "novembre", "décembre")
 
+# changefreq / priority du sitemap, par page (defaut : les pages legales, rarement modifiees).
+SITEMAP_HINTS = {"/": ("weekly", "1.0"), "/instruments": ("monthly", "0.7")}
+SITEMAP_DEFAULT = ("yearly", "0.4")
+
 PAGES = {
     "/": ("Accueil", "DodoTopia — jouer vos MIDI, dessiner et cuisiner dans Heartopia"),
+    "/instruments": ("Instruments", "Les instruments d'Heartopia pris en charge par DodoTopia"),
     "/mentions-legales": ("Mentions légales", "Mentions légales"),
     "/confidentialite": ("Confidentialité", "Politique de confidentialité"),
     "/conditions": ("Conditions", "Conditions d'utilisation"),
@@ -156,8 +165,11 @@ def head(settings, path: str, title: str, description: str, extra: str = "") -> 
     <span class="brand__name">DodoTopia</span>
   </a>
   <nav class="header-nav" aria-label="Liens principaux">
-    <a href="/#telecharger">Télécharger</a>
-    <a href="/#questions">Questions fréquentes</a>
+    <a href="/#fonctionnalites">Fonctionnalités</a>
+    <a href="/instruments"{' aria-current="page"' if path == '/instruments' else ''}>Instruments</a>
+    <a href="/#demarrer">Comment ça marche</a>
+    <a href="/#questions">Aide</a>
+    <a class="header-nav__cta" href="/#telecharger">Télécharger</a>
   </nav>
 </div></header>
 <main id="contenu">
@@ -169,11 +181,12 @@ def foot(version_line: str) -> str:
 <footer class="site-footer"><div class="wrap">
   <ul class="footer-nav">
     <li><a href="/">Accueil</a></li>
+    <li><a href="/instruments">Instruments</a></li>
     <li><a href="/mentions-legales">Mentions légales</a></li>
     <li><a href="/confidentialite">Confidentialité</a></li>
     <li><a href="/conditions">Conditions d'utilisation</a></li>
   </ul>
-  <p>Contact : {EDITEUR_COURRIEL}</p>
+  <p>Contact : <a href="mailto:{EDITEUR_COURRIEL}">{EDITEUR_COURRIEL}</a></p>
   <p>{version_line}</p>
   <p class="disclaimer">DodoTopia est un projet indépendant, sans aucun lien avec les éditeurs d'Heartopia.
      Heartopia et les marques citées appartiennent à leurs propriétaires respectifs.</p>
@@ -191,75 +204,423 @@ def page(settings, path: str, title: str, description: str, body: str,
 
 # --- Illustrations (SVG en ligne, palette du site) -----------------------------------
 
-SVG_MUSIC = """<svg viewBox="0 0 320 150" role="img" aria-label="Une portée avec des notes de musique">
-  <rect width="320" height="150" rx="18" fill="#dff6f4"/>
-  <g stroke="#9ec9c6" stroke-width="2" stroke-linecap="round">
-    <path d="M28 46h264M28 66h264M28 86h264M28 106h264"/>
-  </g>
-  <g fill="#e8a531">
-    <circle cx="74" cy="106" r="13"/><rect x="84" y="46" width="5" height="62" rx="2.5"/>
-    <circle cx="134" cy="86" r="13"/><rect x="144" y="26" width="5" height="62" rx="2.5"/>
-    <circle cx="200" cy="96" r="13"/><rect x="210" y="36" width="5" height="62" rx="2.5"/>
-    <path d="M84 46h66v12H84z" rx="3"/>
-    <path d="M210 36c14 4 22 10 26 20V38c-4-8-12-13-26-16z"/>
-  </g>
-  <g fill="#46cbc4">
-    <circle cx="258" cy="76" r="13"/><rect x="268" y="16" width="5" height="62" rx="2.5"/>
-    <path d="M268 16c16 5 25 12 29 24V22c-5-9-14-15-29-19z"/>
-  </g>
-</svg>"""
+# --- Captures de l'application ------------------------------------------------------
+# Images produites a partir de l'interface reelle (donnees d'exemple). Dimensions reservees pour
+# eviter tout decalage au chargement.
+SHOT_W, SHOT_H = 1280, 812
 
-SVG_IMAGE = """<svg viewBox="0 0 320 150" role="img" aria-label="Une grille de cases colorées, comme un dessin pixel par pixel">
-  <rect width="320" height="150" rx="18" fill="#fbf5ea"/>
-  <g>
-    <rect x="30" y="24" width="22" height="22" rx="5" fill="#46cbc4"/>
-    <rect x="56" y="24" width="22" height="22" rx="5" fill="#46cbc4"/>
-    <rect x="82" y="24" width="22" height="22" rx="5" fill="#e8a531"/>
-    <rect x="108" y="24" width="22" height="22" rx="5" fill="#e8a531"/>
-    <rect x="134" y="24" width="22" height="22" rx="5" fill="#f2dcb3"/>
-    <rect x="30" y="50" width="22" height="22" rx="5" fill="#46cbc4"/>
-    <rect x="56" y="50" width="22" height="22" rx="5" fill="#e8a531"/>
-    <rect x="82" y="50" width="22" height="22" rx="5" fill="#f28b8b"/>
-    <rect x="108" y="50" width="22" height="22" rx="5" fill="#f28b8b"/>
-    <rect x="134" y="50" width="22" height="22" rx="5" fill="#e8a531"/>
-    <rect x="30" y="76" width="22" height="22" rx="5" fill="#9fb356"/>
-    <rect x="56" y="76" width="22" height="22" rx="5" fill="#f28b8b"/>
-    <rect x="82" y="76" width="22" height="22" rx="5" fill="#f28b8b"/>
-    <rect x="108" y="76" width="22" height="22" rx="5" fill="#f2dcb3"/>
-    <rect x="134" y="76" width="22" height="22" rx="5" fill="#9fb356"/>
-    <rect x="30" y="102" width="22" height="22" rx="5" fill="#9fb356"/>
-    <rect x="56" y="102" width="22" height="22" rx="5" fill="#9fb356"/>
-    <rect x="82" y="102" width="22" height="22" rx="5" fill="#e4d4ba"/>
-    <rect x="108" y="102" width="22" height="22" rx="5" fill="#e4d4ba"/>
-    <rect x="134" y="102" width="22" height="22" rx="5" fill="#9fb356"/>
-  </g>
-  <g fill="none" stroke="#e4d4ba" stroke-width="2" stroke-dasharray="5 6">
-    <path d="M176 28h116M176 62h116M176 96h116"/>
-  </g>
-  <g fill="#b56f3f">
-    <path d="M232 118l52-52a12 12 0 0 1 17 17l-52 52-22 5z"/>
-    <path d="M227 140l5-22 17 17z" fill="#6b5a52"/>
-  </g>
-</svg>"""
 
-SVG_COOK = """<svg viewBox="0 0 320 150" role="img" aria-label="Une marmite sur le feu avec de la vapeur">
-  <rect width="320" height="150" rx="18" fill="#eef2da"/>
-  <g stroke="#9fb356" stroke-width="7" stroke-linecap="round" fill="none" opacity=".85">
-    <path d="M136 42c0-10 12-10 12-20s-12-10-12-20"/>
-    <path d="M166 38c0-11 13-11 13-22s-13-11-13-22"/>
-    <path d="M196 42c0-10 12-10 12-20s-12-10-12-20"/>
-  </g>
-  <rect x="96" y="56" width="152" height="16" rx="8" fill="#c98644"/>
-  <path d="M104 70h136l-12 54a14 14 0 0 1-14 12h-84a14 14 0 0 1-14-12z" fill="#e8a531"/>
-  <path d="M120 84h104l-8 38h-88z" fill="#fbe7bd" opacity=".55"/>
-  <path d="M84 62c-14 0-14 22 0 22h14V62z" fill="#c98644"/>
-  <path d="M260 62c14 0 14 22 0 22h-14V62z" fill="#c98644"/>
-  <g fill="#f28b8b">
-    <path d="M130 140c0-8 8-10 8-18 6 5 8 11 8 18z"/>
-    <path d="M168 140c0-8 8-10 8-18 6 5 8 11 8 18z"/>
-    <path d="M206 140c0-8 8-10 8-18 6 5 8 11 8 18z"/>
-  </g>
-</svg>"""
+def app_shot(name: str, alt: str, cls: str = "shot", eager: bool = False) -> str:
+    """Capture de l'interface. `eager` pour l'image du heros (visible d'emblee), sinon chargement differe."""
+    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
+    return (f'<img class="{cls}" src="/static/app-{name}.png" width="{SHOT_W}" height="{SHOT_H}"'
+            f' {load} decoding="async" alt="{esc(alt)}">')
+
+
+def app_figure(name: str, alt: str, caption: str, cls: str = "shot", eager: bool = False) -> str:
+    """Capture + legende + lien d'agrandissement : reduite dans la page, elle reste consultable en entier."""
+    return (f'<figure class="shotfig">{app_shot(name, alt, cls, eager)}'
+            f'<figcaption>{caption} · <a href="/static/app-{name}.png" target="_blank" rel="noopener">'
+            f'ouvrir la capture en grand</a></figcaption></figure>')
+
+
+# --- Catalogue d'instruments ----------------------------------------------------------
+#
+# Source de donnees : la MEME que l'application, `assets/instruments/catalogue.json` (+ `layouts.json`).
+#
+# Acces choisi : une COPIE BUILD-TIME sous `server/static/instruments/` (les deux JSON et une image PNG
+# par type, reprise de `ui/instruments/`). Raison : le conteneur ne contient que `server/app` et
+# `server/static` (voir `server/Dockerfile`), le dossier `assets/` du depot n'y est pas. La copie est donc
+# la seule qui existe en production, et c'est elle que le site sert aux navigateurs : aucun hotlink, tout
+# vient de /static.
+#
+# Anti-derive : `server/tests/test_site.py` compare octet par octet la copie et les fichiers du depot
+# (`assets/instruments/*.json`, `ui/instruments/*.png`). Si le catalogue de l'application est mis a jour
+# sans rafraichir la copie, les tests echouent. Hors conteneur, si la copie manque, on retombe sur les
+# fichiers du depot pour que le site reste affichable.
+#
+# Mise a jour de la copie (depuis la racine du depot) :
+#     cp assets/instruments/catalogue.json assets/instruments/layouts.json server/static/instruments/
+#     cp ui/instruments/*.png server/static/instruments/
+
+INST_DIR = STATIC_DIR / "instruments"
+REPO_ROOT = STATIC_DIR.parent.parent
+REPO_INST_DIR = REPO_ROOT / "assets" / "instruments"
+REPO_IMG_DIR = REPO_ROOT / "ui" / "instruments"
+
+# Etats affiches par le site. Trois seulement, et aucun ne vaut « verifie » : la verification se fait sur
+# l'ordinateur du joueur, dans l'application. Ne jamais ajouter ici un etat « confirme » alimente par le
+# catalogue : le catalogue ne confirme rien.
+INST_STATES = {
+    "documented": (
+        "Profil documenté, à vérifier",
+        "Une table de touches publiée par un projet communautaire existe pour ce type. Elle n'a pas été "
+        "testée dans le jeu depuis ce site : DodoTopia la propose, et c'est sur ton ordinateur qu'elle se "
+        "vérifie.",
+    ),
+    "candidate": (
+        "Correspondance candidate, test requis",
+        "Les tables communautaires associent des notes à cet instrument de percussion, mais rien ne prouve "
+        "que chaque frappe produit cette hauteur. DodoTopia demande un test adapté aux percussions avant "
+        "de l'autoriser à jouer un morceau.",
+    ),
+    "unknown": (
+        "Touches à relever",
+        "Aucune table de touches documentée pour ce type. L'instrument est présent dans DodoTopia et ses "
+        "touches peuvent être configurées à la main, mais il ne peut pas lancer un morceau tant que ce "
+        "n'est pas fait.",
+    ),
+}
+STATE_ORDER = ("documented", "candidate", "unknown")
+
+# Pastille de repli quand l'image d'un type manque : generique par famille, jamais l'icone d'un autre
+# instrument (une conque n'est pas un saxophone).
+FAMILY_FALLBACK = {"strings": "🎻", "winds": "🎶", "keys": "🎹", "percussion": "🥁"}
+
+SAFE_IMAGE_NAME = re.compile(r"^[a-z0-9][a-z0-9._-]*\.png$")
+
+_CATALOGUE: dict | None = None
+
+
+def _png_size(path: Path) -> tuple[int, int] | None:
+    """Dimensions reelles d'un PNG (entete IHDR) : la place est reservee, la grille ne saute pas."""
+    try:
+        head = path.read_bytes()[:24]
+    except OSError:
+        return None
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    w, h = struct.unpack(">II", head[16:24])
+    return (w, h) if 0 < w <= 4096 and 0 < h <= 4096 else None
+
+
+def _instrument_json(name: str) -> dict:
+    """Copie servie d'abord (seule presente en production), fichier du depot en secours."""
+    for base in (INST_DIR, REPO_INST_DIR):
+        path = base / name
+        if path.is_file():
+            return json.loads(path.read_text(encoding="utf-8"))
+    raise FileNotFoundError(name)
+
+
+def _state_of(inst: dict) -> str:
+    """Trois etats, deduits du catalogue seul : documente / candidat (percussion) / a relever."""
+    if not inst.get("supportedLayoutIds") or inst.get("mappingStatus") in (None, "", "unknown"):
+        return "unknown"
+    return "candidate" if inst.get("percussive") else "documented"
+
+
+MAJOR_SCALE = {0, 2, 4, 5, 7, 9, 11}
+
+
+def _describe_layout(layout: dict) -> dict:
+    """Libelles d'affichage deduits des notes elles-memes.
+
+    Les libelles de `layouts.json` sont ecrits sans accents (ils servent aussi de commentaires de donnees) :
+    on ne les affiche pas tels quels sur le site. Tout ce qui est montre ici (registre, nombre de rangees,
+    alterations) est recalcule a partir de la table de notes, donc toujours d'accord avec elle.
+    """
+    notes = layout.get("notes") or []
+    midis = [n["midi"] for n in notes if isinstance(n.get("midi"), int)]
+    count = layout.get("noteCount") or len(notes)
+    rows = len(layout.get("rows") or []) or 1
+    chromatic = len(midis) > 1 and all(b - a == 1 for a, b in zip(midis, midis[1:]))
+    if chromatic:
+        accidentals = "Toutes les altérations"
+    elif midis and {m % 12 for m in midis} <= MAJOR_SCALE:
+        accidentals = "Gamme de do majeur, sans altération"
+    else:
+        accidentals = "Gamme partielle"
+    return {
+        "range": f"{notes[0].get('solfege', '')} → {notes[-1].get('solfege', '')}" if notes else "",
+        "rows": rows,
+        "chromatic": chromatic,
+        "accidentals": accidentals,
+        "label": f"{count} notes, {'chromatique' if chromatic else 'diatonique'}",
+        "rows_label": f"{rows} rangée{'s' if rows > 1 else ''}",
+    }
+
+
+def _build_catalogue() -> dict:
+    """Prepare une fois les donnees d'affichage (les fichiers ne changent pas en cours d'execution)."""
+    raw = _instrument_json("catalogue.json")
+    layouts_raw = _instrument_json("layouts.json")
+    layouts = {lay["layoutId"]: lay for lay in layouts_raw.get("layouts", [])}
+    cat_labels = {c["id"]: c["labelFr"] for c in raw.get("categories", [])}
+
+    types = []
+    used: dict[str, int] = {}
+    for inst in raw.get("instruments", []):
+        name = Path(str(inst.get("image") or "")).name
+        image = None
+        if SAFE_IMAGE_NAME.match(name) and (INST_DIR / name).is_file():
+            size = _png_size(INST_DIR / name) or (160, 160)
+            image = {"url": f"/static/instruments/{quote(name)}", "w": size[0], "h": size[1]}
+        layout = layouts.get(inst.get("defaultLayoutId") or "")
+        if layout:
+            info = _describe_layout(layout)
+            summary = (f"{layout.get('noteCount') or len(layout.get('notes') or [])} notes · "
+                       f"{info['range']} · {'chromatique' if info['chromatic'] else 'diatonique'}")
+        else:
+            summary = "Nombre de notes et registre à relever"
+        for lid in inst.get("supportedLayoutIds") or []:
+            used[lid] = used.get(lid, 0) + 1
+        types.append({
+            "id": inst["instrumentId"],
+            "label_fr": inst.get("labelFr") or inst["instrumentId"],
+            "label_en": inst.get("labelEn") or "",
+            "category": inst.get("category") or "",
+            "category_label": cat_labels.get(inst.get("category"), ""),
+            "image": image,
+            "state": _state_of(inst),
+            "summary": summary,
+            "variant_count": int(inst.get("variantCount") or 1),
+            "item_url": next((u for u in (inst.get("sourceUrls") or [])
+                              if str(u).startswith("https://build-heartopia.com/items/")), ""),
+        })
+
+    ordered_layouts = [{
+        "id": lay["layoutId"],
+        "note_count": lay.get("noteCount") or len(lay.get("notes") or []),
+        "used_by": used.get(lay["layoutId"], 0),
+        **_describe_layout(lay),
+    } for lay in layouts_raw.get("layouts", [])]
+
+    # Sources citees sur la page : celles du catalogue, puis celles des tables de touches, dedupliquees
+    # en gardant l'ordre. Rien n'est ecrit en dur : une source ajoutee aux donnees apparait sur le site.
+    sources: list[str] = []
+    for url in list(raw.get("sourceUrls") or []) + [u for lay in layouts_raw.get("layouts", [])
+                                                    for u in (lay.get("sourceUrls") or [])]:
+        url = str(url)
+        if url.startswith("https://") and url not in sources:
+            sources.append(url)
+
+    return {
+        "types": types,
+        "layouts": ordered_layouts,
+        "counts": {state: sum(1 for t in types if t["state"] == state) for state in STATE_ORDER},
+        "total": len(types),
+        "categories": [(c["id"], c["labelFr"]) for c in raw.get("categories", [])],
+        "retrieved_at": raw.get("retrievedAt") or "",
+        "octave_convention": raw.get("octaveConvention") or "",
+        "source_urls": sources,
+    }
+
+
+EMPTY_CATALOGUE = {"types": [], "layouts": [], "counts": dict.fromkeys(STATE_ORDER, 0), "total": 0,
+                   "categories": [], "retrieved_at": "", "octave_convention": "", "source_urls": []}
+
+
+def instrument_catalogue() -> dict:
+    """Catalogue prepare, garde en memoire. Un fichier absent ou illisible ne doit pas tuer le site :
+    on renvoie un catalogue vide (la section de l'accueil disparait, la page le dit) et on reessaie au
+    coup suivant, pour qu'un deploiement repare se rattrape sans redemarrage."""
+    global _CATALOGUE
+    if _CATALOGUE is None:
+        try:
+            _CATALOGUE = _build_catalogue()
+        except (OSError, ValueError, KeyError, TypeError):
+            log.exception("catalogue d'instruments illisible")
+            return dict(EMPTY_CATALOGUE)
+    return _CATALOGUE
+
+
+def inst_media(inst: dict) -> str:
+    """Visuel d'un type : fichier local servi depuis /static, pastille de famille si l'image manque."""
+    image = inst["image"]
+    if not image:
+        emoji = FAMILY_FALLBACK.get(inst["category"], "🎵")
+        return (f'<span class="inst__media inst__media--none" role="img"'
+                f' aria-label="Aucun visuel disponible pour {esc(inst["label_fr"])}">{emoji}</span>')
+    alt = f"Icône de l'instrument {inst['label_fr']} dans Heartopia"
+    return (f'<span class="inst__media"><img src="{esc(image["url"])}" width="{image["w"]}"'
+            f' height="{image["h"]}" loading="lazy" decoding="async" alt="{esc(alt)}"></span>')
+
+
+def state_pill(state: str) -> str:
+    """Pastille d'etat : le texte porte l'information, la forme et la couleur ne font que l'appuyer."""
+    return (f'<p class="pill pill--{state}"><span class="pill__dot" aria-hidden="true"></span>'
+            f'{esc(INST_STATES[state][0])}</p>')
+
+
+def inst_card(inst: dict) -> str:
+    """Une carte par type. Jamais une carte par couleur ni par variante."""
+    en = f' · <span class="inst__en">{esc(inst["label_en"])}</span>' if inst["label_en"] else ""
+    return f"""<li class="inst">
+        {inst_media(inst)}
+        <h3>{esc(inst['label_fr'])}</h3>
+        <p class="inst__meta">{esc(inst['category_label'])}{en}</p>
+        {state_pill(inst['state'])}
+        <p class="inst__sum">{esc(inst['summary'])}</p>
+      </li>"""
+
+
+def instruments_teaser() -> str:
+    """Section « Choisis ton instrument » de l'accueil : quelques vrais visuels et un lien vers la liste.
+
+    Les nombres viennent du catalogue : rien n'est ecrit en dur, rien ne peut mentir apres une mise a jour.
+    """
+    cat = instrument_catalogue()
+    if not cat["types"]:
+        return ""                       # catalogue illisible : pas de section plutot qu'une section vide
+    by_id = {t["id"]: t for t in cat["types"]}
+    # Un echantillon volontairement melange : les quatre familles, et un type dont les touches restent
+    # a relever (ocarina) pour ne pas laisser croire que tout est pret.
+    sample = [by_id[i] for i in ("piano", "violin", "lute", "recorder", "conga", "ocarina") if i in by_id]
+    if not sample:
+        sample = cat["types"][:6]
+    icons = "".join(f'<li class="insttease__item">{inst_media(t)}'
+                    f'<span class="insttease__name">{esc(t["label_fr"])}</span></li>' for t in sample)
+    c = cat["counts"]
+    return f"""<section class="section" id="choisir-instrument"><div class="wrap">
+  <h2>Choisis ton instrument</h2>
+  <p class="lead">DodoTopia connaît {cat['total']} types d'instruments d'Heartopia : une carte par type,
+     jamais une carte par couleur. Tu choisis celui que tu as ouvert dans le jeu, et DodoTopia utilise sa
+     table de touches — pas celle du piano.</p>
+  <ul class="insttease">{icons}</ul>
+  <p>Sur ces {cat['total']} types, {c['documented']} ont un <strong>profil de touches documenté</strong> par
+     un projet communautaire, restant à vérifier ; {c['candidate']} sont des percussions dont la
+     correspondance est <strong>candidate</strong> et demande un test ; {c['unknown']} attendent encore le
+     <strong>relevé de leurs touches</strong>. Aucun profil n'est confirmé tant que tu ne l'as pas vérifié
+     sur ton ordinateur : la vérification se fait dans l'application, pas ici.</p>
+  <p><a class="btn btn--quiet" href="/instruments">Voir la liste des instruments</a></p>
+</div></section>
+"""
+
+
+def render_instruments(settings) -> str:
+    cat = instrument_catalogue()
+    c = cat["counts"]
+    total = cat["total"]
+    if not cat["types"]:
+        # Catalogue illisible (fichier manquant ou abime) : page honnete, pas de trace technique.
+        return page(settings, "/instruments", "Instruments pris en charge — DodoTopia",
+                    "Liste des instruments d'Heartopia pris en charge par DodoTopia.",
+                    """<section class="section"><div class="wrap">
+  <h1>Les instruments pris en charge</h1>
+  <div class="notice"><p>La liste des instruments n'est pas consultable pour le moment. Elle revient
+     d'elle-même ; la liste complète reste disponible dans l'application, activité Musique.</p></div>
+</div></section>
+""")
+
+    legend = "".join(
+        f'<li class="statecard statecard--{state}">{state_pill(state)}'
+        f'<p class="statecard__n">{c[state]} type{"s" if c[state] > 1 else ""} sur {total}</p>'
+        f'<p class="statecard__txt">{esc(INST_STATES[state][1])}</p></li>'
+        for state in STATE_ORDER)
+
+    groups = []
+    for cat_id, cat_label in cat["categories"]:
+        items = [t for t in cat["types"] if t["category"] == cat_id]
+        if not items:
+            continue
+        cards = "".join(inst_card(t) for t in items)
+        groups.append(f"""<h2 id="famille-{esc(cat_id)}">{esc(cat_label)}"""
+                      f""" <span class="h2count">{len(items)} type{'s' if len(items) > 1 else ''}</span></h2>
+  <ul class="instgrid">{cards}</ul>""")
+
+    rows = "".join(
+        f'<tr><td data-label="Disposition"><strong>{esc(lay["label"])}</strong><br>'
+        f'<span class="mono">{esc(lay["id"])}</span></td>'
+        f'<td data-label="Notes">{esc(lay["note_count"])}</td>'
+        f'<td data-label="Registre">{esc(lay["range"])}</td>'
+        f'<td data-label="Altérations">{esc(lay["accidentals"])}</td>'
+        f'<td data-label="Rangées">{esc(lay["rows_label"])}</td>'
+        f'<td data-label="Types concernés">{esc(lay["used_by"])} sur {cat["total"]}</td></tr>'
+        for lay in cat["layouts"])
+
+    sources = "".join(f'<li><a href="{esc(u)}" rel="nofollow noopener" target="_blank">{esc(u)}</a></li>'
+                      for u in cat["source_urls"])
+    # Provenance du visuel : la fiche d'objet du catalogue public d'ou vient l'icone. Les tables de touches
+    # sont citees une fois pour toutes juste au-dessus, inutile de les repeter 19 fois.
+    per_type = "".join(
+        f'<li><strong>{esc(t["label_fr"])}</strong> — '
+        + (f'<a href="{esc(t["item_url"])}" rel="nofollow noopener" target="_blank">fiche de l\'objet sur '
+           "build-heartopia.com</a>" if t["item_url"] else "provenance du visuel non retenue")
+        + (f' · {t["variant_count"]} variantes esthétiques regroupées en un seul type'
+           if t["variant_count"] > 1 else " · une seule entrée au catalogue")
+        + "</li>"
+        for t in cat["types"])
+
+    title = "Instruments pris en charge — DodoTopia"
+    description = (f"Les {total} types d'instruments d'Heartopia connus de DodoTopia, avec pour chacun "
+                   "l'état réel de son profil de touches : documenté, candidat ou à relever.")
+    body = f"""<section class="section"><div class="wrap">
+  <h1>Les instruments pris en charge</h1>
+  <p class="lead">Retrouve ton instrument parmi {total} types et vérifie son profil de touches
+     avant de jouer. Choisis ensuite le même instrument dans DodoTopia et dans Heartopia.</p>
+  <div class="notice notice--soft">
+    <p><strong>Présent au catalogue n'est pas lecture vérifiée.</strong> Être dans cette liste signifie que
+       DodoTopia connaît le type d'instrument et lui réserve une place. Cela ne veut pas dire que ses
+       touches ont été testées dans le jeu : aucune des tables présentées ici n'a été validée dans
+       Heartopia depuis ce site. La vérification se fait sur ton ordinateur, instrument par instrument,
+       avec l'assistant de l'application — c'est lui qui fait passer un profil de « documenté » à
+       « confirmé sur cet ordinateur ».</p>
+  </div>
+  <ul class="states">{legend}</ul>
+  <nav class="family-nav" aria-label="Familles d'instruments">
+    {''.join(f'<a href="#famille-{esc(key)}">{esc(label)}</a>' for key, label in cat['categories'] if any(t['category'] == key for t in cat['types']))}
+  </nav>
+</div></section>
+
+<section class="section"><div class="wrap">
+  {"".join(groups)}
+  <p class="dl-note">Une seule carte par type : les variantes de couleur et de style du catalogue du jeu
+     partagent le même son et les mêmes touches, elles sont regroupées et n'apparaissent pas séparément.
+     Les noms français sont des traductions proposées, pas les libellés officiels du jeu ; les noms
+     anglais restent utilisables dans la recherche de l'application.</p>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Les dispositions de touches</h2>
+  <p>Un type d'instrument peut accepter plusieurs dispositions : ce sont des réglages de sa fiche, pas
+     des instruments différents. Il faut choisir dans DodoTopia <strong>la même disposition que celle
+     affichée dans le jeu</strong>.</p>
+  <div class="table-scroll">
+  <table class="layouts">
+    <thead><tr><th>Disposition</th><th>Notes</th><th>Registre</th><th>Altérations</th>
+      <th>Rangées</th><th>Types concernés</th></tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+  </div>
+  <p class="dl-note">Attention : les deux dispositions à 15 notes ne diffèrent pas seulement par leur
+     présentation, leurs touches physiques ne sont pas les mêmes. Le nombre de rangées ne permet pas de
+     deviner le nombre de notes. Convention d'octave : {esc(cat['octave_convention'])}, écrit
+     <strong>Do4</strong> dans les libellés français de cette page.</p>
+</div></section>
+
+<section class="section section--tight"><div class="wrap">
+  <h2>D'où viennent ces informations</h2>
+  <p>Catalogue relevé le {esc(human_date(cat['retrieved_at']) or cat['retrieved_at'])}. Ce n'est pas une
+     liste officielle et elle n'est pas
+     forcément exhaustive : un type confirmé par une source fiable peut s'y ajouter, avec son propre état.
+     Les tables de touches viennent de projets communautaires publics, cités ci-dessous ; elles décrivent
+     ce que ces projets ont publié, rien de plus.</p>
+  <ul>{sources}</ul>
+  <details class="news">
+    <summary>Provenance des visuels, type par type</summary>
+    <div class="faq__body">
+      <p>Les icônes affichées sur cette page sont servies depuis ce serveur, à partir des fichiers
+         embarqués dans DodoTopia : aucune image n'est chargée depuis un site tiers. Elles proviennent du
+         catalogue public d'objets d'Heartopia recensé par Build Heartopia. Leur présence publique ne vaut
+         pas licence de réutilisation libre : si un ayant droit souhaite le retrait d'un visuel, il suffit
+         d'écrire à {EDITEUR_COURRIEL} — l'image est retirée et remplacée par une pastille générique, sans
+         que l'instrument disparaisse de la liste ni que ses touches changent.</p>
+      <ul class="prov">{per_type}</ul>
+    </div>
+  </details>
+</div></section>
+
+<section class="section section--tight"><div class="wrap">
+  <div class="notice">
+    <p><strong>Ce que cette page ne dit pas.</strong> Elle ne dit pas que tous les instruments sont
+       compatibles, ni qu'un instrument documenté jouera juste du premier coup. Elle ne dit rien non plus
+       du son : DodoTopia envoie des touches au jeu, c'est Heartopia qui produit la musique. Choisir un
+       instrument ici, ou dans l'application, ne l'équipe pas dans le jeu : c'est à toi de l'ouvrir.</p>
+  </div>
+</div></section>
+"""
+    return page(settings, "/instruments", title, description, body)
 
 
 # --- Accueil -------------------------------------------------------------------------
@@ -273,13 +634,50 @@ def latest_release(settings) -> dict | None:
         conn.close()
 
 
-def download_block(latest: dict | None) -> tuple[str, str]:
-    """(HTML de la zone de téléchargement, ligne de version pour le pied de page)."""
+def hero_download(latest: dict | None) -> str:
+    """Zone de telechargement du heros : une seule action principale, une ligne de version compacte."""
+    if not latest:
+        return """<div class="soon">
+      <h2>Bientôt disponible</h2>
+      <p>Aucune version n'est publiée pour l'instant. La première version téléchargeable arrive bientôt :
+         reviens d'ici quelques jours, cette page proposera alors l'installeur Windows et l'archive Linux.</p>
+    </div>"""
+    version = esc(latest["version"])
+    assets = latest.get("assets") or {}
+    win = assets.get("windows-setup")
+    lin = assets.get("linux-x64")
+    main = ""
+    if win:
+        main = f"""<a class="btn btn--cta" href="{esc(dl_path(latest['version'], win['filename']))}"
+         download data-platform="windows-setup">
+        <span class="btn__ico" aria-hidden="true">⬇</span>
+        <span class="btn__txt"><span>Télécharger pour Windows</span>
+          <span class="btn__sub">Installeur · {esc(human_size(win['size']))}</span></span>
+      </a>"""
+    elif lin:
+        main = f"""<a class="btn btn--cta" href="{esc(dl_path(latest['version'], lin['filename']))}"
+         download data-platform="linux-x64">
+        <span class="btn__ico" aria-hidden="true">⬇</span>
+        <span class="btn__txt"><span>Télécharger pour Linux</span>
+          <span class="btn__sub">Archive · {esc(human_size(lin['size']))}</span></span>
+      </a>"""
+    return (f'<div class="dl-row">{main}'
+            '<a class="btn btn--quiet" href="#demarrer">Voir comment ça marche</a></div>'
+            f'<p class="dl-note">Version {version} · gratuit, sans compte obligatoire · '
+            f'<a href="#telecharger">autres téléchargements</a></p>')
+
+
+def download_section(latest: dict | None) -> tuple[str, str]:
+    """(HTML de la section Telechargement, ligne de version pour le pied de page).
+
+    Toutes les donnees (version, taille, nom de fichier, notes) viennent des publications enregistrees :
+    rien n'est ecrit en dur ici ni ailleurs dans la page.
+    """
     if not latest:
         html = """<div class="soon">
     <h2>Bientôt disponible</h2>
     <p>Aucune version n'est publiée pour l'instant. La première version téléchargeable arrive bientôt :
-       revenez d'ici quelques jours, cette page proposera alors l'installeur Windows et l'archive Linux.</p>
+       reviens d'ici quelques jours, cette page proposera alors l'installeur Windows et l'archive Linux.</p>
   </div>"""
         return html, f"Aucune version publiée pour l'instant · Serveur {esc(SERVER_VERSION)}"
 
@@ -309,20 +707,26 @@ def download_block(latest: dict | None) -> tuple[str, str]:
     notes = []
     por = assets.get("windows-portable")
     if por:
-        notes.append(f'Pas envie d\'installer ? <a href="{esc(dl_path(latest["version"], por["filename"]))}" '
-                     f'download>Version portable pour Windows</a> ({esc(human_size(por["size"]))}), '
-                     "à dézipper où vous voulez.")
+        notes.append("<strong>Installeur ou version portable ?</strong> L'installeur met DodoTopia dans le menu "
+                     "Démarrer et se met à jour tout seul : c'est le choix conseillé. La "
+                     f'<a href="{esc(dl_path(latest["version"], por["filename"]))}" download>version portable pour '
+                     f'Windows</a> ({esc(human_size(por["size"]))}) se dézippe où tu veux, sans installation, '
+                     "mais se met à jour à la main.")
     if not lin:
-        notes.append("La version Linux n'est pas disponible pour cette publication.")
-    notes.append(f"Version {version}{f' · publiée le {date}' if date else ''} · gratuit, sans compte obligatoire.")
+        notes.append("Aucune archive Linux n'accompagne cette publication.")
+    notes.append("Sur macOS, sur téléphone ou sur tablette, DodoTopia ne fonctionne pas : il a besoin d'envoyer "
+                 "des touches et de lire l'écran d'un ordinateur Windows ou Linux où tourne le jeu.")
+    notes.append(f"Version {version}{f' · publiée le {date}' if date else ''} · "
+                 "chaque fichier est vérifié par son empreinte SHA-256 au téléchargement.")
 
     release_notes = ""
     raw_notes = (latest.get("notes") or "").strip()
     if raw_notes:
-        body = "".join(f"<li>{esc(line.strip(' -•\t'))}</li>"
+        body = "".join(f"<li>{esc(line.strip(' -•	'))}</li>"
                        for line in raw_notes.splitlines()[:6] if line.strip())
         if body:
-            release_notes = f'<div class="dl-note"><strong>Nouveautés :</strong><ul>{body}</ul></div>'
+            release_notes = (f'<details class="news"><summary>Voir les nouveautés de la version {version}</summary>'
+                             f'<div class="faq__body"><ul>{body}</ul></div></details>')
 
     html = (f'<div class="dl-row">{"".join(buttons)}</div>'
             + "".join(f'<p class="dl-note">{n}</p>' for n in notes) + release_notes)
@@ -363,84 +767,135 @@ def json_ld(settings, latest: dict | None) -> str:
 
 def render_home(settings) -> str:
     latest = latest_release(settings)
-    downloads, version_line = download_block(latest)
+    downloads, version_line = download_section(latest)
+    hero = hero_download(latest)
     title = "DodoTopia — jouer vos MIDI, dessiner et cuisiner dans Heartopia"
-    description = ("DodoTopia est une application gratuite qui joue vos fichiers MIDI, peint vos images et "
-                   "refait vos recettes dans Heartopia, à votre place. Windows et Linux.")
-    body = f"""<section class="section hero" id="telecharger"><div class="wrap"><div class="hero__grid">
-  <div>
-    <p class="eyebrow">Compagnon gratuit pour Heartopia</p>
-    <h1>Votre dodo joue, dessine et cuisine à votre place</h1>
-    <p class="lead">DodoTopia est une application gratuite qui joue vos fichiers MIDI sur les instruments
-      d'Heartopia, transforme vos images en dessins case par case et refait vos recettes en boucle.</p>
-    {downloads}
+    description = ("DodoTopia est une application gratuite qui joue tes fichiers MIDI, peint tes images et "
+                   "refait tes recettes dans Heartopia, à ta place. Windows et Linux.")
+    body = f"""<section class="section hero"><div class="wrap">
+  <div class="hero__txt">
+    <p class="eyebrow">Application gratuite pour Heartopia</p>
+    <h1>Musique, dessin et cuisine dans Heartopia, avec ton dodo à tes côtés.</h1>
+    <p class="lead">Importe un morceau MIDI ou une image, prépare ton activité dans DodoTopia, puis lance
+      l'automatisation : le jeu reçoit les touches et les clics à ta place, pendant que tu regardes.</p>
+    {hero}
   </div>
-  <div class="hero__art">
-    <img src="/static/logo.png" width="300" height="300" alt="" aria-hidden="true">
-  </div>
-</div></div></section>
+  {app_figure("musique", "L'application DodoTopia, activité Musique : la bibliothèque des morceaux à gauche, le lecteur, le choix de l'instrument et le bouton « Jouer dans Heartopia » à droite.", "L'application, activité Musique", "shot shot--hero", eager=True)}
+</div></section>
 
-<section class="section"><div class="wrap">
-  <h2>Trois outils, trois onglets</h2>
+<section class="section" id="fonctionnalites"><div class="wrap">
+  <h2>Trois activités</h2>
   <div class="cards">
     <article class="card">
-      {SVG_MUSIC}
+      {app_figure("musique", "Activité Musique : liste des morceaux importés, instrument, vitesse et bouton de lancement.", "Activité Musique")}
       <h3>Musique</h3>
-      <p>Importez vos fichiers <code>.mid</code> : DodoTopia appuie sur les touches de l'instrument du jeu
-         à votre place, au piano, à la flûte ou au luth.</p>
-      <ul>
-        <li>Écoute dans le logiciel avant de jouer dans le jeu</li>
-        <li>Transposition automatique selon l'instrument</li>
-        <li>Salons en ligne pour jouer à plusieurs, tous synchronisés sur le même top départ</li>
-      </ul>
+      <p class="card__lead">Joue tes partitions sur les instruments du jeu sans apprendre le doigté.</p>
+      <p>Importe un fichier <code>.mid</code>, choisis l'instrument ouvert dans Heartopia et lance :
+         DodoTopia appuie sur les touches au bon moment. Tu peux préécouter le morceau sur ton ordinateur
+         avant de le jouer dans le jeu, et jouer à plusieurs, chacun sur son instrument.</p>
+      <p class="card__need"><strong>Il te faut :</strong> un fichier MIDI, et un instrument ouvert dans le jeu.</p>
     </article>
     <article class="card">
-      {SVG_IMAGE}
-      <h3>Image</h3>
-      <p>Choisissez une photo ou un dessin : DodoTopia le convertit sur les 126 nuances de la palette du jeu,
-         puis le peint case par case dans l'outil de dessin.</p>
-      <ul>
-        <li>Aperçu fidèle avant de lancer, formats 16:9 à 9:16</li>
-        <li>Contours au crayon puis remplissage au pot de peinture</li>
-        <li>Relecture de l'écran et reprise des cases manquées</li>
-      </ul>
+      {app_figure("dessin", "Activité Dessin : aperçu de l'image convertie case par case, réglages de format et de couleurs.", "Activité Dessin")}
+      <h3>Dessin</h3>
+      <p class="card__lead">Reproduis une image sur la toile du jeu, case par case.</p>
+      <p>Choisis une photo ou un dessin : DodoTopia le convertit sur les couleurs de la palette d'Heartopia,
+         te montre le rendu exact avant de commencer, puis le peint au crayon et au pot de peinture.</p>
+      <p class="card__need"><strong>Il te faut :</strong> une image, et une configuration à faire une fois pour
+         montrer où sont la toile, la palette et les outils à l'écran.</p>
     </article>
     <article class="card">
-      {SVG_COOK}
+      {app_figure("cuisine", "Activité Cuisine : quantité de plats, nombre de cuisinières et suivi de la boucle.", "Activité Cuisine")}
       <h3>Cuisine</h3>
-      <p>Placez-vous devant la cuisinière : DodoTopia refait la dernière recette en boucle, ajuste le feu
-         au bon moment et récupère les plats.</p>
-      <ul>
-        <li>Jusqu'à quatre cuisinières enchaînées</li>
-        <li>Nombre de plats réglable, ou boucle sans fin</li>
-        <li>Arrêt immédiat dès que vous touchez au clavier ou à la souris</li>
-      </ul>
+      <p class="card__lead">Refais la même recette en boucle pendant que tu fais autre chose.</p>
+      <p>Place-toi devant la cuisinière : DodoTopia relance la dernière recette cuisinée, clique la spatule
+         quand l'anneau vert apparaît et récupère le plat. Choisis un nombre de plats, ou laisse tourner en continu.</p>
+      <p class="card__need"><strong>Il te faut :</strong> les ingrédients de la recette, et une configuration à
+         faire une fois devant la cuisinière.</p>
     </article>
+  </div>
+  <div class="notice notice--soft">
+    <p><strong>Jouer ensemble.</strong> Deux façons de démarrer au même instant : le <em>salon en ligne</em>,
+       où un code à six caractères réunit les joueurs et où le chef choisit le morceau et donne le départ, et la
+       <em>synchronisation par le son</em>, sans réseau, où le premier joueur joue une note repère que les autres
+       détectent. Chacun garde son instrument. Le résultat dépend de ta machine et de ta connexion : les départs
+       sont calés au mieux, pas parfaits.</p>
   </div>
 </div></section>
 
-<section class="section"><div class="wrap">
+{instruments_teaser()}
+<section class="section" id="demarrer"><div class="wrap">
   <h2>Comment ça marche</h2>
   <div class="steps">
     <div class="step">
       <div class="step__num" aria-hidden="true">1</div>
-      <h3>Installez DodoTopia</h3>
-      <p>Téléchargez l'installeur Windows ou l'archive Linux, puis lancez l'application à côté du jeu.
-         Vos musiques et vos réglages restent sur votre ordinateur.</p>
+      <h3>Installe DodoTopia</h3>
+      <p>Télécharge l'installeur Windows ou l'archive Linux, puis lance l'application à côté du jeu.
+         Tes musiques, tes images et tes réglages restent sur ton ordinateur.</p>
     </div>
     <div class="step">
       <div class="step__num" aria-hidden="true">2</div>
-      <h3>Préparez l'onglet voulu</h3>
-      <p>Importez vos fichiers MIDI ou votre image, choisissez l'instrument ou le format, et suivez
-         l'assistant de calibrage une seule fois pour le dessin et la cuisine.</p>
+      <h3>Choisis une activité</h3>
+      <p>Musique, Dessin ou Cuisine, en haut de la fenêtre. Chaque activité te dit ce qui lui manque
+         et quelle est la prochaine chose à faire.</p>
     </div>
     <div class="step">
       <div class="step__num" aria-hidden="true">3</div>
-      <h3>Appuyez sur F6 dans le jeu</h3>
-      <p>DodoTopia joue, dessine ou cuisine à votre place. <kbd>F7</kbd>, une touche ou un clic
-         arrêtent tout immédiatement et vous rendent la main.</p>
+      <h3>Prépare Heartopia</h3>
+      <p>Ouvre l'instrument, la toile, ou place-toi devant la cuisinière. Pour le dessin et la cuisine,
+         une configuration guidée te demande une fois où se trouvent les éléments à l'écran.</p>
+    </div>
+    <div class="step">
+      <div class="step__num" aria-hidden="true">4</div>
+      <h3>Lance, et reprends la main quand tu veux</h3>
+      <p>Le bouton de lancement de l'activité, ou son raccourci clavier — <kbd>F6</kbd> par défaut, modifiable
+         dans les réglages. Pour tout arrêter : <kbd>F7</kbd>, n'importe quelle touche, ou un clic.</p>
     </div>
   </div>
+  <div class="examples">
+    <details open>
+      <summary>Un exemple en musique</summary>
+      <div class="faq__body">
+        <ol>
+          <li>Importe un fichier <code>.mid</code> dans « Ma bibliothèque », ou récupères-en un dans
+              « Découvrir des morceaux ».</li>
+          <li>Dans Heartopia, ouvre ton instrument.</li>
+          <li>Choisis le même instrument dans DodoTopia, puis appuie sur <kbd>F6</kbd>.</li>
+        </ol>
+        <p>Vérifie le profil de ton instrument avant de jouer : certains demandent de configurer
+           leurs touches ou de faire un test guidé dans l'application.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Un exemple en dessin</summary>
+      <div class="faq__body">
+        <ol>
+          <li>Importe une image : DodoTopia montre le rendu case par case et le format retenu.</li>
+          <li>Dans Heartopia, ouvre une toile vide à ce format, finesse des détails au maximum, grille activée.</li>
+          <li>La première fois, suis « Configurer la zone du jeu » : treize positions à survoler, une par une.</li>
+          <li>Appuie sur <kbd>F6</kbd> et ne touche plus à la souris jusqu'à la fin.</li>
+        </ol>
+        <p>Un dessin interrompu ne peut pas être repris là où il s'est arrêté.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Un exemple en cuisine</summary>
+      <div class="faq__body">
+        <ol>
+          <li>Cuisine une fois toi-même la recette voulue : DodoTopia refait la dernière recette du jeu,
+              il ne la choisit pas.</li>
+          <li>Place-toi devant la cuisinière, bulle visible, puis suis « Configurer la cuisine ».</li>
+          <li>Choisis un nombre de plats — ou « en continu » — puis appuie sur <kbd>F6</kbd>.</li>
+        </ol>
+        <p>Un mouvement de souris ou une touche arrêtent la boucle et te rendent la main.</p>
+      </div>
+    </details>
+  </div>
+</div></section>
+
+<section class="section" id="telecharger"><div class="wrap">
+  <h2>Télécharger</h2>
+  {downloads}
 </div></section>
 
 <section class="section" id="questions"><div class="wrap">
@@ -450,9 +905,53 @@ def render_home(settings) -> str:
       <summary>Est-ce que c'est gratuit ?</summary>
       <div class="faq__body">
         <p>Oui, entièrement. DodoTopia est gratuit, sans publicité, sans achat intégré, sans abonnement et
-           sans version payante cachée. Un compte Discord n'est demandé que si vous voulez utiliser la
-           bibliothèque partagée ou les salons en ligne ; tout le reste — musique, dessin, cuisine —
-           fonctionne sans compte et sans connexion.</p>
+           sans version payante cachée. Un compte Discord n'est demandé que si tu veux partager tes morceaux
+           ou jouer en salon ; tout le reste — musique, dessin, cuisine — fonctionne sans compte et sans
+           connexion.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Sur quoi est-ce que ça fonctionne ?</summary>
+      <div class="faq__body">
+        <p>Sur un ordinateur Windows 10 ou 11, et sur Linux quand une archive est publiée pour la version en
+           cours (la zone de téléchargement ci-dessus le dit). Il n'y a pas de version macOS, ni pour téléphone
+           ou tablette : DodoTopia doit envoyer des touches et lire l'écran de la machine où tourne le jeu.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Quels fichiers puis-je utiliser ?</summary>
+      <div class="faq__body">
+        <p>Pour la musique, des fichiers MIDI : <code>.mid</code> et <code>.midi</code>. Pour le dessin, des
+           images <code>.png</code>, <code>.jpg</code>, <code>.gif</code>, <code>.bmp</code> et
+           <code>.webp</code>. Les fichiers importés sont copiés dans ton dossier DodoTopia ; l'original
+           n'est pas modifié.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Faut-il que le jeu soit ouvert ?</summary>
+      <div class="faq__body">
+        <p>Oui. DodoTopia ne joue pas tout seul dans le vide : il appuie sur des touches et clique dans la
+           fenêtre d'Heartopia, qui doit être ouverte et active au moment du lancement. Tu peux en revanche
+           préécouter un morceau sur ton ordinateur sans lancer le jeu : dans ce cas, rien n'est envoyé nulle
+           part.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Y a-t-il une configuration à faire au début ?</summary>
+      <div class="faq__body">
+        <p>Pour la musique, non : choisis l'instrument et lance. Pour le dessin et la cuisine, oui, une fois :
+           DodoTopia a besoin de savoir où se trouvent, sur ton écran, la toile, la palette, les outils ou la
+           bulle de la cuisinière. Un assistant te guide position par position, et la configuration est
+           conservée. Elle est à refaire si tu changes de résolution ou de disposition de fenêtre.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Comment arrêter une automatisation en cours ?</summary>
+      <div class="faq__body">
+        <p><kbd>F7</kbd> par défaut arrête tout, et le raccourci est modifiable. Pendant un dessin ou une
+           cuisine, n'importe quelle touche ou un mouvement de souris suffisent aussi ; pendant une lecture
+           dans le jeu, une touche ou un clic gauche arrêtent la lecture. L'écran affiche à chaque instant
+           l'état réel et le bouton d'arrêt.</p>
       </div>
     </details>
     <details>
@@ -460,14 +959,14 @@ def render_home(settings) -> str:
       <div class="faq__body">
         <p>Non. Mais soyons francs sur ce que fait l'application, parce que c'est inhabituel : DodoTopia
            <strong>envoie des appuis de touches et des clics de souris</strong> à la fenêtre du jeu, et
-           <strong>lit l'image de votre écran</strong>. C'est exactement ce que vous lui demandez de faire :
+           <strong>lit l'image de ton écran</strong>. C'est exactement ce que tu lui demandes de faire :
            on ne peut pas jouer d'un instrument, peindre un dessin case par case ou surveiller une cuisinière
-           à votre place sans appuyer sur des touches et sans regarder ce qui s'affiche.</p>
+           à ta place sans appuyer sur des touches et sans regarder ce qui s'affiche.</p>
         <p>Ces deux comportements sont aussi ceux d'un enregistreur de frappe : c'est précisément pour cela que
            Windows SmartScreen ou un antivirus peuvent afficher un avertissement au premier lancement. Ce que
-           DodoTopia ne fait pas : enregistrer ce que vous tapez ailleurs, fouiller vos autres fenêtres, toucher
-           à vos mots de passe, ni envoyer vos captures d'écran où que ce soit — elles sont analysées en mémoire
-           sur votre machine puis jetées.</p>
+           DodoTopia ne fait pas : enregistrer ce que tu tapes ailleurs, fouiller tes autres fenêtres, toucher
+           à tes mots de passe, ni envoyer tes captures d'écran où que ce soit — elles sont analysées en mémoire
+           sur ta machine puis jetées.</p>
         <p>Sans compte, la seule chose que l'application envoie sur le réseau est la
            <strong>vérification de mise à jour</strong> : elle demande à ce serveur s'il existe une version plus
            récente, en indiquant la version installée et la plateforme. Chaque version publiée est vérifiée par
@@ -479,36 +978,41 @@ def render_home(settings) -> str:
     <details>
       <summary>Est-ce que je risque quelque chose sur mon compte de jeu ?</summary>
       <div class="faq__body">
-        <p>Honnêtement : c'est possible, et nous ne pouvons rien vous garantir. DodoTopia est un
+        <p>Honnêtement : c'est possible, et nous ne pouvons rien te garantir. DodoTopia est un
            <strong>outil non officiel</strong>, sans aucun lien avec les éditeurs d'Heartopia. L'usage d'un
            logiciel d'automatisation peut être contraire aux conditions d'utilisation du jeu, et l'éditeur reste
            libre de sanctionner un compte comme il l'entend.</p>
         <p>DodoTopia n'injecte rien dans le jeu, ne modifie aucun fichier du jeu et ne lit pas sa mémoire :
            il se contente d'appuyer sur des touches et de regarder l'écran, comme le ferait une personne très
-           rapide. Cela réduit le risque, mais ne l'élimine pas. <strong>Vous l'utilisez à vos propres
+           rapide. Cela réduit le risque, mais ne l'élimine pas. <strong>Tu l'utilises à tes propres
            risques.</strong></p>
       </div>
     </details>
     <details>
       <summary>Quelles données sont collectées ?</summary>
       <div class="faq__body">
-        <p>Hors ligne, aucune : vos fichiers MIDI, vos images, vos réglages et vos journaux restent sur votre
+        <p>Hors ligne, aucune : tes fichiers MIDI, tes images, tes réglages et tes journaux restent sur ton
            ordinateur. L'application contacte ce serveur uniquement pour vérifier s'il existe une mise à jour
-           (elle transmet alors la version installée et la plateforme), et, si vous vous connectez avec Discord,
-           pour la bibliothèque partagée et les salons en ligne.</p>
-        <p>Dans ce cas, le serveur conserve votre identifiant Discord, votre pseudo, l'adresse de votre avatar,
-           vos sessions et les fichiers que vous déposez. Le détail complet est dans la
+           (elle transmet alors la version installée et la plateforme), et, si tu te connectes avec Discord,
+           pour le catalogue partagé et les salons en ligne.</p>
+        <p>Dans ce cas, le serveur conserve ton identifiant Discord, ton pseudo, l'adresse de ton avatar,
+           tes sessions et les fichiers que tu déposes. Le détail complet est dans la
            <a href="/confidentialite">politique de confidentialité</a>.</p>
       </div>
     </details>
     <details>
-      <summary>Comment signaler un problème ?</summary>
+      <summary>Quelque chose ne marche pas : que faire ?</summary>
       <div class="faq__body">
-        <p>Écrivez à {EDITEUR_COURRIEL} en décrivant ce que vous faisiez, ce qui
-           s'est passé et votre version de l'application. Joignez les journaux : ils se trouvent dans le dossier
+        <p>Si le jeu ne reçoit pas les touches, vérifie qu'Heartopia est bien la fenêtre active, puis relance
+           DodoTopia en administrateur. Si les notes sont fausses, vérifie que l'instrument choisi dans
+           DodoTopia est celui ouvert dans le jeu. Si un dessin est décalé, refais la configuration de la zone
+           du jeu pour ce format. Si la bulle de la cuisinière n'est pas reconnue, lance le test de détection
+           devant elle, puis recapture ses icônes.</p>
+        <p>Pour signaler un problème, écris à {EDITEUR_COURRIEL} en décrivant ce que tu faisais, ce qui s'est
+           passé et ta version de l'application. Joins les journaux : ils se trouvent dans le dossier
            <code>%APPDATA%\\DodoTopia</code> sous les noms <code>dessin.log</code>, <code>cuisine.log</code> et
-           <code>multi.log</code>, et se rouvrent depuis les liens en bas de chaque onglet.</p>
-        <p>Pour un contenu déposé dans la bibliothèque partagée, le plus simple est le bouton de signalement
+           <code>multi.log</code>, et s'ouvrent depuis Réglages › À propos et mises à jour.</p>
+        <p>Pour un contenu déposé dans le catalogue partagé, le plus simple est le bouton de signalement
            prévu dans l'application ; sinon, la même adresse de contact convient.</p>
       </div>
     </details>
@@ -875,6 +1379,12 @@ def home(request: Request):
     return HTMLResponse(_cached_home(request), headers={"Cache-Control": PAGE_CACHE})
 
 
+@router.get("/instruments", response_class=HTMLResponse)
+def instruments(request: Request):
+    # Page statique (elle ne depend que des fichiers du catalogue) : cache long, comme les pages legales.
+    return HTMLResponse(render_instruments(request.app.state.settings), headers={"Cache-Control": DOC_CACHE})
+
+
 @router.get("/mentions-legales", response_class=HTMLResponse)
 def mentions(request: Request):
     return HTMLResponse(render_mentions(request.app.state.settings), headers={"Cache-Control": DOC_CACHE})
@@ -904,12 +1414,11 @@ def robots(request: Request):
 @router.get("/sitemap.xml")
 def sitemap(request: Request):
     base = request.app.state.settings.public_url
-    urls = "".join(
-        f"  <url><loc>{esc(base + path)}</loc>"
-        f"<changefreq>{'weekly' if path == '/' else 'yearly'}</changefreq>"
-        f"<priority>{'1.0' if path == '/' else '0.4'}</priority></url>\n"
-        for path in PAGES
-    )
+    urls = ""
+    for path in PAGES:
+        freq, prio = SITEMAP_HINTS.get(path, SITEMAP_DEFAULT)
+        urls += (f"  <url><loc>{esc(base + path)}</loc>"
+                 f"<changefreq>{freq}</changefreq><priority>{prio}</priority></url>\n")
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
            f"{urls}</urlset>\n")

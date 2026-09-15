@@ -1,7 +1,10 @@
-// DodoTopia : apercu sans backend (tests) : index.html?mock[&image][&calib|&drawing|&autocal][&cook|&ccalib][&dialog][&toast][&tab=cook]
-//   [&settings[=section]][&empty (bibliotheque vide)][&multi (compte a rebours Multi audio)][&audio (mode Multi audio au repos)]
+// DodoTopia : apercu sans backend (tests) : index.html?mock[&image][&calib|&drawing|&autocal][&cook|&ccalib][&dialog][&toast][&help][&account][&tab=cook][&view=library|discover|together]
+//   [&settings[=general|audio|hotkeys|draw|cook|online|about]][&empty (bibliotheque vide)][&multi (compte a rebours Multi audio)][&audio (mode Multi audio au repos)]
 //   [&game (lecture dans le jeu)][&error (arret anormal, non admin)]
-//   En ligne / Salon : [&online (connecte + bibliotheque)][&online=out (deconnecte)][&online=off (serveur injoignable)]
+//   Instruments : [&inst=<id> (instrument actif : piano, lute, conga, conch...)][&qwerty (libelles QWERTY)]
+//   [&sel (selecteur ouvert)][&keys (panneau des touches)]
+//   [&nocompat (aucun diagnostic de morceau)]
+//   En ligne / Salon : [&online (connecte + catalogue)][&online=out (deconnecte)][&online=off (serveur injoignable)]
 //   [&online=wait (connexion Discord en attente)][&admin (file de moderation)][&lobby (salon en attente, 3 joueurs)]
 //   [&lobby=count (compte a rebours du salon)][&update (mise a jour disponible : carte + toast persistant)]
 if(location.search.includes('mock')){
@@ -9,7 +12,56 @@ if(location.search.includes('mock')){
   const has = k => new RegExp('[?&]' + k + '(?:&|$)').test(q);
   const keysP = [",","l",".",";","/","o","0","p","-","[","=","]","z","s","x","d","c","v","g","b","h","n","j","m","q","2","w","3","e","r","5","t","6","y","7","u","i"];
   const keysF = ["y","u","i","o","p","h","j","k","l",";","n","m",",",".","/"];
-  const arg = k => { const m = new RegExp('[?&]' + k + '(?:=([a-z0-9]*))?(?:&|$)').exec(q); return m ? (m[1] || true) : null; };
+  const arg = k => { const m = new RegExp('[?&]' + k + '(?:=([a-z0-9-]*))?(?:&|$)').exec(q); return m ? (m[1] || true) : null; };
+
+  // ---- catalogue simule : 19 types, un seul par type, au format leger de Instrument.to_dict()
+  // Statuts volontairement varies : confirme, documente, personnalise, test rapide, percussif candidat, inconnu.
+  const BLOCK_PERC = 'Profil de percussion candidat : les frappes n’ont pas encore été identifiées. Passe le test des percussions pour l’activer.';
+  const BLOCK_UNKNOWN = 'Touches inconnues pour cet instrument : elles restent à relever dans le jeu.';
+  const inst = (id, name, en, cat, o) => Object.assign({
+    id, name, label_en: en, category: cat, image: 'instruments/' + id + '.png',
+    kind: 'diatonique', keys: keysF, count: 15, layout_id: 'diatonic-15-3row', layout_label: '15 notes, 3 rangées',
+    status: 'documented', ready: true, percussive: false, custom: false, blocked_reason: '',
+    lowest: 60, span: 24, aliases: [], variant_count: 1}, o || {});
+  const instUnknown = (id, name, en, cat, o) => inst(id, name, en, cat, Object.assign({
+    kind: '', keys: [], count: 0, layout_id: null, layout_label: '', status: 'unknown', ready: false,
+    blocked_reason: BLOCK_UNKNOWN, lowest: 60, span: 0}, o || {}));
+  const MOCK_INSTRUMENTS = [
+    inst('piano', 'Piano', 'Piano', 'keys', {kind: 'chromatique', keys: keysP, count: 37, layout_id: 'piano-chromatic-37',
+      layout_label: '37 notes, piano chromatique', lowest: 48, span: 36, status: 'confirmed',
+      aliases: ['clavier', 'piano'], variant_count: 9}),
+    inst('recorder', 'Flûte à bec', 'Recorder', 'winds', {aliases: ['flute', 'flute a bec', 'recorder'], variant_count: 4}),
+    inst('xiao', 'Xiao en bambou', 'Bamboo Xiao', 'winds', {aliases: ['xiao', 'flute chinoise']}),
+    inst('lute', 'Luth', 'Lute', 'strings', {status: 'custom', custom: true, lowest: 48, span: 24,
+      layout_label: '', aliases: ['guitare', 'lute', 'luth'], variant_count: 5}),
+    inst('wooden-bass', 'Basse en bois', 'Wooden Bass', 'strings', {aliases: ['basse', 'contrebasse'], variant_count: 4}),
+    inst('bagpipe', 'Cornemuse', 'Bagpipe', 'winds', {aliases: ['bagpipe', 'biniou'], variant_count: 2}),
+    inst('concertina', 'Concertina', 'Concertina', 'keys', {aliases: ['accordeon', 'bandoneon'], variant_count: 4}),
+    inst('mbira', 'Mbira', 'Mbira', 'percussion', {aliases: ['kalimba', 'sanza'], variant_count: 2}),
+    inst('lyre', 'Lyre', 'Lyre', 'strings', {status: 'quick-tested', aliases: ['cithare', 'lyre'], variant_count: 5}),
+    inst('violin', 'Violon', 'Violin', 'strings', {status: 'confirmed', aliases: ['violin', 'violon'], variant_count: 2}),
+    inst('cello', 'Violoncelle', 'Cello', 'strings', {aliases: ['cello', 'violoncelle'], variant_count: 4}),
+    inst('conga', 'Conga', 'Conga', 'percussion', {percussive: true, ready: false, blocked_reason: BLOCK_PERC,
+      aliases: ['conga', 'djembe', 'tambour'], variant_count: 4}),
+    inst('cajon', 'Cajón', 'Cajón', 'percussion', {percussive: true, ready: false, blocked_reason: BLOCK_PERC,
+      aliases: ['cajon', 'caisse'], variant_count: 3}),
+    instUnknown('xylophone', 'Xylophone à 8 notes', '8-Note Xylophone w/ Stand', 'percussion', {aliases: ['lames', 'xylophone'], variant_count: 2}),
+    instUnknown('saxophone', 'Saxophone', 'Saxophone', 'winds', {aliases: ['sax', 'saxo'], variant_count: 2}),
+    instUnknown('harp', 'Harpe', 'Harp', 'strings', {aliases: ['harp', 'harpe'], variant_count: 4}),
+    instUnknown('steel-tongue-drum', 'Tambour à langues métalliques', 'Steel Tongue Drum', 'percussion', {aliases: ['handpan'], variant_count: 2}),
+    instUnknown('ocarina', 'Ocarina', 'Ocarina', 'winds', {aliases: ['ocarina', 'ocarine'], variant_count: 2}),
+    instUnknown('conch', 'Conque', 'Conch', 'winds', {aliases: ['conch', 'conque', 'coquillage'], variant_count: 2})];
+  // ?mock&inst=<id> : instrument actif (defaut : le luth, profil personnalise herite d'une ancienne config)
+  const instWanted = typeof arg('inst') === 'string' ? arg('inst') : 'lute';
+  const instIdx = Math.max(0, MOCK_INSTRUMENTS.findIndex(x => x.id === instWanted));
+  const instCur = MOCK_INSTRUMENTS[instIdx];
+  // diagnostic du morceau : ce que compat_report renverrait pour ce couple morceau / profil
+  const MOCK_COMPAT = (!instCur.ready || has('nocompat') || has('empty')) ? null : {
+    notes: 1428, playable: 1216, out_of_range: 172, missing_accidental: 68, dropped: 40, drums: 96,
+    shift: 5, coverage: 78, folded: 132, fold: true,
+    options: [{kind: 'transpose', value: 7, coverage: 91, label: 'Transposer de +7 demi-tons : 91 % à la hauteur exacte'},
+              {kind: 'octave', value: -12, coverage: 84, label: 'Descendre d’une octave : 84 % à la hauteur exacte'},
+              {kind: 'omit', value: 132, coverage: 80, label: 'Omettre 132 notes hors registre : 80 % à la hauteur exacte, aucune note déplacée d’octave'}]};
   const onl = arg('online'), adm = !!has('admin'), lob = arg('lobby'), upd = arg('update');
   const wantOnline = !!(onl || adm || lob || upd);
   const offline = onl === 'off', out = onl === 'out', waiting = onl === 'wait';
@@ -34,15 +86,18 @@ if(location.search.includes('mock')){
   const MOCK_REPORTS = [
     {id: 5, song_id: 12, song_title: 'Wish You Were Here', reporter_name: 'Lila', reason: 'fichier tronqué, la moitié manque',
      created_at: new Date(Date.now() - 86400e3 * 3).toISOString()}];
+  // instruments volontairement melanges : id du catalogue, deux anciens ids (flute, luth) et un id inconnu
   const MOCK_PLAYERS = [
-    {id: 1, name: 'Dodo', avatar: '', instrument: 'piano', host: true, connected: true, have_song: true, ready: true, status: 'lobby'},
+    {id: 1, name: 'Dodo', avatar: '', instrument: 'lute', host: true, connected: true, have_song: true, ready: true, status: 'lobby'},
     {id: 2, name: 'Lila', avatar: '', instrument: 'flute', host: false, connected: true, have_song: true, ready: true, status: 'lobby'},
     {id: 3, name: 'Marin-au-pseudo-vraiment-long', avatar: '', instrument: 'luth', host: false, connected: false,
-     have_song: lob === 'count', ready: lob === 'count', status: 'lobby'}];
+     have_song: lob === 'count', ready: lob === 'count', status: 'lobby'},
+    {id: 4, name: 'Nino', avatar: '', instrument: 'theorbe-de-poche', host: false, connected: true,
+     have_song: true, ready: false, status: 'lobby'}];
   const MOCK_ROOM = !lob ? null : {
     enabled: true, state: lob === 'count' ? 'armed' : 'lobby', mode: 'room', role: 'host',
     seconds_left: lob === 'count' ? 4.2 : null, message: lob === 'count' ? 'Top départ : reste sur Heartopia.' : '',
-    player_id: 1, leader_id: 1, players: [1, 2, 3],
+    player_id: 1, leader_id: 1, players: [1, 2, 3, 4],
     room: {code: 'K7P2QD', connected: true, state: lob === 'count' ? 'countdown' : 'lobby', host_id: 1,
       song: {sha256: 'a1', name: 'AriaMath', duration_ms: 318000, key_shift: 5, source: 'library', online_id: 11},
       players: MOCK_PLAYERS, countdown_s: 5, start_at_ms: 0, max_players: 8, seq: 12,
@@ -78,8 +133,33 @@ if(location.search.includes('mock')){
     {id: 2, t: 0, msg: 'Arrêt : touche pressée', kind: 'warn', sticky: false});
   if(upd) MOCK_TOASTS.push({id: 3, t: 0, msg: 'Version 1.8.0 disponible', kind: 'info', sticky: true,
     action: {label: 'Installer', method: 'update_install'}, progress: 35});
-  render({version:'1.7.0', instruments:[{id:'piano',name:'Piano',kind:'chromatique',keys:keysP},{id:'flute',name:'Flûte',kind:'diatonique',keys:keysF},{id:'luth',name:'Luth',kind:'diatonique',keys:keysF}],
-    instrument:2, songs: has('empty') ? [] : [{id:'a',name:'AriaMath',file:'AriaMath',fav:true,plays:12,added:1788700000,last_played:1788730000,duration:318,index:0},{id:'b',name:'Wish You Were Here',file:'P.FLOYD.Wish you were here K',fav:false,plays:0,added:1788720000,last_played:0,duration:95,index:1},{id:'c',name:'Blinding Lights',file:'The-Weeknd-Blinding-Lights',fav:false,plays:3,added:1788600000,last_played:1788600500,duration:124,index:2}],
+
+  // ---- catalogue simule : memes tables que assets/instruments/layouts.json (genere, ne pas retoucher
+  // a la main). Sans lui, INST.cat reste nul en mode mock et le selecteur n'a ni disposition ni touches.
+  const MOCK_LAYOUTS = [
+    ["diatonic-15-2row","15 notes, 2 rangées","Do4 à Do6, gamme de do majeur, touches sur deux rangées.","key",[7,8],[[60,"Do4","a"],[62,"Ré4","s"],[64,"Mi4","d"],[65,"Fa4","f"],[67,"Sol4","g"],[69,"La4","h"],[71,"Si4","j"],[72,"Do5","q"],[74,"Ré5","w"],[76,"Mi5","e"],[77,"Fa5","r"],[79,"Sol5","t"],[81,"La5","y"],[83,"Si5","u"],[84,"Do6","i"]]],
+    ["diatonic-15-3row","15 notes, 3 rangées","Do4 à Do6, gamme de do majeur, touches sur trois rangées.","key",[5,5,5],[[60,"Do4","y"],[62,"Ré4","u"],[64,"Mi4","i"],[65,"Fa4","o"],[67,"Sol4","p"],[69,"La4","h"],[71,"Si4","j"],[72,"Do5","k"],[74,"Ré5","l"],[76,"Mi5",";"],[77,"Fa5","n"],[79,"Sol5","m"],[81,"La5",","],[83,"Si5","."],[84,"Do6","/"]]],
+    ["piano-diatonic-22","22 notes, piano diatonique","Do3 à Do6, gamme de do majeur, trois rangées.","key",[7,7,8],[[48,"Do3","z"],[50,"Ré3","x"],[52,"Mi3","c"],[53,"Fa3","v"],[55,"Sol3","b"],[57,"La3","n"],[59,"Si3","m"],[60,"Do4","a"],[62,"Ré4","s"],[64,"Mi4","d"],[65,"Fa4","f"],[67,"Sol4","g"],[69,"La4","h"],[71,"Si4","j"],[72,"Do5","q"],[74,"Ré5","w"],[76,"Mi5","e"],[77,"Fa5","r"],[79,"Sol5","t"],[81,"La5","y"],[83,"Si5","u"],[84,"Do6","i"]]],
+    ["piano-chromatic-37","37 notes, piano chromatique","Do3 à Do6, toutes les altérations, trois rangées.","octave",[12,12,13],[[48,"Do3",","],[49,"Do♯3","l"],[50,"Ré3","."],[51,"Ré♯3",";"],[52,"Mi3","/"],[53,"Fa3","o"],[54,"Fa♯3","0"],[55,"Sol3","p"],[56,"Sol♯3","-"],[57,"La3","["],[58,"La♯3","="],[59,"Si3","]"],[60,"Do4","z"],[61,"Do♯4","s"],[62,"Ré4","x"],[63,"Ré♯4","d"],[64,"Mi4","c"],[65,"Fa4","v"],[66,"Fa♯4","g"],[67,"Sol4","b"],[68,"Sol♯4","h"],[69,"La4","n"],[70,"La♯4","j"],[71,"Si4","m"],[72,"Do5","q"],[73,"Do♯5","2"],[74,"Ré5","w"],[75,"Ré♯5","3"],[76,"Mi5","e"],[77,"Fa5","r"],[78,"Fa♯5","5"],[79,"Sol5","t"],[80,"Sol♯5","6"],[81,"La5","y"],[82,"La♯5","7"],[83,"Si5","u"],[84,"Do6","i"]]]
+  ].map(([layoutId, labelFr, descriptionFr, autoTranspose, rows, notes]) => ({
+    layoutId, labelFr, descriptionFr, autoTranspose, rows, noteCount: notes.length,
+    keyboardReference: 'QWERTY US', status: 'community-documented-not-tested-in-game',
+    sourceUrls: ['https://github.com/Jed556/AutoMidiPlayer/wiki/Support'],
+    notes: notes.map(([midi, solfege, key]) => ({midi, solfege, note: '', key}))}));
+  INST.cat = {categories: [{id:"strings",labelFr:"Cordes"},{id:"winds",labelFr:"Vents"},{id:"keys",labelFr:"Claviers"},{id:"percussion",labelFr:"Percussions"}], layouts: MOCK_LAYOUTS,
+    octave_convention: 'Do4 / C4 = MIDI 60', retrieved_at: '2026-09-15',
+    source_urls: ['https://build-heartopia.com/items'],
+    keyboard_layout: has('qwerty') ? 'qwerty' : 'azerty',
+    keyboard_layout_detected: has('qwerty') ? null : 'azerty'};
+
+  render({version:'1.7.0', instruments: MOCK_INSTRUMENTS,
+    instrument: instIdx, instrument_id: instCur.id, instrument_ready: instCur.ready,
+    instrument_blocked: instCur.ready ? '' : instCur.blocked_reason,
+    instrument_favorites: ['piano', 'lyre'], instrument_wizard: null,
+    keyboard_layout: has('qwerty') ? 'qwerty' : 'azerty', keyboard_layout_pref: has('qwerty') ? 'qwerty' : 'auto',
+    song_compat: MOCK_COMPAT,
+    debug: has('debug'),
+    songs: has('empty') ? [] : [{id:'a',name:'AriaMath',file:'AriaMath',fav:true,plays:12,added:1788700000,last_played:1788730000,duration:318,index:0},{id:'b',name:'Wish You Were Here',file:'P.FLOYD.Wish you were here K',fav:false,plays:0,added:1788720000,last_played:0,duration:95,index:1},{id:'c',name:'Blinding Lights',file:'The-Weeknd-Blinding-Lights',fav:false,plays:3,added:1788600000,last_played:1788600500,duration:124,index:2}],
     current: has('empty') ? -1 : 0, state: has('empty') || has('multi') || has('error') ? (has('multi') ? 'sync' : 'stopped') : 'playing', target: has('game') ? 'game' : 'preview',
     position:62, duration:318, speed:1, info: has('empty') || has('error') ? null : {shift:5,folded:272,snapped:67},
     hotkeys:{play_pause:'F6',stop:'F7',next_song:'F8',prev_song:'F9',speed_down:'F10',speed_up:'F11',next_instrument:'F12',draw_point:'F3'},
@@ -95,7 +175,7 @@ if(location.search.includes('mock')){
     log:[], is_admin: !has('error'),
     toasts: MOCK_TOASTS,
     draw:{state: has('calib') ? 'calibrating' : has('drawing') ? 'drawing' : has('autocal') ? 'autocal' : 'idle', format:'16:9', step:2, progress_msg: has('autocal') ? 'mesure des cases…' : 'couleur 3 / 12',
-      steps:[{key:'tl',title:'Coin haut-gauche du canevas',help:'Place la souris exactement sur le coin haut-gauche de la zone de dessin.'},{key:'br',title:'Coin bas-droit du canevas',help:'…'},{key:'pal0',title:'Première couleur de la palette',help:'Survole la première pastille de couleur (en haut à gauche de la palette).'},{key:'pal1',title:'Dernière couleur de la palette',help:'…'},{key:'pencil',title:'Outil crayon',help:'…'},{key:'bucket',title:'Outil pot de peinture',help:'…'}],
+      steps:[{key:'tl',title:'Coin haut-gauche de la toile',help:'Place la souris exactement sur le coin haut-gauche de la zone rayée où l’on dessine (pas le cadre).'},{key:'br',title:'Coin bas-droit de la toile',help:'Place la souris sur le coin bas-droit de la zone rayée.'},{key:'pal0',title:'Première couleur de la palette',help:'Survole la première pastille de couleur (en haut à gauche de la palette).'},{key:'pal1',title:'Dernière couleur de la palette',help:'Survole la dernière pastille (en bas à droite de la palette).'},{key:'palbtn',title:'Bouton « palette » (ouvre les nuances)',help:'Sans cliquer, survole le bouton rond avec l’icône palette, à gauche des pastilles de couleur.'},{key:'strip',title:'Bande des familles : la pastille du centre',help:'Clique sur le bouton palette : un bloc de 10 nuances apparaît. Survole la pastille au centre de la bande (celle encadrée en blanc).'},{key:'prev',title:'Flèche « précédent » de la bande',help:'Survole la flèche < à gauche de la bande des familles.'},{key:'next',title:'Flèche « suivant » de la bande',help:'Survole la flèche > à droite de la bande des familles.'},{key:'sub0',title:'Nuances : celle en haut à gauche',help:'Survole la nuance en haut à gauche du bloc de 10 nuances.'},{key:'sub1',title:'Nuances : celle en bas à droite',help:'Survole la nuance en bas à droite du même bloc.'},{key:'pencil',title:'Outil crayon',help:'Survole le bouton du crayon, à gauche.'},{key:'bucket',title:'Outil pot de peinture',help:'Survole le bouton du pot de peinture (remplissage).'},{key:'undo',title:'Bouton Annuler',help:'Survole la flèche « Annuler » au-dessus de la toile (facultatif).'}],
       done:1830, total:5184, elapsed:42, eta:75, countdown: has('countdown') ? 2.4 : 0, message:'', palette:null, shades_ok:true, formats:{'16:9':{cols:96,rows:54,calibrated:!has('nocal')},'4:3':{cols:72,rows:54,calibrated:false},'1:1':{cols:54,rows:54,calibrated:false},'3:4':{cols:40,rows:54,calibrated:false},'9:16':{cols:30,rows:54,calibrated:false}},
       validated:{'16:9':!has('noval') && !has('nocal'),'4:3':false,'1:1':false,'3:4':false,'9:16':false},
       tools:{pencil:true,bucket:true}, settings:{step_delay:0.012,click_delay:0.05,fill_background:true,skip_white:false}},
@@ -103,11 +183,21 @@ if(location.search.includes('mock')){
       steps:[{key:'search_tl',title:'Zone de recherche : coin haut-gauche',help:'…'},{key:'search_br',title:'Zone de recherche : coin bas-droit',help:'…'},{key:'cook',title:'Bulle « cuisiner »',help:'Place la souris au centre de la bulle.'},{key:'tile',title:'Menu Recettes : la première tuile récente',help:'…'},{key:'cook_btn',title:'Menu Recettes : le bouton « Cuisiner »',help:'…'},{key:'spatula',title:'Bulle « spatule » (facultatif)',help:'…',optional:true},{key:'ready',title:'Bulle « récupérer » (gants)',help:'…'},{key:'neutral',title:'Un endroit vide où cliquer',help:'…'}],
       countdown: has('countdown') ? 2.4 : 0, elapsed:75, dishes:3, fires:5, message:'', stop_reason:'', calibrated: !has('nocal'), refs:{cook:!has('nocal'),ready:!has('nocal'),spatula:false}, ring_color:null,
       test_result: has('notest') || has('nocal') ? '' : 'bulle « cuisiner » en 820,440 (cook 0.91, ready 0.4, vert 0) ; menu fermé.',
-      settings:{max_dishes:10,cook_timeout:240,match:0.55,click_delay:0.3,green_px:60}, screen_ok:true}});
+      settings:{cookers:1,max_dishes:10,cook_timeout:240,match:0.55,click_delay:0.3,green_px:60}, screen_ok:true}});
+  // l'apercu navigateur montre le meme en-tete que l'application : le logo vient du dossier assets
+  const lg = document.getElementById('logo');
+  if(lg && !lg.src){ lg.src = '../assets/logo.png'; lg.style.display = ''; }
   const mt = /tab=(music|image|cook|online)/.exec(location.search);
+  // ?mock&sel : selecteur ouvert ; &keys : panneau « Voir les touches » de l'instrument actif
+  if(has('sel')) setTimeout(() => openInstrumentSelector(), 0);
+  else if(has('keys')) setTimeout(() => openKeysPanel(instCur.id), 0);
   if(mt) showTab(mt[1]);
-  else if(wantOnline && !lob) showTab('online');
-  if(adm){ $('onlinePendingDisc').open = true; $('onlineReportsDisc').open = true; }   // volets de moderation deplies
+  else if(wantOnline && !lob) showMusicView('discover');
+  const mv = /[?&]view=(library|discover|together)/.exec(location.search);
+  if(mv) showMusicView(mv[1]);
+  if(adm) setTimeout(adminPanel, 0);              // espace d'administration ouvert
+  if(has('help')) setTimeout(() => helpPanel(S), 0);        // panneau Aide
+  if(has('account')) setTimeout(accountPanel, 0);           // panneau Mon compte
   if(has('image') || has('drawing') || has('autocal')) loadImageData({name: 'logo', data: '../assets/logo.png'});
   if(location.search.includes('dialog')) dialog({title:'Retirer la musique', icon:'🗑️', danger:true, ok:'Retirer', html:`Retirer <b>AriaMath</b> de la bibliothèque ?<br><small>Le fichier d'origine n'est pas touché.</small>`});
 

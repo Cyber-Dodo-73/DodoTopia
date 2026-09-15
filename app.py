@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import sys
+import threading
 import time
 from collections import deque
 
@@ -13,6 +14,7 @@ import webview
 import cook
 import core
 import draw
+import instruments
 import online
 import platform_io
 import room
@@ -61,12 +63,23 @@ class Api:
         self._cook_msg = ""
         self._tab = "music"
         self._hotkeys = []
+        # instruments : catalogue charge a la demande, assistant de configuration, cache du diagnostic
+        self._cat = None
+        self._kb_layout = instruments.resolve_keyboard_layout(self._cfg.get("keyboard_layout", "auto"))
+        self._wizard = None             # etat de l'assistant (aucun profil ecrit tant qu'on ne sauve pas)
+        self._hotkeys_off = 0           # > 0 : raccourcis globaux debranches (saisie d'une touche)
+        self._capture_since = 0.0
+        self._compat = None             # dernier compat_report calcule
+        self._compat_key = None         # (morceau, empreinte de l'instrument, transposition, options)
+        self._compat_notes = None       # (cle, notes groupees) : evite de relire le .mid pour un apercu
         self._bind_hotkeys()
         try:
             self._is_admin = bool(platform_io.is_admin())
         except Exception:
             self._is_admin = False
         self._last_reason = ""
+        # --debug (DodoTopia (debug).bat) : l'interface reserve le diagnostic technique a ce mode
+        self._debug = "--debug" in sys.argv
 
     # ---------------------------------------------------------- raccourcis (selon l'onglet actif)
     def _bind_hotkeys(self):
@@ -79,6 +92,11 @@ class Api:
                 pass
         self._hotkeys = []
         p, d, c = self._player, self._drawer, self._cook
+        if self._hotkeys_off:
+            # saisie d'une touche dans l'assistant : aucun raccourci global tant qu'elle dure
+            # (les crochets clavier restent en place, ils n'agissent que pendant une lecture)
+            self._bind_key_hooks()
+            return
 
         def music_only(fn):
             # l'onglet En ligne garde les raccourcis musique (salon)
@@ -95,6 +113,7 @@ class Api:
         def stop():
             # En salon, le chef arrete tout le monde (comme F6) : le serveur fixe l'instant et chacun se coupe
             # en le recevant, donc on ne touche pas au Player ici. Un invite ne coupe que lui.
+            self._wizard_test_abort("Test arrêté.")
             if not self._room.stop_request("stop"):
                 p.stop()
                 self._sync.abort("stop")
@@ -102,8 +121,14 @@ class Api:
             c.stop("stop")
 
         def next_instrument():
-            p.next_instrument()
+            # F12 : meme traitement que le selecteur (refus pendant une lecture, choix persiste)
+            ok, msg = p.next_instrument()
+            if not ok:
+                self._notify(msg or "Changement d'instrument impossible.", "warn")
+                return
+            core.save_config(self._cfg)
             self._room.on_instrument_change(p.instrument)
+            self._notify(f"Instrument : {p.instrument.name}", "info")
 
         def capture_point():
             # F3 : pour l'assistant de calibrage ouvert (dessin ou cuisine)
@@ -126,12 +151,33 @@ class Api:
                     self._hotkeys.append(platform_io.add_hotkey(combo, fn))
                 except Exception as e:  # noqa
                     self._log(f"raccourci invalide {combo!r} : {e}")
+        self._bind_key_hooks()
+
+    def _bind_key_hooks(self):
+        """Crochets clavier des modules (arret sur frappe, reperes de calibrage) : poses une seule fois."""
+        p, d, c = self._player, self._drawer, self._cook
         if p._hook is None:
             p._hook = platform_io.hook(p._on_key_event)
         if d._hook is None:
             d._hook = platform_io.hook(d.on_key_event)
         if c._hook is None:
             c._hook = platform_io.hook(c.on_key_event)
+
+    def _capture_begin(self):
+        """Debranche les raccourcis globaux : la touche appuyee dans l'assistant ne doit ni partir au jeu
+        ni declencher un raccourci. Toujours appele avec un _capture_end() correspondant."""
+        self._hotkeys_off += 1
+        self._capture_since = time.time()
+        if self._hotkeys_off == 1:
+            self._bind_hotkeys()
+
+    def _capture_end(self, force=False):
+        """Rebranche les raccourcis globaux (fin de saisie, annulation, erreur, securite)."""
+        if not self._hotkeys_off:
+            return
+        self._hotkeys_off = 0 if force else max(0, self._hotkeys_off - 1)
+        if not self._hotkeys_off:
+            self._bind_hotkeys()
 
     def _music_toggle(self):
         """F6 / bouton Jouer : routeur selon le mode de jeu. room : salon en ligne (lobby : chef = top depart,
@@ -165,7 +211,7 @@ class Api:
                 except Exception:
                     pass
         else:
-            self._notify("Importe d'abord une image dans l'onglet Image", "warn")
+            self._notify("Importe d'abord une image dans l'activite Dessin", "warn")
 
     def _cook_toggle(self, from_ui=False):
         """F6 / bouton Cuisiner en boucle : lance ou arrete la cuisine (ou capture un point en calibrage)."""
@@ -175,7 +221,7 @@ class Api:
         elif c.state == "calibrating":
             c.capture_point()
         elif not c.calibrated():
-            self._notify("Calibre d'abord la cuisine (bouton Calibrer de l'onglet Cuisine)", "warn")
+            self._notify("Configure d'abord la cuisine (bouton « Configurer la cuisine », activite Cuisine)", "warn")
         else:
             if self._player.state != "stopped":
                 self._player.stop(join=True)
@@ -355,13 +401,20 @@ class Api:
                 self._error = None
         # fenetre reduite pour un test / calibrage Multi : on la rend quand plus rien ne tourne dans le jeu
         if (self._minimized and self._window and self._sync.state == "idle" and p.state == "stopped"
-                and self._room.state not in ("armed", "playing")
+                and self._room.state not in ("armed", "playing") and not self._wizard_busy()
                 and self._drawer.state not in ("drawing", "autocal") and self._cook.state != "cooking"):
             self._minimized = False
             try:
                 self._window.restore()
             except Exception:
                 pass
+        # securite : si l'interface a oublie instrument_wizard_capture_end() (fenetre perdue, erreur JS),
+        # les raccourcis globaux reviennent d'eux-memes au bout d'un moment.
+        if self._hotkeys_off and time.time() - self._capture_since > self.CAPTURE_TIMEOUT:
+            self._capture_end(force=True)
+            if self._wizard:
+                self._wizard["capturing"] = False
+            self._log("saisie de touche trop longue : raccourcis rebranchés")
         dcfg = self._cfg.get("draw") or {}
         ccfg = self._cfg.get("cook") or {}
         ocfg = online.ensure_defaults(self._cfg)
@@ -370,8 +423,19 @@ class Api:
         self._sync_update_toast(ost.get("update"))
         return {
             "version": VERSION,
+            # liste legere des 19 types (ordre du catalogue) : aucune table de notes ici, get_state()
+            # est appele plusieurs fois par seconde. Le detail passe par get_instrument_detail().
             "instruments": [i.to_dict() for i in p.instruments],
-            "instrument": p.inst_index,
+            "instrument": p.inst_index,                 # index : compatibilite des anciens appels
+            "instrument_id": p.instrument.id,
+            "instrument_ready": bool(p.instrument.ready),
+            "instrument_blocked": p.instrument.blocked_reason,
+            "instrument_favorites": list(self._cfg.get("instrument_favorites") or []),
+            "keyboard_layout": self._keyboard_layout(),
+            "keyboard_layout_pref": self._cfg.get("keyboard_layout", "auto"),
+            "instrument_wizard": self._wizard_state(),
+            "song_compat": self._song_compat(),
+            "debug": self._debug,
             "songs": songs,
             "current": p.index if p.songs else -1,
             "state": p.state,
@@ -394,6 +458,8 @@ class Api:
                 "stop_on_input": bool(self._cfg.get("stop_on_input", True)),
                 "hold_mode": self._cfg.get("hold_mode", "note"),
                 "preview_volume": int(self._cfg.get("preview_volume", 100)),
+                "keyboard_layout": self._cfg.get("keyboard_layout", "auto"),
+                "fold_out_of_range": bool(self._cfg.get("fold_out_of_range", True)),
                 "multi": {k: self._cfg["multi"].get(k) for k in
                           ("enabled", "mode", "name", "player_id", "countdown", "lead", "offset_ms", "net_offset_ms",
                            "latency", "beacon_freqs", "tune", "device", "calib")},
@@ -417,7 +483,9 @@ class Api:
         }
 
     def set_tab(self, name):
-        self._tab = name if name in ("image", "cook", "online") else "music"
+        """Activite ouverte : music | image (dessin) | cook. Les raccourcis suivent cette valeur.
+        « online » est accepte pour compatibilite : le catalogue est maintenant une vue de la Musique."""
+        self._tab = name if name in ("image", "cook") else "music"
         return True
 
     # ---------------------------------------------------------- cuisine dans le jeu
@@ -442,6 +510,16 @@ class Api:
 
     def cook_calibrate_skip(self):
         self._cook.skip_point()
+        return self.get_state()
+
+    def cook_calibrate_back(self):
+        """Assistant : revenir a l'etape precedente pour la refaire."""
+        self._cook.back_point()
+        return self.get_state()
+
+    def cook_calibrate_goto(self, index):
+        """Assistant : revenir a une etape deja faite (recapitulatif)."""
+        self._cook.goto_step(index)
         return self.get_state()
 
     def cook_calibrate_point(self):
@@ -512,6 +590,16 @@ class Api:
 
     def draw_calibrate_skip(self):
         self._drawer.skip_point()
+        return self.get_state()
+
+    def draw_calibrate_back(self):
+        """Assistant : revenir a l'etape precedente pour la refaire."""
+        self._drawer.back_point()
+        return self.get_state()
+
+    def draw_calibrate_goto(self, index):
+        """Assistant : revenir a une etape deja faite (recapitulatif)."""
+        self._drawer.goto_step(index)
         return self.get_state()
 
     def draw_calibrate_point(self):
@@ -592,6 +680,7 @@ class Api:
         return added, skipped
 
     def import_paths(self, paths):
+        """Import multiple : le resultat est donne fichier par fichier quand certains echouent."""
         added, skipped = self._import_files(paths)
         if added:
             self._player.index = self._player.songs.index(
@@ -599,7 +688,11 @@ class Api:
             s = "s" if len(added) > 1 else ""
             self._notify(f"{len(added)} musique{s} importée{s}", "ok")
         if skipped:
-            self._notify(f"Ignoré (pas un .mid) : {', '.join(skipped[:3])}", "warn")
+            names = ", ".join(skipped[:3]) + (f" et {len(skipped) - 3} autre(s)" if len(skipped) > 3 else "")
+            if added:
+                self._notify(f"{len(skipped)} fichier(s) ignoré(s), ce ne sont pas des .mid : {names}", "warn")
+            else:
+                self._notify(f"Rien d'importé : DodoTopia lit les fichiers .mid et .midi. Ignoré : {names}", "warn")
         return self.get_state()
 
     def remove_song(self, song_id):
@@ -742,7 +835,11 @@ class Api:
         return self.get_state()
 
     def stop(self):
-        """Bouton Arreter et F7 : en salon, le chef arrete tout le monde ; un invite ne coupe que lui."""
+        """Bouton Arreter et F7 : en salon, le chef arrete tout le monde ; un invite ne coupe que lui.
+
+        Coupe aussi un test de touches en cours dans l'assistant : « tout arrêter » doit vraiment tout
+        arreter, y compris l'envoi d'un echantillon dans le jeu."""
+        self._wizard_test_abort("Test arrêté.")
         if not self._room.stop_request("stop"):
             self._player.stop()
             self._sync.abort("stop")
@@ -828,10 +925,883 @@ class Api:
         self._player.set_speed(value)
         return self.get_state()
 
+    # ---------------------------------------------------------- instruments : catalogue, profils, assistant
+    # Choisir un instrument ici n'equipe rien dans Heartopia : on choisit le TYPE joue, donc ses touches.
+    WIZARD_STEPS = ("Ouvrir l'instrument dans Heartopia", "Disposition visible dans le jeu",
+                    "Associer les touches", "Tester dans le jeu", "Enregistrer le profil")
+    WIZARD_TEST_KEYS = 3        # un test porte sur un echantillon : jamais une validation integrale
+    WIZARD_TEST_DELAY = 4.0     # secondes pour passer sur la fenetre du jeu
+    CAPTURE_TIMEOUT = 45.0      # securite : raccourcis rebranches si l'interface oublie capture_end()
+
+    def _catalogue(self):
+        """Catalogue (types + dispositions), charge une fois : ces donnees ne changent pas en cours de route."""
+        if self._cat is None:
+            self._cat = instruments.load_catalogue()
+        return self._cat
+
+    def _keyboard_layout(self):
+        """Disposition effective du clavier physique (preference « auto » resolue)."""
+        return instruments.resolve_keyboard_layout(self._cfg.get("keyboard_layout", "auto"))
+
+    def _instrument(self, instrument_id):
+        """Instrument resolu d'apres son identifiant (ou son index), ou None."""
+        insts = self._player.instruments
+        if isinstance(instrument_id, str):
+            return instruments.find_instrument(insts, instrument_id)
+        try:
+            i = int(instrument_id)
+        except (TypeError, ValueError):
+            return None
+        return insts[i] if 0 <= i < len(insts) else None
+
+    def _note_line(self, midi, key="", kb=None):
+        """Une ligne de table de touches : la note, la position envoyee au jeu, la legende affichee."""
+        kb = kb or self._keyboard_layout()
+        key = str(key or "").lower()
+        return {"midi": int(midi), "solfege": instruments.solfege(midi), "note": instruments.note_name(midi),
+                "key": key, "label": instruments.key_label(key, kb) if key else "",
+                "shift": bool(key) and instruments.key_needs_shift(key, kb),
+                "bound": bool(key), "sendable": key in platform_io.SCANCODES}
+
+    def _rebuild_instruments(self):
+        """Reconstruit les instruments resolus apres une ecriture de profil, sans perdre l'instrument actif."""
+        p = self._player
+        current = p.instrument.id
+        self._cfg["_instruments"] = instruments.build_instruments(self._cfg)
+        p.instruments = self._cfg["_instruments"]
+        ids = [i.id for i in p.instruments]
+        p.inst_index = ids.index(current) if current in ids else 0
+        self._cfg["instrument"] = p.instrument.id
+        self._room.on_instrument_change(p.instrument)
+
+    def get_instrument_catalogue(self):
+        """Donnees fixes du selecteur : categories, dispositions completes, statuts, clavier physique.
+
+        Appele UNE fois par l'interface (et memorise cote JS) : rien de tout cela ne bouge a chaque tick."""
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            self._notify(f"Catalogue des instruments : {e}", "danger")
+            return {"error": str(e), "categories": [], "layouts": [], "statuses": {}}
+        kb = self._keyboard_layout()
+        layouts = []
+        for lay in cat.layouts.values():
+            d = lay.to_dict(with_notes=False)
+            d["notes"] = [self._note_line(n["midi"], n["key"], kb) for n in lay.notes]
+            layouts.append(d)
+        return {"categories": [{"id": cid, "label": label} for cid, label in cat.categories],
+                "layouts": layouts,
+                "octave_convention": cat.octave_convention,
+                "retrieved_at": cat.retrieved_at,
+                "source_urls": list(cat.source_urls),
+                "notes": list(cat.notes),
+                "keyboard_layout": kb,
+                "keyboard_layout_pref": self._cfg.get("keyboard_layout", "auto"),
+                "keyboard_layout_detected": instruments.detect_keyboard_layout(),
+                "keyboard_layouts": list(instruments.KEYBOARD_LAYOUTS),
+                "azerty_labels": dict(instruments.AZERTY_LABELS),
+                "input_mode": self._cfg.get("input_mode", "scancode"),
+                "statuses": dict(instruments.STATUS_LABELS)}
+
+    def get_instrument_detail(self, instrument_id):
+        """Fiche complete d'un type : notes, rangees, dispositions candidates, profil, provenance."""
+        inst = self._instrument(instrument_id)
+        if inst is None:
+            return {"error": "Instrument inconnu."}
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            return {"error": str(e)}
+        kb = self._keyboard_layout()
+        d = inst.to_dict()
+        rows = [[self._note_line(n["midi"], n["key"], kb) for n in row] for row in inst.note_rows()]
+        prof = instruments.profile_of(self._cfg, inst.id, cat)
+        layouts = []
+        for lay in cat.layouts_for(inst.id):
+            item = lay.to_dict(with_notes=False)
+            item["notes"] = [self._note_line(n["midi"], n["key"], kb) for n in lay.notes]
+            item["selected"] = (lay.id == inst.layout_id)
+            layouts.append(item)
+        d.update({
+            "notes": [self._note_line(m, inst.bindings.get(m, ""), kb) for m in inst.available_notes],
+            "rows": rows,
+            # contrat SPEC : liste d'entiers MIDI (l'interface la formate elle-meme)
+            "missing_notes": list(inst.missing_notes),
+            "missing_notes_detail": [{"midi": m, "solfege": instruments.solfege(m),
+                                      "note": instruments.note_name(m)} for m in inst.missing_notes],
+            "unsendable": list(inst.unsendable),
+            "source_urls": list(inst.source_urls),
+            "layouts": layouts,
+            "profile": prof,
+            "image_source_url": inst.image_source_url,
+            "catalog_item_ids": list(inst.catalog_item_ids),
+            "variant_count": inst.variant_count,
+            "status_label": inst.status_label,
+            "category_label": cat.category_label(inst.category),
+            "label_fr_status": inst.type.label_fr_status,
+            "mapping_status": inst.type.mapping_status,
+            "verified_at": inst.verified_at,
+            "game_version": inst.game_version,
+            "polyphony": inst.polyphony,
+            "sounding_pitch_offset": inst.sounding_pitch_offset,
+            "preview_program": inst.preview_program,
+            "octave_convention": cat.octave_convention,
+            "keyboard_layout": kb,
+            "favorite": inst.id in (self._cfg.get("instrument_favorites") or []),
+            "active": inst.id == self._player.instrument.id,
+        })
+        return d
+
     def set_instrument(self, index):
-        self._player.set_instrument(int(index))
+        """Type d'instrument actif. Accepte un identifiant (« lute ») ou un index (compatibilite)."""
+        target = index
+        if not isinstance(target, str):
+            try:
+                target = int(target)
+            except (TypeError, ValueError):
+                target = str(index)
+        ok, msg = self._player.set_instrument(target)
+        if not ok:
+            self._notify(msg or "Instrument inconnu.", "warn")
+            return self.get_state()
+        inst = self._player.instrument
         core.save_config(self._cfg)
-        self._room.on_instrument_change(self._player.instrument)
+        self._room.on_instrument_change(inst)
+        if not inst.ready:
+            self._notify(f"{inst.name} : {inst.blocked_reason}", "warn")
+        return self.get_state()
+
+    def toggle_instrument_favorite(self, instrument_id):
+        """Favori du selecteur (persiste dans config.json)."""
+        inst = self._instrument(instrument_id)
+        if inst is None:
+            return self.get_state()
+        favs = list(self._cfg.get("instrument_favorites") or [])
+        if inst.id in favs:
+            favs.remove(inst.id)
+        else:
+            favs.append(inst.id)
+        self._cfg["instrument_favorites"] = favs
+        core.save_config(self._cfg)
+        return self.get_state()
+
+    def set_keyboard_layout(self, value):
+        """Disposition du clavier physique : « auto », « qwerty » ou « azerty »."""
+        r = self.set_setting("keyboard_layout", value)
+        if not r.get("ok"):
+            self._notify(r.get("error") or "Disposition refusée", "warn")
+        return self.get_state()
+
+    def set_instrument_layout(self, instrument_id, layout_id, force=False):
+        """Choisit une disposition candidate pour un type.
+
+        Des touches personnalisees ne sont effacees que sur confirmation explicite (force=True) : on ne
+        remplace jamais un mapping deja adapte a l'installation par une table externe sans le dire."""
+        inst = self._instrument(instrument_id)
+        if inst is None:
+            self._notify("Instrument inconnu.", "warn")
+            return self.get_state()
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            self._notify(str(e), "danger")
+            return self.get_state()
+        lay = cat.layouts.get(str(layout_id or ""))
+        if lay is None:
+            self._notify("Disposition inconnue.", "warn")
+            return self.get_state()
+        if inst.id == self._player.instrument.id and self._player.state != "stopped":
+            self._notify("Arrête la lecture avant de changer la disposition.", "warn")
+            return self.get_state()
+        if inst.custom and not force:
+            self._notify(f"{inst.name} a des touches personnalisées : confirme pour les remplacer par "
+                         f"« {lay.label} ».", "warn")
+            return self.get_state()
+        status = instruments.STATUS_DOCUMENTED if lay.id in inst.type.supported_layout_ids \
+            else instruments.STATUS_CUSTOM
+        instruments.set_profile(self._cfg, inst.id, layout_id=lay.id, bindings=None, status=status,
+                                verified_at=None, catalogue=cat)
+        core.save_config(self._cfg)
+        self._rebuild_instruments()
+        self._notify(f"{inst.name} : disposition « {lay.label} » ({lay.note_count} notes). "
+                     f"Choisis la même dans le jeu.", "ok")
+        return self.get_state()
+
+    # ---------------------------------------------------------- assistant de configuration des touches
+    def _wizard_busy(self):
+        """Vrai pendant un test dans le jeu (la fenetre doit rester reduite)."""
+        w = self._wizard
+        t = (w or {}).get("test")
+        return bool(t and t.get("state") in ("countdown", "playing"))
+
+    def _wizard_test_abort(self, message="Test arrêté."):
+        """Coupe un test de touches en cours. Appele par le raccourci d'arret, le bouton « Tout arrêter »
+        et le bouton « Arrêter le test » de l'assistant : l'arret annonce doit exister pour de vrai."""
+        t = (self._wizard or {}).get("test")
+        if t and t.get("state") in ("countdown", "playing"):
+            t["state"] = "cancelled"
+            t["message"] = message
+            return True
+        return False
+
+    def _wizard_forget_test(self, w):
+        """Oublie un test termine sans reponse (annule ou en erreur) : sinon l'etape 4 resterait figee sur
+        « Test en cours… » et l'utilisateur ne pourrait plus relancer."""
+        t = (w or {}).get("test")
+        if t and t.get("state") in ("cancelled", "error"):
+            w["message"] = t.get("message") or w.get("message", "")
+            w["test"] = None
+
+    def _wizard_midis(self, w):
+        """Notes de la table en cours : celles de la disposition retenue, plus celles deja associees."""
+        midis = set(w["bindings"])
+        try:
+            lay = self._catalogue().layouts.get(w.get("layout_id") or "")
+        except instruments.InstrumentDataError:
+            lay = None
+        if lay is not None:
+            midis |= {n["midi"] for n in lay.notes}
+        return sorted(midis)
+
+    def _wizard_state(self):
+        """Etat de l'assistant pour l'interface (None quand il est ferme)."""
+        w = self._wizard
+        if w is None:
+            return None
+        kb = self._keyboard_layout()
+        midis = self._wizard_midis(w)
+        lines = [self._note_line(m, w["bindings"].get(m, ""), kb) for m in midis]
+        conflicts = instruments.conflicts(w["bindings"], self._cfg)
+        bound = len(w["bindings"])
+        test = dict(w["test"]) if w.get("test") else None
+        if test and test.get("state") == "countdown":
+            test["remaining"] = round(max(0.0, test["ends"] - time.time()), 1)
+        return {"id": w["id"], "name": w["name"], "image": w["image"], "percussive": w["percussive"],
+                "mode": w["mode"], "step": w["step"], "steps": list(self.WIZARD_STEPS),
+                "layout_id": w.get("layout_id"), "layouts": w["layouts"],
+                "keyboard_layout": kb, "capturing": bool(w.get("capturing")),
+                "notes": lines, "rows": w.get("rows") or [],
+                "conflicts": conflicts, "blocking": instruments.blocking(conflicts),
+                "bound": bound, "total": len(midis),
+                "verified": sorted(w["verified"]),
+                "unverified": sorted(m for m in w["bindings"] if m not in w["verified"]),
+                "tested": bool(w["tested"]),
+                "test": test, "answers": list(w["answers"]), "message": w.get("message", ""),
+                "can_save": bound > 0 and not instruments.blocking(conflicts),
+                "next_status": self._wizard_status(w),
+                "next_status_label": instruments.STATUS_LABELS.get(self._wizard_status(w), "")}
+
+    def _wizard_status(self, w):
+        """Statut qui sera reellement ecrit : on n'annonce jamais plus que ce qui a ete fait."""
+        if not w["bindings"]:
+            return instruments.STATUS_UNKNOWN
+        try:
+            lay = self._catalogue().layouts.get(w.get("layout_id") or "")
+        except instruments.InstrumentDataError:
+            lay = None
+        inst = self._instrument(w["id"])
+        supported = inst.type.supported_layout_ids if inst is not None else []
+        # table inchangee ET disposition documentee pour ce type : le profil reste « documenté »
+        documented = lay is not None and lay.id in supported and lay.bindings() == w["bindings"]
+        if w["mode"] == "full" and w["verified"] and set(w["verified"]) >= set(w["bindings"]):
+            return instruments.STATUS_CONFIRMED
+        if w["tested"] and w["verified"]:
+            return instruments.STATUS_QUICK
+        return instruments.STATUS_DOCUMENTED if documented else instruments.STATUS_CUSTOM
+
+    def instrument_wizard_start(self, instrument_id, mode="setup"):
+        """Ouvre l'assistant. mode « setup » : assistant court ; « full » : validation intégrale."""
+        inst = self._instrument(instrument_id)
+        if inst is None:
+            self._notify("Instrument inconnu.", "warn")
+            return self.get_state()
+        if self._player.state != "stopped":
+            self._notify("Arrête la lecture avant de configurer les touches.", "warn")
+            return self.get_state()
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            self._notify(str(e), "danger")
+            return self.get_state()
+        self._capture_end(force=True)
+        candidates = [{"layoutId": lay.id, "labelFr": lay.label, "descriptionFr": lay.description,
+                       "noteCount": lay.note_count, "rows": list(lay.rows), "documented": True}
+                      for lay in cat.layouts_for(inst.id)]
+        if not candidates:
+            # aucun mapping documente pour ce type : les dispositions connues servent de grille de notes a
+            # relever, JAMAIS de touches heritees (un instrument inconnu n'herite pas du profil piano).
+            candidates = [{"layoutId": lay.id, "labelFr": lay.label, "descriptionFr": lay.description,
+                           "noteCount": lay.note_count, "rows": list(lay.rows), "documented": False}
+                          for lay in cat.layouts.values()]
+        self._wizard = {
+            "id": inst.id, "name": inst.name, "image": inst.image, "percussive": inst.percussive,
+            "mode": "full" if str(mode) == "full" else "setup",
+            "step": 1, "layout_id": inst.layout_id, "layouts": candidates,
+            "bindings": dict(inst.bindings),
+            "rows": list(inst.layout.rows) if inst.layout is not None else [],
+            "start_status": inst.status, "verified": [], "tested": False, "answers": [],
+            "capturing": False, "test": None,
+            "message": ("Ouvre l'instrument dans Heartopia avant de commencer : choisir ici n'équipe rien "
+                        "dans le jeu."),
+        }
+        return self.get_state()
+
+    def instrument_wizard_state(self):
+        """Etat de l'assistant seul, sans effet de bord."""
+        return self._wizard_state()
+
+    def instrument_wizard_goto(self, step):
+        """Navigation entre les etapes. N'ecrit jamais le profil enregistre."""
+        w = self._wizard
+        if w is None:
+            return self.get_state()
+        self._wizard_forget_test(w)
+        try:
+            step = int(step)
+        except (TypeError, ValueError):
+            return self.get_state()
+        step = max(1, min(len(self.WIZARD_STEPS), step))
+        if step >= 4 and not w["bindings"]:
+            w["message"] = "Associe d'abord au moins une touche."
+            step = 3
+        w["step"] = step
+        return self.get_state()
+
+    def instrument_wizard_back(self):
+        w = self._wizard
+        if w is not None:
+            self._wizard_forget_test(w)
+            w["step"] = max(1, w["step"] - 1)
+        return self.get_state()
+
+    def instrument_wizard_layout(self, layout_id, prefill=True):
+        """Etape 2 : disposition visible dans le jeu. Les touches d'une disposition documentee sont
+        proposees comme point de depart ; pour un type sans mapping documente, seules les notes a relever
+        sont posees (aucune touche inventee)."""
+        w = self._wizard
+        if w is None:
+            return self.get_state()
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            self._notify(str(e), "danger")
+            return self.get_state()
+        lay = cat.layouts.get(str(layout_id or ""))
+        if lay is None:
+            return self.get_state()
+        self._wizard_forget_test(w)
+        documented = any(c["layoutId"] == lay.id and c["documented"] for c in w["layouts"])
+        w["layout_id"] = lay.id
+        w["rows"] = list(lay.rows)
+        if prefill and documented:
+            w["bindings"] = {m: k for m, k in lay.bindings().items() if k in platform_io.SCANCODES}
+            w["message"] = (f"Touches de « {lay.label} » proposées : profil documenté par une source, "
+                            f"non vérifié sur cet ordinateur.")
+        else:
+            w["bindings"] = {m: k for m, k in w["bindings"].items() if m in lay.bindings()}
+            w["message"] = (f"{lay.note_count} notes à relever : appuie sur la touche du jeu pour chaque "
+                            f"note, aucune touche n'est devinée pour cet instrument.")
+        w["verified"] = []
+        w["tested"] = False
+        w["answers"] = []
+        return self.get_state()
+
+    # alias : l'interface peut nommer cette etape « set_layout »
+    def instrument_wizard_set_layout(self, layout_id, prefill=True):
+        return self.instrument_wizard_layout(layout_id, prefill)
+
+    def instrument_wizard_capture_begin(self):
+        """Debranche les raccourcis globaux pendant la saisie d'une touche (rien ne part au jeu)."""
+        if self._wizard is None:
+            return self.get_state()
+        self._capture_begin()
+        self._wizard["capturing"] = True
+        return self.get_state()
+
+    def instrument_wizard_capture_end(self):
+        """Rebranche les raccourcis globaux, meme si la saisie a ete abandonnee."""
+        self._capture_end()
+        if self._wizard is not None:
+            self._wizard["capturing"] = False
+        return self.get_state()
+
+    def instrument_wizard_bind(self, midi, key):
+        """Associe une position de touche a une note. Les conflits sont renvoyes avec l'etat."""
+        w = self._wizard
+        if w is None:
+            return self.get_state()
+        try:
+            m = int(midi)
+        except (TypeError, ValueError):
+            return self.get_state()
+        self._wizard_forget_test(w)
+        k = str(key or "").lower()
+        if k and k not in platform_io.SCANCODES:
+            w["message"] = "Cette touche ne peut pas être envoyée au jeu."
+            return self.get_state()
+        if not k:
+            w["bindings"].pop(m, None)
+        else:
+            w["bindings"][m] = k
+        # une association modifiee annule ce que le test avait montre pour cette note
+        w["verified"] = [v for v in w["verified"] if v != m]
+        w["message"] = ""
+        self._capture_end()
+        w["capturing"] = False
+        return self.get_state()
+
+    def instrument_wizard_clear(self, midi):
+        """Efface une association."""
+        return self.instrument_wizard_bind(midi, "")
+
+    def instrument_wizard_test(self, midis=None):
+        """Test volontaire dans le jeu : annonce, delai de bascule, 3 touches au maximum, arret accessible.
+
+        Un echantillon de trois notes ne vaut pas validation integrale : le statut obtenu est « Test rapide
+        réussi », jamais « confirmé » (sauf en mode validation intégrale, note par note)."""
+        w = self._wizard
+        if w is None:
+            return self.get_state()
+        if self._wizard_busy():
+            return self.get_state()
+        if self._player.state != "stopped" or self._sync.active() or self._room.state in ("armed", "playing"):
+            self._notify("Arrête la lecture avant de tester les touches.", "warn")
+            return self.get_state()
+        if w.get("capturing"):
+            self._capture_end()
+            w["capturing"] = False
+        chosen = []
+        if isinstance(midis, (list, tuple)):
+            for m in midis:
+                try:
+                    m = int(m)
+                except (TypeError, ValueError):
+                    continue
+                if m in w["bindings"] and m not in chosen:
+                    chosen.append(m)
+        if not chosen:
+            avail = sorted(w["bindings"])
+            if not avail:
+                w["message"] = "Associe d'abord au moins une touche."
+                return self.get_state()
+            rest = [m for m in avail if m not in w["verified"]]
+            if w["mode"] == "full" and rest:
+                # validation integrale : on avance dans les associations encore non verifiees, par groupes
+                chosen = rest[:self.WIZARD_TEST_KEYS]
+            else:
+                # echantillon reparti sur le registre (grave, milieu, aigu) : plus parlant que trois voisines
+                picks = {0, len(avail) // 2, len(avail) - 1}
+                chosen = [avail[i] for i in sorted(picks)]
+        chosen = chosen[:self.WIZARD_TEST_KEYS]
+        delay = max(2.0, float(self._cfg.get("start_delay", 1.0) or 1.0) + 3.0)
+        delay = min(delay, self.WIZARD_TEST_DELAY + 2.0)
+        test = {"state": "countdown", "midis": list(chosen),
+                "keys": [w["bindings"][m] for m in chosen],
+                "labels": [instruments.key_label(w["bindings"][m], self._keyboard_layout()) for m in chosen],
+                "solfege": [instruments.solfege(m) for m in chosen],
+                "delay": delay, "ends": time.time() + delay, "index": -1,
+                "message": "Passe sur Heartopia : DodoTopia va appuyer sur ces touches."}
+        w["test"] = test
+        w["message"] = ""
+        self._minimize_for_game()
+        threading.Thread(target=self._wizard_test_run, args=(test, list(chosen)),
+                         name="instrument-test", daemon=True).start()
+        return self.get_state()
+
+    def _wizard_test_alive(self, test, w):
+        """Vrai tant que ce test est celui de l'assistant ouvert et qu'il n'a pas ete arrete."""
+        return (w or {}).get("test") is test and test.get("state") in ("countdown", "playing")
+
+    def _wizard_test_pause(self, test, w, seconds):
+        """Attente decoupee : l'arret (F7, bouton) doit etre pris en compte entre deux frappes, pas
+        seulement au debut de la boucle."""
+        end = time.time() + seconds
+        while time.time() < end:
+            if not self._wizard_test_alive(test, w):
+                return False
+            time.sleep(0.03)
+        return self._wizard_test_alive(test, w)
+
+    def _wizard_test_run(self, test, midis):
+        """Envoi de l'echantillon dans le jeu, dans un fil : compte a rebours interruptible puis 3 frappes."""
+        w = self._wizard
+        try:
+            while time.time() < test["ends"]:
+                if test.get("state") != "countdown" or (w or {}).get("test") is not test:
+                    return
+                time.sleep(0.05)
+            for i, m in enumerate(midis):
+                if not self._wizard_test_alive(test, w):
+                    return
+                if self._player.state != "stopped":
+                    test["state"] = "cancelled"
+                    test["message"] = "Test interrompu : une lecture a démarré."
+                    return
+                test["state"] = "playing"
+                test["index"] = i
+                key = w["bindings"].get(m)
+                if not key:
+                    continue
+                self._player.play_keys([key], hold=0.12)
+                if not self._wizard_test_pause(test, w, 0.7):
+                    return
+            if not self._wizard_test_alive(test, w):
+                return
+            test["index"] = -1
+            test["state"] = "answer"
+            test["message"] = ("Qu'as-tu entendu dans le jeu ?" if not w["percussive"]
+                               else "Quelle frappe as-tu entendue ?")
+        except Exception as e:  # noqa - un echec d'injection ne doit pas tuer le fil silencieusement
+            test["state"] = "error"
+            test["message"] = f"Test impossible : {e}"
+            self._log(f"test des touches : {e!r}")
+
+    def instrument_wizard_test_stop(self):
+        """Arret du test, accessible a tout moment."""
+        self._wizard_test_abort("Test arrêté : aucune autre touche n'a été envoyée.")
+        return self.get_state()
+
+    def instrument_wizard_answer(self, ok, note_or_strike=""):
+        """Reponse de l'utilisateur au test. Pour une percussion, `note_or_strike` decrit la FRAPPE
+        entendue (pas un Do/Ré arbitraire)."""
+        w = self._wizard
+        if w is None or not w.get("test"):
+            return self.get_state()
+        test = w["test"]
+        if test.get("state") not in ("answer",):
+            # test arrete ou en erreur : repondre « oui » ne prouverait rien, aucune touche n'est partie
+            self._wizard_forget_test(w)
+            w["message"] = (test.get("message") or "Le test n'est pas allé au bout : relance-le avant de "
+                                                   "répondre.")
+            w["step"] = 4
+            return self.get_state()
+        midis = list(test.get("midis") or [])
+        detail = core.clean_display_text(note_or_strike, 80) if note_or_strike else ""
+        ok = bool(ok) and not (isinstance(ok, str) and ok.strip().lower() in ("0", "non", "false"))
+        w["answers"].append({"midis": midis, "ok": ok, "detail": detail,
+                             "keys": list(test.get("keys") or [])})
+        if ok:
+            w["tested"] = True
+            for m in midis:
+                if m not in w["verified"]:
+                    w["verified"].append(m)
+            rest = len(set(w["bindings"]) - set(w["verified"]))
+            if w["mode"] == "full" and rest:
+                w["message"] = (f"Test rapide réussi sur {len(midis)} note(s). Validation intégrale : "
+                                f"{rest} association(s) restent à vérifier.")
+                w["step"] = 4
+            else:
+                w["message"] = ("Test rapide réussi : vérification partielle, seules les touches envoyées "
+                                "ont été contrôlées.")
+                w["step"] = 5
+        else:
+            for m in midis:
+                if m in w["verified"]:
+                    w["verified"].remove(m)
+            w["tested"] = False
+            w["message"] = ("Ces touches n'ont pas produit ce qui était attendu : corrige les associations "
+                            "puis recommence le test.")
+            w["step"] = 3
+        w["test"] = None
+        return self.get_state()
+
+    def _wizard_save_result(self, ok, error=""):
+        """Verdict explicite de l'enregistrement : l'interface ne doit annoncer « Profil enregistré » que
+        quand il l'est vraiment, et rester sur l'etape sinon."""
+        return {"ok": bool(ok), "error": "" if ok else str(error or ""), "state": self.get_state()}
+
+    def instrument_wizard_save(self):
+        """Ecrit le profil : statut « personnalisé », « test rapide » ou « confirmé » selon ce qui a
+        reellement ete fait, jamais plus.
+
+        Renvoie {ok, error, state} et non l'etat seul : un refus silencieux ferait perdre le travail de
+        l'utilisateur sans qu'il le sache."""
+        w = self._wizard
+        if w is None:
+            return self._wizard_save_result(False, "L'assistant n'est plus ouvert : rien n'a été enregistré.")
+        if w["id"] == self._player.instrument.id and self._player.state != "stopped":
+            # meme garde-fou que set_instrument_layout et import_instrument_profile : on ne change pas le
+            # profil de l'instrument qui joue sous les pieds de la lecture
+            msg = "Arrête la lecture avant d'enregistrer les touches."
+            self._notify(msg, "warn")
+            return self._wizard_save_result(False, msg)
+        conflicts = instruments.conflicts(w["bindings"], self._cfg)
+        if instruments.blocking(conflicts):
+            msgs = [c["message"] for c in conflicts if c.get("severity") == "error"]
+            msg = "Enregistrement refusé : " + (msgs[0] if msgs else "conflit de touches.")
+            self._notify(msg, "warn")
+            w["step"] = 3
+            return self._wizard_save_result(False, msg)
+        if not w["bindings"]:
+            msg = "Associe au moins une touche avant d'enregistrer."
+            self._notify(msg, "warn")
+            return self._wizard_save_result(False, msg)
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            self._notify(str(e), "danger")
+            return self._wizard_save_result(False, str(e))
+        status = self._wizard_status(w)
+        verified_at = time.strftime("%Y-%m-%dT%H:%M:%S") if status in (
+            instruments.STATUS_QUICK, instruments.STATUS_CONFIRMED) else None
+        extra = {"keyboard_layout": self._keyboard_layout()} if w["tested"] else {}
+        instruments.set_profile(self._cfg, w["id"], layout_id=w.get("layout_id"), bindings=w["bindings"],
+                                status=status, verified_at=verified_at, catalogue=cat, **extra)
+        core.save_config(self._cfg)
+        self._capture_end(force=True)
+        name = w["name"]
+        self._wizard = None
+        self._rebuild_instruments()
+        self._notify(f"{name} : {instruments.STATUS_LABELS.get(status, status)}", "ok")
+        return self._wizard_save_result(True)
+
+    def instrument_wizard_cancel(self):
+        """Ferme l'assistant sans rien ecrire : un profil valide n'est jamais ecrase."""
+        w = self._wizard
+        if w and w.get("test"):
+            w["test"]["state"] = "cancelled"
+        self._capture_end(force=True)
+        self._wizard = None
+        return self.get_state()
+
+    # ---------------------------------------------------------- profils : export / import
+    def export_instrument_profile(self, instrument_id, path=None):
+        """Profil d'un type au format JSON (donnees seulement). Propose un enregistrement de fichier."""
+        inst = self._instrument(instrument_id)
+        if inst is None:
+            return {"ok": False, "error": "Instrument inconnu."}
+        prof = instruments.profile_of(self._cfg, inst.id)
+        payload = {"format": "dodotopia-instrument-profile",
+                   "schemaVersion": instruments.SCHEMA_VERSION, "app": VERSION,
+                   "exportedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                   "instrumentId": inst.id, "labelFr": inst.name, "labelEn": inst.label_en,
+                   "layoutId": prof.get("layoutId"), "keyboardLayout": prof.get("keyboardLayout"),
+                   "verificationStatus": prof.get("verificationStatus"),
+                   "verifiedAt": prof.get("verifiedAt"), "gameVersion": prof.get("gameVersion"),
+                   "polyphony": prof.get("polyphony"),
+                   "soundingPitchOffset": prof.get("soundingPitchOffset"),
+                   "bindings": {str(m): k for m, k in sorted(inst.bindings.items())}}
+        text = json.dumps(payload, indent=2, ensure_ascii=False)
+        if path is None and self._window is not None:
+            try:
+                path = self._window.create_file_dialog(
+                    webview.SAVE_DIALOG, save_filename=f"profil-{inst.id}.json",
+                    file_types=("Profil DodoTopia (*.json)", "Tous les fichiers (*.*)"))
+            except Exception as e:  # noqa
+                self._log(f"export de profil : {e}")
+                path = None
+        if isinstance(path, (list, tuple)):
+            path = path[0] if path else None
+        saved = None
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                saved = str(path)
+                self._notify(f"Profil exporté : {os.path.basename(saved)}", "ok")
+            except OSError as e:
+                self._notify(f"Export impossible : {e}", "warn")
+        return {"ok": True, "payload": payload, "text": text, "path": saved}
+
+    MAX_PROFILE_BYTES = 200_000
+
+    def import_instrument_profile(self, payload=None, instrument_id=None):
+        """Lit un profil JSON : validation du schéma, rien n'est exécuté du contenu importé.
+
+        Un profil « confirmé » ailleurs redevient « touches personnalisées · à vérifier » : une validation
+        faite sur un autre ordinateur ne prouve rien sur celui-ci."""
+        data = payload
+        if data is None:
+            if self._window is None:
+                return self.get_state()
+            try:
+                files = self._window.create_file_dialog(
+                    webview.OPEN_DIALOG, allow_multiple=False,
+                    file_types=("Profil DodoTopia (*.json)", "Tous les fichiers (*.*)"))
+            except Exception as e:  # noqa
+                self._notify(f"Import impossible : {e}", "warn")
+                return self.get_state()
+            if not files:
+                return self.get_state()
+            try:
+                with open(files[0], "r", encoding="utf-8") as f:
+                    data = f.read(self.MAX_PROFILE_BYTES + 1)
+            except OSError as e:
+                self._notify(f"Fichier illisible : {e}", "warn")
+                return self.get_state()
+        if isinstance(data, (bytes, bytearray)):
+            data = data.decode("utf-8", "replace")
+        if isinstance(data, str):
+            if len(data) > self.MAX_PROFILE_BYTES:
+                self._notify("Profil refusé : fichier trop gros.", "warn")
+                return self.get_state()
+            try:
+                data = json.loads(data)
+            except ValueError:
+                self._notify("Profil refusé : ce n'est pas un fichier JSON valide.", "warn")
+                return self.get_state()
+        if not isinstance(data, dict):
+            self._notify("Profil refusé : format inattendu.", "warn")
+            return self.get_state()
+        wanted = str(instrument_id or data.get("instrumentId") or "")
+        wanted = instruments.LEGACY_IDS.get(wanted, wanted)
+        inst = self._instrument(wanted)
+        if inst is None:
+            self._notify(f"Profil refusé : instrument inconnu ({wanted or '?'}).", "warn")
+            return self.get_state()
+        if inst.id == self._player.instrument.id and self._player.state != "stopped":
+            self._notify("Arrête la lecture avant d'importer un profil.", "warn")
+            return self.get_state()
+        try:
+            cat = self._catalogue()
+        except instruments.InstrumentDataError as e:
+            self._notify(str(e), "danger")
+            return self.get_state()
+        raw_bindings = data.get("bindings")
+        bindings, rejected = {}, 0
+        if isinstance(raw_bindings, dict):
+            for m, k in raw_bindings.items():
+                try:
+                    m = int(m)
+                except (TypeError, ValueError):
+                    rejected += 1
+                    continue
+                k = str(k or "").lower()
+                if 0 <= m <= 127 and k in platform_io.SCANCODES:
+                    bindings[m] = k
+                else:
+                    rejected += 1
+        layout_id = data.get("layoutId")
+        layout_id = layout_id if layout_id in cat.layouts else None
+        if not bindings and not layout_id:
+            self._notify("Profil refusé : ni touches utilisables ni disposition connue.", "warn")
+            return self.get_state()
+        conflicts = instruments.conflicts(bindings, self._cfg)
+        if instruments.blocking(conflicts):
+            msgs = [c["message"] for c in conflicts if c.get("severity") == "error"]
+            self._notify("Profil refusé : " + (msgs[0] if msgs else "conflit de touches."), "warn")
+            return self.get_state()
+        status = data.get("verificationStatus")
+        if status not in instruments.STATUSES or status in (instruments.STATUS_QUICK,
+                                                            instruments.STATUS_CONFIRMED):
+            # ce qui a ete verifie ailleurs reste a verifier ici
+            status = instruments.STATUS_CUSTOM if bindings else instruments.STATUS_DOCUMENTED
+        instruments.set_profile(self._cfg, inst.id, layout_id=layout_id,
+                                bindings=bindings or None, status=status, verified_at=None,
+                                catalogue=cat)
+        core.save_config(self._cfg)
+        self._rebuild_instruments()
+        extra = f" ({rejected} entrée(s) ignorée(s))" if rejected else ""
+        self._notify(f"Profil importé pour {inst.name} : à vérifier dans le jeu{extra}.", "ok")
+        return self.get_state()
+
+    # ---------------------------------------------------------- compatibilite du morceau
+    def _song_compat(self):
+        """Diagnostic du morceau courant sur l'instrument courant.
+
+        Recalcule seulement quand (morceau, empreinte du profil, transposition, options) change, et dans un
+        fil : get_state() est appele plusieurs fois par seconde, il ne doit jamais relire un .mid."""
+        p = self._player
+        song = p.current()
+        inst = p.instrument
+        if not song or not inst.bindings:
+            self._compat_key = None
+            self._compat = None
+            return None
+        key = (song, inst.fingerprint, int(self._cfg.get("transpose_semitones", 0) or 0),
+               bool(self._cfg.get("fold_out_of_range", True)), bool(self._cfg.get("ignore_drums", True)))
+        if key != self._compat_key:
+            self._compat_key = key
+            self._compat = {"pending": True, "song": os.path.basename(song), "instrument_id": inst.id,
+                            "instrument": inst.name}
+            threading.Thread(target=self._compat_worker, args=(key, song, inst),
+                             name="song-compat", daemon=True).start()
+        return self._compat
+
+    def _compat_worker(self, key, song, inst):
+        try:
+            stats = {}
+            grouped = core.parse_midi(song, self._cfg, stats)
+            report = core.compat_report(grouped, inst, self._cfg, stats=stats)
+        except Exception as e:  # noqa - fichier illisible, refuse, disparu : diagnostic sans diagnostic
+            if self._compat_key == key:
+                self._compat = {"pending": False, "error": str(e), "song": os.path.basename(song),
+                                "instrument_id": inst.id, "instrument": inst.name}
+            return
+        if self._compat_key != key:
+            return          # l'utilisateur a change de morceau ou d'instrument entre-temps
+        self._compat_notes = (key, grouped)
+        report.update({"pending": False, "song": os.path.basename(song), "instrument_id": inst.id,
+                       "instrument": inst.name, "ready": bool(inst.ready),
+                       "transpose": int(self._cfg.get("transpose_semitones", 0) or 0),
+                       "fold": bool(self._cfg.get("fold_out_of_range", True))})
+        self._compat = report
+
+    def _compat_grouped(self):
+        """Notes groupees du morceau courant (cache du diagnostic), relues si besoin."""
+        key = self._compat_key
+        cached = self._compat_notes
+        if cached and cached[0] == key:
+            return cached[1]
+        song = self._player.current()
+        if not song:
+            return None
+        grouped = core.parse_midi(song, self._cfg)
+        self._compat_notes = (key, grouped)
+        return grouped
+
+    def song_compat_preview(self, shift):
+        """Couverture simulee pour une transposition candidate : l'effet annonce est reellement mesure.
+
+        `shift` : demi-tons AJOUTES a la transposition retenue par le diagnostic."""
+        try:
+            shift = int(shift)
+        except (TypeError, ValueError):
+            return {"ok": False, "error": "valeur attendue en demi-tons"}
+        inst = self._player.instrument
+        if not inst.bindings:
+            return {"ok": False, "error": inst.blocked_reason}
+        base = int((self._compat or {}).get("shift") or 0)
+        try:
+            grouped = self._compat_grouped()
+        except Exception as e:  # noqa
+            return {"ok": False, "error": str(e)}
+        if not grouped:
+            return {"ok": False, "error": "aucun morceau sélectionné"}
+        total = base + shift
+        _, info = core.fit_notes(grouped, inst, self._cfg, shift=total)
+        return {"ok": True, "shift": shift, "total_shift": total, "coverage": info["coverage"],
+                "out_of_range": info["out_of_range"], "missing_accidental": info["missing_accidental"],
+                "dropped": info["dropped"], "notes": info["notes"]}
+
+    def song_compat_apply(self, kind, value=0):
+        """Applique une option proposee par le diagnostic (jamais appliquee toute seule) :
+        « transpose » / « octave » ajoutent des demi-tons, « omit » cesse de replier les notes hors
+        registre, « reset » revient aux reglages de depart."""
+        kind = str(kind or "")
+        if kind in ("transpose", "octave"):
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                return self.get_state()
+            cur = int(self._cfg.get("transpose_semitones", 0) or 0)
+            r = self.set_setting("transpose_semitones", max(-24, min(24, cur + value)))
+            if not r.get("ok"):
+                self._notify(r.get("error") or "Transposition refusée", "warn")
+            else:
+                self._notify(f"Transposition : {r['value']:+d} demi-ton(s)", "ok")
+        elif kind == "omit":
+            self._cfg["fold_out_of_range"] = False
+            core.save_config(self._cfg)
+            self._notify("Les notes hors registre sont maintenant omises (plus de repli d'octave).", "ok")
+        elif kind == "fold":
+            self._cfg["fold_out_of_range"] = True
+            core.save_config(self._cfg)
+            self._notify("Les notes hors registre sont de nouveau rejouées une octave plus loin.", "ok")
+        elif kind == "reset":
+            self._cfg["fold_out_of_range"] = True
+            self.set_setting("transpose_semitones", 0)
+            self._notify("Réglages du morceau remis à zéro.", "ok")
         return self.get_state()
 
     # ---------------------------------------------------------- reglages
@@ -847,6 +1817,26 @@ class Api:
 
     def _on_transpose(self):
         """La transposition est lue a la prochaine preparation d'un morceau ; une lecture en cours n'est pas touchee."""
+
+    def _on_keyboard_layout(self):
+        """Disposition du clavier physique : elle ne change aucune position envoyee au jeu, seulement les
+        legendes affichees. Mais une conclusion prise avec l'ancienne disposition n'est plus garantie : les
+        profils confirmes ou testes repassent a « touches personnalisées · à vérifier », touches conservees."""
+        kb = self._keyboard_layout()
+        if kb == getattr(self, "_kb_layout", None):
+            return
+        self._kb_layout = kb
+        touched = []
+        for inst in list(self._player.instruments):
+            if inst.status in (instruments.STATUS_QUICK, instruments.STATUS_CONFIRMED):
+                instruments.set_profile(self._cfg, inst.id, status=instruments.STATUS_CUSTOM,
+                                        verified_at=None, keyboard_layout=kb)
+                touched.append(inst.name)
+        if touched:
+            self._rebuild_instruments()
+            names = ", ".join(touched[:3]) + (f" et {len(touched) - 3} autre(s)" if len(touched) > 3 else "")
+            self._notify(f"Clavier {kb.upper()} : {names} repasse(nt) à « à vérifier » "
+                         f"(aucune touche supprimée).", "warn")
 
     def _on_volume(self):
         """Volume de l'ecoute : applique tout de suite a la sortie MIDI si elle est ouverte."""

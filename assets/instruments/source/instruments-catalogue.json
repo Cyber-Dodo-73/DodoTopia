@@ -1,0 +1,971 @@
+{
+  "schemaVersion": 1,
+  "retrievedAt": "2026-09-15",
+  "sourceUrl": "https://build-heartopia.com/data/catalog.json",
+  "sourceSha256": "728f5a79c75317a036c87e991c597b5cd402d5acfebb175dc4bad17b54724405",
+  "notes": [
+    "Catalogue communautaire, pas une liste officielle exhaustive.",
+    "Les noms français sont des traductions proposées.",
+    "Disponibilité brute non fiable seule : les pages calculent aussi les fenêtres temporelles.",
+    "Les variantes ne prouvent pas un comportement identique.",
+    "Visuels de référence : provenance conservée, aucune licence de redistribution présumée."
+  ],
+  "families": [
+    {
+      "id": "piano",
+      "labelFrProposed": "Piano",
+      "labelEn": "Piano",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row",
+        "piano-diatonic-22",
+        "piano-chromatic-37"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50001.png",
+      "variants": [
+        {
+          "itemId": "50001",
+          "nameEn": "Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50001.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_1.png?v=21b5c76bf4d5",
+          "sourcePageUrl": "https://build-heartopia.com/items/50001/piano",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50002",
+          "nameEn": "Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50002.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_2.png?v=3bfd9270d03a",
+          "sourcePageUrl": "https://build-heartopia.com/items/50002/piano",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50003",
+          "nameEn": "Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50003.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_3.png?v=ec3235870edd",
+          "sourcePageUrl": "https://build-heartopia.com/items/50003/piano",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50004",
+          "nameEn": "Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50004.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_4.png?v=a5f24a37c254",
+          "sourcePageUrl": "https://build-heartopia.com/items/50004/piano",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50005",
+          "nameEn": "Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50005.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_5.png?v=276a1da3e589",
+          "sourcePageUrl": "https://build-heartopia.com/items/50005/piano",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50009",
+          "nameEn": "Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50009.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_9.png?v=bfb3a95e5170",
+          "sourcePageUrl": "https://build-heartopia.com/items/50009/piano",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50006",
+          "nameEn": "Polar Holy Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50006.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_6.png?v=39a243de26e0",
+          "sourcePageUrl": "https://build-heartopia.com/items/50006/polar-holy-piano",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50007",
+          "nameEn": "Polar Holy Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50007.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_7.png?v=33705a7e9e63",
+          "sourcePageUrl": "https://build-heartopia.com/items/50007/polar-holy-piano",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50008",
+          "nameEn": "Polar Holy Piano",
+          "catalogCategory": "instrument",
+          "image": "images/50008.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_piano_8.png?v=f890467735e2",
+          "sourcePageUrl": "https://build-heartopia.com/items/50008/polar-holy-piano",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "recorder",
+      "labelFrProposed": "Flûte à bec",
+      "labelEn": "Recorder",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50601.png",
+      "variants": [
+        {
+          "itemId": "50601",
+          "nameEn": "Recorder",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50601.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_recorder_1.png?v=73cd72919767",
+          "sourcePageUrl": "https://build-heartopia.com/items/50601/recorder",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50602",
+          "nameEn": "Recorder",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50602.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_recorder_2.png?v=858712163f66",
+          "sourcePageUrl": "https://build-heartopia.com/items/50602/recorder",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50603",
+          "nameEn": "Recorder",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50603.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_recorder_3.png?v=2fc10b636b2b",
+          "sourcePageUrl": "https://build-heartopia.com/items/50603/recorder",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50604",
+          "nameEn": "Recorder",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50604.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_recorder_4.png?v=d7e9d246afd2",
+          "sourcePageUrl": "https://build-heartopia.com/items/50604/recorder",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "xiao",
+      "labelFrProposed": "Xiao en bambou",
+      "labelEn": "Bamboo Xiao",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50656.png",
+      "variants": [
+        {
+          "itemId": "50656",
+          "nameEn": "Bamboo Xiao",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50656.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_xiao_2.png?v=22ab12e0f2eb",
+          "sourcePageUrl": "https://build-heartopia.com/items/50656/bamboo-xiao",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "lute",
+      "labelFrProposed": "Luth",
+      "labelEn": "Lute",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50501.png",
+      "variants": [
+        {
+          "itemId": "50501",
+          "nameEn": "Lute",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50501.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lute_1.png?v=1cb4920eab79",
+          "sourcePageUrl": "https://build-heartopia.com/items/50501/lute",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50502",
+          "nameEn": "Lute",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50502.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lute_2.png?v=ff4d28c4cd90",
+          "sourcePageUrl": "https://build-heartopia.com/items/50502/lute",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50503",
+          "nameEn": "Lute",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50503.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lute_3.png?v=0ef6935522aa",
+          "sourcePageUrl": "https://build-heartopia.com/items/50503/lute",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50504",
+          "nameEn": "Lute",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50504.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lute_4.png?v=d49c486ac844",
+          "sourcePageUrl": "https://build-heartopia.com/items/50504/lute",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50505",
+          "nameEn": "Lute",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50505.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lute_5.png?v=89cc2d00d734",
+          "sourcePageUrl": "https://build-heartopia.com/items/50505/lute",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "wooden-bass",
+      "labelFrProposed": "Basse en bois",
+      "labelEn": "Wooden Bass",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50551.png",
+      "variants": [
+        {
+          "itemId": "50551",
+          "nameEn": "Wooden Bass",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50551.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_wbass_1.png?v=e64952c4f4a4",
+          "sourcePageUrl": "https://build-heartopia.com/items/50551/wooden-bass",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50552",
+          "nameEn": "Wooden Bass",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50552.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_wbass_2.png?v=17fb7d13aea4",
+          "sourcePageUrl": "https://build-heartopia.com/items/50552/wooden-bass",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50553",
+          "nameEn": "Wooden Bass",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50553.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_wbass_3.png?v=73cbea9a7a28",
+          "sourcePageUrl": "https://build-heartopia.com/items/50553/wooden-bass",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50554",
+          "nameEn": "Wooden Bass",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50554.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_wbass_4.png?v=b81e90ab0e7e",
+          "sourcePageUrl": "https://build-heartopia.com/items/50554/wooden-bass",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "bagpipe",
+      "labelFrProposed": "Cornemuse",
+      "labelEn": "Bagpipe",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50681.png",
+      "variants": [
+        {
+          "itemId": "50681",
+          "nameEn": "Bagpipe",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50681.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_bagpipes_1.png?v=f65458f71439",
+          "sourcePageUrl": "https://build-heartopia.com/items/50681/bagpipe",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50682",
+          "nameEn": "Bountiful Ode Bagpipe",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50682.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_bagpipes_2.png?v=952e6052ea23",
+          "sourcePageUrl": "https://build-heartopia.com/items/50682/bountiful-ode-bagpipe",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "concertina",
+      "labelFrProposed": "Concertina",
+      "labelEn": "Concertina",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50651.png",
+      "variants": [
+        {
+          "itemId": "50651",
+          "nameEn": "Concertina",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50651.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_concertina_1.png?v=02e6a6b8368e",
+          "sourcePageUrl": "https://build-heartopia.com/items/50651/concertina",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50652",
+          "nameEn": "Concertina",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50652.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_concertina_2.png?v=9644b7f630ad",
+          "sourcePageUrl": "https://build-heartopia.com/items/50652/concertina",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50653",
+          "nameEn": "Concertina",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50653.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_concertina_3.png?v=4c348e9ecd51",
+          "sourcePageUrl": "https://build-heartopia.com/items/50653/concertina",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50654",
+          "nameEn": "Concertina",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50654.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_concertina_4.png?v=bba7dc3e22f2",
+          "sourcePageUrl": "https://build-heartopia.com/items/50654/concertina",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "mbira",
+      "labelFrProposed": "Mbira",
+      "labelEn": "Mbira",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50661.png",
+      "variants": [
+        {
+          "itemId": "50661",
+          "nameEn": "Mbira",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50661.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_kalimba_1.png?v=c3a339634095",
+          "sourcePageUrl": "https://build-heartopia.com/items/50661/mbira",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50662",
+          "nameEn": "Red Fox Mibra",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50662.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_kalimba_2.png?v=46ff9f6cb868",
+          "sourcePageUrl": "https://build-heartopia.com/items/50662/red-fox-mibra",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "lyre",
+      "labelFrProposed": "Lyre",
+      "labelEn": "Lyre",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50671.png",
+      "variants": [
+        {
+          "itemId": "50723",
+          "nameEn": "Bird Call Lyre",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50723.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lila_4.png?v=dffff10ae4c8",
+          "sourcePageUrl": "https://build-heartopia.com/items/50723/bird-call-lyre",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50724",
+          "nameEn": "Bird Call Lyre",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50724.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lila_5.png?v=58987d08c321",
+          "sourcePageUrl": "https://build-heartopia.com/items/50724/bird-call-lyre",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50725",
+          "nameEn": "Bird Call Lyre",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50725.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lila_6.png?v=a6fadd8ded18",
+          "sourcePageUrl": "https://build-heartopia.com/items/50725/bird-call-lyre",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50671",
+          "nameEn": "Lyre",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50671.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lila_1.png?v=bd9b92ee0d88",
+          "sourcePageUrl": "https://build-heartopia.com/items/50671/lyre",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50672",
+          "nameEn": "Starry Lyre",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50672.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_lila_2.png?v=2f17b2897f5b",
+          "sourcePageUrl": "https://build-heartopia.com/items/50672/starry-lyre",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "violin",
+      "labelFrProposed": "Violon",
+      "labelEn": "Violin",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50711.png",
+      "variants": [
+        {
+          "itemId": "50712",
+          "nameEn": "Snow Deer Violin",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50712.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_violin_2.png?v=a218b81d30a3",
+          "sourcePageUrl": "https://build-heartopia.com/items/50712/snow-deer-violin",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50711",
+          "nameEn": "Violin",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50711.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_violin_1.png?v=e0cf93f2ab44",
+          "sourcePageUrl": "https://build-heartopia.com/items/50711/violin",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "cello",
+      "labelFrProposed": "Violoncelle",
+      "labelEn": "Cello",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50691.png",
+      "variants": [
+        {
+          "itemId": "50691",
+          "nameEn": "Cello",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50691.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_cello_5.png?v=b5ca152399de",
+          "sourcePageUrl": "https://build-heartopia.com/items/50691/cello",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50692",
+          "nameEn": "Crystal Feather Cello",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50692.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_cello_1.png?v=630e8ca0a493",
+          "sourcePageUrl": "https://build-heartopia.com/items/50692/crystal-feather-cello",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50693",
+          "nameEn": "Crystal Feather Cello",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50693.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_cello_2.png?v=d66199fa4fa1",
+          "sourcePageUrl": "https://build-heartopia.com/items/50693/crystal-feather-cello",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50694",
+          "nameEn": "Crystal Feather Cello",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50694.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_cello_3.png?v=baee0da173ee",
+          "sourcePageUrl": "https://build-heartopia.com/items/50694/crystal-feather-cello",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "conga",
+      "labelFrProposed": "Conga",
+      "labelEn": "Conga",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50051.png",
+      "variants": [
+        {
+          "itemId": "50051",
+          "nameEn": "Conga",
+          "catalogCategory": "instrument",
+          "image": "images/50051.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_conga_1.png?v=ae0e90c319ca",
+          "sourcePageUrl": "https://build-heartopia.com/items/50051/conga",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50052",
+          "nameEn": "Conga",
+          "catalogCategory": "instrument",
+          "image": "images/50052.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_conga_2.png?v=97ebcc0640be",
+          "sourcePageUrl": "https://build-heartopia.com/items/50052/conga",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50053",
+          "nameEn": "Conga",
+          "catalogCategory": "instrument",
+          "image": "images/50053.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_conga_3.png?v=35016d5b7f09",
+          "sourcePageUrl": "https://build-heartopia.com/items/50053/conga",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50054",
+          "nameEn": "Conga",
+          "catalogCategory": "instrument",
+          "image": "images/50054.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_conga_4.png?v=127b2b85e2d4",
+          "sourcePageUrl": "https://build-heartopia.com/items/50054/conga",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "cajon",
+      "labelFrProposed": "Cajón",
+      "labelEn": "Cajón",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [
+        "diatonic-15-2row",
+        "diatonic-15-3row"
+      ],
+      "layoutEvidenceUrl": "https://github.com/Jed556/AutoMidiPlayer/wiki/Support",
+      "mappingStatus": "community-documented-not-tested-in-game",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50071.png",
+      "variants": [
+        {
+          "itemId": "50071",
+          "nameEn": "Cajón",
+          "catalogCategory": "instrument",
+          "image": "images/50071.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cajon_2.png?v=63902ac17b40",
+          "sourcePageUrl": "https://build-heartopia.com/items/50071/caj-n",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50073",
+          "nameEn": "Modular Brick Cajón",
+          "catalogCategory": "instrument",
+          "image": "images/50073.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cajon_3.png?v=a91c26a9834b",
+          "sourcePageUrl": "https://build-heartopia.com/items/50073/modular-brick-caj-n",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50072",
+          "nameEn": "Springfield Cajón",
+          "catalogCategory": "instrument",
+          "image": "images/50072.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cajon_1.png?v=ba1ced53cf7b",
+          "sourcePageUrl": "https://build-heartopia.com/items/50072/springfield-caj-n",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "xylophone",
+      "labelFrProposed": "Xylophone à 8 notes",
+      "labelEn": "8-Note Xylophone w/ Stand",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [],
+      "layoutEvidenceUrl": null,
+      "mappingStatus": "unknown",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50091.png",
+      "variants": [
+        {
+          "itemId": "50091",
+          "nameEn": "8-Note Xylophone w/ Stand",
+          "catalogCategory": "instrument",
+          "image": "images/50091.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cylinder_1.png?v=4598d3be261e",
+          "sourcePageUrl": "https://build-heartopia.com/items/50091/8-note-xylophone-w-stand",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50092",
+          "nameEn": "Giraffe 8-Note Xylophone",
+          "catalogCategory": "instrument",
+          "image": "images/50092.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_cylinder_2.png?v=9ec9c6a39f68",
+          "sourcePageUrl": "https://build-heartopia.com/items/50092/giraffe-8-note-xylophone",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "saxophone",
+      "labelFrProposed": "Saxophone",
+      "labelEn": "Saxophone",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [],
+      "layoutEvidenceUrl": null,
+      "mappingStatus": "unknown",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50721.png",
+      "variants": [
+        {
+          "itemId": "50721",
+          "nameEn": "Saxophone",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50721.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_saxophone_1.png?v=c59ada334b0e",
+          "sourcePageUrl": "https://build-heartopia.com/items/50721/saxophone",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50722",
+          "nameEn": "Springday Flower Vine Saxophone",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50722.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_saxophone_2.png?v=5ed0bb616d19",
+          "sourcePageUrl": "https://build-heartopia.com/items/50722/springday-flower-vine-saxophone",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "harp",
+      "labelFrProposed": "Harpe",
+      "labelEn": "Harp",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [],
+      "layoutEvidenceUrl": null,
+      "mappingStatus": "unknown",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50121.png",
+      "variants": [
+        {
+          "itemId": "50122",
+          "nameEn": "Cupid's Harp Corner",
+          "catalogCategory": "instrument",
+          "image": "images/50122.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_harp_2.png?v=05fd941b616a",
+          "sourcePageUrl": "https://build-heartopia.com/items/50122/cupid-s-harp-corner",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50123",
+          "nameEn": "Cupid's Harp Corner",
+          "catalogCategory": "instrument",
+          "image": "images/50123.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_harp_3.png?v=50ef6393025b",
+          "sourcePageUrl": "https://build-heartopia.com/items/50123/cupid-s-harp-corner",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50124",
+          "nameEn": "Cupid's Harp Corner",
+          "catalogCategory": "instrument",
+          "image": "images/50124.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_harp_4.png?v=ce02773d833c",
+          "sourcePageUrl": "https://build-heartopia.com/items/50124/cupid-s-harp-corner",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50121",
+          "nameEn": "Harp",
+          "catalogCategory": "instrument",
+          "image": "images/50121.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_harp_1.png?v=c06a3990eee8",
+          "sourcePageUrl": "https://build-heartopia.com/items/50121/harp",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "steel-tongue-drum",
+      "labelFrProposed": "Tambour à langues métalliques",
+      "labelEn": "Steel Tongue Drum",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [],
+      "layoutEvidenceUrl": null,
+      "mappingStatus": "unknown",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50101.png",
+      "variants": [
+        {
+          "itemId": "50102",
+          "nameEn": "Penguin Steel Tongue Drum",
+          "catalogCategory": "instrument",
+          "image": "images/50102.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_eterealdrum_2.png?v=e14c4d6b5a60",
+          "sourcePageUrl": "https://build-heartopia.com/items/50102/penguin-steel-tongue-drum",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50101",
+          "nameEn": "Steel Tongue Drum",
+          "catalogCategory": "instrument",
+          "image": "images/50101.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrument_eterealdrum_1.png?v=037184c5d8a0",
+          "sourcePageUrl": "https://build-heartopia.com/items/50101/steel-tongue-drum",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "ocarina",
+      "labelFrProposed": "Ocarina",
+      "labelEn": "Ocarina",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [],
+      "layoutEvidenceUrl": null,
+      "mappingStatus": "unknown",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50751.png",
+      "variants": [
+        {
+          "itemId": "50752",
+          "nameEn": "Amber Ocarina",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50752.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_ocarina_2.png?v=bc736e39c10e",
+          "sourcePageUrl": "https://build-heartopia.com/items/50752/amber-ocarina",
+          "rawAvailability": "unavailable",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50751",
+          "nameEn": "Ocarina",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50751.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_ocarina_1.png?v=94c1d6b4511b",
+          "sourcePageUrl": "https://build-heartopia.com/items/50751/ocarina",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    },
+    {
+      "id": "conch",
+      "labelFrProposed": "Conque",
+      "labelEn": "Conch",
+      "groupingStatus": "editorial-by-name-not-proof-of-identical-controls",
+      "candidateLayoutIds": [],
+      "layoutEvidenceUrl": null,
+      "mappingStatus": "unknown",
+      "locallyValidated": false,
+      "polyphony": null,
+      "soundingPitchOffset": null,
+      "primaryImage": "images/50741.png",
+      "variants": [
+        {
+          "itemId": "50742",
+          "nameEn": "Angaria Delphinus",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50742.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_conch_2.png?v=904cc2c68e55",
+          "sourcePageUrl": "https://build-heartopia.com/items/50742/angaria-delphinus",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        },
+        {
+          "itemId": "50741",
+          "nameEn": "Conch",
+          "catalogCategory": "instrumenthanded",
+          "image": "images/50741.png",
+          "imageSourceUrl": "https://build-heartopia.com/catalog_assets/icons/ui_item_normal_p_instrumenthanded_conch_1.png?v=8ae8a504f573",
+          "sourcePageUrl": "https://build-heartopia.com/items/50741/conch",
+          "rawAvailability": "available",
+          "imageDownloadError": null
+        }
+      ]
+    }
+  ]
+}

@@ -22,6 +22,29 @@ MULTI_RESET = {"player_id": 1, "offset_ms": 0, "latency": None, "beacon_freqs": 
 COOK_RESET = {"points": {}, "refs": {}, "cook_btn_color": None, "ring_color": None}
 
 
+def _reset_instruments(cfg):
+    """Profils d'instruments livres : la disposition documentee, jamais une verification locale.
+
+    « Confirme sur cet ordinateur », les touches personnalisees et les mesures faites sur la machine de
+    developpement ne valent que pour elle. Les entrees encore a l'ancien format (name/keys/lowest_note)
+    sont retirees : la migration de core.load_config les reconstruit depuis assets/instruments."""
+    insts = cfg.get("instruments")
+    if not isinstance(insts, dict):
+        return
+    clean = {}
+    for ident, prof in insts.items():
+        if not isinstance(prof, dict) or "keys" in prof:
+            continue
+        layout_id = prof.get("layoutId") or None
+        clean[ident] = {"schemaVersion": prof.get("schemaVersion", 1),
+                        "layoutId": layout_id,
+                        "keyboardLayout": None,
+                        "verificationStatus": "documented" if layout_id else "unknown",
+                        "verifiedAt": None, "gameVersion": None,
+                        "polyphony": None, "soundingPitchOffset": None}
+    cfg["instruments"] = clean
+
+
 def sanitize(cfg):
     """Renvoie une copie de `cfg` sans calibrage ni preference locale."""
     cfg = json.loads(json.dumps(cfg))          # copie profonde
@@ -51,8 +74,12 @@ def sanitize(cfg):
             if k in m or k in ("mode", "enabled"):
                 m[k] = v
 
+    _reset_instruments(cfg)
+
     # preferences de session, pas des reglages a livrer
     cfg["instrument"] = "piano"
+    cfg["instrument_favorites"] = []
+    cfg["keyboard_layout"] = "auto"
     cfg["speed"] = 1.0
     cfg["transpose_semitones"] = 0
     if os.path.isabs(str(cfg.get("songs_folder", "songs"))):
@@ -79,6 +106,16 @@ def main():
     with open(src, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     clean = sanitize(cfg)
+    # config.json encore a l'ancien format : on conserve les profils livres du depot plutot que d'ecrire
+    # un bloc vide (le catalogue reste la reference, mais config.default.json doit rester complet).
+    if not clean.get("instruments") and os.path.exists(dst):
+        try:
+            with open(dst, "r", encoding="utf-8") as f:
+                previous = json.load(f).get("instruments")
+        except (OSError, ValueError):
+            previous = None
+        if previous:
+            clean["instruments"] = previous
     with open(dst, "w", encoding="utf-8") as f:
         json.dump(clean, f, indent=2, ensure_ascii=False)
     print(f"{os.path.basename(dst)} genere depuis {os.path.basename(src)} "

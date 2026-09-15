@@ -256,12 +256,17 @@ _DONE_MESSAGES = {
 
 def _done_page(error: str = "", status: int = 200) -> HTMLResponse:
     title, text = _DONE_MESSAGES.get(error, _DONE_MESSAGES["discord"])
+    # La page de retour d'OAuth n'avait ni favicon ni logo : l'onglet du navigateur restait vide et
+    # rien ne rattachait visuellement cette page a DodoTopia au moment le plus sensible du parcours.
     html = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>DodoTopia – {title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/static/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/logo.png">
 <style>body{{font-family:system-ui,sans-serif;background:#fff7ee;color:#3b2a20;display:flex;align-items:center;
 justify-content:center;min-height:100vh;margin:0;padding:16px}}main{{background:#fff;border-radius:16px;padding:32px;
-max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)}}h1{{margin:0 0 8px;font-size:22px}}</style></head>
-<body><main><h1>{title}</h1><p>{text}</p></main></body></html>"""
+max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)}}h1{{margin:0 0 8px;font-size:22px}}
+img{{width:72px;height:72px;margin:0 0 12px}}</style></head>
+<body><main><img src="/static/logo.png" width="72" height="72" alt="DodoTopia"><h1>{title}</h1><p>{text}</p></main></body></html>"""
     return HTMLResponse(html, status_code=status)
 
 

@@ -1,9 +1,9 @@
 # DodoTopia
 
-Boîte à outils pour Heartopia, en trois onglets :
+Boîte à outils pour Heartopia, en trois activités :
 
 - **Musique** : joue tes fichiers `.mid` dans le jeu en simulant les touches du clavier de l'instrument, avec écoute dans le logiciel avant.
-- **Image** : importe une image, DodoTopia la transforme en dessin case par case sur la palette du jeu, puis la peint à ta place dans l'outil de dessin d'Heartopia.
+- **Dessin** : importe une image, DodoTopia la transforme en dessin case par case sur la palette du jeu, puis la peint à ta place dans l'outil de dessin d'Heartopia.
 - **Cuisine** : refait en boucle la dernière recette cuisinée sur ta cuisinière, ajuste le feu à temps et récupère les plats.
 
 ## Installer
@@ -15,9 +15,9 @@ Sans exe, depuis les sources : double-clique sur `DodoTopia.bat` (Python 3 requi
 
 ## Utiliser
 
-1. Importe tes `.mid` (bouton **Importer** ou glisser-déposer dans la fenêtre).
-2. Choisis l'instrument en haut : Piano, Flûte ou Luth.
-3. **▶ Écouter** joue la musique dans le logiciel (son Windows), pour vérifier le rendu.
+1. Activité **Musique**, vue **Ma bibliothèque** : importe tes `.mid` (bouton **Importer un fichier MIDI** ou glisser-déposer dans la fenêtre). La vue **Découvrir des morceaux** propose le catalogue partagé.
+2. Bloc **Jouer dans Heartopia** : ligne **Instrument**, bouton **Changer**, choisis l'instrument que tu as ouvert dans le jeu (19 types, voir *Instruments*).
+3. Bloc **Préécouter sur cet ordinateur** : écoute la musique dans le logiciel (son Windows) pour vérifier le rendu. Rien n'est envoyé au jeu.
 4. Va dans Heartopia, ouvre l'instrument et appuie sur **F6** : la musique est jouée dans le jeu avec les touches du clavier.
 
 Dès que tu touches au clavier ou fais un clic gauche pendant la lecture dans le jeu, elle s'arrête pour te rendre la main (option désactivable dans Réglages). Le clic droit est permis : tu peux tourner la caméra pendant que ça joue.
@@ -28,58 +28,124 @@ Si le jeu ne reçoit pas les touches, lance le programme en administrateur (clic
 
 | Touche | Action |
 |--------|--------|
-| F6 | Onglet Musique : jouer dans le jeu / pause. Onglet Image : lancer / arrêter le dessin. Onglet Cuisine : lancer / arrêter la cuisine |
+| F6 | Activité Musique : jouer dans le jeu / pause. Activité Dessin : lancer / arrêter le dessin. Activité Cuisine : lancer / arrêter la cuisine |
 | F7 | Stop (musique, dessin et cuisine) |
 | F8 / F9 | Musique suivante / précédente |
 | F10 / F11 | Vitesse - / + |
 | F12 | Instrument suivant |
-| F3 | Capturer un point pendant le calibrage du dessin ou de la cuisine |
+| F3 | Enregistrer une position pendant la configuration du dessin ou de la cuisine |
 
-Les raccourcis suivent l'onglet ouvert dans DodoTopia : avec l'onglet Image affiché, F6 ne lance jamais la musique. Modifiables dans **Réglages** (icône ⚙) : clique dans le champ et appuie sur la touche voulue.
+Les raccourcis suivent l'activité ouverte dans DodoTopia : avec l'activité Dessin affichée, F6 ne lance jamais la musique. Modifiables dans **Réglages** (icône ⚙) : clique dans le champ et appuie sur la touche voulue.
 
-## Jouer à plusieurs (mode Multi)
+## Jouer à plusieurs (synchronisation par le son)
 
-L'interrupteur **Solo / Multi** sous le bouton « Jouer dans Heartopia » change ce que fait F6.
+Le choix **Jouer à plusieurs** du bloc « Jouer dans Heartopia » (Seul · Synchronisation par le son · Salon en ligne) change ce que fait F6.
 
-- **Solo** : lecture immédiate, comme avant.
-- **Multi** : F6 lance un compte à rebours (10 s) pendant lequel DodoTopia **écoute le son du jeu** (la sortie audio du PC). Le premier joueur dont le compte à rebours se termine devient **meneur** : son DodoTopia joue un court motif repère (DO5, SOL4, puis sa **note d'identité**) avec son instrument dans le jeu, puis démarre la musique 1,5 s plus tard. Les autres, encore en attente, **détectent** le motif dans le son du jeu, deviennent **suiveurs** et démarrent au même instant. Tout le monde joue la même musique, chacun sur son instrument, dans la même tonalité (transposition commune, vitesse ×1).
+- **Seul** : lecture immédiate, comme avant.
+- **Synchronisation par le son** : F6 lance un compte à rebours (10 s) pendant lequel DodoTopia **écoute le son du jeu** (la sortie audio du PC). Le premier joueur dont le compte à rebours se termine devient **meneur** : son DodoTopia joue un court motif repère (DO5, SOL4, puis sa **note d'identité**) avec son instrument dans le jeu, puis démarre la musique 1,5 s plus tard. Les autres, encore en attente, **détectent** le motif dans le son du jeu, deviennent **suiveurs** et démarrent au même instant. Tout le monde joue la même musique, chacun sur son instrument, dans la même tonalité (transposition commune, vitesse ×1).
 
-Chaque joueur choisit un **numéro** (1 à 5, tous différents) dans Réglages › Multi : sa note d'identité (LA4, FA4, RÉ4, MI4 ou DO4, jouable sur les trois instruments) permet de reconnaître qui a joué le motif, et décale son compte à rebours de 1,2 s par numéro pour éviter deux meneurs simultanés (le joueur 1 est meneur en priorité ; si deux motifs partent quand même en même temps, tout le monde se cale sur le plus petit numéro).
+Chaque joueur choisit un **numéro** (1 à 5, tous différents) dans le panneau **Synchronisation par le son** du lecteur : sa note d'identité (LA4, FA4, RÉ4, MI4 ou DO4, jouable sur toutes les dispositions documentées) permet de reconnaître qui a joué le motif, et décale son compte à rebours de 1,2 s par numéro pour éviter deux meneurs simultanés (le joueur 1 est meneur en priorité ; si deux motifs partent quand même en même temps, tout le monde se cale sur le plus petit numéro).
 
-Procédure : tous au même endroit dans le jeu, chacun avec son instrument ouvert et la même musique choisie ; chacun appuie sur F6 dans une fenêtre de 10 s. Le compte à rebours, le rôle et le numéro du meneur s'affichent dans l'onglet Musique. F7, une touche ou un clic gauche annulent.
+Procédure : tous au même endroit dans le jeu, chacun avec son instrument ouvert et la même musique choisie ; chacun appuie sur F6 dans une fenêtre de 10 s. Le compte à rebours, le rôle et le numéro du meneur s'affichent dans l'activité Musique. F7, une touche ou un clic gauche annulent.
 
-**Calibrer (tout le monde se cale)** : bouton « Calibrer » de l'onglet Musique, à cliquer tous ensemble (10 s) dans le jeu, instrument ouvert. Le meneur (premier compte à rebours écoulé) joue son motif ; chaque suiveur répond avec le sien dans un créneau lié à son numéro (joueur 1 à +1,5 s, joueur 2 à +3,1 s, etc.) ; le meneur renvoie aussitôt un écho du motif de chaque joueur entendu. Chaque suiveur mesure ainsi l'aller-retour par le jeu et enregistre la moitié comme **décalage** : au prochain top départ il jouera d'autant plus tôt, de sorte que tout le monde joue au même instant ; chacun (joueurs et spectateurs) n'entend plus les autres qu'avec le seul délai du jeu. Le meneur voit la liste des joueurs entendus. À refaire quand le lieu, le réseau ou les joueurs changent. Deux joueurs avec le même numéro se mélangent : numéros différents obligatoires.
+**Calibrer (tout le monde se cale)** : bouton « Calibrer ensemble » du panneau Synchronisation par le son, à cliquer tous ensemble (10 s) dans le jeu, instrument ouvert. Le meneur (premier compte à rebours écoulé) joue son motif ; chaque suiveur répond avec le sien dans un créneau lié à son numéro (joueur 1 à +1,5 s, joueur 2 à +3,1 s, etc.) ; le meneur renvoie aussitôt un écho du motif de chaque joueur entendu. Chaque suiveur mesure ainsi l'aller-retour par le jeu et enregistre la moitié comme **décalage** : au prochain top départ il jouera d'autant plus tôt, de sorte que tout le monde joue au même instant ; chacun (joueurs et spectateurs) n'entend plus les autres qu'avec le seul délai du jeu. Le meneur voit la liste des joueurs entendus. À refaire quand le lieu, le réseau ou les joueurs changent. Deux joueurs avec le même numéro se mélangent : numéros différents obligatoires.
 
-À faire une fois, dans **Réglages › Multi** : choisir la **sortie audio écoutée** (celle où le jeu joue) et cliquer **Tester la détection** (dans le jeu, instrument ouvert) : DodoTopia joue ton motif et mesure le délai entre l'appui et la détection sur ton PC, l'accord du jeu et la hauteur réelle des notes. **Écouter 30 s** dit quels motifs sont reconnus : pendant l'écoute, un autre joueur lance « Tester la détection » sur son PC (son motif est joué dans le jeu) et l'écoute doit afficher « motif reconnu (joueur N) » ; sans personne, elle compte les faux signaux de la musique du jeu (s'il y en a, baisse la musique du jeu et garde le son des instruments). Chaque écoute ou top départ écrit `multi.log` et l'audio écouté `multi_ecoute.wav` dans le dossier de données (`%APPDATA%\DodoTopia`), utiles pour comprendre un motif non reconnu. L'écoute dans le logiciel est coupée pendant l'attente (elle serait recapturée).
+À faire une fois, dans **Réglages › Musique et audio › Synchronisation par le son** (bouton « Source audio et test… » du panneau) : choisir la **sortie audio écoutée** (celle où le jeu joue) et cliquer **Tester la détection** (dans le jeu, instrument ouvert) : DodoTopia joue ton motif et mesure le délai entre l'appui et la détection sur ton PC, l'accord du jeu et la hauteur réelle des notes. **Écouter 30 s** dit quels motifs sont reconnus : pendant l'écoute, un autre joueur lance « Tester la détection » sur son PC (son motif est joué dans le jeu) et l'écoute doit afficher « motif reconnu (joueur N) » ; sans personne, elle compte les faux signaux de la musique du jeu (s'il y en a, baisse la musique du jeu et garde le son des instruments). Chaque écoute ou top départ écrit `multi.log` et l'audio écouté `multi_ecoute.wav` dans le dossier de données (`%APPDATA%\DodoTopia`), utiles pour comprendre un motif non reconnu. L'écoute dans le logiciel est coupée pendant l'attente (elle serait recapturée).
 
-## Image : dessiner dans Heartopia
+## Dessin : dessiner dans Heartopia
 
-1. Onglet **Image**, importe un `.png` / `.jpg` (bouton ou glisser-déposer).
+1. Activité **Dessin**, importe un `.png` / `.jpg` (bouton ou glisser-déposer). Les réglages sont groupés à droite : **Toile et cadrage**, **Couleurs et rendu**, **Options avancées**.
 2. Choisis le **format** du dessin (16:9, 4:3, 1:1, 3:4, 9:16, ou Auto selon les proportions de l'image), le **cadrage** (Ajuster laisse des cases vides, Remplir recadre), le nombre de **couleurs** (jusqu'aux 126 nuances du jeu : chaque pastille de la palette en cache 10, 6 pour le noir), le **tramage**, la luminosité, le contraste et la saturation. Les couleurs sont comparées dans l'espace perceptuel CIELAB pour que les teintes ternes (peau, bois, murs) gardent leur couleur. L'aperçu montre exactement ce qui sera peint.
-3. **Calibrer** (une fois par format et par écran) : dans le jeu, ouvre un dessin dans ce format, **finesse des détails au maximum**. L'assistant demande de survoler dans le jeu les coins haut-gauche et bas-droit de la zone rayée, la première et la dernière pastille de la palette, le bouton « palette » (icône à gauche des pastilles, qui affiche les nuances), puis, nuances ouvertes, la pastille centrale de la bande des familles (celle encadrée), les flèches < et > de cette bande, et la nuance en haut à gauche et celle en bas à droite du bloc de nuances, le crayon, le pot de peinture et le bouton Annuler, en appuyant sur **F3** à chaque fois. DodoTopia lit alors les vraies couleurs de la palette à l'écran. Les 6 étapes « nuances » sont nécessaires pour dessiner : l'aperçu utilise toujours les 126 nuances. Les coins n'ont pas besoin d'être au pixel près : la géométrie exacte est mesurée à chaque dessin.
-4. **Calibrage auto** (conseillé, une fois par format) : ouvre un dessin **vide** dans le jeu, crayon sélectionné, zoom au minimum, puis clique sur le bouton. DodoTopia remplit le fond, peint une pastille de chaque couleur (pour apprendre les couleurs telles qu'elles sont peintes), cinq repères dans les coins et au centre (pour mesurer la taille et la position exactes des cases), un trait zigzag de test (pour trouver le rythme que le jeu suit sans perdre de positions), puis trois points de validation. Si tout tombe dans la bonne case, le format est marqué ✓✓ et les réglages sont enregistrés. Le canevas de test est annulé avec le bouton Annuler s'il est calibré, sinon ouvre un nouveau dessin ensuite.
+3. **Configurer la zone du jeu** (une fois par format et par écran) : l'assistant montre une étape à la fois, avec un schéma qui désigne la cible ; « ← Étape précédente » revient en arrière et le récapitulatif replié permet de reprendre n'importe quelle étape déjà faite. Une annulation conserve la configuration précédente. dans le jeu, ouvre un dessin dans ce format, **finesse des détails au maximum**. L'assistant demande de survoler dans le jeu les coins haut-gauche et bas-droit de la zone rayée, la première et la dernière pastille de la palette, le bouton « palette » (icône à gauche des pastilles, qui affiche les nuances), puis, nuances ouvertes, la pastille centrale de la bande des familles (celle encadrée), les flèches < et > de cette bande, et la nuance en haut à gauche et celle en bas à droite du bloc de nuances, le crayon, le pot de peinture et le bouton Annuler, en appuyant sur **F3** à chaque fois. DodoTopia lit alors les vraies couleurs de la palette à l'écran. Les 6 étapes « nuances » sont nécessaires pour dessiner : l'aperçu utilise toujours les 126 nuances. Les coins n'ont pas besoin d'être au pixel près : la géométrie exacte est mesurée à chaque dessin.
+4. **Mesurer automatiquement** (conseillé, une fois par format ; menu « Calibrage et journal… ») : ouvre un dessin **vide** dans le jeu, crayon sélectionné, zoom au minimum, puis clique sur le bouton. DodoTopia remplit le fond, peint une pastille de chaque couleur (pour apprendre les couleurs telles qu'elles sont peintes), cinq repères dans les coins et au centre (pour mesurer la taille et la position exactes des cases), un trait zigzag de test (pour trouver le rythme que le jeu suit sans perdre de positions), puis trois points de validation. Si tout tombe dans la bonne case, le format est marqué ✓✓ et les réglages sont enregistrés. Le canevas de test est annulé avec le bouton Annuler s'il est calibré, sinon ouvre un nouveau dessin ensuite.
 5. Dans le jeu, ouvre un dessin vide dans le même format (finesse max, zoom au minimum, crayon sélectionné), puis **F6**. DodoTopia remplit le fond au pot de peinture avec la couleur la plus présente, mesure sur l'écran le rectangle rempli pour connaître la taille et la position exactes des cases, puis peint les autres couleurs au crayon en traits zigzag (pour chaque nuance : ouverture des nuances si besoin, lecture de la page affichée sur la bande des familles, flèches suivant/précédent jusqu'à la bonne page (1 noir, 2 rouge, … 13 rose), puis la nuance). Après chaque couleur, elle relit l'écran et repeint les cases manquantes (jusqu'à 5 passes). Toute touche du clavier, F7 ou un mouvement de souris arrête le dessin.
 
 **Mode contours + pot de peinture** (option « Contours au crayon, puis pot de peinture » dans Réglages, cochée par défaut) : au lieu de peindre chaque zone case par case, DodoTopia ne trace au crayon que le bord de chaque zone de couleur, vérifie à l'écran que les contours sont fermés, puis remplit l'intérieur de chaque zone d'un seul clic au pot de peinture. Entre deux couleurs voisines, une seule des deux trace la frontière (la moins présente), ce qui suffit pour que le pot ne déborde jamais ; les zones de moins de 4 cases sont peintes au crayon. Après chaque remplissage, l'écran est relu : si le pot a débordé (contour troué), le bouton Annuler est cliqué et la zone est peinte au crayon à la fin. Ce mode demande le crayon, le pot de peinture et, pour la détection des fuites, le bouton Annuler calibrés. Il est très efficace sur les images « à plat » (peu de couleurs, tramage désactivé : quelques dizaines de zones) et n'apporte rien sur une image tramée, où presque toutes les cases sont des contours. La ligne « Contours » sous la palette de l'aperçu indique combien de cases seront peintes au crayon et combien de zones au pot. Dans les deux modes, les traits enchaînent maintenant les lignes voisines sans lever le crayon (en se décalant de côté, en descendant puis en remontant), ce qui réduit nettement le nombre d'appuis souris ; le réglage « Délai après un clic » espace les clics isolés si le jeu les trouve trop rapprochés. Avec « Souris qui glisse comme une main » (coché par défaut), le curseur se déplace jusqu'à chaque cible en accélérant puis en freinant, par une trajectoire légèrement courbe et tremblée dont la forme, la durée et la cadence changent à chaque déplacement (l'arrivée reste exacte), pour le dessin comme pour le calibrage auto, au lieu de sauter d'un point à l'autre ; « Durée des glissements » règle la vitesse moyenne. Les temps de pose et d'appui des clics varient aussi légèrement.
 
-Sans remplissage du fond (option dans Réglages), la mesure se fait par un remplissage temporaire suivi d'un clic sur Annuler, d'où l'étape Annuler du calibrage. Sans elle, DodoTopia se rabat sur deux cases repères, moins fiable. Le rythme s'adapte tout seul : si le jeu perd des positions de souris (par exemple quand il tourne à 30 images/s), DodoTopia espace davantage les points, puis envoie un point par case si ça ne suffit pas. Le détail de chaque dessin (mesure du canevas, sonde, réparations, cases restantes) est dans `%APPDATA%\DodoTopia\dessin.log`, ouvrable par le lien **Journal du dessin** en bas de l'onglet Image. Si les traits restent en pointillés malgré tout, coche **Mode précis** dans Réglages. Le nombre de cases de chaque format est connu (16:9 : 140×84, 4:3 : 150×114, 1:1 : 150×150, 3:4 : 114×150, 9:16 : 84×150) et modifiable dans Réglages ; il est aussi détecté au calibrage quand la grille du jeu est visible.
+Sans remplissage du fond (option dans Réglages), la mesure se fait par un remplissage temporaire suivi d'un clic sur Annuler, d'où l'étape Annuler du calibrage. Sans elle, DodoTopia se rabat sur deux cases repères, moins fiable. Le rythme s'adapte tout seul : si le jeu perd des positions de souris (par exemple quand il tourne à 30 images/s), DodoTopia espace davantage les points, puis envoie un point par case si ça ne suffit pas. Le détail de chaque dessin (mesure du canevas, sonde, réparations, cases restantes) est dans `%APPDATA%\DodoTopia\dessin.log`, ouvrable par le lien **Journal du dessin** en bas de l'activité Dessin. Si les traits restent en pointillés malgré tout, coche **Mode précis** dans Réglages. Le nombre de cases de chaque format est connu (16:9 : 140×84, 4:3 : 150×114, 1:1 : 150×150, 3:4 : 114×150, 9:16 : 84×150) et modifiable dans Réglages ; il est aussi détecté au calibrage quand la grille du jeu est visible.
 
 ## Cuisine : cuisiner en boucle
 
-L'onglet **Cuisine** refait la **dernière recette cuisinée** (première tuile « Utilisation récente » du menu Recettes) autant de fois que demandé, sans toucher à rien : clic sur la bulle « cuisiner » de la cuisinière, tuile récente, bouton Cuisiner ; pendant la cuisson, dès que la bulle montre la **spatule entourée d'un anneau vert** (« Ajuste le feu de la cuisinière… », une à trois fois par plat), clic dessus ; quand la bulle montre les **gants**, clic pour récupérer le plat ; si l'animation d'un plat amélioré s'affiche, un clic sur un coin d'herbe vide la ferme ; et on recommence.
+L'activité **Cuisine** refait la **dernière recette cuisinée** (première tuile « Utilisation récente » du menu Recettes) autant de fois que demandé, sans toucher à rien : clic sur la bulle « cuisiner » de la cuisinière, tuile récente, bouton Cuisiner ; pendant la cuisson, dès que la bulle montre la **spatule entourée d'un anneau vert** (« Ajuste le feu de la cuisinière… », une à trois fois par plat), clic dessus ; quand la bulle montre les **gants**, clic pour récupérer le plat ; si l'animation d'un plat amélioré s'affiche, un clic sur un coin d'herbe vide la ferme ; et on recommence.
 
 1. **Calibrer** (une fois par écran) : devant la cuisinière dans le jeu, l'assistant demande, avec **F3** à chaque étape, les deux coins de la **zone de recherche** (là où la bulle peut apparaître, sans les icônes du jeu ; la bulle bouge un peu d'un plat à l'autre, DodoTopia la cherche dans cette zone), le centre de la **bulle « cuisiner »** (la forme de son icône blanche est mémorisée), puis, menu Recettes ouvert, la **première tuile récente** et le bouton **Cuisiner** (sa couleur indique si le menu est ouvert), puis, pendant une cuisson, la bulle **spatule avec l'anneau vert** (facultatif mais conseillé : la couleur exacte de l'anneau est lue ; sinon un vert vif standard est cherché), la bulle **gants** à la fin de la cuisson, et enfin un **coin d'herbe vide** où cliquer pour fermer les animations.
 2. **Tester la détection** : devant la cuisinière, dit quelle bulle est reconnue et avec quels scores (utile si la boucle ne démarre pas).
-3. Place-toi devant la cuisinière, bulle « cuisiner » visible, avec les ingrédients de la recette, puis **F6** (ou le bouton, qui laisse 3 s pour revenir dans le jeu). Le nombre de plats est dans Réglages › Cuisine (0 = sans fin : la boucle s'arrête d'elle-même quand le menu reste ouvert, faute d'ingrédients). **F7**, une touche ou un mouvement de souris arrêtent tout.
+3. Place-toi devant la cuisinière, bulle « cuisiner » visible, avec les ingrédients de la recette, puis **F6** (ou le bouton, qui laisse 3 s pour revenir dans le jeu). La quantité est dans l'activité Cuisine, bloc « Cette session » : **Quantité définie** (avec un nombre de plats) ou **En continu** — la boucle s'arrête alors d'elle-même quand le menu reste ouvert, faute d'ingrédients. En interne, « en continu » reste `cook.max_dishes = 0`. **F7**, une touche ou un mouvement de souris arrêtent tout.
 
-Comment ça marche : l'écran est lu avec Pillow seulement. La bulle est reconnue par la forme de son icône blanche (masque des pixels blancs comparé aux références du calibrage, score de Jaccard, seuil réglable) et par le disque gris qui l'entoure (il ne doit pas contenir de blanc : un texte ou une tache blanche ne sont pas pris pour la bulle) ; suivi rapide autour de la dernière position, recherche dans toute la zone quand elle est perdue. L'anneau de la spatule est reconnu par ses pixels verts autour de la bulle. Chaque changement d'état, avec les scores, est dans `%APPDATA%\DodoTopia\cuisine.log` (lien **Journal de la cuisine** en bas de l'onglet) ; en cas d'échec, la dernière capture de la zone est dans `cuisine_echec.png`, et les icônes capturées au calibrage dans `cuisine_ref_*.png`. Réglages › Cuisine : nombre de plats, durée maximale d'une cuisson, seuil de reconnaissance, pixels verts de l'anneau, délai après un clic. Le glissement de la souris (Réglages › Dessin) s'applique aussi à la cuisine.
+Comment ça marche : l'écran est lu avec Pillow seulement. La bulle est reconnue par la forme de son icône blanche (masque des pixels blancs comparé aux références du calibrage, score de Jaccard, seuil réglable) et par le disque gris qui l'entoure (il ne doit pas contenir de blanc : un texte ou une tache blanche ne sont pas pris pour la bulle) ; suivi rapide autour de la dernière position, recherche dans toute la zone quand elle est perdue. L'anneau de la spatule est reconnu par ses pixels verts autour de la bulle. Chaque changement d'état, avec les scores, est dans `%APPDATA%\DodoTopia\cuisine.log` (bouton **Voir le journal de la cuisine**, dans le détail de la configuration) ; en cas d'échec, la dernière capture de la zone est dans `cuisine_echec.png`, et les icônes capturées au calibrage dans `cuisine_ref_*.png`. Réglages › Cuisine : durée maximale d'une cuisson, seuil de reconnaissance, pixels verts de l'anneau, délai après un clic. La quantité de plats et le nombre de cuisinières se règlent dans l'activité Cuisine. Le glissement de la souris (Réglages › Dessin et calibrage) s'applique aussi à la cuisine.
 
 ## Instruments
 
-- **Piano** : 37 touches chromatiques (3 octaves + DO aigu). La transposition automatique ne change que l'octave.
-- **Flûte / Luth** : 15 touches diatoniques (DO RÉ MI FA SOL LA SI sur 2 octaves + DO aigu). L'appli cherche la tonalité qui met le plus de notes sur la gamme, puis rapproche les dièses restants de la note la plus proche.
+### Le catalogue
 
-Le clavier affiché dans la fenêtre montre les touches envoyées au jeu. L'écoute dans le logiciel joue exactement les notes qui seront envoyées (après transposition), avec un son de piano, de flûte ou de guitare nylon.
+19 types d'instruments : Piano, Flûte à bec, Xiao en bambou, Luth, Basse en bois, Cornemuse, Concertina, Mbira, Lyre, Violon, Violoncelle, Conga, Cajón, Xylophone à 8 notes, Saxophone, Harpe, Tambour à langues métalliques, Ocarina, Conque.
+
+**Une carte par type, une image par type.** Les couleurs et les styles d'un même instrument ne sont pas des entrées séparées : ils sonnent pareil et se jouent pareil, donc les 63 objets du catalogue consulté sont regroupés en 19 types. Il n'y a ni sous-menu de skins, ni choix d'apparence.
+
+Le catalogue vient du site communautaire [Build Heartopia](https://build-heartopia.com/items), consulté le 15 septembre 2026. Ce n'est pas une liste officielle exhaustive, et les noms français sont des traductions proposées, pas les libellés du jeu. Données dans `assets/instruments/catalogue.json`, images dans `ui/instruments/` (chargées localement : la sélection fonctionne hors ligne), provenance et droits dans [`assets/instruments/CREDITS.md`](assets/instruments/CREDITS.md).
+
+Dans le bloc **Jouer dans Heartopia**, la ligne « Instrument · *nom* · Changer » ouvre le sélecteur : recherche par nom français, nom anglais ou alias, filtres par famille (Cordes, Vents, Claviers, Percussions), favoris, et une fiche par instrument avec son état. Une image manquante ne casse rien : la carte affiche une pastille de famille.
+
+**Choisir un instrument ici ne l'équipe pas dans Heartopia** : ouvre-le toi-même dans le jeu. DodoTopia choisit seulement quelles touches il enverra.
+
+### Les quatre dispositions
+
+Le nombre de notes dépend de la disposition ouverte **dans le jeu**, pas du nom de l'instrument.
+
+| Disposition | Notes | Registre | Altérations | Transposition automatique |
+|---|---|---|---|---|
+| 15 notes, 2 rangées | 15 | Do4 → Do6 | aucune | tonalité |
+| 15 notes, 3 rangées | 15 | Do4 → Do6 | aucune | tonalité |
+| 22 notes | 22 | Do3 → Do6 | aucune | tonalité |
+| 37 notes, chromatique | 37 | Do3 → Do6 | toutes | octave |
+
+Les deux profils à 15 notes ont les **mêmes notes mais pas les mêmes touches** : choisis celui qui correspond à ce que le jeu affiche. Sur une disposition diatonique, l'appli cherche la tonalité qui met le plus de notes sur la gamme, puis rapproche les dièses restants de la note la plus proche ; sur la disposition chromatique, elle ne déplace que l'octave. Convention d'affichage : **Do4 = C4 = MIDI 60**.
+
+Les tables viennent de projets communautaires ([AutoMidiPlayer](https://github.com/Jed556/AutoMidiPlayer/wiki/Support), [Heartopia-Midi-Player](https://github.com/DonElf/Heartopia-Midi-Player/blob/main/HeartopiaMidiPlayer.cpp), [heartopia-midi](https://github.com/sp0oby/heartopia-midi#heartopia-key-mapping)) et sont dans `assets/instruments/layouts.json`. Plusieurs dispositions d'un même instrument restent des réglages de sa fiche, jamais des cartes de plus.
+
+### Ce qui est vérifié, et ce qui ne l'est pas
+
+Chaque instrument porte un état, visible sur sa carte :
+
+| État | Ce que ça veut dire |
+|---|---|
+| **Touches à configurer** | aucune table connue : l'instrument n'est pas jouable tant qu'il n'est pas configuré |
+| **Profil documenté · à vérifier** | une source communautaire donne une table ; elle n'a été testée dans le jeu par personne ici |
+| **Touches personnalisées · à vérifier** | table saisie ou modifiée sur cet ordinateur |
+| **Test rapide réussi · vérification partielle** | quelques touches vérifiées dans le jeu, pas toutes |
+| **Confirmé sur cet ordinateur** | toutes les associations vérifiées une par une, ici (bouton « Validation intégrale… » de la fiche ou du panneau « Voir les touches ») |
+
+Aucun profil livré n'est « confirmé » : les tables sont documentées, pas testées. La procédure pour les vérifier est dans [`RECETTE-Instruments.md`](RECETTE-Instruments.md).
+
+**Touches à relever** (six types, non jouables pour l'instant) : Xylophone à 8 notes, Saxophone, Harpe, Tambour à langues métalliques, Ocarina, Conque. Leur présence au catalogue ne documente pas leurs touches, et ils n'héritent jamais du profil du piano : un instrument sans profil mène à la configuration, pas à une mélodie fausse.
+
+**Conga et cajón** : les sources leur associent une table de 15 notes, mais une frappe de percussion n'est pas une hauteur. Leur profil reste candidat — l'instrument n'est jouable qu'après le test des frappes de l'assistant.
+
+### Clavier AZERTY ou QWERTY
+
+DodoTopia envoie une **position** de touche, pas une lettre : la position `q` est la touche marquée **A** sur un clavier français. Seul le libellé affiché change avec la disposition, jamais ce qui part vers le jeu.
+
+- **Disposition du clavier** : `Auto` (déduite de Windows), `QWERTY` ou `AZERTY`, réglable depuis le panneau « Voir les touches » comme dans les Réglages.
+- Changer de disposition **n'efface pas** les touches personnalisées, mais fait repasser les profils « confirmé » et « test rapide » en « à vérifier » : la conclusion dépendait de l'ancien réglage.
+- Les lettres posent rarement problème ; ce sont les chiffres et la ponctuation de la disposition à 37 notes (`0 2 3 5 6 7 - = [ ] ; , . /`) qui départagent les deux modes d'**Envoi des touches**. En `Lettre affichée`, la rangée des chiffres d'un clavier français demande Maj : DodoTopia le signale, sans jamais ajouter un Maj tout seul.
+
+### Configurer et vérifier
+
+« Configurer les touches » ouvre un assistant en cinq étapes : ouvrir l'instrument dans le jeu, indiquer la disposition visible, associer les touches (chaque touche se saisit en l'appuyant, sans l'envoyer au jeu ni déclencher de raccourci), tester, enregistrer. Les doublons, les touches non injectables et les collisions avec les raccourcis sont signalés à côté de la ligne concernée ; **un mapping qui prendrait la touche d'arrêt ou de lecture est refusé**.
+
+Le test dans le jeu est volontaire et court : trois touches au maximum, annoncées, avec un compte à rebours pour revenir dans Heartopia. Il s'arrête à tout moment par le bouton **Arrêter le test** de l'assistant ou par le raccourci d'arrêt (F7), qui coupe réellement l'envoi. Il donne « Test rapide réussi », jamais une validation complète.
+
+La **validation intégrale** (bouton « Validation intégrale… » dans la fiche de l'instrument et dans le panneau « Voir les touches ») rejoue le même test par groupes de trois touches, en reprenant à chaque fois là où tu t'es arrêté, jusqu'à ce que **toutes** les associations soient vérifiées : c'est la seule procédure qui écrit « Confirmé sur cet ordinateur ».
+
+Les profils s'exportent et s'importent en JSON depuis « Détails techniques et sources » de la fiche de l'instrument (schéma validé, rien n'est exécuté ; un profil vérifié ailleurs redevient « à vérifier » ici).
+
+### Avant de jouer
+
+Le panneau **Voir les touches** liste, pour chaque note : nom français, nom international, registre, touche sur ton clavier et état d'affectation. Les numéros MIDI et les positions QWERTY de référence sont dans la section avancée.
+
+Avant la lecture, DodoTopia compare le morceau au profil actif et affiche ce qui ne passe pas : notes hors registre, altérations absentes de la disposition, pistes de percussion ignorées. Les adaptations (transposition, déplacement d'octave, omission) sont **proposées avec leur effet réel sur la couverture**, jamais appliquées en douce : chaque option ouvre un aperçu chiffré avant d'être appliquée, et chacune se défait (la transposition s'ajoute à celle des « Réglages du morceau », l'omission se rétablit par « Replier les notes hors registre »).
+
+L'écoute dans le logiciel joue exactement les notes qui seront envoyées (après transposition). C'est un **aperçu sonore indicatif** : un timbre MIDI général, pas le son de l'instrument du jeu.
 
 ## Bibliothèque
 
@@ -95,7 +161,8 @@ Le clavier affiché dans la fenêtre montre les touches envoyées au jeu. L'éco
 - **Arrêter si je touche au clavier ou à la souris** : mode jeu uniquement.
 - **Délai avant lecture** : secondes entre F6 et la première note.
 - **Durée d'appui** : durée de chaque frappe de touche.
-- **Mode d'envoi** : `Position physique` (par défaut) ou `Lettre affichée`. Si les notes sont fausses sur un clavier AZERTY, essaie l'autre.
+- **Envoi des touches** : `Position` (par défaut) ou `Lettre affichée`. Si les notes sont fausses sur un clavier AZERTY, essaie l'autre.
+- **Disposition du clavier** : `Auto`, `QWERTY` ou `AZERTY` (aussi réglable depuis le panneau « Voir les touches »). Ne change que les libellés affichés, jamais la position envoyée au jeu (voir *Instruments*).
 - **Transposition** : demi-tons ajoutés en plus de l'automatique.
 - **Volume** : volume de l'écoute dans le logiciel (curseur sous la vitesse).
 
@@ -180,12 +247,14 @@ DodoTopia fonctionne aussi sous Linux (session **X11 / Xorg** conseillée ; le j
 - `app.py` : interface graphique (fenêtre WebView2) et API.
 - `ui/index.html` : la page de l'interface (style Heartopia).
 - `core.py` : moteur musique (lecture MIDI, transposition, envoi des touches, écoute, interruption).
+- `instruments.py` : catalogue des instruments, dispositions de touches, profils de l'utilisateur, migration des anciens réglages, libellés AZERTY/QWERTY et détection des conflits de touches.
+- `assets/instruments/` : catalogue (`catalogue.json`), dispositions (`layouts.json`), crédits des visuels (`CREDITS.md`) et archive de provenance (`source/`, jamais chargée). Images affichées : `ui/instruments/`.
 - `draw.py` : moteur dessin (calibrage, lecture de la palette et de la grille à l'écran, peinture à la souris, mode contours + pot de peinture).
 - `sync.py` : mode Multi (capture de la sortie audio, détection de la note repère, session meneur / suiveur, test de détection).
 - `cook.py` : cuisine en boucle (calibrage, reconnaissance de la bulle et de l'anneau vert à l'écran, boucle cuisiner / feu / récupérer).
 - `bot.py` : base commune du dessin et de la cuisine (journal, attente interruptible, souris qui glisse, clic, arrêt si clavier ou souris touchés).
 - `platform_io.py` : couche plateforme ; `_win_io.py` (SendInput, `keyboard`, winmm, Pillow) et `_linux_io.py` (X11 : XTEST, XRECORD, mss, rtmidi).
-- `config.json` : réglages et instruments par défaut. Une fois installé, la config utilisée est dans `%APPDATA%\DodoTopia\config.json` (Linux : `~/.config/DodoTopia`).
+- `config.json` : réglages et profils de touches. Le catalogue des instruments, lui, vient d'`assets/instruments`. Une fois installé, la config utilisée est dans `%APPDATA%\DodoTopia\config.json` (Linux : `~/.config/DodoTopia`).
 - `heartopia_player.py` : version console, sans interface.
 - `build.bat`, `installer.iss`, `version.py` : construction Windows. `build.sh`, `build-linux.bat`, `docker/Dockerfile.linux`, `requirements-linux.txt`, `DodoTopia.sh` : construction et lancement Linux.
 - `server/` : backend (FastAPI + PostgreSQL, déployé avec Dokploy, voir `server/README.md`). `publish_release.py`, `publish.bat`, `CHANGELOG.md` : publication d'une version. `.github/workflows/` : CI (tests du serveur, construction et publication des versions).

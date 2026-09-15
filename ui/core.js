@@ -1,14 +1,15 @@
-// DodoTopia : noyau de l'interface (helpers, appels API, registre de vues, dialogues, toasts, onglets, boucle).
+// DodoTopia : noyau de l'interface (helpers, appels API, registre de vues, dialogues, toasts, navigation,
+// modales, aide, indicateur de tache en cours, boucle d'etat).
 const $ = id => document.getElementById(id);
 let S = null;
 const NOTE_NAMES = ['DO','DO#','RÉ','RÉ#','MI','FA','FA#','SOL','SOL#','LA','LA#','SI'];
 // vocabulaire unique de l'interface (le meme mot partout : boutons, bandeaux, raccourcis)
 const LABELS = {
-  listen: 'Écouter ici', play: 'Jouer dans Heartopia', stop: 'Arrêter', start: 'Top départ', cancel: 'Annuler',
+  listen: 'Préécouter', play: 'Jouer dans Heartopia', stop: 'Arrêter', start: 'Lancer la session', cancel: 'Annuler',
   pause: 'Pause', resume: 'Reprendre', draw: 'Dessiner dans Heartopia', cook: 'Cuisiner en boucle',
 };
-const HOTKEY_LABELS = {play_pause: 'Jouer dans Heartopia / pause', stop: 'Arrêter', next_song: 'Musique suivante', prev_song: 'Musique précédente',
-  speed_down: 'Ralentir', speed_up: 'Accélérer', next_instrument: 'Instrument suivant', draw_point: 'Repère (calibrage)'};
+const HOTKEY_LABELS = {play_pause: 'Lancer / mettre en pause (selon l’activité ouverte)', stop: 'Tout arrêter', next_song: 'Musique suivante', prev_song: 'Musique précédente',
+  speed_down: 'Ralentir', speed_up: 'Accélérer', next_instrument: 'Instrument suivant', draw_point: 'Enregistrer une position (configuration)'};
 
 function fmt(s){ s = Math.max(0, Math.floor(s||0)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
@@ -86,7 +87,7 @@ function renderSession(el, spec){
       <div class="session__body"><div class="session__role"></div><div class="session__text"></div><div class="session__meta"></div>
         <div class="progress" hidden><span class="pl"></span><div class="bar"><div class="fill"></div></div><span class="pr"></span></div></div>
       <div class="session__actions">${(spec.actions || []).map((a, i) => `<button type="button" class="btn btn--sm ${a.cls || 'btn--danger'}" data-i="${i}"></button>`).join('')}</div>`;
-    el.querySelectorAll('.session__actions button').forEach(b => b.onclick = () => { const a = spec.actions[Number(b.dataset.i)]; if(a && a.api) api(a.api, ...(a.args || [])); if(a && a.fn) a.fn(); });
+    el.querySelectorAll('.session__actions button').forEach(b => b.onclick = () => { const a = el._spec.actions[Number(b.dataset.i)]; if(a && a.api) api(a.api, ...(a.args || [])); if(a && a.fn) a.fn(); });
   }
   el._spec = spec;
   el.querySelectorAll('.session__actions button').forEach(b => { const a = spec.actions[Number(b.dataset.i)]; b.innerHTML = esc(a.label) + (a.kbd ? ` <kbd>${esc(a.kbd)}</kbd>` : ''); });
@@ -156,29 +157,172 @@ function stepsMark(ol, done, now, marks){
 }
 // menu contextuel sous un bouton : items [{label, help, fn, disabled}]
 let MENU = null;
-function closeMenu(){ if(MENU){ MENU.remove(); MENU = null; } }
+function closeMenu(restoreFocus = false){ if(MENU){ const anchor = MENU._anchor; MENU.remove(); MENU = null; if(anchor){ anchor.setAttribute('aria-expanded', 'false'); if(restoreFocus && anchor.isConnected) anchor.focus(); } } }
 function menu(anchor, items){
   closeMenu();
   const m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'menu');
+  m._anchor = anchor;
+  anchor.setAttribute('aria-haspopup', 'menu');
+  anchor.setAttribute('aria-expanded', 'true');
   m.innerHTML = items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" ${it.disabled ? 'disabled' : ''}>${esc(it.label)}${it.help ? `<span class="menu__help">${esc(it.help)}</span>` : ''}</button>`).join('');
-  m.querySelectorAll('button').forEach(b => b.onclick = () => { const it = items[Number(b.dataset.i)]; closeMenu(); if(it.fn) it.fn(); });
+  m.querySelectorAll('button').forEach(b => b.onclick = () => { const it = items[Number(b.dataset.i)]; closeMenu(true); if(it.fn) it.fn(); });
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
-  let left = Math.min(r.left, window.innerWidth - mw - 8), top = r.bottom + 6;
+  let left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)), top = r.bottom + 6;
   if(top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
   m.style.left = left + 'px'; m.style.top = top + 'px';
   MENU = m;
   setTimeout(() => { const f = m.querySelector('button:not([disabled])'); if(f) f.focus(); }, 20);
 }
 document.addEventListener('mousedown', e => { if(MENU && !MENU.contains(e.target)) closeMenu(); });
-document.addEventListener('keydown', e => { if(MENU && e.key === 'Escape'){ closeMenu(); } });
-// dialogue des raccourcis (bouton « ? Raccourcis »)
-function hotkeysDialog(st){
-  const hk = (st && st.hotkeys) || {};
-  const rows = Object.keys(HOTKEY_LABELS).map(k => `<kbd class="kbd">${esc(hk[k] || '–')}</kbd><span>${esc(HOTKEY_LABELS[k])}</span>`).join('');
-  dialog({title: 'Raccourcis clavier', icon: '⌨️', ok: 'Fermer', cancel: null,
-    html: `<div class="hklist">${rows}</div><small>Actifs même quand Heartopia a le focus. Modifiables dans Réglages › Raccourcis.</small>`});
+document.addEventListener('keydown', e => {
+  if(!MENU) return;
+  if(e.key === 'Escape'){ e.preventDefault(); closeMenu(true); return; }
+  if(e.key === 'Tab'){ closeMenu(true); return; }
+  if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key)) return;
+  const items = [...MENU.querySelectorAll('button:not([disabled])')];
+  if(!items.length) return;
+  e.preventDefault();
+  const current = items.indexOf(document.activeElement);
+  const i = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1
+    : (current + (e.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+  items[i].focus();
+});
+window.addEventListener('resize', () => closeMenu());
+// ------------------------------------------------ aide : raccourcis, vocabulaire, dépannage
+const GLOSSARY = [
+  ['Fichier MIDI (.mid)', 'Une partition : la liste des notes et de leur durée, sans son enregistré. DodoTopia la rejoue sur les touches de l’instrument du jeu.'],
+  ['Préécouter', 'Écouter le morceau dans DodoTopia, sur les haut-parleurs de l’ordinateur. Rien n’est envoyé à Heartopia.'],
+  ['Transposition', 'Décaler toutes les notes vers le grave ou l’aigu, en demi-tons, pour qu’elles rentrent dans l’étendue de l’instrument.'],
+  ['Synchronisation par le son', 'Jouer à plusieurs sans réseau : le premier joue une note repère dans le jeu, DodoTopia l’entend sur la sortie audio et chacun démarre en même temps.'],
+  ['Salon en ligne', 'Jouer à plusieurs par le serveur DodoTopia : un code à 6 caractères, un chef, un morceau commun et un départ donné par le serveur.'],
+  ['Avance / retard', 'Un décalage volontaire, en millisecondes, appliqué à ton départ : négatif pour jouer plus tôt, positif pour jouer plus tard.'],
+  ['Configurer la zone du jeu (calibrage)', 'Montrer une fois à DodoTopia où se trouvent, à l’écran, la toile de dessin, la palette et les outils du jeu. Sans cela il ne sait pas où cliquer.'],
+  ['Tramage', 'Alterner deux couleurs voisines case par case pour imiter une teinte absente de la palette.'],
+  ['Contours + pot de peinture', 'Tracer le bord d’une zone au crayon puis la remplir d’un seul clic au pot, au lieu de peindre chaque case.'],
+];
+// Six rubriques orientées tâches. Le glossaire n'est plus la porte d'entrée : il est en annexe de
+// « Commencer ». Les raccourcis sont produits depuis la configuration réelle, jamais écrits en dur.
+const HELP_TOPICS = [
+  {id: 'start', label: 'Commencer'},
+  {id: 'music', label: 'Musique'},
+  {id: 'draw', label: 'Dessin'},
+  {id: 'cook', label: 'Cuisine'},
+  {id: 'keys', label: 'Raccourcis'},
+  {id: 'fix', label: 'Dépannage'},
+];
+let HELP_TOPIC = 'start';
+function helpKey(st, name, fallback){ return ((st && st.hotkeys) || {})[name] || fallback; }
+function helpTask(titre, etapes, note){
+  return `<section class="helptask"><h4>${esc(titre)}</h4><ol>${etapes.map(e => `<li>${e}</li>`).join('')}</ol>`
+    + (note ? `<p class="hint left">${note}</p>` : '') + `</section>`;
 }
+function helpBody(st, topic){
+  const f6 = esc(helpKey(st, 'play_pause', 'F6')), f7 = esc(helpKey(st, 'stop', 'F7'));
+  const f3 = esc(helpKey(st, 'draw_point', 'F3')), f12 = esc(helpKey(st, 'next_instrument', 'F12'));
+  if(topic === 'music'){
+    return helpTask('Importer un morceau', [
+        'Musique › Ma bibliothèque › <b>Importer</b>, ou glisse un fichier <code>.mid</code> dans la fenêtre.',
+        'Les fichiers sont copiés dans ton dossier de musiques ; l’original n’est pas touché.'],
+        'Tu peux aussi prendre un morceau partagé : Musique › <b>Découvrir</b> › <b>Ajouter à ma bibliothèque</b>.')
+      + helpTask('Choisir mon instrument', [
+        'Dans Heartopia, ouvre l’instrument que tu veux jouer.',
+        `Dans DodoTopia, bloc « Jouer dans Heartopia » › <b>Changer</b> (ou <kbd class="kbd">${f12}</kbd>), et prends le même type.`,
+        'Choisir ici n’équipe rien dans le jeu : c’est DodoTopia qui s’adapte à ton instrument.'],
+        'Si les notes sonnent faux, c’est presque toujours que l’instrument choisi n’est pas celui ouvert dans le jeu.')
+      + helpTask('Jouer dans le jeu', [
+        'Sélectionne un morceau, garde Heartopia au premier plan, instrument ouvert.',
+        `Bouton <b>Jouer dans Heartopia</b> ou <kbd class="kbd">${f6}</kbd>.`,
+        `Pour reprendre la main : <kbd class="kbd">${f7}</kbd>, n’importe quelle touche ou un clic gauche.`],
+        '« Préécouter » joue le morceau sur les haut-parleurs de l’ordinateur : rien n’est envoyé au jeu.')
+      + helpTask('Jouer à plusieurs', [
+        'Musique › <b>Jouer ensemble</b>, puis choisis une méthode.',
+        '<b>Par le son</b> : sans réseau, le premier joue une note repère que les autres détectent.',
+        '<b>Salon en ligne</b> : un code à six caractères, un chef qui lance la session.'],
+        'Le calage dépend de ta machine et de ta connexion : les départs sont ajustés au mieux, pas parfaits.');
+  }
+  if(topic === 'draw'){
+    return helpTask('Préparer une image', [
+        'Dessin › <b>Importer une image</b> (.png, .jpg, .gif, .bmp, .webp).',
+        'L’aperçu montre le rendu case par case sur les couleurs de la palette du jeu.',
+        'Règle le format, le cadrage et les couleurs dans le panneau de droite.'],
+        'Les cases transparentes apparaissent en damier. Si « Remplir le fond au pot » est coché, elles prendront la couleur de fond dans le jeu.')
+      + helpTask('Configurer la toile', [
+        'Dans Heartopia, ouvre une toile au format retenu, finesse des détails au maximum, grille activée.',
+        'Bouton <b>Configurer la zone du jeu</b> : l’assistant demande une position à la fois.',
+        `Place la souris sur la cible <b>dans le jeu</b> et appuie sur <kbd class="kbd">${f3}</kbd>.`],
+        'La configuration est conservée. Elle est à refaire si tu changes de résolution ou de taille de fenêtre.')
+      + helpTask('Lancer le dessin', [
+        'Ouvre une toile vide au bon format, outil crayon sélectionné, sans zoom.',
+        `Bouton <b>Dessiner dans Heartopia</b> ou <kbd class="kbd">${f6}</kbd>, puis ne touche plus à la souris.`],
+        'Un dessin interrompu ne peut pas être repris là où il s’est arrêté.');
+  }
+  if(topic === 'cook'){
+    return helpTask('Configurer la cuisine', [
+        'Dans le jeu, place-toi devant la cuisinière, bulle visible.',
+        'Cuisine › <b>Configurer la cuisine</b>, puis suis les étapes une par une.',
+        `Chaque position se capture avec <kbd class="kbd">${f3}</kbd>.`],
+        '<b>Tester la détection</b> est facultatif : il lit l’écran et dit quelle bulle est reconnue. Tu peux lancer la boucle sans l’avoir fait.')
+      + helpTask('Lancer la boucle', [
+        'Cuisine une fois toi-même la recette voulue : DodoTopia refait la dernière recette du jeu.',
+        'Choisis <b>Quantité définie</b> ou <b>En continu</b>, et le nombre de cuisinières.',
+        `Place-toi devant la cuisinière, puis <kbd class="kbd">${f6}</kbd>.`],
+        `Pendant la boucle, <kbd class="kbd">${f7}</kbd>, n’importe quelle touche ou un mouvement de souris arrêtent tout.`);
+  }
+  if(topic === 'keys'){
+    const rows = Object.keys(HOTKEY_LABELS).map(k =>
+      `<div class="hkrow"><kbd class="kbd">${esc(helpKey(st, k, '–'))}</kbd><span>${esc(HOTKEY_LABELS[k])}</span></div>`).join('');
+    return `<section class="helptask"><h4>Raccourcis globaux</h4>
+        <p class="hint left">Actifs même quand Heartopia est au premier plan. Modifiables dans Réglages › Raccourcis.</p>
+        <div class="hklist">${rows}</div></section>`;
+  }
+  if(topic === 'fix'){
+    return `<dl class="gloss">
+        <dt>Le jeu ne reçoit pas les touches</dt><dd>Heartopia doit être la fenêtre active. Si rien ne passe, relance DodoTopia en administrateur.</dd>
+        <dt>Les notes sont fausses</dt><dd>Vérifie que l’instrument choisi est celui ouvert dans le jeu. Sinon, essaie Réglages › Musique et audio › Avancé › Envoi des touches.</dd>
+        <dt>Le dessin est décalé ou tordu</dt><dd>Refais « Configurer la zone du jeu » pour ce format : le calibrage dépend de la résolution et de la position de la fenêtre.</dd>
+        <dt>La bulle de la cuisinière n’est pas reconnue</dt><dd>Lance « Tester la détection » devant la cuisinière, puis recapture les icônes de la bulle.</dd>
+        <dt>Tout arrêter tout de suite</dt><dd><kbd class="kbd">${f7}</kbd>, n’importe quelle touche ou un clic gauche arrêtent l’automatisation en cours.</dd>
+      </dl>
+      <div class="btnrow"><button type="button" class="btn btn--secondary btn--sm" data-act="logs">Ouvrir les journaux</button></div>`;
+  }
+  // Commencer
+  return `<p>DodoTopia prépare ton travail ici, puis le réalise dans Heartopia à ta place : il appuie sur les
+      touches et clique pour toi. Le jeu doit être ouvert au moment du lancement.</p>
+    ${helpTask('Les trois activités', [
+      '<b>Musique</b> : jouer un fichier MIDI sur un instrument du jeu.',
+      '<b>Dessin</b> : reproduire une image sur la toile, case par case.',
+      '<b>Cuisine</b> : refaire la dernière recette en boucle.'],
+      'La musique fonctionne dès l’installation. Le dessin et la cuisine demandent une configuration, une seule fois.')}
+    <section class="helptask"><h4>Les mots de DodoTopia</h4><dl class="gloss">${
+      GLOSSARY.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></section>`;
+}
+function helpPanel(st, topic){
+  HELP_TOPIC = topic && HELP_TOPICS.some(t => t.id === topic) ? topic : 'start';
+  const render = s2 => `<nav class="helpnav" aria-label="Rubriques d’aide">${
+      HELP_TOPICS.map(t => `<button type="button" class="${t.id === HELP_TOPIC ? 'active' : ''}" data-topic="${t.id}"${t.id === HELP_TOPIC ? ' aria-current="true"' : ''}>${esc(t.label)}</button>`).join('')
+    }</nav><div class="helpbody" id="helpBody">${helpBody(s2, HELP_TOPIC)}</div>`;
+  const wire = box => {
+    box.querySelectorAll('[data-topic]').forEach(b => b.onclick = () => {
+      HELP_TOPIC = b.dataset.topic;
+      box.querySelectorAll('[data-topic]').forEach(x => {
+        const on = x.dataset.topic === HELP_TOPIC;
+        x.classList.toggle('active', on);
+        if(on) x.setAttribute('aria-current', 'true'); else x.removeAttribute('aria-current');
+      });
+      const body = box.querySelector('#helpBody');
+      if(body){ body.innerHTML = helpBody(S, HELP_TOPIC); wireLogs(box); }
+      $('panelBody').scrollTop = 0;          // chaque rubrique s'ouvre en haut
+    });
+    wireLogs(box);
+  };
+  const wireLogs = box => {
+    const b = box.querySelector('[data-act="logs"]');
+    if(b) b.onclick = () => { closePanel(); openSettings(null, 'about'); };
+  };
+  openPanel({title: 'Aide', wide: true, opener: $('btnHelp'), html: render(st), wire});
+}
+function hotkeysDialog(st){ helpPanel(st, 'keys'); }
 // notice (.notice) : {text, kind} ou null pour masquer ; l'id du texte = id + 'Text'
 function setNotice(id, spec){
   const el = $(id); if(!el) return;
@@ -197,18 +341,18 @@ function dialog({title, html, ok = 'OK', cancel = 'Annuler', danger = false, ico
   $('dlgTitle').textContent = title; $('dlgBody').innerHTML = html; $('dlgIcon').textContent = icon;
   $('dlgOk').textContent = ok; $('dlgOk').className = 'dlg-btn ok' + (danger ? ' danger' : '');
   $('dlgCancel').textContent = cancel; $('dlgCancel').hidden = cancel === null;
-  $('dlgOverlay').classList.add('open');
-  setTimeout(() => $('dlgOk').focus(), 30);
+  openModal($('dlgOverlay'));
+  setTimeout(() => { if($('dlgOverlay').classList.contains('open')) (danger && cancel !== null ? $('dlgCancel') : $('dlgOk')).focus(); }, 30);
   return new Promise(res => { dlgResolve = res; });
 }
-function dlgClose(v){ $('dlgOverlay').classList.remove('open'); if(dlgResolve){ dlgResolve(v); dlgResolve = null; } }
+function dlgClose(v){ closeModal($('dlgOverlay')); if(dlgResolve){ dlgResolve(v); dlgResolve = null; } }
 $('dlgOk').onclick = () => dlgClose(true);
 $('dlgCancel').onclick = () => dlgClose(false);
 $('dlgOverlay').onclick = e => { if(e.target === $('dlgOverlay')) dlgClose(false); };
 document.addEventListener('keydown', e => {
   if(!$('dlgOverlay').classList.contains('open')) return;
-  if(e.key === 'Escape') dlgClose(false);
-  if(e.key === 'Enter') dlgClose(true);
+  if(e.key === 'Escape'){ e.preventDefault(); dlgClose(false); }
+  // Entrée active le bouton réellement sélectionné via le comportement natif du navigateur.
 });
 
 // ------------------------------------------------ toasts : pile de 3, auto-fermeture 3,5 s, variante persistante
@@ -280,17 +424,18 @@ function viewToasts(st){
 }
 view('toasts', {draw: viewToasts});
 
-// ------------------------------------------------ onglets
+// ------------------------------------------------ navigation : 3 activites + vues locales de la Musique
 let TAB = 'music';
+let MUSIC_VIEW = 'library';     // library | discover | together
 function showTab(name){
-  if(name === 'online' && !$('pageOnline')) name = 'music';    // onglet En ligne : branche a l'etape 5
+  if(name === 'online'){ showTab('music'); showMusicView('discover'); return; }   // ancien onglet « En ligne »
+  if(!['music', 'image', 'cook'].includes(name)) name = 'music';
   TAB = name;
   closeMenu();
   segMark($('tabs'), t => t.dataset.tab === name);
   $('pageMusic').classList.toggle('active', name === 'music');
   $('pageImage').classList.toggle('active', name === 'image');
   $('pageCook').classList.toggle('active', name === 'cook');
-  if($('pageOnline')) $('pageOnline').classList.toggle('active', name === 'online');
   $('openFolder').style.display = name === 'music' ? '' : 'none';
   $('openLog').style.display = name === 'image' ? '' : 'none';
   $('openCookLog').style.display = name === 'cook' ? '' : 'none';
@@ -300,6 +445,104 @@ function showTab(name){
   if(S) render(S);
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => showTab(t.dataset.tab));
+
+// Trois destinations musicales : chacune occupe tout l'espace de la page. Naviguer ne change JAMAIS le
+// mode de jeu (cfg.multi.mode) : sortir de « Jouer ensemble » ne doit pas quitter un salon en cours.
+const MUSIC_VIEWS = ['library', 'discover', 'together'];
+function showMusicView(name){
+  MUSIC_VIEW = MUSIC_VIEWS.includes(name) ? name : 'library';
+  segMark($('musicNav'), b => b.dataset.view === MUSIC_VIEW);
+  MUSIC_VIEWS.forEach(v => {
+    const el = $('view' + v.charAt(0).toUpperCase() + v.slice(1));
+    if(el) el.classList.toggle('active', v === MUSIC_VIEW);
+  });
+  try{ localStorage.setItem('musicView', MUSIC_VIEW); }catch(e){}
+  if(S) render(S);
+}
+document.querySelectorAll('#musicNav > button').forEach(b => b.onclick = () => showMusicView(b.dataset.view));
+
+// ------------------------------------------------ modales : focus piege, Echap, retour au declencheur
+const MODALS = [];
+function trapFocus(box, e){
+  const items = [...box.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')]
+    .filter(el => el.offsetParent !== null || el === document.activeElement);
+  if(!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  // le focus peut etre RESTE dans la page derriere la modale (retour a l'element declencheur, ouverture
+  // sans focus explicite) : dans ce cas la tabulation partait dans les commandes du lecteur. On le ramene.
+  if(!box.contains(document.activeElement)){ e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+}
+function openModal(overlay, opener, onClose){
+  const existing = MODALS.find(m => m.overlay === overlay);
+  if(existing) return existing;
+  const entry = {overlay, opener: opener || document.activeElement, onClose};
+  MODALS.push(entry);
+  overlay.classList.add('open');
+  return entry;
+}
+function closeModal(overlay){
+  const i = MODALS.findIndex(m => m.overlay === overlay);
+  if(i < 0){ overlay.classList.remove('open'); return; }
+  const m = MODALS.splice(i, 1)[0];
+  overlay.classList.remove('open');
+  if(m.onClose) m.onClose();
+  if(m.opener && document.contains(m.opener) && m.opener.offsetParent !== null) m.opener.focus();
+}
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Tab' || !MODALS.length) return;
+  const top = MODALS[MODALS.length - 1];
+  if(top.overlay.classList.contains('open')) trapFocus(top.overlay, e);
+});
+
+// panneau generique (compte, aide, administration) : un seul gabarit de modale
+let PANEL = null;
+function openPanel(spec){
+  PANEL = spec;
+  $('panelTitle').textContent = spec.title || '';
+  $('panelBody').innerHTML = spec.html || '';
+  $('panelOverlay').querySelector('.modal').className = 'modal panel' + (spec.wide ? ' panel--wide' : '');
+  if(spec.wire) spec.wire($('panelBody'));
+  $('panelBody').scrollTop = 0;
+  openModal($('panelOverlay'), spec.opener);
+  setTimeout(() => { $('panelBody').scrollTop = 0; $('panelBody').focus(); }, 30);
+}
+function closePanel(){ PANEL = null; closeModal($('panelOverlay')); }
+function panelOpen(){ return $('panelOverlay').classList.contains('open'); }
+// repeint le panneau ouvert quand l'etat change (compte, administration)
+function refreshPanel(){ if(PANEL && PANEL.render) { $('panelBody').innerHTML = PANEL.render(S); if(PANEL.wire) PANEL.wire($('panelBody')); } }
+$('panelClose').onclick = () => closePanel();
+$('panelOverlay').onclick = e => { if(e.target === $('panelOverlay')) closePanel(); };
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && panelOpen() && !$('dlgOverlay').classList.contains('open')){ e.preventDefault(); closePanel(); } });
+
+// ------------------------------------------------ indicateur global : une tache tourne dans une autre activite
+const RUN_TABS = {music: 'Musique', image: 'Dessin', cook: 'Cuisine'};
+function runningTask(st){
+  if(st.draw && (st.draw.state === 'drawing' || st.draw.state === 'autocal'))
+    return {tab: 'image', label: st.draw.state === 'autocal' ? 'Calibrage auto' : 'Dessin en cours', stop: 'draw_stop'};
+  if(st.cook && st.cook.state === 'cooking') return {tab: 'cook', label: 'Cuisine en cours', stop: 'cook_stop'};
+  const room = st.online && st.online.room;
+  if(st.state !== 'stopped' && st.target === 'game') return {tab: 'music', label: 'Lecture dans le jeu', stop: 'stop'};
+  if(st.multi && st.multi.state && !['idle', 'playing'].includes(st.multi.state)) return {tab: 'music', label: 'Synchronisation…', stop: 'stop'};
+  if(room && ['countdown', 'armed', 'playing'].includes(room.state)) return {tab: 'music', label: 'Salon en ligne', stop: 'stop'};
+  return null;
+}
+// La barre d'état porte l'arrêt : une tâche lancée doit pouvoir être coupée depuis n'importe quel écran.
+view('statusStop', {sig: st => { const r = runningTask(st); return r ? r.label + r.stop : ''; }, draw: st => {
+  const r = runningTask(st), btn = $('statusStop');
+  if(!btn) return;
+  btn.hidden = !r;
+  if(r){ btn.textContent = 'Arrêter'; btn.onclick = () => api(r.stop); btn.title = r.label; }
+}});
+view('runPill', {sig: st => { const r = runningTask(st); return (r ? r.tab + r.label : '') + '|' + TAB; }, draw: st => {
+  const r = runningTask(st), pill = $('runPill');
+  if(!r || r.tab === TAB){ pill.hidden = true; return; }
+  pill.hidden = false;
+  pill.innerHTML = `<span class="runpill__dot" aria-hidden="true"></span><span>${esc(RUN_TABS[r.tab])} · ${esc(r.label)}</span><span class="runpill__go">Voir</span>`;
+  pill.title = `Aller à l'activité ${RUN_TABS[r.tab]}`;
+  pill.onclick = () => showTab(r.tab);
+}});
 
 // ------------------------------------------------ glisser-deposer (chemin recupere cote Python)
 document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
@@ -318,8 +561,10 @@ function loadLogo(){
 }
 function onReady(){ loadLogo(); api('set_tab', TAB); tick(); }
 function boot(){
-  // dernier onglet ouvert
-  try{ const t0 = localStorage.getItem('tab'); if(t0 === 'image' || t0 === 'cook' || (t0 === 'online' && $('pageOnline'))) showTab(t0); }catch(e){}
+  // dernier contexte : activité et vue de la Musique (aucune automatisation n'est relancée)
+  try{ const v0 = localStorage.getItem('musicView'); if(v0 && v0 !== 'library') showMusicView(v0); }catch(e){}
+  try{ const t0 = localStorage.getItem('tab'); if(t0 === 'image' || t0 === 'cook') showTab(t0); }catch(e){}
+  $('btnHelp').onclick = () => helpPanel(S);
   window.addEventListener('pywebviewready', onReady);
   if(window.pywebview) onReady();
 }

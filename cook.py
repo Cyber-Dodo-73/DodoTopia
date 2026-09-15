@@ -401,6 +401,36 @@ class Cooker(MouseBot):
                     s[2] += p[2]
         return [v // n for v in s]
 
+    def back_point(self):
+        """Revient a l'etape precedente : ce qui y avait ete capture (position, icone, couleur) est oublie,
+        pour etre repris. La configuration deja enregistree n'est touchee qu'a la validation."""
+        if self.state != "calibrating" or self.step <= 0:
+            return False
+        self.step -= 1
+        key = self.steps[self.step][0]
+        for k in (key, "_ref_" + key):
+            self.points.pop(k, None)
+        if key == "spatula":
+            self.points.pop("_ring", None)
+        if key == "cook_btn":
+            self.points.pop("_btn_color", None)
+        self.message = ""
+        self.log(f"calibrage cuisine : retour a l'etape {self.step + 1}")
+        self.on_change()
+        return True
+
+    def goto_step(self, index):
+        """Revient a une etape deja faite (clic dans le recapitulatif). On ne saute jamais en avant."""
+        try:
+            index = int(index)
+        except (TypeError, ValueError):
+            return False
+        if self.state != "calibrating" or not 0 <= index < self.step:
+            return False
+        while self.step > index:
+            self.back_point()
+        return True
+
     def skip_point(self):
         if self.state != "calibrating":
             return False

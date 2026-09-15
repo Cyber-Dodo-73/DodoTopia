@@ -11,7 +11,9 @@ import time
 
 import mido
 
+import instruments
 import platform_io
+from instruments import Instrument  # noqa: F401 (alias historique : core.Instrument)
 from platform_io import SCANCODES, scan_code_for, send_keys, mouse_button_down, MidiOut  # noqa: F401
 
 APP_NAME = "DodoTopia"
@@ -32,44 +34,6 @@ if not os.path.exists(DEFAULT_CONFIG_PATH):
     DEFAULT_CONFIG_PATH = os.path.join(RES_DIR, "config.json")
 
 
-# ---------------------------------------------------------------- Instruments
-class Instrument:
-    def __init__(self, ident, spec):
-        self.id = ident
-        self.name = spec.get("name", ident)
-        self.lowest = int(spec["lowest_note"])
-        self.keys = [k.lower() for k in spec["keys"]]
-        self.scale = list(spec.get("scale") or range(len(self.keys)))
-        self.auto = spec.get("auto_transpose", "key" if "scale" in spec else "octave")
-        self.gm_program = int(spec.get("gm_program", 0))
-        if len(self.scale) != len(self.keys):
-            raise ValueError(f"instrument {ident!r} : 'scale' et 'keys' n'ont pas la meme taille")
-        for k in self.keys:
-            if k not in SCANCODES:
-                raise ValueError(f"instrument {ident!r} : touche inconnue {k!r}")
-        self.offset_to_key = dict(zip(self.scale, self.keys))
-        self.span = max(self.scale)
-        self.chromatic = len(self.scale) == self.span + 1
-
-    def snap(self, offset):
-        """Demi-ton de gamme le plus proche (egalite : le plus bas)."""
-        if offset in self.offset_to_key:
-            return offset
-        return min(self.scale, key=lambda o: (abs(o - offset), o))
-
-    def key_for(self, note):
-        """Touche qui joue exactement la note MIDI `note` (sans transposition), ou None si hors instrument."""
-        return self.offset_to_key.get(int(note) - self.lowest)
-
-    @property
-    def kind(self):
-        return "chromatique" if self.chromatic else "diatonique"
-
-    def to_dict(self):
-        return {"id": self.id, "name": self.name, "kind": self.kind,
-                "keys": self.keys, "count": len(self.keys)}
-
-
 # ---------------------------------------------------------------- Config
 DEFAULT_CONFIG = {
     "instrument": "piano",
@@ -80,7 +44,17 @@ DEFAULT_CONFIG = {
     "transpose_semitones": 0, "fold_out_of_range": True, "ignore_drums": True,
     "input_mode": "scancode", "stop_on_input": True, "preview_volume": 100,
     "hold_mode": "note", "max_hold": 4.0,
+    "keyboard_layout": "auto", "instrument_favorites": [],
 }
+
+
+def _log_migration(lines):
+    """Journalise les lignes de migration des instruments (sans console : on ignore silencieusement)."""
+    for line in lines:
+        try:
+            print(f"instruments : {line}")
+        except Exception:  # noqa : pas de sortie standard en mode fenetre
+            return
 
 
 def load_config():
@@ -88,18 +62,16 @@ def load_config():
         shutil.copy2(DEFAULT_CONFIG_PATH, CONFIG_PATH)
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         cfg = json.load(f)
-    # complete avec les instruments par defaut si la config est ancienne
-    if os.path.exists(DEFAULT_CONFIG_PATH) and os.path.abspath(DEFAULT_CONFIG_PATH) != os.path.abspath(CONFIG_PATH):
-        with open(DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as f:
-            default = json.load(f)
-        for k, v in default.get("instruments", {}).items():
-            cfg.setdefault("instruments", {}).setdefault(k, v)
     for k, v in DEFAULT_CONFIG.items():
         cfg.setdefault(k, v)
-    cfg["instruments"].pop("guitare", None)  # ancien nom du luth
-    cfg["_instruments"] = [Instrument(n, s) for n, s in cfg["instruments"].items()]
+    # Les instruments ne viennent plus de config.default.json : le catalogue (assets/instruments) fait foi.
+    # La migration convertit l'ancien format, conserve les personnalisations et complete les types manquants.
+    changes = instruments.migrate_config(cfg)
+    cfg["_migration_log"] = changes
+    _log_migration(changes)
+    cfg["_instruments"] = instruments.build_instruments(cfg)
     if not cfg["_instruments"]:
-        raise ValueError("aucun instrument dans config.json")
+        raise ValueError("aucun instrument dans le catalogue")
     return cfg
 
 
@@ -143,8 +115,11 @@ def _open_midi(path):
     return mid
 
 
-def parse_midi(path, cfg):
+def parse_midi(path, cfg, stats=None):
     """Liste triee [(t, [(note, duree, velocite), ...])], accords regroupes.
+
+    `stats` : dict facultatif rempli au passage avec "drums" (notes de percussion ignorees) et "channels"
+    (canaux MIDI rencontres). La signature reste retro-compatible.
 
     Leve MidiRefused (ValueError) si le fichier n'est pas un MIDI exploitable ou depasse les plafonds."""
     mid = _open_midi(path)
@@ -152,6 +127,8 @@ def parse_midi(path, cfg):
     pending = {}        # (channel, note) -> (t_on, vel)
     t = 0.0
     events = 0
+    drums = 0
+    channels = set()
     for msg in mid:
         events += 1
         if events > MAX_MIDI_EVENTS:
@@ -159,8 +136,11 @@ def parse_midi(path, cfg):
         if len(notes) > MAX_MIDI_NOTES:
             raise MidiRefused(f"fichier MIDI trop charge (plus de {MAX_MIDI_NOTES} notes)")
         t += msg.time
+        if msg.type in ("note_on", "note_off"):
+            channels.add(msg.channel)
         if msg.type == "note_on" and msg.velocity > 0:
             if cfg.get("ignore_drums", True) and msg.channel == 9:
+                drums += 1
                 continue
             key = (msg.channel, msg.note)
             if key in pending:  # re-declenchee sans note_off
@@ -183,6 +163,9 @@ def parse_midi(path, cfg):
                 grouped[-1][1].append((note, dur, vel))
         else:
             grouped.append((t0, [(note, dur, vel)]))
+    if isinstance(stats, dict):
+        stats["drums"] = drums
+        stats["channels"] = sorted(channels)
     return grouped
 
 
@@ -221,18 +204,32 @@ def choose_shift(all_notes, inst, cfg, extra_fixed=None):
     return max(candidates)[3]
 
 
-def fit_notes(grouped, inst, cfg, extra_fixed=None):
-    """Retourne ([(t, [touches], [(note_jouee, duree, vel)])], info)."""
-    lo, hi = inst.lowest, inst.lowest + inst.span
+def fit_notes(grouped, inst, cfg, extra_fixed=None, shift=None):
+    """Retourne ([(t, [touches], [(note_jouee, duree, vel)])], info).
+
+    info : shift, folded, snapped, dropped, hits, notes (cles historiques lues par sync.py, room.py et
+    l'interface) + out_of_range (notes hors registre avant repli), missing_accidental (notes tombees sur
+    une alteration absente), exact (notes jouees a la hauteur exacte) et coverage (0-100).
+    `shift` force la transposition au lieu de la choisir (apercu d'une option de compatibilite)."""
     all_notes = [n for _, ns in grouped for n, _, _ in ns]
-    shift = choose_shift(all_notes, inst, cfg, extra_fixed)
+    if shift is None:
+        shift = choose_shift(all_notes, inst, cfg, extra_fixed)
+    shift = int(shift)
+    if not inst.offset_to_key:
+        # profil sans aucune touche : rien n'est jouable, on ne devine pas un mapping
+        return [], {"shift": 0, "folded": 0, "snapped": 0, "dropped": len(all_notes), "hits": 0,
+                    "notes": len(all_notes), "out_of_range": 0, "missing_accidental": 0,
+                    "exact": 0, "coverage": 0}
+    lo, hi = inst.lowest, inst.lowest + inst.span
     result = []
-    dropped = folded = snapped = 0
+    dropped = folded = snapped = out_of_range = exact = 0
     for t, ns in grouped:
         keys, played = [], []
         for n, dur, vel in ns:
             m = n + shift
-            if m < lo or m > hi:
+            in_range = lo <= m <= hi
+            if not in_range:
+                out_of_range += 1
                 if cfg.get("fold_out_of_range", True):
                     while m < lo:
                         m += 12
@@ -245,6 +242,8 @@ def fit_notes(grouped, inst, cfg, extra_fixed=None):
             off = inst.snap(m - lo)
             if off != m - lo:
                 snapped += 1
+            elif in_range:
+                exact += 1
             k = inst.offset_to_key[off]
             if k not in keys:
                 keys.append(k)
@@ -252,8 +251,76 @@ def fit_notes(grouped, inst, cfg, extra_fixed=None):
         if keys:
             result.append((t, keys, played))
     info = {"shift": shift, "folded": folded, "snapped": snapped,
-            "dropped": dropped, "hits": len(result), "notes": len(all_notes)}
+            "dropped": dropped, "hits": len(result), "notes": len(all_notes),
+            "out_of_range": out_of_range, "missing_accidental": snapped, "exact": exact,
+            "coverage": round(100 * exact / len(all_notes)) if all_notes else 0}
     return result, info
+
+
+def coverage_at(grouped, inst, cfg, shift):
+    """Part des notes (0-100) jouees a la hauteur exacte pour une transposition donnee."""
+    _, info = fit_notes(grouped, inst, cfg, shift=shift)
+    return info["coverage"]
+
+
+def _option_label(kind, value, coverage):
+    if kind == "octave":
+        sens = "Monter" if value > 0 else "Descendre"
+        n = abs(value) // 12
+        return f"{sens} de {n} octave{'s' if n > 1 else ''} : {coverage} % des notes à la hauteur exacte"
+    if kind == "transpose":
+        return f"Transposer de {value:+d} demi-ton{'s' if abs(value) > 1 else ''} : {coverage} % à la hauteur exacte"
+    note = "note hors registre" if value <= 1 else "notes hors registre"
+    if kind == "fold":
+        return (f"Rejouer {value} {note} une octave plus loin au lieu de les omettre : "
+                f"{coverage} % à la hauteur exacte")
+    return f"Omettre {value} {note} : {coverage} % à la hauteur exacte, aucune note déplacée d'octave"
+
+
+def compat_report(grouped, inst, cfg, extra=None, stats=None):
+    """Diagnostic de compatibilite d'un morceau avec un instrument, options reellement testees.
+
+    `extra` : decalage de tonalite impose (salon en ligne), comme pour fit_notes. Par tolerance, un dict
+    passe a cette place est compris comme les `stats` de parse_midi (notes de percussion ignorees)."""
+    if isinstance(extra, dict):
+        extra, stats = None, extra
+    events, info = fit_notes(grouped, inst, cfg, extra)
+    base = info["coverage"]
+    options = []
+    if inst.offset_to_key and info["notes"]:
+        for delta in (12, -12, 24, -24):
+            cov = coverage_at(grouped, inst, cfg, info["shift"] + delta)
+            if cov > base:
+                options.append({"kind": "octave", "value": delta, "coverage": cov,
+                                "label": _option_label("octave", delta, cov)})
+        for delta in range(-6, 7):
+            if delta == 0:
+                continue
+            cov = coverage_at(grouped, inst, cfg, info["shift"] + delta)
+            if cov > base:
+                options.append({"kind": "transpose", "value": delta, "coverage": cov,
+                                "label": _option_label("transpose", delta, cov)})
+        if info["out_of_range"]:
+            # « omettre » est une OPTION a activer, pas un constat : on mesure ce qu'elle donnerait, et on
+            # ne la propose que quand le reglage inverse est celui en vigueur. Dans l'autre sens, on
+            # propose de remettre le repli d'octave : un reglage ne doit jamais etre a sens unique.
+            folding = bool(cfg.get("fold_out_of_range", True))
+            alt_cfg = dict(cfg)
+            alt_cfg["fold_out_of_range"] = not folding
+            _, alt = fit_notes(grouped, inst, alt_cfg, shift=info["shift"])
+            if folding and alt["dropped"]:
+                options.append({"kind": "omit", "value": alt["dropped"], "coverage": alt["coverage"],
+                                "label": _option_label("omit", alt["dropped"], alt["coverage"])})
+            elif not folding and alt["folded"]:
+                options.append({"kind": "fold", "value": alt["folded"], "coverage": alt["coverage"],
+                                "label": _option_label("fold", alt["folded"], alt["coverage"])})
+    options.sort(key=lambda o: (-o["coverage"], abs(o["value"])))
+    return {"notes": info["notes"], "playable": info["notes"] - info["dropped"],
+            "out_of_range": info["out_of_range"], "missing_accidental": info["missing_accidental"],
+            "dropped": info["dropped"], "drums": int((stats or {}).get("drums", 0) or 0),
+            "shift": info["shift"], "coverage": base, "hits": len(events),
+            "folded": info["folded"], "fold": bool(cfg.get("fold_out_of_range", True)),
+            "options": options[:4]}
 
 
 def build_timeline(events, target, hold, hold_mode="note", max_hold=4.0):
@@ -494,6 +561,21 @@ class Library:
             self.save()
 
 
+SPEED_MIN, SPEED_MAX = 0.2, 4.0
+
+
+def clamp_speed(value):
+    """Vitesse de lecture bornee. Une valeur illisible ou nulle venant de config.json ne doit jamais
+    atteindre la division `t / self.speed` de la boucle de lecture."""
+    try:
+        v = round(float(value), 2)
+    except (TypeError, ValueError):
+        return 1.0
+    if v != v or v in (float("inf"), float("-inf")):
+        return 1.0
+    return max(SPEED_MIN, min(SPEED_MAX, v))
+
+
 # ---------------------------------------------------------------- Player
 class Player:
     def __init__(self, cfg, log=print):
@@ -505,7 +587,7 @@ class Player:
         self.inst_index = ids.index(wanted) if wanted in ids else 0
         self.songs = []
         self.index = 0
-        self.speed = float(cfg.get("speed", 1.0))
+        self.speed = clamp_speed(cfg.get("speed", 1.0))
         self.state = "stopped"      # stopped | playing | paused | sync (mode Multi : ecoute / note repere)
         self.target = "preview"     # preview (dans le logiciel) | game (touches clavier)
         self.sync = None            # SyncSession du mode Multi (sync.py), pose par l'application
@@ -569,12 +651,32 @@ class Player:
             self.stop(join=True)
             self.index = index
 
-    def set_instrument(self, index):
-        if 0 <= index < len(self.instruments) and index != self.inst_index:
-            self.stop(join=True)
-            self.inst_index = index
-            self.cfg["instrument"] = self.instrument.id
-            self.log(f"instrument : {self.instrument.name}")
+    def set_instrument(self, index_or_id):
+        """Change l'instrument actif (identifiant ou index). Renvoie (ok, message).
+
+        Refuse pendant une lecture : remapper une note encore tenue avec un autre profil laisserait des
+        touches enfoncees dans le jeu."""
+        ids = [i.id for i in self.instruments]
+        if isinstance(index_or_id, str):
+            if index_or_id not in ids:
+                return False, "Instrument inconnu."
+            index = ids.index(index_or_id)
+        else:
+            try:
+                index = int(index_or_id)
+            except (TypeError, ValueError):
+                return False, "Instrument inconnu."
+            if not 0 <= index < len(self.instruments):
+                return False, "Instrument inconnu."
+        if index == self.inst_index:
+            return True, ""
+        if self.state != "stopped":
+            return False, "Arrête la lecture avant de changer d'instrument."
+        self._silence()
+        self.inst_index = index
+        self.cfg["instrument"] = self.instrument.id
+        self.log(f"instrument : {self.instrument.name}")
+        return True, ""
 
     # ---- position
     def position(self):
@@ -628,11 +730,20 @@ class Player:
 
     def stop(self, join=False, reason=""):
         with self._lock:
+            # _start() tourne sous ce meme verrou : lu ici, « fil vivant » ne peut pas etre perime
+            alive = bool(self._thread and self._thread.is_alive())
             if self.state != "stopped":
                 self.last_stop_reason = reason
                 self._stop.set()
                 self._pause.clear()
                 self.log("stop" + (f" ({reason})" if reason else ""))
+                if not alive:
+                    # aucun fil pour appeler _finish() : etat « sync » pose par un salon, ou fil mort sur
+                    # une erreur. On remet l'etat a l'arret ici, sinon le lecteur reste bloque pour de bon.
+                    self.state = "stopped"
+                    self._start_time = None
+                    self.lock_speed = False
+                    self._silence()
         self._abort_sessions(reason or "stop")
         if join and self._thread and self._thread is not threading.current_thread():
             self._thread.join(timeout=2)
@@ -654,14 +765,20 @@ class Player:
         self._switch(-1)
 
     def next_instrument(self):
-        self.set_instrument((self.inst_index + 1) % len(self.instruments))
+        """Instrument suivant parmi ceux dont le profil est pret (F12)."""
+        ready = [i for i, inst in enumerate(self.instruments) if inst.ready]
+        if not ready:
+            self.log("aucun instrument prêt : configure d'abord ses touches")
+            return False, "Aucun instrument prêt : configure d'abord ses touches."
+        index = next((i for i in ready if i > self.inst_index), ready[0])
+        return self.set_instrument(index)
 
     def set_speed(self, value):
         if self.lock_speed:
             self.log("vitesse verrouillée à x1.00 en lecture synchronisée")
             return
         old_pos = self.position()
-        self.speed = max(0.2, min(4.0, round(float(value), 2)))
+        self.speed = clamp_speed(value)
         if self.state == "playing" and self._start_time is not None:
             self._start_time = time.perf_counter() - old_pos / self.speed
         self.cfg["speed"] = self.speed
@@ -729,10 +846,17 @@ class Player:
 
     # ---- lecture
     def _start(self, target, deadline=None, prepared=None):
+        inst = self.instrument
+        if not inst.ready:
+            # un profil inconnu mene a la configuration, jamais au mapping du piano
+            self.log(f"{inst.name} : {inst.blocked_reason}")
+            self._abandon_start()
+            return
         self.refresh_songs()
         song = prepared["song"] if prepared else self.current()
         if not song:
             self.log("aucun fichier .mid dans la bibliotheque")
+            self._abandon_start()
             return
         if self._thread and self._thread.is_alive():
             return
@@ -748,6 +872,15 @@ class Player:
         self._thread = threading.Thread(target=self._run, args=(song, self.instrument, target, deadline, prepared),
                                         daemon=True)
         self._thread.start()
+
+    def _abandon_start(self):
+        """Sortie anticipee de _start : l'appelant (play_at du salon) a pu forcer l'etat « sync », et aucun
+        fil ne viendra le remettre a l'arret. Appele avec self._lock deja pris : on ne le reprend pas."""
+        if self.state != "stopped":
+            self.state = "stopped"
+        self._start_time = None
+        self.lock_speed = False
+        self._silence()
 
     def play_at(self, deadline, prepared, target="game"):
         """Mode Multi : demarre la lecture (deja preparee par prepare()) a l'instant perf_counter `deadline`."""
@@ -782,24 +915,43 @@ class Player:
         return t
 
     def _silence(self):
-        """Relache les touches / coupe les notes en cours (pause, stop)."""
+        """Relache les touches / coupe les notes en cours (pause, stop).
+
+        Ne leve jamais : c'est le dernier geste du fil de lecture et de stop(). Si l'envoi du relachement
+        echoue, la liste est quand meme vidée (sinon chaque tentative suivante replanterait au meme endroit)
+        et l'echec est journalise."""
         if self._held:
-            self._expect(self._held, True)
-            send_keys(self._held, True, self.cfg["input_mode"])
-            self._held = []
+            keys, self._held = self._held, []
+            try:
+                self._expect(keys, True)
+                send_keys(keys, True, self.cfg["input_mode"])
+            except Exception as e:  # noqa
+                self.log(f"relâchement des touches impossible : {e!r}")
         if self._midi:
-            self._midi.all_off()
+            try:
+                self._midi.all_off()
+            except Exception as e:  # noqa
+                self.log(f"arrêt des notes impossible : {e!r}")
 
     def _run(self, song, inst, target, deadline=None, prepared=None):
+        """Fil de lecture. TOUT le corps est protege : une erreur d'injection ou de calcul ne doit jamais
+        laisser une touche enfoncee dans le jeu ni le lecteur bloque en « playing » (le finally appelle
+        _finish, qui relache les touches et remet l'etat a l'arret)."""
+        try:
+            self._run_body(song, inst, target, deadline, prepared)
+        except Exception as e:  # noqa - panne silencieuse dans un build fenetre : on journalise
+            self.log(f"erreur pendant la lecture : {e!r}")
+            self.last_stop_reason = self.last_stop_reason or "erreur"
+        finally:
+            self._finish()
+
+    def _run_body(self, song, inst, target, deadline=None, prepared=None):
         try:
             if prepared is None:
                 prepared = self.prepare(song, inst, target)
             events, info, timeline = prepared["events"], prepared["info"], prepared["timeline"]
         except Exception as e:  # noqa
             self.log(f"erreur lecture MIDI : {e}")
-            with self._lock:
-                self.state = "stopped"
-            self.lock_speed = False
             return
         self.info = info
         mode = self.cfg["input_mode"]
@@ -819,7 +971,6 @@ class Player:
             self._start_time = float(deadline)
             delay = max(0.0, deadline - time.perf_counter())
         if self._wait(delay):
-            self._finish()
             return
         if target == "game" and deadline is None and self.cfg.get("stop_on_input", True):
             # attend que les boutons de la souris et le raccourci soient relaches
@@ -867,7 +1018,6 @@ class Player:
                 else:
                     self._midi.note_off(note)
             i += 1
-        self._finish()
 
     def _wait(self, seconds):
         end = time.perf_counter() + seconds

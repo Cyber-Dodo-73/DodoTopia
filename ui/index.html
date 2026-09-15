@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DodoTopia</title>
 <link rel="stylesheet" href="app.css">
 </head>
@@ -13,80 +14,203 @@
       <img id="logo" alt="" style="display:none">
       <div><h1>DodoTopia</h1><small>Boîte à outils pour Heartopia</small></div>
     </div>
-    <nav class="tabs" id="tabs" role="tablist" aria-label="Pages">
-      <button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pageMusic" data-tab="music"><span class="ic">🎵</span>Musique</button>
-      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="pageImage" data-tab="image" tabindex="-1"><span class="ic">🖼️</span>Image</button>
-      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="pageCook" data-tab="cook" tabindex="-1"><span class="ic">🍳</span>Cuisine</button>
-      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="pageOnline" data-tab="online" tabindex="-1" id="tabOnline"><span class="ic">🌐</span>En ligne</button>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Activités">
+      <button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pageMusic" data-tab="music"><span class="ic" aria-hidden="true">🎵</span>Musique</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="pageImage" data-tab="image" tabindex="-1"><span class="ic" aria-hidden="true">🎨</span>Dessin</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="pageCook" data-tab="cook" tabindex="-1"><span class="ic" aria-hidden="true">🍳</span>Cuisine</button>
     </nav>
     <div class="spacer"></div>
-    <button class="account" type="button" id="accountPill" hidden></button>
-    <button class="iconbtn" type="button" id="btnSettings" title="Réglages" aria-label="Réglages" disabled>⚙<span class="dot" id="settingsDot" hidden></span></button>
+    <!-- tâche en cours dans une autre activité : accès direct à son écran et à l'arrêt -->
+    <button class="runpill" type="button" id="runPill" hidden></button>
+    <button class="btn btn--ghost btn--sm" type="button" id="btnHelp">? Aide</button>
+    <button class="account" type="button" id="accountPill" aria-haspopup="dialog" hidden></button>
+    <button class="iconbtn" type="button" id="btnSettings" title="Réglages" aria-label="Réglages" aria-haspopup="dialog" disabled>⚙<span class="dot" id="settingsDot" hidden></span></button>
   </header>
 
-  <main class="active" id="pageMusic" role="tabpanel">
-    <section class="card">
-      <div class="card__head">
-        <h2>Mes musiques</h2><span class="count" id="count">0</span>
-        <div class="spacer"></div>
-        <button class="btn btn--primary btn--sm" type="button" id="btnImport">＋ Importer</button>
-      </div>
-      <div class="libbar">
-        <label class="search" id="searchBox"><span class="ic">🔍</span><input id="search" placeholder="Rechercher…" aria-label="Rechercher une musique"><button class="clr" type="button" id="searchClr" aria-label="Effacer la recherche">×</button></label>
-        <button class="chip" type="button" id="favFilter" aria-pressed="false" title="Afficher seulement les favoris">★</button>
-        <select class="sortsel" id="sortSel" title="Trier" aria-label="Trier">
-          <option value="name">Nom</option>
-          <option value="added">Ajout récent</option>
-          <option value="plays">Plus écoutées</option>
-          <option value="recent">Dernière écoute</option>
-        </select>
-      </div>
-      <div class="list" id="list"></div>
-      <div class="drop">Glisse tes fichiers <b>.mid</b> ici<br>ou clique sur Importer</div>
-    </section>
+  <main class="active" id="pageMusic" role="tabpanel" aria-label="Musique">
+    <nav class="subnav seg" id="musicNav" role="tablist" aria-label="Destinations musicales">
+      <button type="button" role="tab" class="active" aria-selected="true" aria-controls="viewLibrary" data-view="library">Ma bibliothèque</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="viewDiscover" data-view="discover" tabindex="-1">Découvrir</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="viewTogether" data-view="together" tabindex="-1">Jouer ensemble</button>
+    </nav>
 
-    <section class="card player" id="musicPlayer">
-      <div class="now">
-        <div class="disc" id="disc">♫</div>
-        <div style="min-width:0;flex:1">
-          <div class="title" id="title">Aucune musique</div>
-          <div class="sub" id="sub">Importe un fichier .mid pour commencer</div>
+    <div class="musicviews">
+      <!-- ---------------------------------------------------------- Ma bibliothèque + espace du morceau -->
+      <div class="musicview active" id="viewLibrary" role="tabpanel" aria-label="Ma bibliothèque">
+        <section class="card" id="musicSide">
+          <div class="card__head">
+            <h2>Ma bibliothèque</h2><span class="count" id="count">0</span>
+            <div class="spacer"></div>
+            <button class="btn btn--secondary btn--sm" type="button" id="btnImport" title="Importer un fichier MIDI">＋ Importer</button>
+          </div>
+          <div class="libbar">
+          <label class="search" id="searchBox"><span class="ic" aria-hidden="true">🔍</span><input id="search" placeholder="Rechercher…" aria-label="Rechercher une musique"><button class="clr" type="button" id="searchClr" aria-label="Effacer la recherche">×</button></label>
+          <button class="chip" type="button" id="favFilter" aria-pressed="false" title="Afficher seulement les favoris">★</button>
+          <select class="sortsel" id="sortSel" title="Trier" aria-label="Trier">
+            <option value="name">Nom</option>
+            <option value="added">Ajout récent</option>
+            <option value="plays">Plus écoutées</option>
+            <option value="recent">Dernière écoute</option>
+          </select>
         </div>
-        <div class="pill" id="pill">Prêt</div>
-      </div>
+          <div class="list" id="list"></div>
+        </section>
 
-      <div class="progress">
-        <span id="tcur">0:00</span>
-        <div class="bar"><div class="fill" id="fill"></div></div>
-        <span id="tdur">0:00</span>
-      </div>
+        <section class="card player" id="musicPlayer">
+          <div class="now">
+            <div class="disc" id="disc" aria-hidden="true">♫</div>
+            <div style="min-width:0;flex:1">
+              <div class="title" id="title">Aucune musique</div>
+              <div class="sub" id="sub">Importe un fichier .mid pour commencer</div>
+            </div>
+            <div class="pill" id="pill">Prêt</div>
+          </div>
 
-      <div class="controls">
-        <button class="btn btn--secondary btn--round btn--lg ctl" type="button" id="btnPrev" title="Précédente">⏮<span class="lbl" id="lPrev"></span></button>
-        <button class="btn btn--secondary btn--round btn--lg ctl" type="button" id="btnStop" title="Arrêter">■<span class="lbl" id="lStop"></span></button>
-        <button class="btn btn--primary btn--round btn--lg ctl main" type="button" id="btnPlay" title="Écouter ici, dans le logiciel"><span id="playIcon">▶</span><span class="lbl" id="playLbl">Écouter ici</span></button>
-        <button class="btn btn--secondary btn--round btn--lg ctl" type="button" id="btnNext" title="Suivante">⏭<span class="lbl" id="lNext"></span></button>
-      </div>
+          <!-- préécoute locale : un seul groupe, commandes et volume ensemble -->
+          <div class="card__section listen" id="listenBlock">
+            <div class="progress">
+              <span id="tcur">0:00</span>
+              <div class="bar"><div class="fill" id="fill"></div></div>
+              <span id="tdur">0:00</span>
+            </div>
+            <div class="controls">
+              <button class="btn btn--secondary btn--round ctl" type="button" id="btnPrev" title="Musique précédente" aria-label="Musique précédente">⏮</button>
+              <button class="btn btn--secondary btn--round btn--lg ctl main" type="button" id="btnPlay" title="Préécouter sur cet ordinateur"><span id="playIcon" aria-hidden="true">▶</span></button>
+              <button class="btn btn--secondary btn--round ctl" type="button" id="btnStop" title="Arrêter" aria-label="Arrêter">■</button>
+              <button class="btn btn--secondary btn--round ctl" type="button" id="btnNext" title="Musique suivante" aria-label="Musique suivante">⏭</button>
+              <span class="playlbl" id="playLbl">Préécouter</span>
+              <span class="hint listenhint">Son sur cet ordinateur</span>
+              <div class="spacer"></div>
+              <div class="slider slider--vol">
+                <label class="label" for="volume">Volume</label>
+                <input type="range" id="volume" min="0" max="100" step="5" value="100">
+                <span class="v" id="volumeV">100 %</span>
+              </div>
+            </div>
+          </div>
 
-      <!-- bloc « Dans Heartopia » : mode de jeu, appel à l'action F6, panneau du mode ou bandeau de session -->
-      <div class="card__section game" id="gameBlock">
-        <div class="moderow" id="modeRow">
-          <h4 id="modeLabel">Dans Heartopia</h4>
-          <div class="seg" id="modeChips" role="radiogroup" aria-labelledby="modeLabel">
-            <button type="button" role="radio" aria-checked="true" class="active" data-mode="solo" title="Lecture immédiate dans le jeu">🎵 Solo</button>
-            <button type="button" role="radio" aria-checked="false" data-mode="audio" tabindex="-1" title="Top départ synchronisé par une note repère jouée dans le jeu (sans réseau)">👥 Multi audio</button>
-            <button type="button" role="radio" aria-checked="false" data-mode="room" tabindex="-1" disabled title="Salon en ligne : synchronisé par le serveur DodoTopia">🌐 Salon <span class="soon" id="roomSoon">bientôt</span></button>
+          <!-- préparation et lancement dans le jeu -->
+          <div class="card__section game" id="gameBlock">
+            <h4>Jouer dans Heartopia</h4>
+            <!-- rappel discret quand une session à plusieurs est active (music.js) -->
+            <button class="moderecall" type="button" id="modeRecall" hidden></button>
+<div class="line line--full" id="instRow">
+          <span class="label" id="instLabel">Instrument</span>
+          <button class="instpick" type="button" id="instPick" aria-haspopup="dialog" aria-labelledby="instLabel instPickName">
+            <img class="instpick__img" id="instPickImg" alt="" width="40" height="40">
+            <span class="instpick__txt"><span class="instpick__name" id="instPickName">Piano</span>
+              <span class="instpick__status" id="instPickStatus"></span></span>
+            <span class="instpick__go">Changer</span>
+          </button>
+          <kbd id="instKey" title="Instrument suivant">F12</kbd>
+        </div>
+        <div class="instsum" id="instSum">
+          <span class="instsum__txt" id="instSumTxt"></span>
+          <button class="linkbtn" type="button" id="btnKeys">Voir les touches</button>
+        </div>
+            <div class="line line--full" id="speedRow">
+              <label class="label" for="speed">Vitesse</label>
+              <div class="slider slider--speed">
+                <button class="stepper__btn" type="button" id="spDown" aria-label="Vitesse −">−</button>
+                <input type="range" id="speed" min="0.2" max="4" step="0.05" value="1">
+                <button class="stepper__btn" type="button" id="spUp" aria-label="Vitesse +">+</button>
+                <span class="v" id="speedV">x1.00</span>
+              </div>
+            </div>
+
+            <div class="gamebtn" id="gameCta">
+              <button class="btn btn--cta btn--lg" type="button" id="btnGame">🎮 <span id="gameLabel">Jouer dans Heartopia</span> <kbd id="gameKey">F6</kbd></button>
+            </div>
+            <div class="hint" id="gameHelp"></div>
+            <div class="notice notice--info" id="musicNotice" hidden><span class="notice__ic" aria-hidden="true">💡</span><div class="notice__text" id="musicNoticeText"></div></div>
+            <div class="notice notice--danger" id="musicError" hidden><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text"><span id="musicErrorText"></span><div id="musicErrorAdmin" hidden>Le jeu ne reçoit pas les touches ? Relance DodoTopia en administrateur.</div></div></div>
+            <div class="card--session" id="musicSession" hidden></div>
+          </div>
+
+<!-- 3. réglages propres au morceau -->
+      <details class="disclosure disclosure--inline songset" id="songSet">
+        <summary>Réglages du morceau</summary>
+        <div class="disclosure__body">
+          <div class="line line--auto">
+            <span class="label label--wide" id="trLabel">Transposition</span>
+            <div class="transp" role="group" aria-labelledby="trLabel">
+              <button class="stepper__btn" type="button" id="trDown" aria-label="Transposition −">−</button>
+              <span class="stepper__v" id="trV">0</span>
+              <button class="stepper__btn" type="button" id="trUp" aria-label="Transposition +">+</button>
+            </div>
+            <span class="hint">Décale les notes vers le grave ou l'aigu, en demi-tons, en plus de la transposition automatique.</span>
+          </div>
+          <div class="keysblock">
+            <span class="label label--wide">Touches envoyées au jeu</span>
+            <div class="keyboard" id="keyboard"></div>
           </div>
         </div>
-        <div class="gamebtn" id="gameCta">
-          <button class="btn btn--cta btn--lg" type="button" id="btnGame">🎮 <span id="gameLabel">Jouer dans Heartopia</span> <kbd id="gameKey">F6</kbd></button>
-        </div>
-        <div class="hint" id="gameHelp"></div>
-        <div class="notice notice--info" id="musicNotice" hidden><span class="notice__ic">💡</span><div class="notice__text" id="musicNoticeText"></div></div>
-        <div class="notice notice--danger" id="musicError" hidden><span class="notice__ic">⚠️</span><div class="notice__text"><span id="musicErrorText"></span><div id="musicErrorAdmin" hidden>Le jeu ne reçoit pas les touches ? Relance DodoTopia en administrateur.</div></div></div>
-        <div class="card--session" id="musicSession" hidden></div>
-        <div class="modepanel" id="modePanel">
-          <div id="audioPanel" hidden>
+      </details>
+        </section>
+      </div>
+
+      <!-- ---------------------------------------------------------- Découvrir : le catalogue occupe la page -->
+      <div class="musicview" id="viewDiscover" role="tabpanel" aria-label="Découvrir des morceaux">
+        <section class="card">
+          <div class="card__head">
+            <h2>Découvrir des morceaux</h2><span class="count" id="onlineCount">0</span>
+            <div class="spacer"></div>
+            <label class="search search--wide" id="onlineSearchBox"><span class="ic" aria-hidden="true">🔍</span><input id="onlineSearch" placeholder="Rechercher un morceau partagé…" aria-label="Rechercher un morceau partagé"><button class="clr" type="button" id="onlineSearchClr" aria-label="Effacer la recherche">×</button></label>
+            <select class="sortsel" id="onlineSort" title="Trier" aria-label="Trier">
+              <option value="recent">Récents</option>
+              <option value="popular">Téléchargements</option>
+              <option value="title">Titre</option>
+            </select>
+            <button class="btn btn--secondary btn--sm" type="button" id="btnOnlineRefresh" title="Recharger la liste">⟳ Actualiser</button>
+            <span class="chip chip--badge" id="onlineServer" hidden>serveur…</span>
+          </div>
+          <div class="notice notice--warn discover-notice" id="onlineOffline" hidden><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text" id="onlineOfflineText"></div></div>
+          <div class="notice notice--danger discover-notice" id="onlineOld" hidden><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text" id="onlineOldText"></div></div>
+          <div class="cataloghead" aria-hidden="true"><span class="c-title">Morceau</span><span class="c-by">Partagé par</span><span class="c-dur">Durée</span><span class="c-act">Action</span></div>
+          <div class="list list--catalog" id="onlineList"></div>
+          <div class="pager" id="onlinePager" hidden>
+            <button class="btn btn--secondary btn--sm" type="button" id="onlinePrev" title="Page précédente" aria-label="Page précédente">‹</button>
+            <span id="onlinePage">page 1 / 1</span>
+            <button class="btn btn--secondary btn--sm" type="button" id="onlineNext" title="Page suivante" aria-label="Page suivante">›</button>
+          </div>
+          <div class="hint left onlinehint" id="onlineShareHint" hidden></div>
+        </section>
+      </div>
+
+      <!-- ---------------------------------------------------------- Jouer ensemble : méthode puis session -->
+      <div class="musicview" id="viewTogether" role="tabpanel" aria-label="Jouer ensemble">
+        <section class="card" id="togetherCard">
+          <div class="card__head">
+            <h2>Jouer ensemble</h2>
+            <div class="spacer"></div>
+            <button class="btn btn--ghost btn--sm" type="button" id="togetherSolo" hidden>Revenir au jeu en solo</button>
+          </div>
+          <div class="card__section">
+            <p class="hint left">Deux façons de démarrer le même morceau au même instant. Chacun garde son instrument.</p>
+            <div class="methods" id="togetherMethods" role="radiogroup" aria-label="Méthode">
+              <button type="button" role="radio" aria-checked="false" data-mode="room" class="method" id="methodRoom">
+                <span class="method__ic" aria-hidden="true">🌐</span>
+                <span class="method__txt"><span class="method__nm">Salon en ligne <span class="method__tag">recommandé</span></span>
+                  <span class="method__sub">Un code à six caractères réunit les joueurs ; le chef donne le départ par le serveur.</span></span>
+              </button>
+              <button type="button" role="radio" aria-checked="false" data-mode="audio" class="method">
+                <span class="method__ic" aria-hidden="true">👥</span>
+                <span class="method__txt"><span class="method__nm">Par le son</span>
+                  <span class="method__sub">Sans réseau. Le premier joue une note repère dans le jeu, les autres la détectent et partent avec lui.</span></span>
+              </button>
+            </div>
+            <details class="disclosure disclosure--inline" id="togetherHow">
+              <summary>Comment ça marche ?</summary>
+              <div class="disclosure__body"><p class="hint left" id="togetherHelp"></p></div>
+            </details>
+          </div>
+          <div class="card__section" id="togetherPanel">
+<div id="audioPanel" hidden>
+            <ol class="steps steps--h" id="audioSteps" aria-label="Étapes de la synchronisation par le son">
+              <li data-step="device"><span class="n">1</span>Choisir la source audio</li>
+              <li data-step="test"><span class="n">2</span>Tester la détection</li>
+              <li data-step="play"><span class="n">3</span>Jouer ensemble</li>
+            </ol>
             <div class="line">
               <span class="label" id="playerLabel">Joueur n°</span>
               <div class="seg" id="playerSeg" role="radiogroup" aria-labelledby="playerLabel">
@@ -94,300 +218,258 @@
               </div>
               <div class="spacer"></div>
               <button class="btn btn--secondary btn--sm" type="button" id="btnCalib" title="Tous ensemble : le meneur joue son motif, chacun répond, le décalage de chacun est mesuré et enregistré">🎯 Calibrer ensemble</button>
-            </div>
-            <div class="line">
-              <span class="label" id="audioOffsetLabel">Avance / retard</span>
-              <div class="offsetctl" id="audioOffset" data-path="multi.offset_ms" data-min="-500" data-max="500" data-step="5" aria-labelledby="audioOffsetLabel"></div>
+              <button class="btn btn--secondary btn--sm" type="button" id="btnAudioSetup">Source audio et test…</button>
             </div>
             <div class="hint left" id="audioInfo"></div>
+            <details class="disclosure disclosure--inline" id="audioAdv">
+              <summary>Réglage avancé : avance / retard</summary>
+              <div class="disclosure__body">
+                <div class="line">
+                  <span class="label label--wide" id="audioOffsetLabel">Avance / retard</span>
+                  <div class="offsetctl" id="audioOffset" data-path="multi.offset_ms" data-min="-500" data-max="500" data-step="5" aria-labelledby="audioOffsetLabel"></div>
+                </div>
+                <p class="hint left">Valeur négative : tu joues plus tôt que les autres. Valeur positive : tu joues plus tard.</p>
+              </div>
+            </details>
           </div>
-          <!-- panneau du salon en ligne : rempli à l'étape 5 (lobby.js) -->
-          <div id="roomBox" hidden></div>
-        </div>
+            <!-- panneau du salon en ligne (lobby.js) -->
+            <div id="roomBox" hidden></div>
+          </div>
+          <div class="card--session" id="togetherSession" hidden></div>
+        </section>
       </div>
-
-      <!-- réglages de lecture -->
-      <div class="playrow">
-        <div class="line line--full">
-          <span class="label" id="instLabel" style="width:74px">Instrument</span>
-          <div class="seg" id="instruments" role="radiogroup" aria-labelledby="instLabel"></div>
-          <kbd id="instKey" title="Instrument suivant">F12</kbd>
-        </div>
-        <div class="line line--full">
-          <span class="label" style="width:74px">Vitesse</span>
-          <div class="slider">
-            <button class="stepper__btn" type="button" id="spDown" aria-label="Vitesse −">−</button>
-            <input type="range" id="speed" min="0.2" max="4" step="0.05" value="1" aria-label="Vitesse">
-            <button class="stepper__btn" type="button" id="spUp" aria-label="Vitesse +">+</button>
-            <span class="v" id="speedV">x1.00</span>
-          </div>
-        </div>
-        <div class="line">
-          <span class="label" style="width:74px">Volume</span>
-          <div class="slider">
-            <input type="range" id="volume" min="0" max="100" step="5" value="100" aria-label="Volume de l'écoute">
-            <span class="v" id="volumeV">100 %</span>
-          </div>
-        </div>
-        <div class="line line--auto">
-          <span class="label">Transposition</span>
-          <div class="transp" title="Demi-tons ajoutés à la transposition automatique">
-            <button class="stepper__btn" type="button" id="trDown" aria-label="Transposition −">−</button>
-            <span class="stepper__v" id="trV">0</span>
-            <button class="stepper__btn" type="button" id="trUp" aria-label="Transposition +">+</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="playerfoot">
-        <details class="disclosure disclosure--inline" id="keysDisc">
-          <summary>Touches envoyées au jeu</summary>
-          <div class="disclosure__body"><div class="keyboard" id="keyboard"></div></div>
-        </details>
-        <button class="btn btn--ghost btn--sm" type="button" id="btnHotkeys" title="Raccourcis clavier" aria-label="Raccourcis clavier">? Raccourcis</button>
-      </div>
-    </section>
+    </div>
   </main>
 
-  <main id="pageImage" role="tabpanel">
-    <section class="card">
+  <main id="pageImage" role="tabpanel" aria-label="Dessin">
+    <section class="card" id="drawMain">
       <div class="card__head">
-        <h2>Mon image</h2>
+        <h2 id="drawHeadTitle">Dessiner une image dans Heartopia</h2>
         <div class="spacer"></div>
-        <button class="btn btn--primary btn--sm" type="button" id="btnImportImg">＋ Importer</button>
+        <div class="pill" id="imgPill">Aucune image</div>
       </div>
-      <div class="thumb" id="thumb">
-        <img id="thumbImg" alt="">
-        <div class="empty"><div class="big">🖼️</div>Aucune image.<br>Importe un <b>.png</b> ou un <b>.jpg</b>.</div>
-        <span class="dim" id="thumbDim"></span>
+
+      <!-- état vide : une seule zone d'import dominante -->
+      <div class="emptystate" id="drawEmpty">
+        <div class="emptystate__art" aria-hidden="true">🖼️</div>
+        <h3>Importe une image, DodoTopia la peint case par case</h3>
+        <p>Choisis une photo ou un dessin : il est converti sur les couleurs de la palette d'Heartopia, puis reproduit
+           dans l'outil de dessin du jeu.</p>
+        <button class="btn btn--cta btn--lg" type="button" id="btnImportImgBig">＋ Importer une image</button>
+        <p class="hint">Formats acceptés : .png, .jpg, .gif, .bmp, .webp — ou glisse le fichier ici.</p>
       </div>
-      <div class="drop">Glisse une image <b>.png / .jpg</b> ici<br>ou clique sur Importer</div>
-      <div class="opts">
-        <h4>Format du dessin (finesse maximale)</h4>
-        <div class="line">
-          <span class="label" id="fmtLabel">Format</span>
-          <div class="seg seg--wrap" id="formats" role="radiogroup" aria-labelledby="fmtLabel">
-            <button type="button" role="radio" aria-checked="true" class="active" data-f="auto">Auto</button>
-            <button type="button" role="radio" aria-checked="false" data-f="16:9" tabindex="-1">16:9</button>
-            <button type="button" role="radio" aria-checked="false" data-f="4:3" tabindex="-1">4:3</button>
-            <button type="button" role="radio" aria-checked="false" data-f="1:1" tabindex="-1">1:1</button>
-            <button type="button" role="radio" aria-checked="false" data-f="3:4" tabindex="-1">3:4</button>
-            <button type="button" role="radio" aria-checked="false" data-f="9:16" tabindex="-1">9:16</button>
+
+      <div class="drawwork" id="drawWork" hidden>
+        <div class="now now--slim">
+          <div class="disc" id="imgDisc" aria-hidden="true">🎨</div>
+          <div style="min-width:0;flex:1">
+            <div class="title" id="imgTitle">Aucune image</div>
+            <div class="sub" id="imgSub">Importe une image pour voir le rendu en jeu</div>
           </div>
+          <button class="btn btn--secondary btn--sm" type="button" id="btnImportImg">Changer d'image</button>
         </div>
-        <div class="line">
-          <span class="label" id="fitLabel">Cadrage</span>
-          <div class="seg" id="fits" role="radiogroup" aria-labelledby="fitLabel">
-            <button type="button" role="radio" aria-checked="true" class="active" data-fit="contain">Ajuster</button>
-            <button type="button" role="radio" aria-checked="false" data-fit="cover" tabindex="-1">Remplir</button>
+
+        <div class="canvaswrap" id="canvasWrap">
+          <canvas id="pixCanvas"></canvas>
+          <div class="empty"><div class="big" aria-hidden="true">🧩</div>L'aperçu du dessin, case par case,<br>apparaîtra ici.</div>
+        </div>
+
+        <div class="stats" id="imgStats"></div>
+        <p class="hint left alphanote" id="alphaNote" hidden></p>
+
+        <!-- étapes : (1) Préparer (2) Configurer la zone du jeu (3) Dessiner -->
+        <div class="card__section game" id="drawBlock">
+          <ol class="steps steps--h" id="drawSteps" aria-label="Étapes">
+            <li data-step="image"><span class="n">1</span>Préparer l'image</li>
+            <li data-step="calib"><span class="n">2</span>Configurer la zone du jeu</li>
+            <li data-step="draw"><span class="n">3</span>Dessiner</li>
+          </ol>
+          <p class="drawready" id="drawReady" hidden></p>
+          <div class="gamebtn" id="drawCta">
+            <button class="btn btn--cta btn--lg" type="button" id="btnDraw">🎨 <span id="drawLabel">Dessiner dans Heartopia</span> <kbd id="drawKey">F6</kbd></button>
+            <button class="btn btn--secondary" type="button" id="btnDrawConfig" aria-haspopup="menu">Configuration…</button>
+            <button class="btn btn--ghost btn--sm" type="button" id="btnDrawLog">Journal</button>
           </div>
-        </div>
-        <div class="line">
-          <span class="label">Couleurs</span>
-          <div class="slider">
-            <input type="range" id="optColors" min="2" max="126" step="1" value="126" aria-label="Nombre de couleurs">
-            <span class="v" id="optColorsV">toutes</span>
-          </div>
-        </div>
-        <h4>Ajustements</h4>
-        <div class="line">
-          <span class="label">Luminosité</span>
-          <div class="slider">
-            <input type="range" id="optBright" min="-60" max="60" step="5" value="0" aria-label="Luminosité">
-            <span class="v" id="optBrightV">0</span>
-          </div>
-        </div>
-        <div class="line">
-          <span class="label">Contraste</span>
-          <div class="slider">
-            <input type="range" id="optContrast" min="-50" max="50" step="5" value="0" aria-label="Contraste">
-            <span class="v" id="optContrastV">0</span>
-          </div>
-        </div>
-        <div class="line">
-          <span class="label">Saturation</span>
-          <div class="slider">
-            <input type="range" id="optSat" min="50" max="200" step="10" value="100" aria-label="Saturation">
-            <span class="v" id="optSatV">100 %</span>
-          </div>
-        </div>
-        <div class="line">
-          <span class="label">Options</span>
-          <label class="switch"><input type="checkbox" id="optDither"><span class="switch__track"></span>Tramage</label>
-          <label class="switch"><input type="checkbox" id="optGrid" checked><span class="switch__track"></span>Grille</label>
-        </div>
-        <h4>Méthode</h4>
-        <div class="method">
-          <label class="switch"><input type="checkbox" id="mOutline" data-path="draw.outline"><span class="switch__track"></span>Contours + pot de peinture</label>
-          <div class="hint left" id="outlineStat"></div>
-          <label class="switch"><input type="checkbox" id="mFill" data-path="draw.fill_background"><span class="switch__track"></span>Remplir le fond au pot</label>
-          <label class="switch"><input type="checkbox" id="mSkipWhite" data-path="draw.skip_white"><span class="switch__track"></span>Ne pas peindre le blanc</label>
+          <div class="notice" id="drawNotice" hidden><span class="notice__ic" aria-hidden="true">💡</span><div class="notice__text" id="drawNoticeText"></div></div>
+          <div class="card--session" id="drawSession" hidden></div>
         </div>
       </div>
     </section>
 
-    <section class="card player image">
-      <div class="now">
-        <div class="disc" id="imgDisc">🎨</div>
-        <div style="min-width:0;flex:1">
-          <div class="title" id="imgTitle">Aucune image</div>
-          <div class="sub" id="imgSub">Importe une image pour voir le rendu en jeu</div>
-        </div>
-        <div class="pill" id="imgPill">Prêt</div>
-      </div>
+    <section class="card opts" id="drawOpts" hidden>
+      <div class="card__head"><h2>Réglages du dessin</h2></div>
+      <div class="optsbody">
+        <section class="optgroup">
+          <div class="optgroup__head"><h4>Toile et cadrage</h4><button class="btn btn--ghost btn--sm" type="button" data-reset="frame" title="Remettre le format et le cadrage par défaut">↺</button></div>
+          <div class="line line--stack">
+            <span class="label label--wide" id="fmtLabel">Format de la toile</span>
+            <div class="seg seg--wrap" id="formats" role="radiogroup" aria-labelledby="fmtLabel">
+              <button type="button" role="radio" aria-checked="true" class="active" data-f="auto">Auto</button>
+              <button type="button" role="radio" aria-checked="false" data-f="16:9" tabindex="-1">16:9</button>
+              <button type="button" role="radio" aria-checked="false" data-f="4:3" tabindex="-1">4:3</button>
+              <button type="button" role="radio" aria-checked="false" data-f="1:1" tabindex="-1">1:1</button>
+              <button type="button" role="radio" aria-checked="false" data-f="3:4" tabindex="-1">3:4</button>
+              <button type="button" role="radio" aria-checked="false" data-f="9:16" tabindex="-1">9:16</button>
+            </div>
+          </div>
+          <p class="hint left" id="fmtHelp"></p>
+          <p class="hint left fmtcalib" id="fmtCalib"></p>
+          <div class="line line--stack">
+            <span class="label label--wide" id="fitLabel">Cadrage</span>
+            <div class="seg" id="fits" role="radiogroup" aria-labelledby="fitLabel">
+              <button type="button" role="radio" aria-checked="true" class="active" data-fit="contain">Ajuster</button>
+              <button type="button" role="radio" aria-checked="false" data-fit="cover" tabindex="-1">Remplir</button>
+            </div>
+          </div>
+          <p class="hint left" id="fitHelp"></p>
+        </section>
 
-      <div class="stats" id="imgStats"></div>
+        <section class="optgroup">
+          <div class="optgroup__head"><h4>Couleurs et rendu</h4><button class="btn btn--ghost btn--sm" type="button" data-reset="colors" title="Remettre les couleurs par défaut">↺</button></div>
+          <div class="line">
+            <label class="label label--wide" for="optColors">Couleurs</label>
+            <div class="slider"><input type="range" id="optColors" min="2" max="126" step="1" value="126"><span class="v" id="optColorsV">toutes</span></div>
+          </div>
+          <div class="line">
+            <label class="label label--wide" for="optBright">Luminosité</label>
+            <div class="slider"><input type="range" id="optBright" min="-60" max="60" step="5" value="0"><span class="v" id="optBrightV">0</span></div>
+          </div>
+          <div class="line">
+            <label class="label label--wide" for="optContrast">Contraste</label>
+            <div class="slider"><input type="range" id="optContrast" min="-50" max="50" step="5" value="0"><span class="v" id="optContrastV">0</span></div>
+          </div>
+          <div class="line">
+            <label class="label label--wide" for="optSat">Saturation</label>
+            <div class="slider"><input type="range" id="optSat" min="50" max="200" step="10" value="100"><span class="v" id="optSatV">100 %</span></div>
+          </div>
+          <label class="switch"><input type="checkbox" id="optGrid" checked><span class="switch__track"></span>Grille de l'aperçu</label>
+          <p class="hint left">Trace les bords des cases dans l'aperçu ci-contre. Ne change rien au dessin réalisé dans le jeu.</p>
+        </section>
 
-      <div class="canvaswrap" id="canvasWrap">
-        <canvas id="pixCanvas"></canvas>
-        <div class="empty"><div class="big">🧩</div>L'aperçu du dessin, case par case,<br>apparaîtra ici.</div>
-      </div>
+        <section class="optgroup">
+          <details class="disclosure" id="drawAdv">
+            <summary>Options avancées</summary>
+            <div class="disclosure__body">
+              <label class="switch"><input type="checkbox" id="optDither"><span class="switch__track"></span>Tramage</label>
+              <p class="hint left">Mélange deux couleurs voisines case par case pour imiter une teinte absente de la palette. Le rendu est plus nuancé de loin, plus « grainé » de près.</p>
+              <label class="switch"><input type="checkbox" id="mOutline" data-path="draw.outline"><span class="switch__track"></span>Contours au crayon puis remplissage au pot</label>
+              <p class="hint left" id="outlineStat"></p>
+              <label class="switch"><input type="checkbox" id="mFill" data-path="draw.fill_background"><span class="switch__track"></span>Remplir le fond au pot avant de dessiner</label>
+              <label class="switch"><input type="checkbox" id="mSkipWhite" data-path="draw.skip_white"><span class="switch__track"></span>Ne pas peindre le blanc</label>
+              <p class="hint left">Les délais, la vérification et le nombre de cases par format sont dans Réglages › Dessin et calibrage.</p>
+            </div>
+          </details>
+        </section>
 
-      <div class="line" style="align-items:flex-start">
-        <span class="label" style="padding-top:4px">Palette</span>
-        <div class="swatches" id="swatches"><span class="none">—</span></div>
-      </div>
-
-      <!-- étapes : (1) Calibrer (2) Valider (3) Dessiner ; un seul bouton principal = prochaine étape -->
-      <div class="card__section game" id="drawBlock">
-        <ol class="steps steps--h" id="drawSteps" aria-label="Étapes">
-          <li data-step="calib"><span class="n">1</span>Calibrer</li>
-          <li data-step="valid"><span class="n">2</span>Valider</li>
-          <li data-step="draw"><span class="n">3</span>Dessiner</li>
-        </ol>
-        <div class="gamebtn" id="drawCta">
-          <button class="btn btn--cta btn--lg" type="button" id="btnDraw">🎨 <span id="drawLabel">Dessiner dans Heartopia</span> <kbd id="drawKey">F6</kbd></button>
-          <button class="btn btn--secondary" type="button" id="btnDrawMore" aria-haspopup="menu">Autres…</button>
-        </div>
-        <div class="notice" id="drawNotice" hidden><span class="notice__ic">💡</span><div class="notice__text" id="drawNoticeText"></div></div>
-        <div class="card--session" id="drawSession" hidden></div>
+        <section class="optgroup">
+          <div class="optgroup__head"><h4>Palette utilisée</h4></div>
+          <div class="swatches" id="swatches"><span class="none">—</span></div>
+        </section>
       </div>
     </section>
   </main>
 
-  <main id="pageCook" role="tabpanel">
-    <section class="card">
-      <div class="card__head"><h2>Calibrage</h2><span class="chip chip--badge" id="cookCalibBadge">non calibré</span></div>
-      <div class="opts">
-        <ul class="checklist" id="cookRefs" aria-label="Points calibrés"></ul>
-        <div class="btnrow">
-          <button class="btn btn--primary btn--sm" type="button" id="btnCookCalib" title="Indiquer à DodoTopia où sont la bulle, le menu Recettes et le bouton Cuisiner dans le jeu">🎯 Calibrer tout</button>
-          <button class="btn btn--secondary btn--sm" type="button" id="btnCookIcons" title="Recapturer seulement les trois icônes de la bulle (cuisiner, spatule avec anneau vert, gants), sans refaire le reste">🖼️ Recapturer les icônes</button>
-          <button class="btn btn--secondary btn--sm" type="button" id="btnCookTest" title="Lit l'écran maintenant et dit quelle bulle est reconnue (à faire devant la cuisinière)">🔍 Tester</button>
-        </div>
-        <div class="notice" id="cookTest" hidden><span class="notice__ic">🔍</span><div class="notice__text" id="cookTestText"></div></div>
-        <div class="hint left">Le calibrage mémorise la zone de la bulle, ses icônes, la tuile de la dernière recette, le bouton Cuisiner et un coin d'herbe. À refaire si tu changes d'écran ou de résolution.</div>
-        <div class="line">
-          <span class="label" id="cookCookersLabel">Cuisinières</span>
-          <div class="seg" id="cookCookers" role="radiogroup" aria-labelledby="cookCookersLabel"><button type="button" role="radio" aria-checked="true" class="active" data-v="1">1</button><button type="button" role="radio" aria-checked="false" data-v="2" tabindex="-1">2</button><button type="button" role="radio" aria-checked="false" data-v="3" tabindex="-1">3</button><button type="button" role="radio" aria-checked="false" data-v="4" tabindex="-1">4</button></div>
-        </div>
-        <div class="hint left">Plusieurs cuisinières : leurs bulles doivent <b>toutes</b> se trouver dans la zone calibrée — recalibre-la assez large si besoin.</div>
-        <details class="disclosure" id="cookHow">
-          <summary>Ce que fait DodoTopia</summary>
-          <div class="disclosure__body">
-            <ol class="steps cook-steps">
-              <li><span class="n">1</span>Clique sur la bulle « cuisiner » de la cuisinière</li>
-              <li><span class="n">2</span>Menu Recettes : première tuile récente, puis Cuisiner</li>
-              <li><span class="n">3</span>Pendant la cuisson : clique sur la spatule dès que l'anneau vert apparaît</li>
-              <li><span class="n">4</span>Récupère le plat, ferme l'animation d'un plat amélioré</li>
-              <li><span class="n">5</span>Recommence, jusqu'au nombre de plats voulu ou à l'arrêt</li>
-            </ol>
-          </div>
-        </details>
-        <div class="hint left"><kbd id="cookStopKey">F7</kbd>, une touche ou un mouvement de souris arrêtent la boucle. Nombre de plats (0 = sans fin) et seuils : Réglages › Cuisine.</div>
-      </div>
-    </section>
-
-    <section class="card player image">
-      <div class="now">
-        <div class="disc" id="cookDisc">🍳</div>
-        <div style="min-width:0;flex:1">
-          <div class="title" id="cookTitle">Cuisine automatique</div>
-          <div class="sub" id="cookSub">Calibre, puis lance la boucle devant la cuisinière</div>
-        </div>
+  <main id="pageCook" role="tabpanel" aria-label="Cuisine">
+    <section class="card cookmain">
+      <div class="card__head">
+        <h2 id="cookTitle">Cuisine automatique</h2>
+        <div class="spacer"></div>
         <div class="pill" id="cookPill">Prêt</div>
       </div>
 
-      <div class="stats" id="cookStats"></div>
-
-      <div class="card__section game" id="cookBlock">
-        <ol class="steps steps--h" id="cookSteps" aria-label="Étapes">
-          <li data-step="calib"><span class="n">1</span>Calibrer</li>
-          <li data-step="test"><span class="n">2</span>Tester</li>
-          <li data-step="cook"><span class="n">3</span>Cuisiner</li>
-        </ol>
-        <div class="gamebtn" id="cookCta">
-          <button class="btn btn--cta btn--lg" type="button" id="btnCook">🍳 <span id="cookLabel">Cuisiner en boucle</span> <kbd id="cookKey">F6</kbd></button>
+      <div class="cookbody">
+        <div class="now now--slim">
+          <div class="disc" id="cookDisc" aria-hidden="true">🍳</div>
+          <div style="min-width:0;flex:1">
+            <div class="title" id="cookHeadline">Refaire la dernière recette en boucle</div>
+            <div class="sub" id="cookSub">Calibre, puis lance la boucle devant la cuisinière</div>
+          </div>
         </div>
-        <div class="notice" id="cookNotice" hidden><span class="notice__ic">💡</span><div class="notice__text" id="cookNoticeText"></div></div>
-        <div class="card--session" id="cookSession" hidden></div>
-      </div>
-      <div class="playerfoot" style="justify-content:flex-end">
-        <button class="btn btn--ghost btn--sm" type="button" id="btnCookLog">📄 Ouvrir cuisine.log</button>
-      </div>
-    </section>
-  </main>
 
-  <main id="pageOnline" role="tabpanel">
-    <section class="card onlineside">
-      <div class="card__head">
-        <h2>Mon compte</h2>
-        <div class="spacer"></div>
-        <span class="chip chip--badge" id="onlineServer">serveur…</span>
-      </div>
-      <div class="card__section">
-        <div class="notice notice--warn" id="onlineOffline" hidden><span class="notice__ic">⚠️</span><div class="notice__text" id="onlineOfflineText"></div></div>
-        <div class="notice notice--danger" id="onlineOld" hidden><span class="notice__ic">⚠️</span><div class="notice__text" id="onlineOldText"></div></div>
-        <div class="account-box" id="onlineAccount"></div>
-      </div>
-      <div class="card__section">
-        <h4>Mise à jour</h4>
-        <div class="update-box" id="onlineUpdate"></div>
-      </div>
-      <div class="card__section onlinefoot">
-        <div class="hint left" id="onlineServerUrl"></div>
-      </div>
-    </section>
+        <!-- réglages ordinaires de la session : quantité et nombre de cuisinières -->
+        <div class="card__section" id="cookSession2">
+          <div class="sectionhead"><h4>Cette session</h4></div>
+          <div class="line line--stack">
+            <span class="label label--wide" id="cookQtyLabel">Quantité</span>
+            <div class="seg" id="cookQty" role="radiogroup" aria-labelledby="cookQtyLabel">
+              <button type="button" role="radio" data-v="limited">Quantité définie</button>
+              <button type="button" role="radio" data-v="endless" tabindex="-1">En continu</button>
+            </div>
+            <div class="qtynum" id="cookQtyNum">
+              <label class="label" for="cookDishes">Plats</label>
+              <input type="number" id="cookDishes" min="1" max="999" step="1" value="10">
+            </div>
+          </div>
+          <p class="hint left" id="cookQtyHelp"></p>
+          <div class="line line--stack">
+            <span class="label label--wide" id="cookCookersLabel">Cuisinières</span>
+            <div class="seg" id="cookCookers" role="radiogroup" aria-labelledby="cookCookersLabel"><button type="button" role="radio" aria-checked="true" class="active" data-v="1">1</button><button type="button" role="radio" aria-checked="false" data-v="2" tabindex="-1">2</button><button type="button" role="radio" aria-checked="false" data-v="3" tabindex="-1">3</button><button type="button" role="radio" aria-checked="false" data-v="4" tabindex="-1">4</button></div>
+          </div>
+          <p class="hint left" id="cookCookersHelp"></p>
+        </div>
 
-    <section class="card">
-      <div class="card__head">
-        <h2>Bibliothèque en ligne</h2><span class="count" id="onlineCount">0</span>
-        <div class="spacer"></div>
-        <button class="btn btn--secondary btn--sm" type="button" id="btnOnlineRefresh" title="Recharger la liste">⟳ Actualiser</button>
-      </div>
-      <div class="libbar">
-        <label class="search" id="onlineSearchBox"><span class="ic">🔍</span><input id="onlineSearch" placeholder="Rechercher un morceau…" aria-label="Rechercher dans la bibliothèque en ligne"><button class="clr" type="button" id="onlineSearchClr" aria-label="Effacer la recherche">×</button></label>
-        <select class="sortsel" id="onlineSort" title="Trier" aria-label="Trier">
-          <option value="recent">Récents</option>
-          <option value="popular">Téléchargements</option>
-          <option value="title">Titre</option>
-        </select>
-      </div>
-      <div class="list" id="onlineList"></div>
-      <div class="pager" id="onlinePager" hidden>
-        <button class="btn btn--secondary btn--sm" type="button" id="onlinePrev" title="Page précédente" aria-label="Page précédente">‹</button>
-        <span id="onlinePage">page 1 / 1</span>
-        <button class="btn btn--secondary btn--sm" type="button" id="onlineNext" title="Page suivante" aria-label="Page suivante">›</button>
-      </div>
-      <div class="hint left onlinehint" id="onlineShareHint" hidden></div>
-      <div class="onlineadmin" id="onlineAdminBox" hidden>
-        <details class="disclosure" id="onlinePendingDisc">
-          <summary id="onlinePendingSum">À valider</summary>
-          <div class="disclosure__body"><div id="onlinePendingList"></div></div>
-        </details>
-        <details class="disclosure" id="onlineReportsDisc">
-          <summary id="onlineReportsSum">Signalements</summary>
-          <div class="disclosure__body"><div id="onlineReportsList"></div></div>
-        </details>
+        <div class="stats" id="cookStats"></div>
+
+        <div class="card__section game" id="cookBlock">
+          <ol class="steps steps--h" id="cookSteps" aria-label="Étapes" hidden>
+            <li data-step="calib"><span class="n">1</span>Configurer</li>
+            <li data-step="test"><span class="n">2</span>Vérifier</li>
+            <li data-step="cook"><span class="n">3</span>Cuisiner</li>
+          </ol>
+          <div class="gamebtn" id="cookCta">
+            <button class="btn btn--cta btn--lg" type="button" id="btnCook">🍳 <span id="cookLabel">Cuisiner en boucle</span> <kbd id="cookKey">F6</kbd></button>
+          </div>
+          <div class="notice" id="cookNotice" hidden><span class="notice__ic" aria-hidden="true">💡</span><div class="notice__text" id="cookNoticeText"></div></div>
+          <div class="card--session" id="cookSession" hidden></div>
+          <p class="hint left" id="cookStopHelp"></p>
+        </div>
+
+        <!-- configuration : résumé + détail replié -->
+        <div class="card__section" id="cookConfig">
+          <div class="sectionhead">
+            <h4>Configuration</h4>
+            <span class="chip chip--badge" id="cookCalibBadge">non configurée</span>
+            <div class="spacer"></div>
+            <button class="btn btn--secondary btn--sm" type="button" id="btnCookTest">Tester la détection</button>
+            <button class="btn btn--secondary btn--sm" type="button" id="btnCookCalib">Modifier la configuration</button>
+          </div>
+          <div class="notice" id="cookTest" hidden><span class="notice__ic" aria-hidden="true">🔍</span><div class="notice__text" id="cookTestText"></div></div>
+          <details class="disclosure" id="cookDetails">
+            <summary>Détail de la configuration</summary>
+            <div class="disclosure__body">
+              <p class="hint left" id="cookConfigSum"></p>
+              <ul class="checklist" id="cookRefs" aria-label="Éléments configurés"></ul>
+              <div class="btnrow">
+                <button class="btn btn--secondary btn--sm" type="button" id="btnCookIcons" title="Recapturer seulement les trois icônes de la bulle (cuisiner, spatule avec anneau vert, gants)">Recapturer les icônes de la bulle</button>
+                <button class="btn btn--ghost btn--sm" type="button" id="btnCookLog">Voir le journal de la cuisine</button>
+              </div>
+              <p class="hint left">La configuration mémorise la zone de la bulle, ses icônes, la tuile de la dernière recette, le bouton Cuisiner et un coin d'herbe. À refaire si tu changes d'écran ou de résolution.</p>
+              <details class="disclosure" id="cookHow">
+                <summary>Ce que fait DodoTopia pendant la boucle</summary>
+                <div class="disclosure__body">
+                  <ol class="steps cook-steps">
+                    <li><span class="n">1</span>Clique sur la bulle « cuisiner » de la cuisinière</li>
+                    <li><span class="n">2</span>Menu Recettes : première tuile récente, puis Cuisiner</li>
+                    <li><span class="n">3</span>Pendant la cuisson : clique sur la spatule dès que l'anneau vert apparaît</li>
+                    <li><span class="n">4</span>Récupère le plat, ferme l'animation d'un plat amélioré</li>
+                    <li><span class="n">5</span>Recommence, jusqu'au nombre de plats voulu ou à l'arrêt</li>
+                  </ol>
+                </div>
+              </details>
+            </div>
+          </details>
+        </div>
       </div>
     </section>
   </main>
 
   <div class="status" id="status" role="status">
-    <span class="dot"></span>
+    <span class="dot" aria-hidden="true"></span>
     <span class="msg" id="msg">Prêt</span>
+    <div class="spacer"></div>
+    <button class="btn btn--danger btn--sm stopbtn" type="button" id="statusStop" hidden>Arrêter</button>
     <span class="ver" id="ver"></span>
-    <button class="linkbtn" type="button" id="openFolder">Ouvrir le dossier des musiques</button>
+    <button class="linkbtn" type="button" id="openFolder">Dossier des musiques</button>
     <button class="linkbtn" type="button" id="openLog" style="display:none">Journal du dessin</button>
     <button class="linkbtn" type="button" id="openCookLog" style="display:none">Journal de la cuisine</button>
   </div>
@@ -398,7 +480,7 @@
     <div class="settings__head">
       <h2 id="settingsTitle">Réglages</h2>
       <span class="settings__saved" id="settingsSaved" role="status" aria-live="polite">Enregistré ✓</span>
-      <button class="close" type="button" id="btnSettingsClose" aria-label="Fermer">✕</button>
+      <button class="close" type="button" id="btnSettingsClose" aria-label="Fermer les réglages">✕</button>
     </div>
     <div class="settings__body">
       <nav class="settings__nav" id="settingsNav" aria-label="Sections des réglages"></nav>
@@ -407,23 +489,128 @@
   </div>
 </div>
 
+<!-- panneau générique : compte, aide, administration -->
+<div class="overlay" id="panelOverlay">
+  <div class="modal panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+    <div class="settings__head">
+      <h2 id="panelTitle"></h2>
+      <div class="spacer"></div>
+      <button class="close" type="button" id="panelClose" aria-label="Fermer">✕</button>
+    </div>
+    <div class="panel__body" id="panelBody" tabindex="-1"></div>
+  </div>
+</div>
+
+<!-- assistant de configuration (dessin et cuisine) : une étape active dominante -->
 <div class="overlay" id="calibOverlay">
-  <div class="modal calib" role="dialog" aria-labelledby="calibTitle">
-    <button class="close" type="button" id="calibCancel" aria-label="Annuler">✕</button>
-    <h2 id="calibTitle">Calibrer le dessin <span class="fmt" id="calibFmt">16:9</span></h2>
-    <p class="calib-intro" id="calibIntro">Dans Heartopia, ouvre un dessin au format <b id="calibFmt2">16:9</b>, mets la <b>finesse des détails au maximum</b> et <b>active la grille</b> (bouton grille en haut du canevas). Puis, pour chaque étape, place la souris sur la cible <b>dans le jeu</b> et appuie sur <kbd id="calibKey">F3</kbd>.</p>
-    <ol class="steps" id="calibSteps"></ol>
-    <div class="notice notice--info calib-now" id="calibNowBox"><span class="notice__ic">🎯</span><div class="notice__text" id="calibNow"></div></div>
+  <div class="modal calib" role="dialog" aria-modal="true" aria-labelledby="calibTitle">
+    <div class="calib__head">
+      <div>
+        <h2 id="calibTitle">Configurer la zone du jeu</h2>
+        <p class="calib__count" id="calibCount">Étape 1 sur 13</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="close" type="button" id="calibCancel" aria-label="Annuler la configuration">✕</button>
+    </div>
+    <div class="calib__bar" role="progressbar" aria-labelledby="calibCount" id="calibBar"><div class="calib__fill" id="calibFill"></div></div>
+    <details class="disclosure calib__prep" id="calibPrep">
+      <summary>Avant de commencer</summary>
+      <div class="disclosure__body" id="calibPrepBody"></div>
+    </details>
+    <div class="calib__now">
+      <div class="calib__art" id="calibArt"></div>
+      <div class="calib__txt">
+        <h3 id="calibStepTitle"></h3>
+        <p id="calibStepHelp"></p>
+        <p class="calib__key">Place la souris sur la cible <b>dans Heartopia</b>, puis appuie sur <kbd id="calibKey">F3</kbd>.</p>
+        <p class="calib__state" id="calibState">En attente : la position n'est pas encore enregistrée.</p>
+      </div>
+    </div>
+    <div class="notice notice--warn" id="calibMsg" hidden><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text" id="calibMsgText"></div></div>
+    <details class="disclosure" id="calibAll">
+      <summary id="calibAllSum">Voir toutes les étapes</summary>
+      <div class="disclosure__body"><ol class="steps" id="calibSteps"></ol></div>
+    </details>
     <div class="actions">
+      <button class="btn btn--secondary" type="button" id="calibBack">← Étape précédente</button>
       <button class="btn btn--secondary" type="button" id="calibSkip">Passer cette étape</button>
-      <button class="btn btn--secondary" type="button" id="calibCancel2">Annuler</button>
+      <div class="spacer"></div>
+      <button class="btn btn--ghost" type="button" id="calibCancel2">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- sélecteur d'instrument : une carte par type, fiche de détail, favoris (instruments.js) -->
+<div class="overlay" id="instOverlay">
+  <div class="modal instsel" role="dialog" aria-modal="true" aria-labelledby="instSelTitle" aria-describedby="instSelHelp">
+    <div class="instsel__head">
+      <div class="instsel__ttl">
+        <h2 id="instSelTitle">Choisir mon instrument</h2>
+        <p class="instsel__help" id="instSelHelp">Choisis l'instrument que tu as ouvert dans Heartopia.</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="close" type="button" id="instSelClose" aria-label="Fermer le sélecteur">✕</button>
+    </div>
+    <div class="notice notice--info instsel__warn">
+      <span class="notice__ic" aria-hidden="true">💡</span>
+      <div class="notice__text">Choisir ici n'équipe pas l'instrument dans Heartopia : ouvre aussi le bon instrument dans le jeu.</div>
+    </div>
+    <div class="instsel__bar">
+      <div class="search" id="instSearchBox">
+        <span class="ic" aria-hidden="true">🔎</span>
+        <input type="search" id="instSearch" autocomplete="off" placeholder="Nom français, anglais ou surnom…" aria-label="Rechercher un instrument">
+        <button class="clr" type="button" id="instSearchClr" aria-label="Effacer la recherche">×</button>
+      </div>
+      <div class="chips" id="instFilters" role="group" aria-label="Filtrer les instruments"></div>
+    </div>
+    <div class="instsel__body">
+      <div class="instsel__grid">
+        <div class="instgrid" id="instGrid" role="group" aria-labelledby="instSelTitle"></div>
+        <p class="empty" id="instGridEmpty" hidden>Aucun instrument ne correspond à cette recherche.</p>
+      </div>
+      <div class="instdet" id="instDetail" tabindex="-1" aria-live="polite"></div>
+    </div>
+    <div class="instsel__foot">
+      <span class="hint left" id="instSelCount"></span>
+      <div class="spacer"></div>
+      <button class="btn btn--ghost" type="button" id="instSelCancel">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- assistant « Configurer les touches » : 5 étapes, capture d'une touche par position (instruments.js) -->
+<div class="overlay" id="wizOverlay">
+  <div class="modal instwiz" role="dialog" aria-modal="true" aria-labelledby="wizTitle">
+    <div class="calib__head">
+      <div>
+        <h2 id="wizTitle">Configurer les touches</h2>
+        <p class="calib__count" id="wizCount">Étape 1 sur 5</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="close" type="button" id="wizClose" aria-label="Fermer l'assistant">✕</button>
+    </div>
+    <div class="calib__bar" role="progressbar" aria-labelledby="wizCount" id="wizBar"><div class="calib__fill" id="wizFill"></div></div>
+    <ol class="steps steps--h" id="wizSteps">
+      <li data-step="open"><span class="n">1</span>Ouvrir</li>
+      <li data-step="layout"><span class="n">2</span>Disposition</li>
+      <li data-step="bind"><span class="n">3</span>Touches</li>
+      <li data-step="test"><span class="n">4</span>Test</li>
+      <li data-step="save"><span class="n">5</span>Enregistrer</li>
+    </ol>
+    <div class="instwiz__body" id="wizBody" tabindex="-1"></div>
+    <div class="notice notice--warn" id="wizMsg" hidden><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text" id="wizMsgText"></div></div>
+    <div class="actions">
+      <button class="btn btn--secondary" type="button" id="wizBack">← Retour</button>
+      <div class="spacer"></div>
+      <button class="btn btn--ghost" type="button" id="wizCancel">Annuler</button>
+      <button class="btn btn--cta" type="button" id="wizNext">Continuer</button>
     </div>
   </div>
 </div>
 
 <div class="dlg-overlay" id="dlgOverlay">
-  <div class="dlg" role="alertdialog" aria-labelledby="dlgTitle" aria-describedby="dlgBody">
-    <div class="dlg-head"><span class="ic" id="dlgIcon">♪</span><h2 id="dlgTitle"></h2></div>
+  <div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgBody">
+    <div class="dlg-head"><span class="ic" id="dlgIcon" aria-hidden="true">♪</span><h2 id="dlgTitle"></h2></div>
     <div class="dlg-body" id="dlgBody"></div>
     <div class="dlg-actions">
       <button class="dlg-btn cancel" type="button" id="dlgCancel">Annuler</button>
@@ -436,6 +623,7 @@
 <input type="file" id="fileImg" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" hidden>
 
 <script src="core.js"></script>
+<script src="instruments.js"></script>
 <script src="music.js"></script>
 <script src="lobby.js"></script>
 <script src="online.js"></script>
