@@ -2,7 +2,9 @@
 // configuration de la zone du jeu). L'assistant de configuration (renderCalibOverlay) est partage
 // avec la Cuisine : une etape active dominante, un schema qui designe la cible, un recapitulatif replie.
 // ------------------------------------------------ activite Dessin : import
-const IMG = {name: null, img: null, w: 0, h: 0};
+// job : grille déjà convertie {format, w, h, cells} reprise de la galerie (pas d'image source) ; source : {id} du dessin
+const IMG = {name: null, img: null, w: 0, h: 0, job: null, source: null};
+function hasPic(){ return !!(IMG.img || IMG.job); }
 let PIX = null;   // resultat : {w, h, cells: Int16Array (index palette du jeu ou -1 = vide), palette, counts, format}
 const IOPT = {format: 'auto', fit: 'contain', colors: 126, dither: false, bright: 0, contrast: 0, sat: 100, grid: true};
 const FORMATS = ['16:9', '4:3', '1:1', '3:4', '9:16'];
@@ -37,6 +39,7 @@ function gridFor(fmt){ const d = drawState(); const f = d && d.formats && d.form
 function isCalibrated(fmt){ const d = drawState(); return !!(d && d.formats && d.formats[fmt] && d.formats[fmt].calibrated); }
 function ratioOf(fmt){ const [a, b] = fmt.split(':').map(Number); return a / b; }
 function currentFormat(){
+  if(IMG.job) return FORMATS.includes(IMG.job.format) ? IMG.job.format : '16:9';
   if(IOPT.format !== 'auto') return IOPT.format;
   if(!IMG.img) return '16:9';
   const r = IMG.w / IMG.h;
@@ -48,11 +51,12 @@ function loadImageData(payload){
   if(!payload || !payload.data) return;
   const img = new Image();
   img.onload = () => {
-    IMG.name = payload.name || 'image'; IMG.img = img; IMG.w = img.naturalWidth; IMG.h = img.naturalHeight;
+    IMG.name = payload.name || t('image.import.default_name'); IMG.img = img; IMG.w = img.naturalWidth; IMG.h = img.naturalHeight;
+    IMG.job = null; IMG.source = null; DSHARE.upSeq = null;
     showTab('image');
     renderPixels();
   };
-  img.onerror = () => toast("Impossible de lire cette image", 'warn');
+  img.onerror = () => toast(t('image.import.read_error'), 'warn');
   img.src = payload.data;
 }
 window.loadImageData = loadImageData;
@@ -93,7 +97,19 @@ function nearest(lab, plab, allowed){
 }
 function hex(c){ return '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join(''); }
 
+// grille reprise de la galerie : les cases sont déjà des indices de la palette du jeu
+function gridPixels(){
+  const job = IMG.job, palette = gamePalette();
+  const cells = new Int16Array(job.w * job.h).fill(-1);
+  const counts = palette.map(() => 0);
+  for(let i = 0; i < cells.length; i++){
+    const k = Number(job.cells[i]);
+    if(k >= 0 && k < palette.length){ cells[i] = k; counts[k]++; }
+  }
+  return {w: job.w, h: job.h, cells, palette, counts, format: currentFormat()};
+}
 function computePixels(){
+  if(IMG.job) return gridPixels();
   if(!IMG.img) return null;
   const fmt = currentFormat();
   const [W, H] = gridFor(fmt);
@@ -166,16 +182,18 @@ function renderPixels(){
   const wrap = $('canvasWrap');
   syncFormatChips();
   // état vide : une seule zone d'import domine la page, les réglages restent masqués
-  $('drawEmpty').hidden = !!IMG.img;
-  $('drawWork').hidden = !IMG.img;
-  $('drawOpts').hidden = !IMG.img;
-  $('drawMain').classList.toggle('is-empty', !IMG.img);
-  $('pageImage').classList.toggle('is-empty', !IMG.img);
-  txt('drawHeadTitle', IMG.img ? 'Dessin' : 'Dessiner une image dans Heartopia');
-  if(!IMG.img){
+  $('drawEmpty').hidden = hasPic();
+  $('drawWork').hidden = !hasPic();
+  $('drawOpts').hidden = !hasPic();
+  $('drawOpts').classList.toggle('is-grid', !!IMG.job);
+  $('drawMain').classList.toggle('is-empty', !hasPic());
+  $('pageImage').classList.toggle('is-empty', !hasPic() && !GAL.open);
+  $('drawShare').hidden = !hasPic();
+  txt('drawHeadTitle', hasPic() ? t('image.import.head_title') : t('image.import.head_title_empty'));
+  if(!hasPic()){
     wrap.classList.remove('has'); PIX = null;
-    $('imgTitle').textContent = 'Aucune image';
-    $('imgSub').textContent = 'Importe une image pour voir le rendu en jeu';
+    $('imgTitle').textContent = t('image.import.none_title');
+    $('imgSub').textContent = t('image.import.none_sub');
     $('imgStats').innerHTML = ''; $('swatches').innerHTML = '<span class="none">—</span>';
     if(S) renderDraw(S);
     return;
@@ -205,10 +223,22 @@ function renderPixels(){
   const fills = sd.fill_background !== false;     // défaut du moteur : le fond est rempli au pot
   // Un nom qui ressemble à un identifiant technique ne fait pas un titre : on garde le fichier en détail.
   const human = /[aeiouyàâéèêëîïôöùûü]/i.test(IMG.name) && !/^[A-Z0-9][A-Z0-9 _-]{5,}$/.test(IMG.name);
-  $('imgTitle').textContent = human ? IMG.name : 'Mon dessin';
+  $('imgTitle').textContent = human ? IMG.name : t('image.import.my_drawing');
   $('imgTitle').title = IMG.name;
-  $('imgSub').innerHTML = `${human ? '' : esc(IMG.name) + ' · '}format <b>${format}</b> · <b>${w} × ${h}</b> cases`
-    + ` <span class="imgsrc">— source ${IMG.w} × ${IMG.h} px</span>`;
+  // les messages *_html ne portent que du balisage sur et des nombres ; le nom du fichier passe par esc()
+  $('imgSub').innerHTML = IMG.job
+    ? esc(t('image.gallery.grid_sub', {format, w, h}))
+    : `${human ? '' : esc(IMG.name) + ' · '}` + t('image.import.sub_html', {format, w, h, sw: IMG.w, sh: IMG.h});
+  // grille de la galerie : ni cadrage ni couleurs à régler ; une grille d'une autre taille que la zone configurée
+  // est dite tout de suite (le dessin serait décalé)
+  const gn = $('gridNote');
+  if(gn){
+    gn.hidden = !IMG.job;
+    if(IMG.job){
+      const [gw, gh] = gridFor(format);
+      txt('gridNote', gw === w && gh === h ? t('image.gallery.grid_note', {format}) : t('image.gallery.grid_mismatch', {format, w, h, gw, gh}));
+    }
+  }
   // « à peindre » ne vaut pas largeur × hauteur : les cases transparentes, et le blanc si « Ne pas peindre
   // le blanc » est coché, sont écartées par le moteur.
   const skipW = !!sd.skip_white;
@@ -216,19 +246,17 @@ function renderPixels(){
   const whiteCells = whiteIdx >= 0 ? counts[whiteIdx] : 0;
   const colored = painted - whiteCells;
   $('imgStats').innerHTML = [
-    `<span class="stat" title="Taille de la toile dans le jeu à la finesse maximale">📐 grille <b>${w} × ${h}</b></span>`,
-    `<span class="stat" title="Cases auxquelles DodoTopia donnera une couleur">🖌️ <b>${colored}</b> cases colorées</span>`,
-    empty ? `<span class="stat" title="${fills ? 'Le fond étant rempli au pot, ces cases prendront la couleur de fond' : 'Ces cases resteront telles quelles'}">⬜ <b>${empty}</b> transparente${empty > 1 ? 's' : ''}</span>` : '',
-    whiteCells ? `<span class="stat" title="Blanc ignoré (option « Ne pas peindre le blanc »)">⬜ <b>${whiteCells}</b> blanche${whiteCells > 1 ? 's' : ''} ignorée${whiteCells > 1 ? 's' : ''}</span>` : '',
-    `<span class="stat">🎨 <b>${used}</b> couleur${used > 1 ? 's' : ''}</span>`,
+    `<span class="stat" title="${esc(t('image.import.stat_grid_title'))}">${icon('grid')}${plain(t('image.import.stat_grid_html', {w, h}))}</span>`,
+    `<span class="stat" title="${esc(t('image.import.stat_colored_title'))}">${icon('brush')}${plain(t('image.import.stat_colored_html', {n: colored}))}</span>`,
+    empty ? `<span class="stat" title="${esc(fills ? t('image.import.stat_empty_title_fill') : t('image.import.stat_empty_title_keep'))}">${icon('square')}${plain(t('image.import.stat_empty_html', {n: empty}))}</span>` : '',
+    whiteCells ? `<span class="stat" title="${esc(t('image.import.stat_white_title'))}">${icon('square')}${plain(t('image.import.stat_white_html', {n: whiteCells}))}</span>` : '',
+    `<span class="stat">${icon('palette')}${plain(t('image.import.stat_colors_html', {n: used}))}</span>`,
   ].filter(Boolean).join('');
   // le damier dit la vérité sur l'image, pas forcément sur le rendu en jeu
   const alpha = $('alphaNote');
   if(alpha){
     alpha.hidden = !empty;
-    if(empty) txt('alphaNote', fills
-      ? `Les ${empty} cases transparentes apparaissent en damier ici, mais le fond du dessin est rempli au pot avant de peindre : dans le jeu, elles prendront la couleur de fond. Décoche « Remplir le fond au pot » pour les laisser vides.`
-      : `Les ${empty} cases transparentes ne seront pas peintes : la toile du jeu restera telle quelle à ces endroits.`);
+    if(empty) txt('alphaNote', fills ? t('image.import.alpha_fill', {n: empty}) : t('image.import.alpha_keep', {n: empty}));
   }
   const order = palette.map((c, i) => i).filter(i => counts[i] > 0).sort((a, b) => counts[b] - counts[a]);
   $('swatches').innerHTML = order.map(i => `<span class="sw" title="${hex(palette[i])}"><i style="background:${hex(palette[i])}"></i>${counts[i]}</span>`).join('') || '<span class="none">—</span>';
@@ -247,13 +275,25 @@ function pushJob(){
 
 let pixTimer;
 function schedulePixels(){ clearTimeout(pixTimer); pixTimer = setTimeout(renderPixels, 60); }
-function bindOpt(id, key, fmtv){
+// valeurs affichees a cote des curseurs (resolues a chaque rendu : la langue peut changer)
+const IOPT_FMT = {
+  colors: v => v >= 126 ? t('image.settings.colors_all') : I18N.fmtNumber(v),
+  bright: v => (v > 0 ? '+' : '') + I18N.fmtNumber(v),
+  contrast: v => (v > 0 ? '+' : '') + I18N.fmtNumber(v),
+  sat: v => t('image.settings.percent', {n: v}),
+};
+function bindOpt(id, key){
   const el = $(id), v = $(id + 'V');
-  el.oninput = () => { IOPT[key] = Number(el.value); v.textContent = fmtv ? fmtv(IOPT[key]) : el.value; schedulePixels(); };
+  el.oninput = () => { IOPT[key] = Number(el.value); v.textContent = IOPT_FMT[key](IOPT[key]); schedulePixels(); };
 }
-bindOpt('optColors', 'colors', v => v >= 126 ? 'toutes' : v);
-bindOpt('optBright', 'bright', v => (v > 0 ? '+' : '') + v); bindOpt('optContrast', 'contrast', v => (v > 0 ? '+' : '') + v);
-bindOpt('optSat', 'sat', v => v + ' %');
+bindOpt('optColors', 'colors');
+bindOpt('optBright', 'bright'); bindOpt('optContrast', 'contrast');
+bindOpt('optSat', 'sat');
+function syncOptValues(){
+  [['optColors', 'colors'], ['optBright', 'bright'], ['optContrast', 'contrast'], ['optSat', 'sat']].forEach(([id, k]) => {
+    if($(id)){ $(id).value = IOPT[k]; txt(id + 'V', String(IOPT_FMT[k](IOPT[k]))); }
+  });
+}
 $('optDither').onchange = () => { IOPT.dither = $('optDither').checked; schedulePixels(); };
 $('optGrid').onchange = () => { IOPT.grid = $('optGrid').checked; schedulePixels(); };
 function syncFormatChips(){
@@ -264,31 +304,30 @@ function syncFormatChips(){
     // « Auto » montre le format réellement retenu : pas de sélection contradictoire
     // Une seule sélection : la puce ne porte QUE le format. L'état du calibrage est dit à part, sous le
     // groupe, pour ne pas mélanger « ce que je choisis » et « ce qui est déjà configuré ».
-    if(f === 'auto'){ c.textContent = 'Auto'; c.title = 'Format déduit des proportions de l’image'; }
+    if(f === 'auto'){ c.textContent = t('image.settings.format_auto'); c.title = t('image.settings.format_auto_help'); }
     else {
       const [gw, gh] = gridFor(f);
       c.textContent = f;
-      c.title = `${gw} × ${gh} cases`;
+      c.title = t('image.settings.cells', {w: gw, h: gh});
     }
   });
   segMark($('fits'), c => c.dataset.fit === IOPT.fit);
   const [gw, gh] = gridFor(cur);
-  txt('fmtHelp', IMG.img
-    ? `Format retenu : ${cur} — ${gw} × ${gh} cases à la finesse maximale. Ouvre une toile de ce format dans Heartopia.`
-    : 'Le format doit correspondre à celui de la toile ouverte dans Heartopia.');
+  txt('fmtHelp', hasPic()
+    ? t('image.settings.format_help', {format: cur, w: gw, h: gh})
+    : t('image.settings.format_help_empty'));
   // disponibilité du calibrage : une phrase séparée, jamais une coche dans la puce du format
   const cal = $('fmtCalib');
   if(cal){
     const d = drawState(); const val = !!(d && d.validated && d.validated[cur]);
     const ok = isCalibrated(cur);
     cal.className = 'hint left fmtcalib ' + (ok ? 'is-ok' : 'is-todo');
-    txt('fmtCalib', !ok ? `Zone du jeu pas encore configurée pour le format ${cur}.`
-      : val ? `Configuration enregistrée pour le format ${cur}, et mesurée automatiquement.`
-      : `Configuration enregistrée pour le format ${cur} (mesure automatique jamais faite).`);
+    txt('fmtCalib', !ok ? t('image.settings.calib_todo', {format: cur})
+      : val ? t('image.settings.calib_ok_measured', {format: cur})
+      : t('image.settings.calib_ok', {format: cur}));
   }
-  txt('fitHelp', IOPT.fit === 'contain'
-    ? 'Ajuster : toute l’image tient dans la toile ; des cases restent vides sur les côtés.'
-    : 'Remplir : la toile est entièrement couverte ; les bords de l’image sont coupés.');
+  txt('fitHelp', IOPT.fit === 'contain' ? t('image.settings.fit_contain') : t('image.settings.fit_cover'));
+  syncOptValues();
 }
 document.querySelectorAll('#formats > button').forEach(c => c.onclick = () => { IOPT.format = c.dataset.f; schedulePixels(); });
 document.querySelectorAll('#fits > button').forEach(c => c.onclick = () => { IOPT.fit = c.dataset.fit; schedulePixels(); });
@@ -299,20 +338,17 @@ const IOPT_DEFAULTS = {format: 'auto', fit: 'contain', colors: 126, dither: fals
 const RESET_GROUPS = {frame: ['format', 'fit'], colors: ['colors', 'bright', 'contrast', 'sat', 'dither']};
 document.querySelectorAll('#drawOpts [data-reset]').forEach(b => b.onclick = () => {
   (RESET_GROUPS[b.dataset.reset] || []).forEach(k => { IOPT[k] = IOPT_DEFAULTS[k]; });
-  [['optColors', 'colors', v => v >= 126 ? 'toutes' : v], ['optBright', 'bright', v => (v > 0 ? '+' : '') + v],
-   ['optContrast', 'contrast', v => (v > 0 ? '+' : '') + v], ['optSat', 'sat', v => v + ' %']].forEach(([id, k, f]) => {
-    if($(id)){ $(id).value = IOPT[k]; txt(id + 'V', String(f(IOPT[k]))); }
-  });
+  syncOptValues();
   $('optDither').checked = IOPT.dither;
   schedulePixels();
-  toast(b.dataset.reset === 'frame' ? 'Toile et cadrage remis par défaut' : 'Couleurs et rendu remis par défaut', 'ok');
+  toast(b.dataset.reset === 'frame' ? t('image.settings.reset_frame') : t('image.settings.reset_colors'), 'ok');
 });
 
 // ------------------------------------------------ page Dessin : dessin dans le jeu + configuration de la zone
 let drawSig = '';
 // prochaine etape pour le format courant : image | calib | draw
 function drawNext(fmt){
-  if(!IMG.img) return 'image';
+  if(!hasPic()) return 'image';
   const d = drawState();
   if(!isCalibrated(fmt) || !shadesOk()) return 'calib';
   return 'draw';
@@ -329,29 +365,32 @@ function renderDraw(st){
 
   // progression (1) Préparer l'image (2) Configurer la zone du jeu (3) Dessiner
   const done = [];
-  if(IMG.img) done.push('image');
+  if(hasPic()) done.push('image');
   if(ready) done.push('calib');
   stepsMark($('drawSteps'), done, busy ? (auto ? 'calib' : 'draw') : next,
-            {image: IMG.img ? `${PIX ? PIX.w + '×' + PIX.h : ''}` : '',
-             calib: ready ? (validated ? fmt + ' ✓✓' : fmt + ' ✓') : ''});
+            {image: hasPic() ? `${PIX ? PIX.w + '×' + PIX.h : ''}` : '',
+             calib: ready ? fmt : ''});
 
   // un seul bouton principal = prochaine étape ; un calibrage valide n'est jamais refait tout seul
   const b = $('btnDraw');
+  const stopKey = hk.stop || 'F7', playKey = hk.play_pause || 'F6';
   let label, cls = 'btn btn--lg btn--cta';
-  if(busy){ label = auto ? 'Arrêter la mesure' : 'Arrêter le dessin'; cls = 'btn btn--lg btn--danger'; }
-  else if(!IMG.img) label = LABELS.draw;
-  else if(next === 'calib') label = `Configurer la zone du jeu (${fmt})`;
+  if(busy){ label = auto ? t('image.run.stop_measure') : t('image.run.stop_draw'); cls = 'btn btn--lg btn--danger'; }
+  else if(!hasPic()) label = LABELS.draw;
+  else if(next === 'calib') label = t('image.run.configure_format', {format: fmt});
   else label = LABELS.draw;
   if(b.className !== cls) b.className = cls;
+  b.querySelector('use').setAttribute('href', busy ? '#i-stop' : next === 'calib' ? '#i-target' : '#i-brush');
   txt('drawLabel', label);
-  txt('drawKey', busy ? (hk.stop || 'F7') : (hk.play_pause || 'F6'));
+  txt('drawKey', busy ? stopKey : playKey);
   $('drawKey').hidden = !busy && next !== 'draw';
-  b.disabled = calib || (!busy && !IMG.img);
-  b.title = b.disabled && !calib ? 'Importe d’abord une image.' : '';
+  // action indisponible : la raison est ecrite sous le bouton (setAction)
+  setAction(b, {disabled: calib || (!busy && !hasPic()),
+    reason: calib ? t('image.run.why_calib') : (!busy && !hasPic()) ? t('image.import.first') : ''});
   // tant que rien n'est configuré, le bouton principal EST l'entrée vers la configuration : pas de doublon
   $('btnDrawConfig').hidden = !ready;
   $('btnDrawConfig').disabled = busy || calib;
-  txt('btnDrawConfig', 'Configuration…');
+  txt('btnDrawConfig', t('image.run.config_btn'));
   $('btnDrawLog').hidden = busy || calib;
   // Le parcours en trois étapes n'a d'intérêt qu'au premier usage. Une fois la zone configurée, il laisse
   // la place à une synthèse d'état : on ne réaffiche pas un assistant à chaque dessin.
@@ -359,52 +398,52 @@ function renderDraw(st){
   const rs = $('drawReady');
   if(rs){
     rs.hidden = busy || !ready;
-    if(!rs.hidden) html('drawReady', `<span class="ok" aria-hidden="true">✓</span> Image prête · zone du jeu configurée pour le format <b>${esc(fmt)}</b>`
-      + (validated ? ' et mesurée' : '') + ` · <b>${PIX ? PIX.w + ' × ' + PIX.h : ''}</b> cases`);
+    // message sur (balisage fixe, format issu de la liste FORMATS, nombres) : innerHTML sans donnee utilisateur
+    if(!rs.hidden) html('drawReady', icon('check') + `<span>${plain(t('image.run.ready_html', {format: esc(fmt), measured: validated ? 'yes' : 'no', w: PIX ? PIX.w : '', h: PIX ? PIX.h : ''}))}</span>`);
   }
   // pendant le dessin, le bandeau de session porte seul l'action Arreter (comme la Musique et la Cuisine)
   $('drawCta').hidden = busy;
 
   const pill = $('imgPill');
-  let pc = 'pill', pt = 'À configurer';
-  if(drawing){ pc = 'pill game'; pt = '🎨 Dessin en cours'; }
-  else if(calib){ pc = 'pill paused'; pt = '🎯 Configuration'; }
-  else if(auto){ pc = 'pill game'; pt = '📏 Mesure en cours'; }
-  else if(!IMG.img){ pc = 'pill'; pt = 'Aucune image'; }
-  else if(!ready){ pc = 'pill'; pt = 'À configurer'; }
-  else { pc = 'pill preview'; pt = '✓ Prêt à dessiner'; }
+  let pc = 'pill', pt = t('image.run.pill_todo'), pi = 'target';
+  if(drawing){ pc = 'pill game'; pi = 'brush'; pt = t('image.run.pill_drawing'); }
+  else if(calib){ pc = 'pill paused'; pi = 'target'; pt = t('image.run.pill_config'); }
+  else if(auto){ pc = 'pill game'; pi = 'ruler'; pt = t('image.run.pill_measure'); }
+  else if(!hasPic()){ pc = 'pill'; pi = 'image'; pt = t('image.run.pill_none'); }
+  else if(!ready){ pc = 'pill'; pi = 'target'; pt = t('image.run.pill_todo'); }
+  else { pc = 'pill preview'; pi = 'check'; pt = t('image.run.pill_ready'); }
   if(pill.className !== pc) pill.className = pc;
-  txt('imgPill', pt);
+  html('imgPill', icon(pi) + `<span>${esc(plain(pt))}</span>`);
   $('imgDisc').classList.toggle('spin', drawing);
 
   // bandeau de session : compte a rebours puis progression
   let spec = null;
   if(busy && d.countdown > 0){
-    spec = {count: Math.ceil(d.countdown), unit: 's', role: auto ? 'Mesure automatique' : 'Dessin',
-            text: auto ? `Passe sur Heartopia avec un dessin VIDE au format ${d.format}, crayon sélectionné, zoom au minimum.` : 'Passe sur Heartopia, crayon sélectionné, et ne touche plus à rien.',
-            meta: `${hk.stop || 'F7'} annule`, actions: [{label: LABELS.cancel, kbd: hk.stop || 'F7', api: 'draw_stop'}]};
+    spec = {count: Math.ceil(d.countdown), unit: t('image.run.unit_seconds'), role: auto ? t('image.run.role_measure') : t('image.run.role_draw'),
+            text: auto ? t('image.run.countdown_measure', {format: d.format}) : t('image.run.countdown_draw'),
+            meta: t('image.run.meta_cancel', {key: stopKey}), actions: [{label: LABELS.cancel, kbd: stopKey, api: 'draw_stop'}]};
   } else if(drawing){
     const pct = d.total ? d.done / d.total * 100 : 0;
-    spec = {live: true, role: 'Dessin dans Heartopia', text: d.progress_msg || 'Dessin en cours…',
-            meta: `${d.done} / ${d.total} cases · ${d.eta != null ? 'reste ~' + fmtDur(d.eta) + ' (estimation)' : fmtDur(d.elapsed)} · ${hk.stop || 'F7'} arrête · ne touche pas à la souris`,
-            progress: {pct, left: `${Math.round(pct)} %`, right: d.eta != null ? `~${fmtDur(d.eta)}` : fmtDur(d.elapsed)},
-            actions: [{label: LABELS.stop, kbd: hk.stop || 'F7', api: 'draw_stop'}]};
+    spec = {live: true, role: t('image.run.role_drawing'), text: d.progress_msg || t('image.run.drawing_text'),
+            meta: t('image.run.drawing_meta', {done: d.done, total: d.total, time: d.eta != null ? t('image.run.eta', {dur: fmtDur(d.eta)}) : fmtDur(d.elapsed), key: stopKey}),
+            progress: {pct, left: t('image.settings.percent', {n: Math.round(pct)}), right: d.eta != null ? t('image.run.eta_short', {dur: fmtDur(d.eta)}) : fmtDur(d.elapsed)},
+            actions: [{label: LABELS.stop, icon: 'stop', kbd: stopKey, api: 'draw_stop'}]};
   } else if(auto){
-    spec = {live: true, role: 'Mesure automatique', text: d.progress_msg || 'Mesure en cours…', meta: `${hk.stop || 'F7'} ou une touche arrête`,
-            actions: [{label: LABELS.stop, kbd: hk.stop || 'F7', api: 'draw_stop'}]};
+    spec = {live: true, role: t('image.run.role_measure'), text: d.progress_msg || t('image.run.measure_text'), meta: t('image.run.measure_meta', {key: stopKey}),
+            actions: [{label: LABELS.stop, icon: 'stop', kbd: stopKey, api: 'draw_stop'}]};
   }
   renderSession($('drawSession'), spec);
 
   // notice courte : elle dit toujours ce qui manque et comment l'obtenir
   let notice = null;
   if(!busy){
-    if(d.screen_ok === false) notice = {text: 'Lecture d’écran indisponible sur cet ordinateur : le dessin automatique ne peut pas fonctionner ici.', kind: 'danger'};
-    else if(d.message && /impossible|arrêté|erreur/i.test(d.message)) notice = {text: d.message, kind: 'warn'};
-    else if(!IMG.img) notice = {text: 'Importe une image : DodoTopia la transforme en dessin case par case.', kind: 'info'};
-    else if(!isCalibrated(fmt)) notice = {text: `Le format ${fmt} n’est pas encore configuré : montre une fois à DodoTopia où sont la toile, la palette et les outils dans Heartopia. Bouton « Configurer la zone du jeu ».`, kind: 'warn'};
-    else if(!shadesOk()) notice = {text: 'Les nuances de la palette ne sont pas configurées : refais les 6 étapes « nuances » (Calibrage et journal… › Refaire la configuration).', kind: 'warn'};
-    else if(!validated) notice = {text: `Zone configurée à la main : tu peux dessiner. Pour un résultat plus précis, lance une fois « Mesurer automatiquement » (Calibrage et journal…), sur un dessin vide.`, kind: 'info'};
-    else notice = {text: `Ouvre un dessin vide dans Heartopia (format ${fmt}, finesse au maximum, crayon), puis ${hk.play_pause || 'F6'}. La reprise d’un dessin interrompu n’est pas prise en charge : il faudra recommencer.`, kind: 'ok', icon: '✓'};
+    if(d.screen_ok === false) notice = {text: t('image.run.no_screen'), kind: 'danger'};
+    else if(d.message && /impossible|arrêté|erreur|unable|cannot|stopped|error|fail/i.test(d.message)) notice = {text: d.message, kind: 'warn'};
+    else if(!hasPic()) notice = {text: t('image.run.notice_import'), kind: 'info'};
+    else if(!isCalibrated(fmt)) notice = {text: t('image.run.notice_calib', {format: fmt}), kind: 'warn'};
+    else if(!shadesOk()) notice = {text: t('image.run.notice_shades', {format: fmt}), kind: 'warn'};
+    else if(!validated) notice = {text: t('image.run.notice_measure'), kind: 'info'};
+    else notice = {text: t('image.run.notice_ready', {format: fmt, key: playKey}), kind: 'ok', icon: 'check'};
   }
   setNotice('drawNotice', notice);
 
@@ -416,26 +455,19 @@ function renderDraw(st){
   const os = st.draw_stats;
   const outlineOn = sd.outline !== false;
   let ostat = '';
-  if(!outlineOn) ostat = 'Chaque case est peinte au crayon, une par une.';
-  else if(!PIX) ostat = 'Trace le bord de chaque zone au crayon, puis la remplit d’un clic au pot.';
-  else if(!os) ostat = 'Calcul des zones…';
-  else if(os.available) ostat = `Sur cette image : ${os.pencil_cells} cases au crayon + ${os.fill_zones} zone${os.fill_zones > 1 ? 's' : ''} remplie${os.fill_zones > 1 ? 's' : ''} au pot (${os.fill_cells} cases), au lieu de ${os.total_cells} cases au crayon. Le rendu est identique tant que les zones sont bien fermées ; sinon la couleur déborde et DodoTopia la reprend au crayon.`;
-  else ostat = 'Indisponible : le crayon et le pot de peinture ne sont pas configurés (étapes « outils » de la configuration).';
+  if(!outlineOn) ostat = t('image.settings.outline_off');
+  else if(!PIX) ostat = t('image.settings.outline_intro');
+  else if(!os) ostat = t('image.settings.outline_computing');
+  else if(os.available) ostat = t('image.settings.outline_stats', {pencil: os.pencil_cells, zones: os.fill_zones, fill: os.fill_cells, total: os.total_cells});
+  else ostat = t('image.settings.outline_unavailable');
   txt('outlineStat', ostat);
 
   // assistant de configuration
   if(calib){
     renderCalibOverlay({
       kind: 'draw',
-      title: `Configurer la zone du jeu — ${esc(d.format)}`,
-      prep: `<p>Dans Heartopia, avant de commencer :</p>
-        <ol class="steps">
-          <li><span class="n">1</span>Ouvre un dessin au format <b>${esc(d.format)}</b></li>
-          <li><span class="n">2</span>Mets la <b>finesse des détails au maximum</b></li>
-          <li><span class="n">3</span><b>Active la grille</b> (bouton grille au-dessus de la toile)</li>
-          <li><span class="n">4</span>Garde la fenêtre du jeu à la même taille pendant toute la configuration</li>
-        </ol>
-        <p class="hint left">Ces réglages ne sont demandés qu'une fois. Les positions sont enregistrées ensuite, étape par étape.</p>`,
+      title: t('image.calib.title_draw', {format: d.format}),
+      prep: t('image.calib.prep_draw_html', {format: esc(d.format)}),
       steps: d.steps || [], step: d.step, hk, message: d.message,
       skippable: s => s.key === 'pencil' || s.key === 'bucket' || s.key === 'undo',
       cancel: 'draw_calibrate_cancel', skip: 'draw_calibrate_skip', back: 'draw_calibrate_back', goto: 'draw_calibrate_goto'});
@@ -444,7 +476,7 @@ function renderDraw(st){
   }
   // palette ou grilles changees (fin de calibrage) : on recalcule l'apercu
   const sig = JSON.stringify([d.palette, d.formats, d.shades_ok]);
-  if(sig !== drawSig){ drawSig = sig; if(IMG.img) schedulePixels(); else syncFormatChips(); }
+  if(sig !== drawSig){ drawSig = sig; if(hasPic()) schedulePixels(); else syncFormatChips(); }
 }
 view('draw', {draw: renderDraw});
 
@@ -455,7 +487,7 @@ view('draw', {draw: renderDraw});
 const CAL_ART = {
   // --- dessin : vue de l'outil de dessin (toile rayée, outils à gauche, palette en bas)
   draw: {
-    view: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma de l'outil de dessin du jeu ; la cible est entourée">
+    view: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="${esc(t('image.calib.art_draw_view'))}">
       <rect x="2" y="2" width="296" height="186" rx="14" fill="#fbf5ea" stroke="#e4d4ba" stroke-width="2"/>
       <rect x="72" y="30" width="180" height="108" rx="6" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
       <g stroke="#e9ded0" stroke-width="1">${Array.from({length: 17}, (_, i) => `<path d="M${76 + i * 11} 30V138"/>`).join('')}${Array.from({length: 9}, (_, i) => `<path d="M72 ${34 + i * 12}H252"/>`).join('')}</g>
@@ -467,10 +499,10 @@ const CAL_ART = {
       <circle cx="52" cy="114" r="7" fill="#e8a531"/><circle cx="50" cy="112" r="1.6" fill="#fff"/>
       <g>${[0, 1].map(r => Array.from({length: 8}, (_, c) => `<rect x="${90 + c * 20}" y="${150 + r * 16}" width="15" height="12" rx="4" fill="${['#c94f5a', '#e8a531', '#edca16', '#a8bc16', '#05a25d', '#058781', '#05729c', '#534da1'][c]}" opacity="${r ? .55 : 1}"/>`).join('')).join('')}</g>
       ${hi}</svg>`,
-    shades: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma du panneau de nuances du jeu ; la cible est entourée">
+    shades: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="${esc(t('image.calib.art_draw_shades'))}">
       <rect x="2" y="2" width="296" height="186" rx="14" fill="#fbf5ea" stroke="#e4d4ba" stroke-width="2"/>
       <rect x="54" y="28" width="192" height="134" rx="14" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
-      <text x="150" y="20" text-anchor="middle" font-size="11" fill="#9c8a7f">panneau des nuances</text>
+      <text x="150" y="20" text-anchor="middle" font-size="11" fill="#9c8a7f">${esc(t('image.calib.art_shades_caption'))}</text>
       <path d="M70 52l-7 7 7 7" stroke="#b56f3f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M230 52l7 7-7 7" stroke="#b56f3f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
       <g>${Array.from({length: 5}, (_, i) => `<circle cx="${102 + i * 24}" cy="59" r="9" fill="${['#c94f5a', '#e8a531', '#05a25d', '#058781', '#534da1'][i]}"/>`).join('')}</g>
@@ -480,7 +512,7 @@ const CAL_ART = {
       ${hi}</svg>`},
   // --- cuisine : vue du monde (cuisinière + bulle) et vue du menu Recettes
   cook: {
-    world: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma de la cuisinière et de sa bulle dans le jeu ; la cible est entourée">
+    world: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="${esc(t('image.calib.art_cook_world'))}">
       <rect x="2" y="2" width="296" height="186" rx="14" fill="#eef2da" stroke="#d7e0b8" stroke-width="2"/>
       <path d="M2 140h296v46a14 14 0 0 1-14 14H16a14 14 0 0 1-14-14z" fill="#cfdca6"/>
       <rect x="108" y="96" width="84" height="48" rx="10" fill="#c98644"/>
@@ -491,14 +523,14 @@ const CAL_ART = {
       <circle cx="150" cy="58" r="32" fill="none" stroke="#9fb356" stroke-width="4" stroke-dasharray="5 5"/>
       <circle cx="232" cy="160" r="8" fill="#9fb356"/><circle cx="252" cy="168" r="6" fill="#9fb356"/>
       ${hi}</svg>`,
-    menu: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="Schéma du menu Recettes du jeu ; la cible est entourée">
+    menu: (hi) => `<svg viewBox="0 0 300 190" role="img" aria-label="${esc(t('image.calib.art_cook_menu'))}">
       <rect x="2" y="2" width="296" height="186" rx="14" fill="#fbf5ea" stroke="#e4d4ba" stroke-width="2"/>
       <rect x="22" y="16" width="256" height="158" rx="16" fill="#fff" stroke="#c7b9ad" stroke-width="2"/>
-      <text x="42" y="40" font-size="12" fill="#9c8a7f">Utilisation récente</text>
+      <text x="42" y="40" font-size="12" fill="#9c8a7f">${esc(t('image.calib.art_menu_recent'))}</text>
       <g>${Array.from({length: 4}, (_, i) => `<rect x="${42 + i * 44}" y="${50}" width="36" height="36" rx="8" fill="#fbe7bd" stroke="#e4d4ba" stroke-width="2"/>`).join('')}</g>
       <g>${Array.from({length: 4}, (_, i) => `<rect x="${42 + i * 44}" y="${98}" width="36" height="36" rx="8" fill="#f6f1e6" stroke="#e4d4ba" stroke-width="2"/>`).join('')}</g>
       <rect x="196" y="132" width="66" height="26" rx="13" fill="#e8a531"/>
-      <text x="229" y="149" text-anchor="middle" font-size="11" fill="#4a3527" font-weight="700">Cuisiner</text>
+      <text x="229" y="149" text-anchor="middle" font-size="11" fill="#4a3527" font-weight="700">${esc(t('image.calib.art_menu_cook'))}</text>
       ${hi}</svg>`}};
 // cible : anneau + flèche, posés sur le schéma
 function calMark(x, y, r){
@@ -545,7 +577,7 @@ function renderCalibOverlay(spec){
   const cur = steps[i];
   const hk = spec.hk || {};
   txt('calibTitle', spec.title.replace(/<[^>]+>/g, ''));
-  txt('calibCount', `Étape ${i + 1} sur ${n}`);
+  txt('calibCount', t('image.calib.step_count', {i: i + 1, n}));
   $('calibFill').style.width = (n ? (i / n * 100) : 0).toFixed(1) + '%';
   $('calibBar').setAttribute('aria-valuenow', String(i + 1));
   $('calibBar').setAttribute('aria-valuemin', '1');
@@ -558,53 +590,56 @@ function renderCalibOverlay(spec){
     txt('calibStepHelp', cur.help);
     const art = (CAL_STEP_ART[spec.kind] || {})[cur.key];
     const svg = art ? art() : '';
-    html('calibArt', svg ? svg + '<span class="calib__artnote">Schéma : l’écran du jeu peut être disposé un peu différemment.</span>' : '');
+    html('calibArt', svg ? svg + `<span class="calib__artnote">${esc(t('image.calib.art_note'))}</span>` : '');
     $('calibArt').hidden = !svg;
   }
   txt('calibKey', hk.draw_point || 'F3');
-  txt('calibState', 'En attente : place la souris sur la cible dans le jeu, la position n’est pas encore enregistrée.');
+  txt('calibState', t('image.calib.waiting'));
   setNotice('calibMsg', spec.message ? {text: spec.message, kind: 'warn'} : null);
   // récapitulatif complet, replié : chaque étape faite est cliquable pour y revenir
-  const sig = JSON.stringify([steps.map(s => s.title), i]);
+  const sig = JSON.stringify([steps.map(s => s.title), i, I18N.lang]);
   if(changed($('calibSteps'), sig)){
     $('calibSteps').innerHTML = steps.map((s, k) => {
       const cls = k < i ? 'done' : k === i ? 'now' : '';
-      const mark = k < i ? '✓' : k + 1;
+      const mark = k < i ? icon('check') : k + 1;
       return k < i
-        ? `<li class="${cls}"><button type="button" class="stepback" data-goto="${k}" title="Revenir à cette étape"><span class="n">${mark}</span>${esc(s.title)}</button></li>`
+        ? `<li class="${cls}"><button type="button" class="stepback" data-goto="${k}" title="${esc(t('image.calib.back_to_step'))}"><span class="n">${mark}</span>${esc(s.title)}</button></li>`
         : `<li class="${cls}"><span class="n">${mark}</span>${esc(s.title)}</li>`;
     }).join('');
     $('calibSteps').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => api(CALIB.goto, Number(b.dataset.goto)));
   }
-  txt('calibAllSum', `Voir les ${n} étapes`);
+  txt('calibAllSum', t('image.calib.all_steps', {n}));
   $('calibSkip').hidden = !(cur && spec.skippable(cur));
   $('calibBack').disabled = i <= 0;
   if(fresh){ openModal($('calibOverlay')); setTimeout(() => $('calibStepTitle').focus && $('calibStepTitle').focus(), 30); }
 }
-function fmtDur(s){ s = Math.max(0, Math.round(s || 0)); return s >= 60 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; }
+// duree lisible (« 3 min 05 s », « 42 s ») ; partagee avec la Cuisine
+function fmtDur(s){
+  s = Math.max(0, Math.round(s || 0));
+  return s >= 60 ? t('image.run.dur_min', {m: Math.floor(s / 60), s: String(s % 60).padStart(2, '0')}) : t('image.run.dur_sec', {s});
+}
 
 // ------------------------------------------------ actions
 function drawCalibrate(){ api('draw_calibrate', currentFormat()); }
 function drawAutoCalibrate(){
   if(!isCalibrated(currentFormat())){ drawCalibrate(); return; }
-  dialog({title: 'Mesurer automatiquement', icon: '📏', ok: 'Lancer la mesure',
-          html: `Dans Heartopia, ouvre un dessin <b>vide</b> au format <b>${currentFormat()}</b>, finesse au maximum, crayon sélectionné, zoom au minimum.<br><small>DodoTopia va remplir le fond, peindre des pastilles et des repères, mesurer la taille exacte des cases à l'écran, tester le rythme des traits, puis enregistrer le résultat. Le dessin de test est annulé si le bouton Annuler du jeu est configuré ; sinon, ouvre un nouveau dessin ensuite.</small>`})
+  dialog({title: t('image.run.measure_title'), icon: 'ruler', ok: t('image.run.measure_ok'), cancel: t('common.cancel'),
+          html: t('image.run.measure_html', {format: currentFormat()})})
     .then(yes => { if(yes) api('draw_auto_calibrate', currentFormat()); });
 }
 function drawStart(){
   const fmt = currentFormat();
   const [gw, gh] = gridFor(fmt);
   const painted = PIX ? PIX.counts.reduce((a, b) => a + b, 0) : 0;
-  dialog({title: LABELS.draw, icon: '🎨', ok: 'Dessiner',
-          html: `<p>À dessiner : <b>${esc(IMG.name || 'image')}</b> — format <b>${fmt}</b>, ${gw} × ${gh} cases, <b>${painted}</b> cases à peindre.</p>
-            <p>Dans Heartopia, ouvre un dessin au format <b>${fmt}</b>, finesse des détails <b>au maximum</b>, outil crayon sélectionné, sans zoom.</p>
-            <small>Le dessin démarre 3 s après : ne touche plus à la souris ni au clavier. Toute touche l'arrête, et un dessin interrompu ne peut pas être repris là où il s'est arrêté.</small>`})
+  // le nom du fichier est une donnee utilisateur : echappe avant d'entrer dans le message HTML
+  dialog({title: LABELS.draw, icon: 'brush', ok: t('image.run.start_ok'), cancel: t('common.cancel'),
+          html: t('image.run.start_html', {name: esc(IMG.name || t('image.import.default_name')), format: fmt, w: gw, h: gh, painted})})
     .then(yes => { if(yes) api('draw_start'); });
 }
 $('btnDraw').onclick = () => {
   const d = drawState();
   if(d && (d.state === 'drawing' || d.state === 'autocal')){ api('draw_stop'); return; }
-  if(!IMG.img){ toast("Importe d'abord une image", 'warn'); return; }
+  if(!hasPic()){ toast(t('image.import.first'), 'warn'); return; }
   const next = drawNext(currentFormat());
   if(next === 'calib') drawCalibrate();
   else drawStart();
@@ -615,8 +650,8 @@ $('btnDrawConfig').onclick = () => {
   const val = !!(d && d.validated && d.validated[fmt]);
   if(!cal){ drawCalibrate(); return; }
   menu($('btnDrawConfig'), [
-    {label: `Refaire la configuration de ${fmt}`, help: 'toile, palette, nuances, outils', fn: drawCalibrate},
-    {label: 'Mesurer automatiquement', help: val ? 'déjà mesuré · à refaire si l’écran change' : 'conseillé une fois, sur une toile vide', fn: drawAutoCalibrate},
+    {label: t('image.run.menu_redo', {format: fmt}), help: t('image.run.menu_redo_help'), icon: 'target', fn: drawCalibrate},
+    {label: t('image.run.measure_title'), icon: 'ruler', help: val ? t('image.run.menu_measure_done') : t('image.run.menu_measure_advice'), fn: drawAutoCalibrate},
   ]);
 };
 $('btnDrawLog').onclick = () => api('open_draw_log');
@@ -625,3 +660,214 @@ $('calibSkip').onclick = () => api(CALIB.skip);
 $('calibBack').onclick = () => api(CALIB.back);
 // bloc Methode : interrupteurs -> set_setting (sans toast)
 ['mOutline', 'mFill', 'mSkipWhite'].forEach(id => { const cb = $(id); cb.onchange = () => api('set_setting', cb.dataset.path, cb.checked); });
+
+// ------------------------------------------------ export et publication du dessin converti
+// Export : l'aperçu est redessiné sans grille à l'échelle ×8 (réduite si le fichier dépasserait 5 Mo), avec un petit
+// badge DodoTopia facultatif, puis enregistré par Python dans DATA_DIR/exports/. Publication : même rendu sans badge,
+// 1024 px et 512 Ko au plus (limites du serveur), avec la grille de cases pour « Reproduire ce dessin ».
+const DSHARE = {upSeq: null};
+const EXPORT_MAX = 5 * 1024 * 1024, GALLERY_PNG_MAX = 512 * 1024, GALLERY_PX_MAX = 1024;
+function dataUrlBytes(u){ const i = u.indexOf(','); return Math.floor((u.length - i - 1) * 3 / 4); }
+function renderDrawingPng(scale, badge){
+  if(!PIX) return '';
+  const {w, h, cells, palette} = PIX;
+  const cv = document.createElement('canvas'); cv.width = w * scale; cv.height = h * scale;
+  const ctx = cv.getContext('2d');
+  for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){
+    const k = cells[y * w + x]; if(k < 0) continue;
+    ctx.fillStyle = hex(palette[k]); ctx.fillRect(x * scale, y * scale, scale, scale);
+  }
+  if(badge){
+    // pastille crème en bas à droite : logo (s'il est chargé) + « DodoTopia », proportionnelle à l'image
+    const fs = Math.max(11, Math.round(Math.min(cv.width, cv.height) / 34));
+    ctx.font = `700 ${fs}px Nunito, "Segoe UI", sans-serif`;
+    const logo = $('logo'), hasLogo = !!(logo && logo.complete && logo.naturalWidth && logo.style.display !== 'none');
+    const label = 'DodoTopia', tw = ctx.measureText(label).width, pad = Math.round(fs * .55), lg = hasLogo ? Math.round(fs * 1.35) : 0;
+    const bw = Math.round(tw + pad * 2 + (lg ? lg + pad * .6 : 0)), bh = Math.round(fs * 1.9), m = Math.round(fs * .6);
+    const bx = cv.width - bw - m, by = cv.height - bh - m, r = bh / 2;
+    ctx.fillStyle = 'rgba(251,245,234,.92)'; ctx.strokeStyle = 'rgba(181,111,63,.55)'; ctx.lineWidth = Math.max(1, fs / 10);
+    ctx.beginPath(); ctx.moveTo(bx + r, by); ctx.arcTo(bx + bw, by, bx + bw, by + bh, r); ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+    ctx.arcTo(bx, by + bh, bx, by, r); ctx.arcTo(bx, by, bx + bw, by, r); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if(lg){ try{ ctx.drawImage(logo, bx + pad, by + (bh - lg) / 2, lg, lg); }catch(e){} }
+    ctx.fillStyle = '#7d4826'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, bx + pad + (lg ? lg + pad * .6 : 0), by + bh / 2 + 1);
+  }
+  try{ return cv.toDataURL('image/png'); }catch(e){ return ''; }
+}
+function drawingFileName(){ return (IMG.name || t('image.import.default_name')).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 80) || 'dessin'; }
+function exportDrawing(){
+  if(!PIX){ toast(t('image.import.first'), 'warn'); return; }
+  let badge = true;
+  try{ badge = localStorage.getItem('draw.exportBadge') !== '0'; }catch(e){}
+  dialog({title: t('image.export.title'), icon: 'download', ok: t('image.export.ok'),
+          html: `<p>${esc(t('image.export.body', {w: PIX.w * 8, h: PIX.h * 8}))}</p>
+            <label class="checkline"><input type="checkbox" class="export__badge"${badge ? ' checked' : ''}><span>${esc(t('image.export.badge'))}</span></label>`})
+    .then(yes => {
+      const cb = $('dlgBody').querySelector('.export__badge');
+      if(!yes) return;
+      badge = !!(cb && cb.checked);
+      try{ localStorage.setItem('draw.exportBadge', badge ? '1' : '0'); }catch(e){}
+      let url = '';
+      for(const sc of [8, 6, 4, 2, 1]){ url = renderDrawingPng(sc, badge); if(url && dataUrlBytes(url) <= EXPORT_MAX) break; }
+      if(!url || dataUrlBytes(url) > EXPORT_MAX){ toast(t('image.export.too_big'), 'warn'); return; }
+      apiAction($('btnExportImg'), 'save_drawing_png', url, drawingFileName());
+    });
+}
+function publishDrawing(){
+  if(!PIX){ toast(t('image.import.first'), 'warn'); return; }
+  const o = S && S.online;
+  if(!o || !o.logged_in){ toast(t('image.publish.need_account'), 'info'); if(typeof accountPanel === 'function' && o) accountPanel(); return; }
+  dialog({title: t('image.publish.title'), icon: 'cloud-up', ok: t('image.publish.ok'), wide: true,
+          html: `<p>${esc(t('image.publish.body'))}</p>
+            <label class="field"><span class="field__label">${esc(t('image.publish.name'))}</span>
+              <input class="input dlg-input publish__title" type="text" maxlength="60" value="${esc((IMG.name || '').slice(0, 60))}"></label>
+            <p class="hint left">${esc(t('image.publish.moderation'))}</p>`})
+    .then(yes => {
+      const inp = $('dlgBody').querySelector('.publish__title');
+      if(!yes) return;
+      let url = '';
+      const maxSc = Math.max(1, Math.floor(GALLERY_PX_MAX / Math.max(PIX.w, PIX.h)));
+      for(const sc of [8, 6, 4, 3, 2, 1].filter(v => v <= maxSc)){ url = renderDrawingPng(sc, false); if(url && dataUrlBytes(url) <= GALLERY_PNG_MAX) break; }
+      if(!url || dataUrlBytes(url) > GALLERY_PNG_MAX){ toast(t('image.publish.too_big'), 'warn'); return; }
+      const job = {format: PIX.format, w: PIX.w, h: PIX.h, cells: Array.from(PIX.cells)};
+      apiAction($('btnPublishImg'), 'gallery_share', url, inp ? inp.value.trim() : '', job).then(r => {
+        if(r && r.ok) DSHARE.upSeq = (((r.state || S || {}).online || {}).gallery_upload || {}).seq || null;
+      });
+    });
+}
+$('btnExportImg').onclick = exportDrawing;
+$('btnPublishImg').onclick = publishDrawing;
+// état du dépôt lancé ici : envoi, en attente de modération (+ partage du lien si déjà publié), erreur
+view('drawShare', {sig: st => { const u = st.online && st.online.gallery_upload; return JSON.stringify([u, DSHARE.upSeq, I18N.lang]); }, draw: st => {
+  const u = st.online && st.online.gallery_upload, box = $('drawShareStatus');
+  if(!box) return;
+  const mine = u && DSHARE.upSeq != null && u.seq === DSHARE.upSeq;
+  $('btnPublishImg').classList.toggle('is-loading', !!(mine && u.state === 'uploading'));
+  if(!mine || u.state === 'idle' || u.state === 'uploading'){ box.innerHTML = ''; return; }
+  if(u.state === 'error'){ box.innerHTML = `<span class="chip chip--badge chip--warn" title="${esc(u.error || '')}">${icon('warn')}${esc(t('image.publish.failed'))}</span>`; return; }
+  const it = u.item || {};
+  const approved = it.status === 'approved';
+  box.innerHTML = `<span class="chip chip--badge ${approved ? 'chip--ok' : 'chip--info'}">${icon(approved ? 'check' : 'hourglass')}${esc(approved ? t('image.publish.published') : t('image.publish.pending'))}</span>`
+    + (approved && it.page_url ? `<button class="iconbtn iconbtn--sm" type="button" data-act="share" aria-haspopup="menu" title="${esc(t('share.title'))}" aria-label="${esc(t('share.title'))}">${icon('share')}</button>` : '');
+  const b = box.querySelector('[data-act="share"]');
+  if(b) b.onclick = () => shareMenu({anchor: b, url: it.page_url, text: t('share.drawing_text', {title: it.title || ''})});
+}});
+
+// ------------------------------------------------ galerie des dessins partagés
+const GAL = {open: false, sort: 'recent', searched: false, takenSeq: null};
+try{ GAL.sort = localStorage.getItem('gallery.sort') === 'popular' ? 'popular' : 'recent'; }catch(e){}
+function showDrawView(name){
+  GAL.open = name === 'gallery';
+  $('drawGallery').hidden = !GAL.open;
+  $('pageImage').classList.toggle('is-gallery', GAL.open);
+  $('pageImage').classList.toggle('is-empty', !hasPic() && !GAL.open);
+  if(GAL.open){
+    const o = S && S.online, g = o && o.gallery;
+    if(o && o.server_ok !== false && (!g || !g.at) && !(g && g.loading)){ GAL.searched = true; api('gallery_list', 1, GAL.sort); }
+    setTimeout(() => { const f = $('galleryBack'); if(f) f.focus(); }, 30);
+  }
+  if(S) render(S);
+}
+function galleryCardHtml(it, o){
+  const title = it.title || t('image.gallery.untitled');
+  const by = it.uploader_name ? t('image.gallery.by', {name: it.uploader_name}) : '';
+  const meta = [by, `${it.w}×${it.h}`].filter(Boolean).join(' · ');
+  const thumb = it.thumb_url ? `<img src="${esc(it.thumb_url)}" alt="" loading="lazy" width="${esc(it.thumb_w || 200)}" height="${esc(it.thumb_h || 200)}">`
+    : `<span class="gcard__noimg" aria-hidden="true">${icon('image')}</span>`;
+  const canOpen = it.has_cells !== false;
+  return `<article class="gcard">
+      <button class="gcard__img" type="button" data-act="open" data-id="${esc(it.id)}"${canOpen ? '' : ' disabled'} title="${esc(canOpen ? t('image.gallery.reproduce') : t('image.gallery.no_cells'))}" aria-label="${esc(t('image.gallery.reproduce_aria', {title}))}">${thumb}</button>
+      <div class="gcard__body"><div class="gcard__t" title="${esc(title)}">${esc(title)}</div><div class="gcard__m">${esc(meta)}</div></div>
+      <div class="gcard__acts">
+        ${likeButtonHtml(it, 'like')}
+        <div class="spacer"></div>
+        ${it.page_url ? `<button class="iconbtn iconbtn--sm" type="button" data-act="share" data-id="${esc(it.id)}" aria-haspopup="menu" title="${esc(t('share.title'))}" aria-label="${esc(t('share.title'))}">${icon('share')}</button>` : ''}
+        <button class="iconbtn iconbtn--sm" type="button" data-act="more" data-id="${esc(it.id)}" aria-haspopup="menu" title="${esc(t('image.gallery.more'))}" aria-label="${esc(t('image.gallery.more'))}">${icon('dots')}</button>
+        <button class="btn btn--cta btn--sm" type="button" data-act="open" data-id="${esc(it.id)}"${canOpen ? '' : ' disabled'}>${icon('brush')}<span>${esc(t('image.gallery.reproduce'))}</span></button>
+      </div>
+    </article>`;
+}
+function renderGallery(st){
+  if(!GAL.open) return;
+  const o = st.online || null;
+  const g = (o && o.gallery) || {items: [], page: 1, pages: 0, total: 0, loading: false, error: '', at: 0};
+  const grid = $('galleryGrid');
+  const items = g.items || [];
+  if($('gallerySort').value !== (g.sort || GAL.sort)) $('gallerySort').value = g.sort || GAL.sort;
+  txt('galleryCount', I18N.fmtNumber(g.total || items.length || 0));
+  if(o && o.server_ok && !g.at && !g.loading && !GAL.searched){ GAL.searched = true; api('gallery_list', 1, GAL.sort); }
+  if(!o || o.server_ok === false){
+    grid.innerHTML = `<div class="empty"><div class="big" aria-hidden="true">${icon('offline')}</div>${esc(t('image.gallery.offline'))}</div>`;
+  } else if(g.error){
+    grid.innerHTML = `<div class="empty"><div class="big" aria-hidden="true">${icon('warn')}</div>${esc(g.error)}
+      <div class="btnrow btnrow--center"><button class="btn btn--secondary btn--sm" type="button" data-act="retry">${esc(t('online.discover.retry'))}</button></div></div>`;
+  } else if(!items.length){
+    grid.innerHTML = `<div class="empty"><div class="big" aria-hidden="true">${icon(g.loading ? 'spinner' : 'image', g.loading ? 'ic--spin' : '')}</div>${esc(g.loading ? t('online.discover.loading') : t('image.gallery.empty'))}</div>`;
+  } else {
+    grid.innerHTML = items.map(it => galleryCardHtml(it, o)).join('');
+  }
+  grid.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+    const id = b.dataset.id, it = items.find(x => String(x.id) === String(id));
+    switch(b.dataset.act){
+      case 'retry': api('gallery_list', g.page || 1, GAL.sort); break;
+      case 'open': apiAction(b, 'gallery_open', id); break;
+      case 'like': toggleLike(o, 'gallery_like', id, items); break;
+      case 'share': if(it) shareMenu({anchor: b, url: it.page_url, text: t('share.drawing_text', {title: it.title || ''})}); break;
+      case 'more': galleryMore(b, it, o); break;
+    }
+  });
+  $('galleryPager').hidden = (g.pages || 0) < 2;
+  txt('galleryPage', t('online.discover.page', {page: g.page || 1, pages: g.pages || 1}));
+  $('galleryPrev').disabled = (g.page || 1) <= 1;
+  $('galleryNext').disabled = (g.page || 1) >= (g.pages || 1);
+}
+function galleryMore(anchor, it, o){
+  if(!it) return;
+  const logged = !!(o && o.logged_in);
+  const items = [{label: t('image.gallery.report'), icon: 'flag', disabled: !logged || it.mine, help: logged ? '' : t('image.gallery.need_account_short'),
+    fn: () => dialog({title: t('image.gallery.report_title'), icon: 'flag', ok: t('image.gallery.report_ok'), danger: true,
+      html: `<p>${esc(t('image.gallery.report_body', {title: it.title || t('image.gallery.untitled')}))}</p>
+        <label class="field"><span class="field__label">${esc(t('image.gallery.report_reason'))}</span>
+          <input class="input dlg-input" type="text" maxlength="500"></label>`})
+      .then(yes => { const inp = $('dlgBody').querySelector('.dlg-input'); const r = inp ? inp.value.trim() : '';
+        if(yes && r) api('gallery_report', it.id, r); else if(yes) toast(t('online.gallery.error.bad_reason'), 'warn'); })}];
+  if(it.mine) items.push({label: t('image.gallery.delete'), icon: 'trash',
+    fn: () => dialog({title: t('image.gallery.delete_title'), icon: 'trash', ok: t('image.gallery.delete_ok'), danger: true,
+      html: `<p>${esc(t('image.gallery.delete_body', {title: it.title || t('image.gallery.untitled')}))}</p>`})
+      .then(yes => { if(yes) api('gallery_delete', it.id); })});
+  menu(anchor, items);
+}
+view('gallery', {sig: st => {
+  const o = st.online || null;
+  return JSON.stringify([GAL.open, o && o.server_ok, o && o.logged_in, o && o.gallery, I18N.lang]);
+}, draw: renderGallery});
+// grille récupérée (bouton « Reproduire » ou lien dodotopia://drawing/<id>) : reprise une fois, ouverte dans Dessin
+view('drawingOpen', {sig: st => { const d = st.online && st.online.drawing_open; return d ? d.state + '|' + d.seq : ''; }, draw: st => {
+  const d = st.online && st.online.drawing_open;
+  if(!d || d.state !== 'ready' || GAL.takenSeq === d.seq) return;
+  GAL.takenSeq = d.seq;
+  api('gallery_take', d.seq).then(r => { if(r && r.ok && r.job) loadGridJob(r); });
+}});
+function loadGridJob(r){
+  const job = r.job || {};
+  if(!job.w || !job.h || !Array.isArray(job.cells)) return;
+  IMG.img = null; IMG.job = {format: job.format, w: job.w, h: job.h, cells: job.cells};
+  IMG.name = r.title || t('image.gallery.untitled'); IMG.w = job.w; IMG.h = job.h; IMG.source = {id: r.id};
+  DSHARE.upSeq = null;
+  showTab('image');
+  showDrawView('draw');
+  renderPixels();
+  toast(t('image.gallery.loaded', {title: IMG.name}), 'ok');
+}
+window.loadGridJob = loadGridJob;
+$('btnGallery').onclick = () => showDrawView('gallery');
+$('btnGalleryBig').onclick = () => showDrawView('gallery');
+$('galleryBack').onclick = () => showDrawView('draw');
+$('gallerySort').onchange = () => {
+  GAL.sort = $('gallerySort').value === 'popular' ? 'popular' : 'recent';
+  try{ localStorage.setItem('gallery.sort', GAL.sort); }catch(e){}
+  api('gallery_list', 1, GAL.sort);
+};
+$('galleryRefresh').onclick = () => { const g = S && S.online && S.online.gallery; api('gallery_list', (g && g.page) || 1, GAL.sort); };
+$('galleryPrev').onclick = () => { const g = S && S.online && S.online.gallery; api('gallery_list', Math.max(1, ((g && g.page) || 1) - 1), GAL.sort); };
+$('galleryNext').onclick = () => { const g = S && S.online && S.online.gallery; api('gallery_list', ((g && g.page) || 1) + 1, GAL.sort); };

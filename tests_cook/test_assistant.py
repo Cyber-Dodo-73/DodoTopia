@@ -111,3 +111,22 @@ def test_navigation_arriere_ignoree_hors_assistant():
     assert d.state == "idle" and c.state == "idle"
     assert d.back_point() is False and d.goto_step(0) is False
     assert c.back_point() is False and c.goto_step(0) is False
+
+
+def test_ecran_change_refuse_le_lancement(monkeypatch):
+    """Un calibrage fait sur un autre agencement d'écrans n'est plus valable : dessin et cuisine refusent."""
+    import bot
+    monkeypatch.setattr(bot, "virtual_screen", lambda: (0, 0, 1920, 1080))
+    assert bot.screen_changed(None) is False
+    assert bot.screen_changed([0, 0, 1920, 1080]) is False
+    assert bot.screen_changed([0, 0, 2560, 1440]) is True
+    d = _drawer()
+    d.draw_cfg["formats"]["16:9"] = {"rect": [0, 0, 500, 300], "screen": [0, 0, 2560, 1440]}
+    d.draw_cfg["palette"]["pos0"], d.draw_cfg["palette"]["pos1"] = [1, 1], [2, 2]
+    assert d.start({"format": "16:9", "w": 1, "h": 1, "cells": [0]}) is False
+    assert "écran a changé" in d.message
+    c = _cooker()
+    c.cook_cfg["screen"] = [0, 0, 2560, 1440]
+    monkeypatch.setattr(c, "calibrated", lambda: True)
+    assert c.start(delay=0) is False
+    assert "écran a changé" in c.message

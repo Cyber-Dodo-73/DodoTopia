@@ -41,6 +41,10 @@ def main():
     sizes = [n for n in SIZES if n <= max(im.size)] or [min(im.size)]
     images = [im.resize((n, n), Image.LANCZOS) for n in sizes]
     images[0].save(dst, format="ICO", sizes=[(n, n) for n in sizes], append_images=images[1:])
+    # logo de l'interface (256 px, ~16 Ko) : c'est lui qui est livre, pas le PNG source de 1,2 Mo
+    small = os.path.join(os.path.dirname(dst), "logo-256.png")
+    images[0].save(small, format="PNG", optimize=True)
+    print(f"{os.path.relpath(small, HERE)} genere ({os.path.getsize(small) // 1024} Ko)")
     print(f"{os.path.relpath(dst, HERE)} genere depuis {os.path.relpath(src, HERE)} "
           f"({' '.join(str(n) for n in sizes)} px)")
 

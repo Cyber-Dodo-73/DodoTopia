@@ -8,7 +8,7 @@
     "prev_song": "F9",
     "speed_down": "F10",
     "speed_up": "F11",
-    "next_instrument": "F12",
+    "next_instrument": "",
     "draw_point": "F3"
   },
   "start_delay": 1.0,
@@ -40,7 +40,7 @@
       "polyphony": null,
       "soundingPitchOffset": null
     },
-    "xiao": {
+    "lute": {
       "schemaVersion": 1,
       "layoutId": "diatonic-15-3row",
       "keyboardLayout": null,
@@ -50,7 +50,7 @@
       "polyphony": null,
       "soundingPitchOffset": null
     },
-    "lute": {
+    "xiao": {
       "schemaVersion": 1,
       "layoutId": "diatonic-15-3row",
       "keyboardLayout": null,
@@ -211,8 +211,6 @@
       "soundingPitchOffset": null
     }
   },
-  "keyboard_layout": "auto",
-  "instrument_favorites": [],
   "stop_on_input": true,
   "preview_volume": 100,
   "hold_mode": "note",
@@ -327,12 +325,12 @@
       "undo": null
     },
     "formats": {},
-    "step_delay": 0.037,
+    "step_delay": 0.02,
     "click_delay": 0.05,
     "fill_background": true,
     "skip_white": false,
     "verify": true,
-    "dense": true,
+    "dense": false,
     "refine": true,
     "outline": true,
     "mouse_glide": true,
@@ -347,11 +345,14 @@
     "latency": null,
     "beacon_freqs": null,
     "tune": 1.0,
-    "beacon_gap": 0.18,
+    "beacon_gap": 0.25,
     "beacon_hold": 0.12,
     "device": "",
     "calib": null,
-    "mode": "solo"
+    "mode": "solo",
+    "name": "",
+    "net_offset_ms": 0,
+    "last_room": null
   },
   "cook": {
     "points": {},
@@ -363,6 +364,16 @@
     "poll": 0.1,
     "match": 0.62,
     "green_px": 60,
-    "click_delay": 0.3
-  }
+    "click_delay": 0.3,
+    "cookers": 1,
+    "launch_guard": 8.0,
+    "launch_anytime": false
+  },
+  "keyboard_layout": "auto",
+  "instrument_favorites": [],
+  "min_press": 0.02,
+  "min_gap": 0.012,
+  "sustain": false,
+  "game_process": "Heartopia.exe",
+  "hotkeys_migrated_f12": true
 }

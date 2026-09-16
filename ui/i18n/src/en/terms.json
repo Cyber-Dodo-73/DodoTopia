@@ -1,0 +1,22 @@
+{
+  "terms.title": "DodoTopia Terms of Use",
+  "terms.sub": "Version {v} · The French version prevails.",
+  "terms.gist": "The essentials in 6 points",
+  "terms.full": "Full text of the terms",
+  "terms.lang_en": "Read in English",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "I have read and I accept the terms of use",
+  "terms.accept": "Accept and continue",
+  "terms.refuse": "Decline and quit",
+  "terms.why_scroll": "Scroll the text down to the end",
+  "terms.why_check": "Tick the box to accept",
+  "terms.ready": "All set, you can continue.",
+  "terms.loading": "Loading the terms…",
+  "terms.error": "The terms of use could not be loaded.",
+  "terms.confirm": "Quit DodoTopia without accepting?",
+  "terms.yes": "Yes, quit",
+  "terms.no": "Go back",
+  "terms.pos": "{p}% read",
+  "terms.pos_done": "Read to the end",
+  "terms.accept_failed": "Your acceptance could not be saved. Please try again."
+}

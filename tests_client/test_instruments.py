@@ -12,6 +12,7 @@ Les tables de touches viennent de sources communautaires ; « documenté par une
 """
 import json
 import os
+import threading
 import time
 from collections import deque
 
@@ -737,11 +738,17 @@ def api_stub(cfg, no_real_keys):
     on pose juste ce dont les méthodes « instruments » ont besoin. `get_state()` est neutralisé, les tests
     regardent la config écrite et les toasts, pas l'état d'affichage."""
     api = object.__new__(app.Api)
+    cfg["terms_accepted_version"] = __import__("terms").TERMS_VERSION   # CGU acceptées : les actions passent
     api._cfg = cfg
     api._cat = instruments.load_catalogue(ROOT)
     api._logs = deque(maxlen=50)
     api._toasts = deque(maxlen=10)
     api._toast_seq = 0
+    api._ui_lock = threading.RLock()
+    api._error = None
+    api._last_sync_msg = ""
+    api._songs_cache = None
+    api._game_window = ({"found": None, "foreground": None, "elevated": None}, 0.0)
     api._window = None
     api._minimized = False
     api._wizard = None
@@ -803,7 +810,7 @@ def test_assistant_test_rapide_ne_vaut_pas_validation_integrale(api_stub):
     assert api._wizard["tested"] is True
     etat = api.instrument_wizard_state()
     assert etat["next_status"] == "quick-tested", "trois frappes ne confirment pas 15 associations"
-    assert etat["next_status_label"] == instruments.STATUS_LABELS["quick-tested"]
+    assert etat["next_status_label"] == instruments.status_label("quick-tested")
     api.instrument_wizard_save()
     prof = cfg["instruments"]["conga"]
     assert prof["verificationStatus"] == "quick-tested"

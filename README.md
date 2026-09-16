@@ -31,8 +31,8 @@ Si le jeu ne reçoit pas les touches, lance le programme en administrateur (clic
 | F6 | Activité Musique : jouer dans le jeu / pause. Activité Dessin : lancer / arrêter le dessin. Activité Cuisine : lancer / arrêter la cuisine |
 | F7 | Stop (musique, dessin et cuisine) |
 | F8 / F9 | Musique suivante / précédente |
-| F10 / F11 | Vitesse - / + |
-| F12 | Instrument suivant |
+| F10 / F11 | Vitesse - / + (s'applique en cours de morceau, sans rafale ni silence) |
+| (aucune) | Instrument suivant : désactivé par défaut (F12 est la capture d'écran Steam) ; assignable dans Réglages |
 | F3 | Enregistrer une position pendant la configuration du dessin ou de la cuisine |
 
 Les raccourcis suivent l'activité ouverte dans DodoTopia : avec l'activité Dessin affichée, F6 ne lance jamais la musique. Modifiables dans **Réglages** (icône ⚙) : clique dans le champ et appuie sur la touche voulue.
@@ -165,6 +165,24 @@ L'écoute dans le logiciel joue exactement les notes qui seront envoyées (aprè
 - **Disposition du clavier** : `Auto`, `QWERTY` ou `AZERTY` (aussi réglable depuis le panneau « Voir les touches »). Ne change que les libellés affichés, jamais la position envoyée au jeu (voir *Instruments*).
 - **Transposition** : demi-tons ajoutés en plus de l'automatique.
 - **Volume** : volume de l'écoute dans le logiciel (curseur sous la vitesse).
+- **Appui minimal / écart minimal** (Avancé) : planchers de 20 ms et 12 ms pour que le jeu voie chaque frappe même à 60 images/s ; à monter si des notes répétées manquent.
+- **Pédale de sustain** (Avancé) : prolonge les notes tenues par la pédale (CC64) du fichier MIDI.
+- **Programme du jeu** (Avancé) : `Heartopia.exe` par défaut. La lecture, le dessin et la cuisine s'arrêtent dès que ce programme n'est plus au premier plan (sinon les touches et les clics partiraient dans une autre application). Vide = pas de vérification. L'état du jeu (trouvé, au premier plan, lancé en administrateur) est dans `game_window` de l'état, et **Tester une note** envoie une touche au jeu pour vérifier que les frappes arrivent.
+- **Pistes** : chaque morceau peut ignorer des pistes MIDI (choix mémorisé dans `library.json`, clé `tracks_off`) ; la piste de tempo est toujours lue.
+
+## Conditions d'utilisation obligatoires
+
+Personne ne peut utiliser DodoTopia sans avoir accepté les CGU (`legal/CGU-fr.md`, traduction `legal/CGU-en.md`, la version française fait foi) :
+
+- l'installeur les présente (page « Accord de licence » d'Inno Setup, `LicenseFile`, RTF générés par `.tools/make_legal.py`) ;
+- l'application les redemande au premier lancement et à chaque changement de `TERMS_VERSION` (`terms.py`), version portable comprise : écran bloquant, acceptation enregistrée dans `config.json` (`terms_accepted_version`, `terms_accepted_at`) et dans `dodotopia.log` ;
+- toutes les méthodes de l'API qui agissent (jouer, dessiner, cuisiner, importer, en ligne, mise à jour) sont refusées tant que l'acceptation manque (`TERMS_GATED` dans `app.py`), pas seulement l'interface.
+
+Pour publier une nouvelle version des CGU : modifier `legal/CGU-<lang>.md`, changer la ligne `Version :` et `terms.TERMS_VERSION` (un test vérifie qu'ils correspondent), régénérer les RTF. Relecture par un juriste conseillée avant publication.
+
+## Journal et fichiers de données
+
+`%APPDATA%\DodoTopia\dodotopia.log` (1 Mo × 3, rotation) reçoit tout : démarrage, réglages, arrêts, et **toute exception non rattrapée** (fil principal et fils de fond), avec un toast « Erreur interne » dans l'application. `config.json` et `library.json` sont écrits de façon atomique ; un `config.json` illisible est mis de côté (`config.json.broken-<date>`) et l'application démarre avec les réglages par défaut au lieu de planter.
 
 ## Logo
 
@@ -179,6 +197,10 @@ build.bat
 Produit `dist\DodoTopia\` (exe et fichiers), puis dans `release\` l'installeur `DodoTopia-x.y.z-Setup.exe` et le zip portable. La version est dans `version.py` : change-la avant chaque mise à jour.
 
 Outils : Python 3, PyInstaller et Pillow (installés par le script), Inno Setup 6 (`winget install JRSoftware.InnoSetup`). Variable `PYTHON` pour choisir l'interpréteur (défaut `py`).
+
+Ce qui est livré : `ui/`, `legal/` (CGU), `config.default.json`, `assets/logo.ico`, `assets/logo-256.png` (logo de l'interface généré par `make_icon.py`, le PNG source de 1,2 Mo n'est plus embarqué) et le catalogue des instruments (sans l'archive `source/`).
+
+**Signature Authenticode** (facultative, supprime l'avertissement SmartScreen) : définir `DODO_SIGN_PFX` (chemin du certificat .pfx) et `DODO_SIGN_PWD` avant `build.bat`, ou `DODO_SIGN_CMD` (commande complète qui reçoit le fichier à signer, par exemple Azure Trusted Signing). L'exe et l'installeur sont signés. Sans certificat, rien ne change.
 
 ## Antivirus : « Windows a protégé votre ordinateur »
 
@@ -244,7 +266,8 @@ DodoTopia fonctionne aussi sous Linux (session **X11 / Xorg** conseillée ; le j
 
 ## Fichiers
 
-- `app.py` : interface graphique (fenêtre WebView2) et API.
+- `app.py` : interface graphique (fenêtre WebView2) et API. `terms.py` : CGU (version, texte, acceptation). `logging_setup.py` : journal `dodotopia.log` et capture des exceptions. `i18n.py` + `ui/i18n.js` + `ui/i18n/<lang>.json` : traductions (`.tools/i18n_check.py` vérifie les clés).
+- `legal/` : CGU en Markdown (source) et RTF (installeur), `.tools/make_legal.py` pour régénérer.
 - `ui/index.html` : la page de l'interface (style Heartopia).
 - `core.py` : moteur musique (lecture MIDI, transposition, envoi des touches, écoute, interruption).
 - `instruments.py` : catalogue des instruments, dispositions de touches, profils de l'utilisateur, migration des anciens réglages, libellés AZERTY/QWERTY et détection des conflits de touches.

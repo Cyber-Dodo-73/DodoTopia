@@ -1,0 +1,12 @@
+{
+  "settings.error.unknown_path": "unknown setting: {path}",
+  "settings.error.number_expected": "number expected",
+  "settings.error.range": "between {lo} and {hi} {unit}",
+  "settings.error.unknown_value": "unknown value",
+  "settings.error.too_long": "{max} characters maximum",
+  "settings.error.key_required": "choose a key",
+  "settings.error.key_unknown": "unrecognized key",
+  "settings.error.hotkey_taken": "already used for \"{label}\"",
+  "settings.error.unknown_type": "unknown type",
+  "settings.error.unknown_section": "unknown section: {section}"
+}

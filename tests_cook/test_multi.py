@@ -82,6 +82,7 @@ class Poste:
         self.phase = phase
         self.t = time.perf_counter()
         self.plats = 0
+        self.gants_jusqua = 0.0     # la bulle « gants » reste affichée un instant après la récupération
 
     def passe(self, phase):
         self.phase = phase
@@ -100,6 +101,9 @@ class Ecran:
         self.events = []            # ("lance"|"anneau"|"rate"|"plat", index)
         self.rates = 0
         self.on_launch = None       # scénario : rappel juste après un « Cuisiner » (voir les tests)
+        self.menu_colle = False     # vrai jeu : un clic dans l'herbe ne ferme pas le menu Recettes
+        self.gants_restent = 0.0    # durée d'affichage des gants après la récupération
+        self.icone_cachee = False   # l'icône de la spatule n'est pas reconnaissable pendant l'anneau
 
     # ---- temps
     def _tick(self):
@@ -121,8 +125,15 @@ class Ecran:
         if self.menu:
             d.rectangle((0, 0, ECRAN[0], ECRAN[1]), fill=MENU)
             return im
+        now = time.perf_counter()
         for p in self.postes:
-            _bulle(d, p.pos, PHASE_ICONE[p.phase], anneau=(p.phase == "anneau"))
+            icone = "ready" if now < p.gants_jusqua else PHASE_ICONE[p.phase]
+            if p.phase == "anneau" and self.icone_cachee:
+                x, y = p.pos
+                d.ellipse((x - 40, y - 40, x + 40, y + 40), fill=GRIS)
+                d.ellipse((x - 48, y - 48, x + 48, y + 48), outline=VERT, width=6)
+                continue
+            _bulle(d, p.pos, icone, anneau=(p.phase == "anneau"))
         return im
 
     def grab(self, rect=None):
@@ -151,7 +162,7 @@ class Ecran:
                         self.events.append(("lance", poste.index))
                         if self.on_launch:
                             self.on_launch(poste)
-                elif not (abs(x - TILE[0]) < 30 and abs(y - TILE[1]) < 30):
+                elif not self.menu_colle and not (abs(x - TILE[0]) < 30 and abs(y - TILE[1]) < 30):
                     self.menu = False          # clic ailleurs : le menu se referme
                 return
             for p in self.postes:
@@ -167,6 +178,7 @@ class Ecran:
                     p.plats += 1
                     self.events.append(("plat", p.index))
                     p.passe("repos")
+                    p.gants_jusqua = time.perf_counter() + self.gants_restent
                 return
 
 
@@ -428,3 +440,41 @@ def test_test_detection_multi(jeu):
     ecran.postes = ecran.postes[:1]
     msg = c.test()
     assert "aucune autre bulle" in msg
+
+
+# ---------------------------------------------------------------- retours en jeu (2026-09-16)
+def test_menu_ouvert_par_erreur_est_utilise(jeu, souris_rapide):
+    """Bug vu en jeu : la bulle « gants » reste affichée après la récupération, un second clic tombe sur la
+    bulle « cuisiner » et ouvre le menu Recettes, qu'un clic dans l'herbe ne ferme pas. La boucle cliquait
+    l'herbe en silence pour toujours (plus de lancement, plus de spatule). Elle doit récupérer une seule fois
+    et continuer à cuisiner sur les deux cuisinières."""
+    ecran, c = jeu(phases=("pret", "repos"), launch_guard=0.0)
+    ecran.menu_colle = True
+    ecran.gants_restent = 0.4
+    tourne(c, ecran, duree=12.0, plats=4)
+    assert c.dishes >= 4, (ecran.events, c.logs)
+    assert c.dishes == sum(p.plats for p in ecran.postes), ecran.events
+    assert {i for e, i in ecran.events if e == "lance"} == {1, 2}, ecran.events
+    assert ecran.rates == 0, ecran.events
+
+
+def test_menu_colle_arrete_avec_un_message(jeu, souris_rapide, monkeypatch):
+    """Menu qui ne se ferme jamais (plus d'ingrédients) : arrêt explicite après 3 essais, pas une boucle muette."""
+    ecran, c = jeu(phases=("repos", "repos"))
+    ecran.menu = True
+    monkeypatch.setattr(ecran, "clic", lambda x, y: ecran.clics.append((x, y)))   # rien ne ferme le menu
+    monkeypatch.setattr(c, "_wait_menu", lambda want, timeout: c._menu_open() == want)
+    assert c.start(delay=0.0)
+    c._thread.join(timeout=10)
+    assert not c._thread.is_alive()
+    assert "plus d'ingrédients" in c.message, c.message
+    assert sum("menu Recettes ouvert" in l for l in c.logs) == 3, c.logs
+
+
+def test_anneau_sans_icone_reconnue(jeu, souris_rapide):
+    """L'anneau vert autour d'une bulle suivie suffit pour cliquer, même si l'icône n'est pas reconnue."""
+    ecran, c = jeu(phases=("cuisson", "cuisson"), launch_guard=0.0)
+    ecran.icone_cachee = True
+    tourne(c, ecran, duree=12.0, plats=2)
+    assert ecran.rates == 0, ecran.events
+    assert {i for e, i in ecran.events if e == "anneau"} == {1, 2}, ecran.events

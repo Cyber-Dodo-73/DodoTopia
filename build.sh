@@ -30,7 +30,7 @@ echo "[2/3] PyInstaller ($BUILD/dist/DodoTopia)..."
   --add-data "$PWD/ui:ui" --add-data "$PWD/assets:assets" --add-data "$PWD/config.default.json:." \
   --hidden-import mido --collect-all rtmidi --collect-all mss --collect-submodules Xlib \
   --hidden-import numpy --hidden-import soundcard --collect-data soundcard \
-  --hidden-import websocket --collect-data certifi \
+  --hidden-import websocket --collect-data certifi --hidden-import pypresence \
   --hidden-import webview.platforms.qt --hidden-import qtpy \
   --hidden-import PyQt6.QtWebEngineWidgets --hidden-import PyQt6.QtWebEngineCore --hidden-import PyQt6.QtWebChannel \
   --collect-all webview \

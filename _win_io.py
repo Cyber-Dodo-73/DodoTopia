@@ -6,12 +6,12 @@ import ctypes.wintypes as wt
 import os
 import subprocess
 
-from platform_io import SCANCODES, VKCODES
+from platform_io import SCANCODES, VKCODES, InjectionError
 
 try:
-    from PIL import ImageGrab
+    from PIL import Image, ImageGrab
 except ImportError:  # Pillow absent : pas de lecture d'ecran (palette par defaut, grille par defaut)
-    ImageGrab = None
+    Image = ImageGrab = None
 
 SCREEN_OK = ImageGrab is not None
 
@@ -49,7 +49,7 @@ class INPUT(ctypes.Structure):
     _fields_ = [("type", wt.DWORD), ("u", _INPUTUNION)]
 
 
-_user32 = ctypes.windll.user32
+_user32 = ctypes.WinDLL("user32", use_last_error=True)
 _user32.SendInput.argtypes = (wt.UINT, ctypes.POINTER(INPUT), ctypes.c_int)
 _user32.MapVirtualKeyW.argtypes = (wt.UINT, wt.UINT)
 _user32.GetAsyncKeyState.argtypes = (ctypes.c_int,)
@@ -79,10 +79,17 @@ def _make_input(key, up, mode):
 
 
 def send_keys(keys, up, mode):
+    """Envoie l'appui (up=False) ou le relachement (up=True) de `keys` en un seul SendInput (accord simultane).
+    Leve InjectionError si Windows refuse l'injection : c'est le cas quand le jeu tourne en administrateur et
+    pas DodoTopia (UIPI) ; avant, l'echec etait silencieux et la musique « jouait » dans le vide."""
     if not keys:
         return
     arr = (INPUT * len(keys))(*[_make_input(k, up, mode) for k in keys])
-    _user32.SendInput(len(keys), arr, ctypes.sizeof(INPUT))
+    ctypes.set_last_error(0)
+    sent = _user32.SendInput(len(keys), arr, ctypes.sizeof(INPUT))
+    if sent != len(keys):
+        code = ctypes.get_last_error()
+        raise InjectionError(f"SendInput clavier refusé ({sent}/{len(keys)} touches, code Windows {code})", code)
 
 
 def mouse_button_down():
@@ -133,13 +140,21 @@ def virtual_screen():
     return x, y, max(1, w), max(1, h)
 
 
+def abs_coord(v, origin, size):
+    """Coordonnee absolue SendInput (0..65535) qui atterrit exactement sur le pixel v : Windows convertit en
+    pixel par troncature de dx * taille / 65536, on vise donc le milieu du pixel. (L'ancienne formule
+    int((v - origine) * 65535 / (taille - 1)) tombait 1 a 2 px a cote sur deux tiers des positions, mesure sur
+    un bureau de 3600 x 1191 : fatal pour des cases de dessin de 4 px.)"""
+    return int((v - origin + 0.5) * 65536 / size)
+
+
 def _mouse(flags, x=None, y=None):
     inp = MINPUT()
     inp.type = INPUT_MOUSE
     if x is not None:
         vx, vy, vw, vh = virtual_screen()
-        inp.u.mi.dx = int((x - vx) * 65535 / (vw - 1))
-        inp.u.mi.dy = int((y - vy) * 65535 / (vh - 1))
+        inp.u.mi.dx = abs_coord(x, vx, vw)
+        inp.u.mi.dy = abs_coord(y, vy, vh)
         flags |= MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_MOVE
     inp.u.mi.dwFlags = flags
     ctypes.set_last_error(0)
@@ -160,14 +175,219 @@ def mouse_up():
 
 
 # ---------------------------------------------------------------- lecture d'ecran
+_gdi32 = ctypes.WinDLL("gdi32", use_last_error=True)
+_gdi32.CreateCompatibleDC.argtypes = (wt.HDC,)
+_gdi32.CreateCompatibleDC.restype = wt.HDC
+_gdi32.CreateCompatibleBitmap.argtypes = (wt.HDC, ctypes.c_int, ctypes.c_int)
+_gdi32.CreateCompatibleBitmap.restype = wt.HBITMAP
+_gdi32.SelectObject.argtypes = (wt.HDC, wt.HGDIOBJ)
+_gdi32.SelectObject.restype = wt.HGDIOBJ
+_gdi32.BitBlt.argtypes = (wt.HDC, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wt.HDC,
+                          ctypes.c_int, ctypes.c_int, wt.DWORD)
+_gdi32.BitBlt.restype = wt.BOOL
+_gdi32.GetDIBits.argtypes = (wt.HDC, wt.HBITMAP, wt.UINT, wt.UINT, ctypes.c_void_p, ctypes.c_void_p, wt.UINT)
+_gdi32.DeleteObject.argtypes = (wt.HGDIOBJ,)
+_gdi32.DeleteDC.argtypes = (wt.HDC,)
+_user32.GetDC.argtypes = (wt.HWND,)
+_user32.GetDC.restype = wt.HDC
+_user32.ReleaseDC.argtypes = (wt.HWND, wt.HDC)
+SRCCOPY = 0x00CC0020
+CAPTUREBLT = 0x40000000
+
+
+class _BITMAPINFOHEADER(ctypes.Structure):
+    _fields_ = [("biSize", wt.DWORD), ("biWidth", wt.LONG), ("biHeight", wt.LONG), ("biPlanes", wt.WORD),
+                ("biBitCount", wt.WORD), ("biCompression", wt.DWORD), ("biSizeImage", wt.DWORD),
+                ("biXPelsPerMeter", wt.LONG), ("biYPelsPerMeter", wt.LONG), ("biClrUsed", wt.DWORD),
+                ("biClrImportant", wt.DWORD)]
+
+
+def _grab_gdi(x1, y1, x2, y2):
+    """Copie de la seule zone demandee (BitBlt), en coordonnees du bureau virtuel. Avant, chaque lecture de
+    quelques pixels passait par ImageGrab qui capture TOUT le bureau (66 Mo sur deux ecrans 4K) puis rogne :
+    la cuisine faisait cela plusieurs fois par tour de 100 ms."""
+    w, h = int(x2 - x1), int(y2 - y1)
+    if w <= 0 or h <= 0:
+        return None
+    screen = _user32.GetDC(None)
+    if not screen:
+        return None
+    mem = bmp = None
+    try:
+        mem = _gdi32.CreateCompatibleDC(screen)
+        bmp = _gdi32.CreateCompatibleBitmap(screen, w, h)
+        if not mem or not bmp:
+            return None
+        old = _gdi32.SelectObject(mem, bmp)
+        if not _gdi32.BitBlt(mem, 0, 0, w, h, screen, int(x1), int(y1), SRCCOPY | CAPTUREBLT):
+            return None
+        bi = _BITMAPINFOHEADER()
+        bi.biSize = ctypes.sizeof(_BITMAPINFOHEADER)
+        bi.biWidth, bi.biHeight = w, -h          # hauteur negative : lignes de haut en bas
+        bi.biPlanes, bi.biBitCount, bi.biCompression = 1, 32, 0
+        buf = ctypes.create_string_buffer(w * h * 4)
+        _gdi32.SelectObject(mem, old)
+        if _gdi32.GetDIBits(mem, bmp, 0, h, buf, ctypes.byref(bi), 0) != h:
+            return None
+        return Image.frombuffer("RGB", (w, h), buf.raw, "raw", "BGRX", 0, 1)
+    finally:
+        if bmp:
+            _gdi32.DeleteObject(bmp)
+        if mem:
+            _gdi32.DeleteDC(mem)
+        _user32.ReleaseDC(None, screen)
+
+
 def grab(rect=None):
     if ImageGrab is None:
         return None
     try:
         if rect:
             x1, y1, x2, y2 = rect
+            img = _grab_gdi(x1, y1, x2, y2)
+            if img is not None:
+                return img
             return ImageGrab.grab(bbox=(x1, y1, x2, y2), all_screens=True).convert("RGB")
         return ImageGrab.grab(all_screens=True).convert("RGB")
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------- fenetre du jeu
+_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+_user32.GetForegroundWindow.restype = wt.HWND
+_user32.GetWindowThreadProcessId.argtypes = (wt.HWND, ctypes.POINTER(wt.DWORD))
+_user32.GetWindowThreadProcessId.restype = wt.DWORD
+_user32.GetKeyboardLayout.argtypes = (wt.DWORD,)
+_user32.GetKeyboardLayout.restype = wt.HKL
+_user32.IsWindowVisible.argtypes = (wt.HWND,)
+_kernel32.OpenProcess.argtypes = (wt.DWORD, wt.BOOL, wt.DWORD)
+_kernel32.OpenProcess.restype = wt.HANDLE
+_kernel32.QueryFullProcessImageNameW.argtypes = (wt.HANDLE, wt.DWORD, wt.LPWSTR, ctypes.POINTER(wt.DWORD))
+_kernel32.CloseHandle.argtypes = (wt.HANDLE,)
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+TOKEN_QUERY = 0x0008
+TokenElevation = 20
+_ENUM_PROC = ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
+
+
+def _process_name(pid):
+    if not pid:
+        return None
+    h = _kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not h:
+        return None
+    try:
+        size = wt.DWORD(1024)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if _kernel32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+            return os.path.basename(buf.value)
+        return None
+    finally:
+        _kernel32.CloseHandle(h)
+
+
+def _process_elevated(pid):
+    """Vrai si le processus tourne avec un jeton eleve (administrateur). None si indeterminable (souvent :
+    processus eleve alors que nous ne le sommes pas, OpenProcess est alors refuse)."""
+    h = _kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not h:
+        return None
+    token = wt.HANDLE()
+    try:
+        if not _advapi32.OpenProcessToken(h, TOKEN_QUERY, ctypes.byref(token)):
+            return None
+        elevation = wt.DWORD(0)
+        size = wt.DWORD(0)
+        ok = _advapi32.GetTokenInformation(token, TokenElevation, ctypes.byref(elevation),
+                                           ctypes.sizeof(elevation), ctypes.byref(size))
+        return bool(elevation.value) if ok else None
+    finally:
+        if token:
+            _kernel32.CloseHandle(token)
+        _kernel32.CloseHandle(h)
+
+
+def _foreground_pid():
+    hwnd = _user32.GetForegroundWindow()
+    if not hwnd:
+        return 0, None
+    pid = wt.DWORD(0)
+    tid = _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return int(pid.value), int(tid)
+
+
+def foreground_process_name():
+    """Nom de l'executable de la fenetre active (« Heartopia.exe »), ou None si inconnu."""
+    try:
+        pid, _ = _foreground_pid()
+        return _process_name(pid)
+    except Exception:
+        return None
+
+
+def _find_process_windows(process_name):
+    """PID du processus `process_name` qui possede une fenetre visible, ou 0."""
+    wanted = process_name.lower()
+    found = []
+    seen = {}
+
+    def cb(hwnd, _):
+        if not _user32.IsWindowVisible(hwnd):
+            return True
+        pid = wt.DWORD(0)
+        _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        p = int(pid.value)
+        if p in seen:
+            return True
+        name = _process_name(p)
+        seen[p] = name
+        if name and name.lower() == wanted:
+            found.append(p)
+            return False
+        return True
+
+    _user32.EnumWindows(_ENUM_PROC(cb), 0)
+    return found[0] if found else 0
+
+
+def game_window_info(process_name):
+    """Etat du jeu pour l'interface : {found, foreground, elevated}. Chaque valeur peut etre None (inconnu).
+    `elevated` : le jeu tourne en administrateur (les touches seront refusees si DodoTopia ne l'est pas)."""
+    info = {"found": None, "foreground": None, "elevated": None}
+    if not process_name:
+        return info
+    try:
+        fg_pid, _ = _foreground_pid()
+        fg_name = _process_name(fg_pid)
+        if fg_name and fg_name.lower() == process_name.lower():
+            pid = fg_pid
+            info["foreground"] = True
+        else:
+            pid = _find_process_windows(process_name)
+            info["foreground"] = False
+        info["found"] = bool(pid)
+        if pid:
+            elevated = _process_elevated(pid)
+            # OpenProcess refuse depuis un processus non eleve = tres probablement eleve
+            info["elevated"] = True if (elevated is None and not is_admin()) else bool(elevated)
+    except Exception:
+        pass
+    return info
+
+
+def foreground_keyboard_layout():
+    """Disposition clavier ('azerty' | 'qwerty' | None) du fil de la fenetre active : celle que le jeu lit,
+    pas celle de DodoTopia (les deux peuvent differer quand l'utilisateur a plusieurs claviers)."""
+    try:
+        _, tid = _foreground_pid()
+        hkl = _user32.GetKeyboardLayout(tid or 0)
+        lang = int(hkl) & 0xFFFF if hkl else 0
+        primary = lang & 0x3FF
+        if primary == 0x0C:       # francais (France, Belgique, Suisse…) : AZERTY, sauf le canadien (QWERTY)
+            return "qwerty" if lang in (0x0C0C,) else "azerty"
+        return "qwerty" if lang else None
     except Exception:
         return None
 
@@ -194,7 +414,10 @@ class MidiOut:
 
     def __init__(self):
         self.h = wt.HANDLE()
-        self.ok = _winmm.midiOutOpen(ctypes.byref(self.h), MIDI_MAPPER, 0, 0, 0) == 0
+        rc = _winmm.midiOutOpen(ctypes.byref(self.h), MIDI_MAPPER, 0, 0, 0)
+        self.ok = rc == 0
+        # code MMRESULT en cas d'echec (4 = MMSYSERR_ALLOCATED : peripherique deja pris, 2 = pas de peripherique)
+        self.error = "" if self.ok else f"midiOutOpen a échoué (code {rc})"
         self.sounding = set()
 
     def _msg(self, status, d1, d2):

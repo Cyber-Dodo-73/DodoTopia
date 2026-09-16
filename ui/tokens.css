@@ -1,0 +1,128 @@
+/* ================================================================ DodoTopia : jetons du système de design v2
+   Deux niveaux, et seulement deux :
+   1. --hp-*  palette BRUTE relevée sur les menus d'Heartopia (crème, écorce, ambre, caramel, teal, olive, rose).
+      Privée : aucun composant ne la lit, seuls les jetons sémantiques ci-dessous y puisent.
+   2. --c-*, --fs-*, --sp-*, --r-*, --sh-*, --dur-*, --ease, --tap : la SEULE référence des composants (app.css).
+   Le thème sombre ne redéfinit que les jetons sémantiques de couleur et d'ombre. Choix : localStorage
+   « dodotopia.theme » (auto | light | dark, ui/theme.js) posé en data-theme sur <html> ; « auto » suit le système. */
+:root{
+  /* ---- palette brute */
+  --hp-cream-0:#ffffff; --hp-cream-50:#fffaf1; --hp-cream-100:#fbf5ea; --hp-cream-200:#f8ead3; --hp-cream-300:#f4ead8;
+  --hp-cream-400:#efe3cf; --hp-cream-500:#eadcc3; --hp-cream-600:#e4d4ba; --hp-cream-700:#d8cfbe;
+  --hp-bark-300:#c7b9ad; --hp-bark-400:#9c8a7f; --hp-bark-500:#7d6a5f; --hp-bark-600:#6b5a52; --hp-bark-800:#4a3527;
+  --hp-bark-900:#2a211c; --hp-bark-950:#221a16;
+  --hp-brown-400:#c98644; --hp-brown-500:#b56f3f; --hp-brown-600:#9a5a2f; --hp-brown-700:#7d4826;
+  --hp-amber-100:#fbe7bd; --hp-amber-200:#f6d99a; --hp-amber-300:#f3c25c; --hp-amber-500:#e8a531; --hp-amber-600:#c98a1f; --hp-amber-800:#8a5f0f;
+  --hp-caramel-100:#f2dcb3; --hp-caramel-300:#cbb48e; --hp-caramel-500:#c98644; --hp-caramel-ink:#fff8ec;
+  --hp-teal-50:#dff6f4; --hp-teal-100:#bfe9e6; --hp-teal-300:#7fd6d0; --hp-teal-400:#46cbc4; --hp-teal-600:#1f7f79; --hp-teal-700:#187b75; --hp-teal-800:#125e59;
+  --hp-olive-50:#eef2da; --hp-olive-100:#d6e0b0; --hp-olive-400:#9fb356; --hp-olive-800:#5e6f2b;
+  --hp-rose-50:#fde3e3; --hp-rose-100:#f0b9b9; --hp-rose-500:#c94f5a; --hp-rose-700:#a83b46;
+
+  /* ---- couleurs sémantiques (thème clair) */
+  --c-bg:var(--hp-cream-300); --c-bg-deep:var(--hp-cream-500);
+  --c-bg-glow:#fff8ea; --c-bg-glow-2:#f0dcc0;                          /* halos du fond de page */
+  --c-surface:var(--hp-cream-0); --c-surface-2:var(--hp-cream-100); --c-surface-warm:var(--hp-cream-200);
+  --c-media:var(--hp-cream-0);                                         /* fond derrière une image (instrument, schéma) */
+  --c-line:var(--hp-cream-400); --c-line-2:var(--hp-cream-600);
+  --c-text:var(--hp-bark-600); --c-text-2:var(--hp-bark-500); --c-text-disabled:var(--hp-bark-400);
+  --c-deco:var(--hp-bark-300);                                         /* icônes inactives, points : jamais du texte */
+  --c-hover:rgba(255,255,255,.72); --c-glass:rgba(255,255,255,.55); --c-glass-line:rgba(255,255,255,.85);
+  --c-scrim:rgba(244,234,216,.75); --c-scrim-strong:rgba(74,53,39,.34);
+  /* marque : brun Heartopia (titres de section, onglet actif, touches) */
+  --c-brand:var(--hp-brown-500); --c-brand-strong:var(--hp-brown-600); --c-brand-edge:var(--hp-brown-700); --c-brand-ink:#ffffff;
+  --c-brand-soft:rgba(181,111,63,.14);
+  /* ambre : boutons standards (texte brun foncé 5,2:1) et sélection */
+  --c-primary:var(--hp-amber-500); --c-primary-2:var(--hp-amber-300); --c-primary-edge:var(--hp-amber-600);
+  --c-primary-ink:var(--hp-bark-800); --c-primary-soft:var(--hp-amber-100); --c-primary-line:var(--hp-amber-200);
+  /* teal foncé : appel à l'action principal (blanc 4,6:1) */
+  --c-cta:var(--hp-teal-700); --c-cta-2:var(--hp-teal-300); --c-cta-edge:var(--hp-teal-800); --c-cta-ink:#ffffff; --c-cta-soft:var(--hp-teal-50);
+  --c-danger:var(--hp-rose-500); --c-danger-edge:var(--hp-rose-700); --c-danger-ink:#ffffff; --c-danger-text:var(--hp-rose-700);
+  --c-danger-soft:var(--hp-rose-50); --c-danger-line:var(--hp-rose-100);
+  --c-ok:var(--hp-olive-800); --c-ok-soft:var(--hp-olive-50); --c-ok-line:var(--hp-olive-100); --c-ok-dot:var(--hp-olive-400);
+  --c-warn:var(--hp-amber-800); --c-warn-soft:var(--hp-amber-100); --c-warn-line:#f3d79a;
+  --c-info:var(--hp-teal-600); --c-info-soft:var(--hp-teal-50); --c-info-line:var(--hp-teal-100); --c-info-dot:var(--hp-teal-400);
+  --c-focus:var(--hp-teal-700);
+  /* touches de clavier dessinées et pastilles caramel du jeu */
+  --c-key:#f6f1e6; --c-key-edge:var(--hp-cream-700); --c-key-ink:#3c3c3c; --c-key-black:#6d6a66; --c-key-black-edge:#4a4744; --c-key-black-ink:#ffffff;
+  --c-caramel:var(--hp-caramel-500); --c-caramel-ring:var(--hp-caramel-100); --c-caramel-edge:var(--hp-caramel-300); --c-caramel-ink:var(--hp-caramel-ink);
+  --c-knob:#ffffff; --c-on-color-veil:rgba(0,0,0,.18); --c-on-dark-veil:rgba(255,255,255,.26);
+  --c-checker:#e9dfcd; --c-checker-2:var(--hp-cream-100);
+
+  /* ---- typographie */
+  --font-body:"Nunito","Segoe UI",system-ui,sans-serif;
+  --font-title:"Fredoka","Nunito","Segoe UI",system-ui,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:18px; --fs-2xl:22px; --fs-3xl:28px;
+  --fs-display:40px;                                                   /* compte à rebours seulement */
+
+  /* ---- espacements, rayons */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-7:32px;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:24px; --r-pill:999px;
+
+  /* ---- ombres teintées brun */
+  --sh-1:0 3px 10px rgba(107,90,82,.12);
+  --sh-2:0 4px 18px rgba(107,90,82,.08);
+  --sh-3:0 20px 50px rgba(107,90,82,.25);
+
+  /* ---- mouvement, cibles */
+  --dur-fast:.1s; --dur:.16s; --dur-slow:.26s; --ease:cubic-bezier(.2,.7,.3,1);
+  --tap:40px;
+  color-scheme:light;
+}
+@media (pointer:coarse){ :root{ --tap:44px } }
+/* chinois, japonais, thaï : polices système qui ont ces écritures (Nunito et Fredoka sont latines) */
+html[lang^="zh"]{--font-body:"Nunito","Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+  --font-title:"Fredoka","Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif}
+html[lang="ja"]{--font-body:"Nunito","Yu Gothic UI","Meiryo UI","Meiryo","Hiragino Sans","Noto Sans CJK JP",system-ui,sans-serif;
+  --font-title:"Fredoka","Yu Gothic UI","Meiryo UI","Meiryo","Hiragino Sans","Noto Sans CJK JP",system-ui,sans-serif}
+html[lang="th"]{--font-body:"Nunito","Leelawadee UI","Leelawadee","Noto Sans Thai",system-ui,sans-serif;
+  --font-title:"Fredoka","Leelawadee UI","Leelawadee","Noto Sans Thai",system-ui,sans-serif}
+
+/* ================================================================ thème sombre : brun profond, surfaces écorce, texte crème.
+   Mêmes jetons, valeurs éclaircies pour garder un contraste >= 4,5:1 (texte) sur --c-surface. */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --c-bg:#2a211c; --c-bg-deep:#221a16; --c-bg-glow:#3a2c22; --c-bg-glow-2:#1c1512;
+    --c-surface:#3a2f28; --c-surface-2:#332923; --c-surface-warm:#45372d; --c-media:#efe5d3;
+    --c-line:#4b3e35; --c-line-2:#5d4d41;
+    --c-text:#f4ead8; --c-text-2:#cfbfae; --c-text-disabled:#9a8878; --c-deco:#7a6a5d;
+    --c-hover:rgba(255,255,255,.07); --c-glass:rgba(0,0,0,.2); --c-glass-line:rgba(255,255,255,.06);
+    --c-scrim:rgba(20,15,12,.66); --c-scrim-strong:rgba(12,9,7,.62);
+    --c-brand:#e2a878; --c-brand-strong:#d0935c; --c-brand-edge:#97633a; --c-brand-ink:#2a1d12; --c-brand-soft:rgba(226,168,120,.13);
+    --c-primary:#f0b54a; --c-primary-2:#f6ca75; --c-primary-edge:#b27e22; --c-primary-ink:#2a1d10; --c-primary-soft:#4a3a22; --c-primary-line:#6e5427;
+    --c-cta:#5fcdc5; --c-cta-2:#8fe0da; --c-cta-edge:#2f928b; --c-cta-ink:#0f2624; --c-cta-soft:#1f3a38;
+    --c-danger:#e5787f; --c-danger-edge:#a8474f; --c-danger-ink:#2a1013; --c-danger-text:#f3a2a7; --c-danger-soft:#4a2b2d; --c-danger-line:#7a3f44;
+    --c-ok:#c5d98a; --c-ok-soft:#343a24; --c-ok-line:#57622f; --c-ok-dot:#a9bf5f;
+    --c-warn:#f2c667; --c-warn-soft:#46371f; --c-warn-line:#6f5526;
+    --c-info:#86dcd5; --c-info-soft:#1f3a38; --c-info-line:#2f5f5b; --c-info-dot:#5fcdc5;
+    --c-focus:#86dcd5;
+    --c-key:#efe5d3; --c-key-edge:#8f7f6e; --c-key-ink:#2f2a26; --c-key-black:#1f1a17; --c-key-black-edge:#0d0b0a; --c-key-black-ink:#f4ead8;
+    --c-caramel:#c98644; --c-caramel-ring:#5a4331; --c-caramel-edge:#2a1f18; --c-caramel-ink:#fff8ec;
+    --c-knob:#f4ead8; --c-on-color-veil:rgba(0,0,0,.16); --c-on-dark-veil:rgba(0,0,0,.14);
+    --c-checker:#d9cfbd; --c-checker-2:#efe5d3;
+    --sh-1:0 3px 10px rgba(0,0,0,.28); --sh-2:0 4px 18px rgba(0,0,0,.22); --sh-3:0 20px 50px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --c-bg:#2a211c; --c-bg-deep:#221a16; --c-bg-glow:#3a2c22; --c-bg-glow-2:#1c1512;
+  --c-surface:#3a2f28; --c-surface-2:#332923; --c-surface-warm:#45372d; --c-media:#efe5d3;
+  --c-line:#4b3e35; --c-line-2:#5d4d41;
+  --c-text:#f4ead8; --c-text-2:#cfbfae; --c-text-disabled:#9a8878; --c-deco:#7a6a5d;
+  --c-hover:rgba(255,255,255,.07); --c-glass:rgba(0,0,0,.2); --c-glass-line:rgba(255,255,255,.06);
+  --c-scrim:rgba(20,15,12,.66); --c-scrim-strong:rgba(12,9,7,.62);
+  --c-brand:#e2a878; --c-brand-strong:#d0935c; --c-brand-edge:#97633a; --c-brand-ink:#2a1d12; --c-brand-soft:rgba(226,168,120,.13);
+  --c-primary:#f0b54a; --c-primary-2:#f6ca75; --c-primary-edge:#b27e22; --c-primary-ink:#2a1d10; --c-primary-soft:#4a3a22; --c-primary-line:#6e5427;
+  --c-cta:#5fcdc5; --c-cta-2:#8fe0da; --c-cta-edge:#2f928b; --c-cta-ink:#0f2624; --c-cta-soft:#1f3a38;
+  --c-danger:#e5787f; --c-danger-edge:#a8474f; --c-danger-ink:#2a1013; --c-danger-text:#f3a2a7; --c-danger-soft:#4a2b2d; --c-danger-line:#7a3f44;
+  --c-ok:#c5d98a; --c-ok-soft:#343a24; --c-ok-line:#57622f; --c-ok-dot:#a9bf5f;
+  --c-warn:#f2c667; --c-warn-soft:#46371f; --c-warn-line:#6f5526;
+  --c-info:#86dcd5; --c-info-soft:#1f3a38; --c-info-line:#2f5f5b; --c-info-dot:#5fcdc5;
+  --c-focus:#86dcd5;
+  --c-key:#efe5d3; --c-key-edge:#8f7f6e; --c-key-ink:#2f2a26; --c-key-black:#1f1a17; --c-key-black-edge:#0d0b0a; --c-key-black-ink:#f4ead8;
+  --c-caramel:#c98644; --c-caramel-ring:#5a4331; --c-caramel-edge:#2a1f18; --c-caramel-ink:#fff8ec;
+  --c-knob:#f4ead8; --c-on-color-veil:rgba(0,0,0,.16); --c-on-dark-veil:rgba(0,0,0,.14);
+  --c-checker:#d9cfbd; --c-checker-2:#efe5d3;
+  --sh-1:0 3px 10px rgba(0,0,0,.28); --sh-2:0 4px 18px rgba(0,0,0,.22); --sh-3:0 20px 50px rgba(0,0,0,.5);
+  color-scheme:dark;
+}

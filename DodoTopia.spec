@@ -2,9 +2,9 @@
 from PyInstaller.utils.hooks import collect_data_files
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('ui', 'ui'), ('assets', 'assets'), ('config.default.json', '.')]
+datas = [('ui', 'ui'), ('legal', 'legal'), ('config.default.json', '.'), ('assets/logo.ico', 'assets'), ('assets/logo-256.png', 'assets'), ('assets/instruments/catalogue.json', 'assets/instruments'), ('assets/instruments/layouts.json', 'assets/instruments'), ('assets/instruments/CREDITS.md', 'assets/instruments')]
 binaries = []
-hiddenimports = ['keyboard', 'mido', 'webview', 'numpy', 'soundcard', 'websocket']
+hiddenimports = ['keyboard', 'mido', 'webview', 'numpy', 'soundcard', 'websocket', 'nacl']
 datas += collect_data_files('soundcard')
 datas += collect_data_files('certifi')
 tmp_ret = collect_all('webview')

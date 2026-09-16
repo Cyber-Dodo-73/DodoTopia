@@ -1,0 +1,12 @@
+{
+  "settings.error.unknown_path": "未知设置：{path}",
+  "settings.error.number_expected": "需要数字",
+  "settings.error.range": "介于 {lo} 和 {hi} {unit} 之间",
+  "settings.error.unknown_value": "未知值",
+  "settings.error.too_long": "最多 {max} 个字符",
+  "settings.error.key_required": "请选择一个按键",
+  "settings.error.key_unknown": "无法识别的按键",
+  "settings.error.hotkey_taken": "已用于“{label}”",
+  "settings.error.unknown_type": "未知类型",
+  "settings.error.unknown_section": "未知分区：{section}"
+}

@@ -4,7 +4,8 @@
 # 2. build-windows : build.bat -> release/DodoTopia-<v>-Setup.exe + -portable.zip
 # 3. build-linux   : docker/Dockerfile.linux -> release/DodoTopia-<v>-linux-x64.tar.gz
 # 4. github-release: tag vX.Y.Z + release GitHub avec les binaires attaches (page de telechargement publique)
-# 5. publish       : publish_release.py -> PUT des binaires + POST publish sur le serveur (secrets PUBLISH_URL/PUBLISH_TOKEN)
+# 5. publish       : publish_release.py -> PUT des binaires + POST publish sur le serveur (secrets PUBLISH_URL/PUBLISH_TOKEN,
+#                    RELEASE_SIGNING_KEY = cle privee Ed25519 base64 qui signe le manifeste ; voir `py publish_release.py --gen-key`)
 #                    C'est le serveur qui alimente la mise a jour automatique ; la release GitHub est pour les humains.
 name: Release
 
@@ -156,6 +157,7 @@ jobs:
         env:
           PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: |
           ls -la release/
           if [ -z "$PUBLISH_URL" ] || [ -z "$PUBLISH_TOKEN" ]; then
@@ -169,4 +171,12 @@ jobs:
           else
             NOTES=(--notes "DodoTopia $VERSION")
           fi
+          if [ -z "$RELEASE_SIGNING_KEY" ]; then
+            echo "::warning::Secret RELEASE_SIGNING_KEY absent : manifeste publié sans signature (refusé si le serveur exige une signature). Génère la paire avec : py publish_release.py --gen-key"
+          else
+            python3 -m pip install --quiet pynacl
+          fi
           python3 publish_release.py --version "$VERSION" --release-dir release "${NOTES[@]}"
+
+      # Annonce des versions : Discord seulement, envoyée par le serveur (DISCORD_ANNOUNCE_WEBHOOK). L'annonce sur
+      # X et Bluesky (.tools/post_social.py) est prête mais volontairement non branchée.

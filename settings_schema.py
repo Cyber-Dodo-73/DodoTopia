@@ -13,6 +13,7 @@ import copy
 import cook
 import core
 import draw
+import i18n
 import sync
 
 try:
@@ -23,7 +24,28 @@ except Exception:  # noqa - module absent tant que la partie en ligne n'est pas 
 
 
 class SettingError(ValueError):
-    """Valeur refusée : le message est affiché sous le champ."""
+    """Valeur refusée : le message (traduit par i18n.t) est affiché sous le champ."""
+
+
+# Raccourcis globaux, dans l'ordre du panneau Réglages ; leurs libellés sont les clés
+# `settings.hotkeys.<nom>.label` du catalogue de l'interface (voir hotkey_label).
+HOTKEY_NAMES = ("play_pause", "stop", "next_song", "prev_song", "speed_down", "speed_up", "next_instrument",
+                "draw_point")
+I18N_KEYS = ["settings.hotkeys.play_pause.label", "settings.hotkeys.stop.label", "settings.hotkeys.next_song.label",
+             "settings.hotkeys.prev_song.label", "settings.hotkeys.speed_down.label", "settings.hotkeys.speed_up.label",
+             "settings.hotkeys.next_instrument.label", "settings.hotkeys.draw_point.label",
+             # intégrations (Discord, OBS) : champs ajoutés par l'interface à partir de leur chemin
+             "settings.online.rich_presence.label", "settings.online.rich_presence.help",
+             "settings.online.now_playing_file.label", "settings.online.now_playing_file.help"]
+
+
+def hotkey_label(name):
+    """Libellé affiché d'un raccourci (langue courante)."""
+    return i18n.t(f"settings.hotkeys.{name}.label")
+
+
+def hotkey_labels():
+    return {name: hotkey_label(name) for name in HOTKEY_NAMES}
 
 
 # ---------------------------------------------------------------- description des champs
@@ -51,12 +73,22 @@ def Str(maxlen=120, section="lecture", after=None):
 
 # after : nom de la méthode de Api à appeler après l'écriture (effet de bord)
 SCHEMA = {
+    # ---- général
+    "general.lang": Choice("auto", *i18n.LANGS, section="general", after="_on_lang"),
     # ---- lecture dans le jeu
     "start_delay": Num(0.0, 10.0, "s", step=0.5),
     "stop_on_input": Bool(),
     "hold_mode": Choice("note", "tap"),
     "hold_time": Num(0.01, 0.5, "ms", scale=1000, step=5),
+    # planchers d'appui et d'écart entre deux frappes de la même touche (une image à 60 i/s = 16,7 ms)
+    "min_press": Num(0.005, 0.06, "ms", scale=1000, step=1),
+    "min_gap": Num(0.005, 0.06, "ms", scale=1000, step=1),
+    # pédale de sustain (CC64) du fichier MIDI : prolonger les notes tenues, ou garder la durée écrite
+    "sustain": Bool(),
     "input_mode": Choice("scancode", "vk"),
+    # exécutable du jeu : la lecture, le dessin et la cuisine vérifient qu'il est au premier plan
+    # (vide = aucune vérification)
+    "game_process": Str(64),
     "transpose_semitones": Int(-24, 24, "½ ton", after="_on_transpose"),
     "preview_volume": Int(0, 100, "%", after="_on_volume"),
     # Disposition du clavier physique : ne change que les légendes affichées, jamais la position envoyée
@@ -98,17 +130,23 @@ SCHEMA = {
     "online.server_url": Str(200, section="online", after="_on_server_url"),
     "online.check_updates": Bool(section="online", after="_on_check_updates"),
     "online.auto_update": Bool(section="online"),
+    # Discord Rich Presence (presence.py) et fichier « en cours de lecture » pour OBS (DATA_DIR/nowplaying.txt)
+    "online.rich_presence": Bool(section="online", after="_on_rich_presence"),
+    "online.now_playing_file": Bool(section="online", after="_on_now_playing_file"),
 }
 
-SECTIONS = ("lecture", "hotkeys", "multi", "draw", "grids", "cook", "online")
+# valeurs par défaut des intégrations (absentes de online.DEFAULT_ONLINE)
+INTEGRATION_DEFAULTS = {"rich_presence": True, "now_playing_file": False}
+
+SECTIONS = ("general", "lecture", "hotkeys", "multi", "draw", "grids", "cook", "online")
 
 
 # ---------------------------------------------------------------- valeurs par défaut
 def defaults():
     """Dict plat chemin → valeur par défaut (seulement les chemins décrits dans SCHEMA)."""
-    out = {}
-    for k in ("start_delay", "stop_on_input", "hold_mode", "hold_time", "input_mode",
-              "transpose_semitones", "preview_volume", "keyboard_layout"):
+    out = {"general.lang": "auto"}
+    for k in ("start_delay", "stop_on_input", "hold_mode", "hold_time", "min_press", "min_gap", "sustain",
+              "input_mode", "game_process", "transpose_semitones", "preview_volume", "keyboard_layout"):
         out[k] = core.DEFAULT_CONFIG[k]
     for k, v in core.DEFAULT_CONFIG["hotkeys"].items():
         out["hotkeys." + k] = v
@@ -130,6 +168,8 @@ def defaults():
     out["online.server_url"] = _ONLINE_DEFAULTS.get("server_url", "")
     out["online.check_updates"] = bool(_ONLINE_DEFAULTS.get("check_updates", True))
     out["online.auto_update"] = bool(_ONLINE_DEFAULTS.get("auto_update", True))
+    for k, v in INTEGRATION_DEFAULTS.items():
+        out["online." + k] = v
     return out
 
 
@@ -142,7 +182,7 @@ def _spec(path):
         pp = pattern.split(".")
         if len(pp) == len(parts) and all(a == "*" or a == b for a, b in zip(pp, parts)):
             return spec
-    raise SettingError(f"réglage inconnu : {path}")
+    raise SettingError(i18n.t("settings.error.unknown_path", path=path))
 
 
 def _container(cfg, path, create=False):
@@ -160,7 +200,7 @@ def _container(cfg, path, create=False):
     for p in parts[:-1]:
         if p not in node or not isinstance(node[p], dict):
             if not create:
-                raise SettingError(f"réglage inconnu : {path}")
+                raise SettingError(i18n.t("settings.error.unknown_path", path=path))
             node[p] = {}
         node = node[p]
     return node, parts[-1]
@@ -197,42 +237,49 @@ def validate(path, value, cfg=None):
         try:
             v = float(value)
         except (TypeError, ValueError):
-            raise SettingError("nombre attendu")
+            raise SettingError(i18n.t("settings.error.number_expected"))
         if t == "num":
             v = v / spec["scale"]
             lo, hi = spec["min"], spec["max"]
             if not lo <= v <= hi:
-                raise SettingError(f"entre {to_ui(path, lo)} et {to_ui(path, hi)} {spec['unit']}".strip())
+                raise SettingError(i18n.t("settings.error.range", lo=to_ui(path, lo), hi=to_ui(path, hi),
+                                          unit=spec["unit"]).strip())
             return round(v, 4)
         v = int(round(v))
         if not spec["min"] <= v <= spec["max"]:
-            raise SettingError(f"entre {spec['min']} et {spec['max']} {spec['unit']}".strip())
+            raise SettingError(i18n.t("settings.error.range", lo=spec["min"], hi=spec["max"],
+                                      unit=spec["unit"]).strip())
         return v
     if t == "choice":
         if value not in spec["choices"]:
-            raise SettingError("valeur inconnue")
+            raise SettingError(i18n.t("settings.error.unknown_value"))
         return value
     if t == "str":
         s = str(value or "").strip()
         if len(s) > spec["maxlen"]:
-            raise SettingError(f"{spec['maxlen']} caractères maximum")
+            raise SettingError(i18n.t("settings.error.too_long", max=spec["maxlen"]))
         return s
     if t == "hotkey":
         import platform_io
         s = str(value or "").strip()
         if not s:
-            raise SettingError("choisis une touche")
+            # raccourci désactivé : permis pour les actions facultatives (instrument suivant), jamais pour
+            # celles qui rendent la main (lecture / arrêt) ni pour le repère de calibrage
+            if path.split(".")[-1] in ("play_pause", "stop", "draw_point"):
+                raise SettingError(i18n.t("settings.error.key_required"))
+            return ""
         try:
             platform_io.parse_hotkey(s)
         except Exception:
-            raise SettingError("touche non reconnue")
+            raise SettingError(i18n.t("settings.error.key_unknown"))
         if cfg is not None:
             mine = path.split(".")[-1]
             for name, combo in cfg.get("hotkeys", {}).items():
                 if name != mine and combo and combo.lower() == s.lower():
-                    raise SettingError(f"déjà utilisé pour « {HOTKEY_LABELS.get(name, name)} »")
+                    label = hotkey_label(name) if name in HOTKEY_NAMES else name
+                    raise SettingError(i18n.t("settings.error.hotkey_taken", label=label))
         return s
-    raise SettingError("type inconnu")
+    raise SettingError(i18n.t("settings.error.unknown_type"))
 
 
 def set_value(cfg, path, value):
@@ -251,7 +298,7 @@ def set_value(cfg, path, value):
 def reset(cfg, section):
     """Remet tous les champs d'une section à leur défaut ; renvoie les effets de bord à appliquer."""
     if section not in SECTIONS:
-        raise SettingError(f"section inconnue : {section}")
+        raise SettingError(i18n.t("settings.error.unknown_section", section=section))
     afters = []
     for path, dflt in defaults().items():
         if _spec(path)["section"] != section:
@@ -282,9 +329,3 @@ def for_ui(cfg):
         out[path] = item
     return out
 
-
-HOTKEY_LABELS = {
-    "play_pause": "Jouer / pause", "stop": "Arrêter", "next_song": "Musique suivante",
-    "prev_song": "Musique précédente", "speed_down": "Ralentir", "speed_up": "Accélérer",
-    "next_instrument": "Instrument suivant", "draw_point": "Repère (calibrage du dessin)",
-}

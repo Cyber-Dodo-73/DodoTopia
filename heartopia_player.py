@@ -5,6 +5,28 @@ import sys
 import time
 
 import core
+import platform_io
+
+
+def bind_hotkeys(player, cfg):
+    """Raccourcis globaux + crochet d'interruption (version console seulement ; l'interface a les siens)."""
+    actions = {
+        "play_pause": lambda: player.play_pause("game"), "stop": player.stop,
+        "next_song": player.next_song, "prev_song": player.prev_song,
+        "speed_down": player.speed_down, "speed_up": player.speed_up,
+        "next_instrument": player.next_instrument,
+    }
+    handles = []
+    for name, fn in actions.items():
+        combo = cfg["hotkeys"].get(name)
+        if combo:
+            try:
+                handles.append(platform_io.add_hotkey(combo, fn))
+            except Exception as e:  # noqa
+                player.log(f"raccourci invalide {combo!r} : {e}")
+    if player._hook is None:
+        player._hook = platform_io.hook(player._on_key_event)
+    return handles
 
 
 def main():
@@ -14,7 +36,7 @@ def main():
         ids = [i.id for i in player.instruments]
         if sys.argv[1].lower() in ids:
             player.set_instrument(ids.index(sys.argv[1].lower()))
-    core.bind_hotkeys(player, cfg)
+    bind_hotkeys(player, cfg)
     hk = cfg["hotkeys"]
     print("=" * 60)
     print(" DodoTopia (console)")

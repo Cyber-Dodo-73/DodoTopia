@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     DISCORD_CLIENT_SECRET: str = ""
     ADMIN_DISCORD_IDS: str = ""                         # IDs Discord séparés par des virgules
     PUBLISH_TOKEN: str = ""                             # jeton de publish_release.py (vide = publication désactivée)
+    # Clé publique Ed25519 (32 octets, base64) qui signe les manifestes de mise à jour. Définie : toute
+    # publication doit porter une signature valide du `signed_payload`. Vide : signature facultative, non vérifiée.
+    RELEASE_SIGNING_PUBLIC_KEY: str = ""
     DATA_DIR: str = "/data"                             # volume : songs/, tmp/, releases/ (+ dodo.db en SQLite)
     MAX_MIDI_BYTES: int = 2 * 1024 * 1024               # bibliothèque
     ROOM_SONG_MAX_BYTES: int = 512 * 1024               # morceau éphémère d'un salon
@@ -34,13 +37,36 @@ class Settings(BaseSettings):
     REQUEST_OVERHEAD_BYTES: int = 64 * 1024             # en-têtes multipart autour du fichier
     RATE_LIMIT: int = 1                                 # 0 = limitation désactivée (tests)
     SESSION_DAYS: int = 90
+    SESSION_TOUCH_S: int = 3600                         # last_used_at / expires_at réécrits au plus une fois par heure
     LOGIN_TICKET_S: int = 600
+    LOGIN_CODE_ATTEMPTS: int = 5                        # essais du code affiché dans l'app avant mise en erreur du ticket
     MIN_CLIENT_VERSION: str = "1.7.0"                   # en dessous : salons refusés (version_too_old)
     ROOM_GRACE_S: float = 60                            # siège gardé après perte de la WebSocket
     ROOM_EMPTY_TTL_S: float = 120                       # salon vide supprimé après ce délai
     ROOM_MAX_PLAYERS: int = 8
     ROOM_IDLE_S: float = 20                             # connexion muette fermée (le client ping toutes les 5 s)
     TMP_SONG_TTL_S: float = 2 * 3600
+    # --- Site public ---
+    COMMUNITY_DISCORD_URL: str = ""                     # lien d'invitation Discord (vide = section masquée)
+    PLAUSIBLE_SCRIPT_URL: str = ""                      # ex. https://plausible.io/js/script.js (vide = pas de mesure)
+    SITE_VERIFICATION_GOOGLE: str = ""                  # contenu de la balise google-site-verification
+    SITE_VERIFICATION_BING: str = ""                    # contenu de la balise msvalidate.01
+    SITE_PAGE_TTL_S: float = 300                        # cache mémoire des pages HTML rendues
+    SONG_INDEX_MIN_NOTES: int = 50                      # fiche publique d'un morceau plus courte : `noindex`
+    # --- Annonces ---
+    DISCORD_ANNOUNCE_WEBHOOK: str = ""                  # webhook Discord (https) : annonce de chaque version publiée
+    # --- Import par lien (Online Sequencer, BitMidi, URL .mid) ---
+    IMPORT_TIMEOUT_S: float = 10                        # par requête sortante
+    IMPORT_MAX_REDIRECTS: int = 2
+    IMPORT_CACHE_DAYS: float = 7                        # cache disque DATA_DIR/import_cache
+    IMPORT_TOKEN_TTL_S: float = 600                     # jeton de récupération du fichier importé (usage unique)
+    IMPORT_DIRECT_HOSTS: str = ""                       # URL .mid directes : hôtes autorisés (virgules) ; vide = tout hôte public
+    # --- Galerie de dessins ---
+    MAX_DRAWING_PNG_BYTES: int = 512 * 1024
+    MAX_DRAWING_CELLS_BYTES: int = 200 * 1024
+    MAX_DRAWING_PX: int = 1024                          # largeur et hauteur maximales du PNG
+    DRAWING_THUMB_PX: int = 400
+    MAX_DRAWING_TITLE_LEN: int = 60
 
     @property
     def public_url(self) -> str:
@@ -71,6 +97,23 @@ class Settings(BaseSettings):
         return self.data_dir / "releases"
 
     @property
+    def drawings_dir(self) -> Path:
+        return self.data_dir / "drawings"
+
+    @property
+    def import_cache_dir(self) -> Path:
+        return self.data_dir / "import_cache"
+
+    @property
+    def og_cache_dir(self) -> Path:
+        return self.data_dir / "og_cache"
+
+    @property
+    def direct_import_hosts(self) -> set[str]:
+        return {x.strip().lower() for x in self.IMPORT_DIRECT_HOSTS.split(",") if x.strip()}
+
+    @property
     def max_request_bytes(self) -> int:
         """Taille maximale du corps d'une requête ordinaire (les envois de binaires de release sont exemptés)."""
-        return max(self.MAX_MIDI_BYTES, self.ROOM_SONG_MAX_BYTES) + self.REQUEST_OVERHEAD_BYTES
+        return (max(self.MAX_MIDI_BYTES, self.ROOM_SONG_MAX_BYTES,
+                    self.MAX_DRAWING_PNG_BYTES + self.MAX_DRAWING_CELLS_BYTES) + self.REQUEST_OVERHEAD_BYTES)

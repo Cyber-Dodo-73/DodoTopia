@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import math
 import os
 import re
@@ -14,11 +15,12 @@ import mido
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from . import db
+from . import db, social
 from .auth import api_error, get_current_user, get_optional_user, is_admin, require_admin, settings_of
 from .config import Settings
 from .ratelimit import limit
-from .schemas import RejectIn, ReportIn, ResolveIn, SongPatch, clean_text
+from .schemas import (LICENSES, MAX_TAGS, SONG_TAGS, MetaError, RejectIn, ReportIn, ResolveIn, SongPatch, clean_text,
+                      normalize_license, normalize_source_name, normalize_source_url, normalize_tags)
 
 router = APIRouter()
 
@@ -270,8 +272,44 @@ def song_path(settings: Settings, sha: str) -> Path:
     return settings.songs_dir / f"{sha}.mid"
 
 
-def song_public(row: db.Row, settings: Settings) -> dict:
-    return {
+def load_tags(raw) -> list[str]:
+    """Colonne `songs.tags` (texte JSON) -> liste ; toute valeur illisible ou hors liste blanche est ignorée."""
+    try:
+        value = json.loads(raw or "[]")
+    except (TypeError, ValueError):
+        return []
+    return [t for t in value if isinstance(t, str) and t in SONG_TAGS][:MAX_TAGS] if isinstance(value, list) else []
+
+
+def instrument_ids() -> set[str]:
+    """Identifiants d'instruments connus (catalogue servi par le site) ; vide si le catalogue est illisible."""
+    from .site_pages.instruments import instrument_catalogue  # import tardif : le site dépend de ce module
+    try:
+        return {str(t["id"]) for t in instrument_catalogue().get("types", [])}
+    except Exception:  # noqa - catalogue indisponible : repli sur le motif
+        return set()
+
+
+_INSTRUMENT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+
+
+def normalize_instrument(value: str | None) -> str | None:
+    v = (value or "").strip().lower()
+    if not v:
+        return None
+    known = instrument_ids()
+    if (known and v not in known) or not _INSTRUMENT_RE.match(v):
+        raise MetaError("bad_instrument", "Instrument inconnu.")
+    return v
+
+
+def meta_error(e: MetaError):
+    return api_error(422, e.code, str(e))
+
+
+def song_public(row: db.Row, settings: Settings, liked: bool | None = None) -> dict:
+    keys = row.keys()
+    body = {
         "id": row["id"],
         "sha256": row["sha256"],
         "title": row["title"],
@@ -287,10 +325,23 @@ def song_public(row: db.Row, settings: Settings) -> dict:
         "downloads": row["downloads"],
         "created_at": row["created_at"],
         "download_url": f"{settings.public_url}/api/songs/{row['id']}/download",
+        "tags": load_tags(row["tags"]) if "tags" in keys else [],
+        "instrument": row["instrument"] if "instrument" in keys else None,
+        "source_url": row["source_url"] if "source_url" in keys else None,
+        "source_name": row["source_name"] if "source_name" in keys else None,
+        "license": (row["license"] if "license" in keys else None) or "unknown",
+        "likes": int(row["likes"] or 0) if "likes" in keys else 0,
+        "updated_at": (row["updated_at"] if "updated_at" in keys else None) or row["created_at"],
     }
+    if liked is not None:
+        body["liked_by_me"] = bool(liked)
+    return body
 
 
-SONG_SELECT = "SELECT s.*, u.username AS uploader_name FROM songs s JOIN users u ON u.id = s.uploader_id"
+# Un morceau approuvé survit à la suppression du compte de son déposant (uploader_id NULL) : jointure externe.
+DELETED_UPLOADER_NAME = "Compte supprimé"
+SONG_SELECT = (f"SELECT s.*, COALESCE(u.username, '{DELETED_UPLOADER_NAME}') AS uploader_name "
+               "FROM songs s LEFT JOIN users u ON u.id = s.uploader_id")
 
 
 def fetch_song(conn: db.Connection, song_id: int) -> db.Row:
@@ -308,24 +359,63 @@ def can_see(row: db.Row, user: db.Row | None, settings: Settings) -> bool:
 
 # --- Public ----------------------------------------------------------------------
 
-@router.get("/api/songs")
-def list_songs(request: Request, q: str = "", page: int = 1, per_page: int = 50, sort: str = "recent",
-               conn: db.Connection = Depends(db.get_db)):
-    settings = settings_of(request)
-    page = max(1, page)
-    per_page = max(1, min(100, per_page))
-    order = {"recent": "s.created_at DESC, s.id DESC", "popular": "s.downloads DESC, s.id DESC",
-             "title": "LOWER(s.title) ASC, s.id ASC"}.get(sort, "s.created_at DESC, s.id DESC")
+SONG_SORTS = ("recent", "popular", "trending", "likes", "title")
+_SONG_ORDER = {"recent": "s.created_at DESC, s.id DESC", "popular": "s.downloads DESC, s.id DESC",
+               "likes": "s.likes DESC, s.id DESC", "title": "LOWER(s.title) ASC, s.id ASC"}
+
+
+def query_songs(conn: db.Connection, q: str = "", tag: str = "", instrument: str = "", sort: str = "recent",
+                page: int = 1, per_page: int = 50) -> tuple[list[db.Row], int]:
+    """Morceaux approuvés filtrés et triés (API et site) : (lignes de la page, total).
+
+    `tag` hors liste blanche ou `instrument` mal formé : aucun résultat (pas d'erreur, le site passe la requête
+    telle quelle). `sort=trending` : score calculé en Python sur les TRENDING_POOL plus récents qui passent les
+    filtres (identique sous SQLite et Postgres, travail borné)."""
     where, args = ["s.status='approved'"], []
-    if q.strip():
-        like = f"%{q.strip()}%"
+    q = clean_text(q, 100)
+    if q:
+        like = f"%{q}%"
         where.append("(LOWER(s.title) LIKE LOWER(?) OR LOWER(s.artist) LIKE LOWER(?) OR LOWER(s.original_name) LIKE LOWER(?))")
         args += [like, like, like]
+    tag = (tag or "").strip().lower()
+    if tag:
+        if tag not in SONG_TAGS:
+            return [], 0
+        where.append("s.tags LIKE ?")               # tags : JSON d'identifiants de la liste blanche, sans guillemet
+        args.append(f'%"{tag}"%')
+    instrument = (instrument or "").strip().lower()
+    if instrument:
+        if not _INSTRUMENT_RE.match(instrument):
+            return [], 0
+        where.append("s.instrument=?")
+        args.append(instrument)
     w = " AND ".join(where)
+    if sort == "trending":
+        pool = conn.execute(f"{SONG_SELECT} WHERE {w} ORDER BY s.created_at DESC, s.id DESC LIMIT ?",
+                            args + [social.TRENDING_POOL]).fetchall()
+        pool.sort(key=lambda r: (-social.trending_score(r["downloads"], r["likes"], r["created_at"]), -r["id"]))
+        return pool[(page - 1) * per_page:page * per_page], len(pool)
+    order = _SONG_ORDER.get(sort, _SONG_ORDER["recent"])
     total = conn.execute(f"SELECT COUNT(*) FROM songs s WHERE {w}", args).fetchone()[0]
     rows = conn.execute(f"{SONG_SELECT} WHERE {w} ORDER BY {order} LIMIT ? OFFSET ?",
                         args + [per_page, (page - 1) * per_page]).fetchall()
-    return {"items": [song_public(r, settings) for r in rows], "page": page, "per_page": per_page,
+    return rows, int(total)
+
+
+def public_list(conn: db.Connection, settings: Settings, rows: list[db.Row], user) -> list[dict]:
+    liked = social.liked_ids(conn, "song", user["id"], [r["id"] for r in rows]) if user is not None else None
+    return [song_public(r, settings, (r["id"] in liked) if liked is not None else None) for r in rows]
+
+
+@router.get("/api/songs")
+def list_songs(request: Request, q: str = "", page: int = 1, per_page: int = 50, sort: str = "recent",
+               tag: str = "", instrument: str = "", user=Depends(get_optional_user),
+               conn: db.Connection = Depends(db.get_db)):
+    settings = settings_of(request)
+    page = max(1, min(page, 10_000))
+    per_page = max(1, min(100, per_page))
+    rows, total = query_songs(conn, q, tag, instrument, sort, page, per_page)
+    return {"items": public_list(conn, settings, rows, user), "page": page, "per_page": per_page,
             "total": total, "pages": max(1, math.ceil(total / per_page))}
 
 
@@ -336,10 +426,34 @@ def get_song(song_id: int, request: Request, user=Depends(get_optional_user),
     row = fetch_song(conn, song_id)
     if not can_see(row, user, settings):
         raise api_error(404, "not_found", "Morceau introuvable.")
-    return song_public(row, settings)
+    liked = bool(social.liked_ids(conn, "song", user["id"], [song_id])) if user is not None else None
+    return song_public(row, settings, liked)
 
 
-@router.get("/api/songs/{song_id}/download")
+def _like_song(song_id: int, request: Request, user, conn: db.Connection, liked: bool) -> dict:
+    settings = settings_of(request)
+    row = fetch_song(conn, song_id)
+    if not can_see(row, user, settings):
+        raise api_error(404, "not_found", "Morceau introuvable.")
+    if row["status"] != "approved":
+        raise api_error(409, "not_approved", "Seul un morceau publié peut être aimé.")
+    likes = social.set_like(conn, "song", song_id, user["id"], liked)
+    return {"ok": True, "id": song_id, "liked": liked, "likes": likes}
+
+
+@router.post("/api/songs/{song_id}/like", dependencies=[Depends(limit("like", 60, 60, by="user"))])
+def like_song(song_id: int, request: Request, user=Depends(get_current_user),
+              conn: db.Connection = Depends(db.get_db)):
+    return _like_song(song_id, request, user, conn, True)
+
+
+@router.delete("/api/songs/{song_id}/like", dependencies=[Depends(limit("like", 60, 60, by="user"))])
+def unlike_song(song_id: int, request: Request, user=Depends(get_current_user),
+                conn: db.Connection = Depends(db.get_db)):
+    return _like_song(song_id, request, user, conn, False)
+
+
+@router.get("/api/songs/{song_id}/download", dependencies=[Depends(limit("song_download", 60, 60))])
 def download_song(song_id: int, request: Request, user=Depends(get_optional_user),
                   conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
@@ -363,8 +477,16 @@ def download_song(song_id: int, request: Request, user=Depends(get_optional_user
 
 @router.post("/api/songs", status_code=201, dependencies=[Depends(limit("upload", 10, 3600, by="user"))])
 async def upload_song(request: Request, file: UploadFile = File(...), title: str = Form(""), artist: str = Form(""),
+                      tags: str = Form(""), instrument: str = Form(""), source_url: str = Form(""),
+                      source_name: str = Form(""), license: str = Form(""),
                       user=Depends(get_current_user), conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
+    try:   # métadonnées validées avant de lire le fichier : un refus ne coûte ni lecture ni analyse
+        meta = {"tags": json.dumps(normalize_tags(tags)), "instrument": normalize_instrument(instrument),
+                "source_url": normalize_source_url(source_url), "source_name": normalize_source_name(source_name),
+                "license": normalize_license(license)}
+    except MetaError as e:
+        raise meta_error(e)
     data = await read_upload(file, settings.MAX_MIDI_BYTES)
     if not data:
         raise api_error(422, "invalid_midi", "Fichier vide.")
@@ -386,12 +508,14 @@ async def upload_song(request: Request, file: UploadFile = File(...), title: str
     artist = clean_text(artist, settings.MAX_TEXT_LEN) or None
     path = song_path(settings, sha)
     path.write_bytes(data)
+    now = db.now_iso()
     try:
         cur = conn.execute(
             """INSERT INTO songs (sha256, title, artist, original_name, size, duration_s, note_count, uploader_id,
-                                  status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?) RETURNING id""",
+                                  status, created_at, updated_at, tags, instrument, source_url, source_name, license)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
             (sha, title, artist, original, len(data), info["duration_s"], info["note_count"], user["id"],
-             db.now_iso()),
+             now, now, meta["tags"], meta["instrument"], meta["source_url"], meta["source_name"], meta["license"]),
         )
         new_id = cur.fetchone()["id"]
         conn.commit()
@@ -417,11 +541,31 @@ def patch_song(song_id: int, body: SongPatch, request: Request, user=Depends(get
     settings = settings_of(request)
     row = fetch_song(conn, song_id)
     _owner_or_admin(row, user, settings)
+    updates: dict[str, object] = {}
     if body.title is not None:      # SongPatch a déjà nettoyé (None si le titre ne contenait que de l'invisible)
-        conn.execute("UPDATE songs SET title=? WHERE id=?", (body.title, song_id))
+        updates["title"] = body.title
     if body.artist is not None:
-        conn.execute("UPDATE songs SET artist=? WHERE id=?", (body.artist, song_id))
-    conn.commit()
+        updates["artist"] = body.artist
+    fields = body.model_fields_set
+    try:
+        if "tags" in fields:
+            updates["tags"] = json.dumps(normalize_tags(body.tags))
+        if "instrument" in fields:
+            updates["instrument"] = normalize_instrument(body.instrument)
+        if "source_url" in fields:
+            updates["source_url"] = normalize_source_url(body.source_url)
+        if "source_name" in fields:
+            updates["source_name"] = normalize_source_name(body.source_name)
+        if "license" in fields:
+            updates["license"] = normalize_license(body.license)
+    except MetaError as e:
+        raise meta_error(e)
+    if updates:
+        updates["updated_at"] = db.now_iso()
+        # Noms de colonnes : clés fixes ci-dessus, jamais issues de la requête.
+        conn.execute(f"UPDATE songs SET {', '.join(f'{k}=?' for k in updates)} WHERE id=?",
+                     [*updates.values(), song_id])
+        conn.commit()
     return song_public(fetch_song(conn, song_id), settings)
 
 
@@ -455,14 +599,14 @@ def report_song(song_id: int, body: ReportIn, request: Request, user=Depends(get
     if not body.reason:
         raise api_error(422, "bad_reason", "Explique en quelques mots ce qui ne va pas.")
     try:
-        cur = conn.execute("INSERT INTO reports (song_id, reporter_id, reason, created_at) VALUES (?, ?, ?, ?) "
-                           "RETURNING id", (song_id, user["id"], body.reason, db.now_iso()))
+        cur = conn.execute("INSERT INTO reports (target_type, song_id, reporter_id, reason, created_at) "
+                           "VALUES ('song', ?, ?, ?, ?) RETURNING id", (song_id, user["id"], body.reason, db.now_iso()))
         report_id = cur.fetchone()["id"]
         conn.commit()
     except db.IntegrityError:
         conn.rollback()
         raise api_error(409, "already_reported", "Tu as déjà signalé ce morceau.")
-    return {"id": report_id, "song_id": song_id}
+    return {"id": report_id, "song_id": song_id, "target_type": "song", "target_id": song_id}
 
 
 # --- Admin -----------------------------------------------------------------------
@@ -486,8 +630,9 @@ def approve_song(song_id: int, request: Request, admin=Depends(require_admin),
                  conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
     fetch_song(conn, song_id)
-    conn.execute("UPDATE songs SET status='approved', reject_reason=NULL, reviewed_by=?, reviewed_at=? WHERE id=?",
-                 (admin["id"], db.now_iso(), song_id))
+    now = db.now_iso()
+    conn.execute("UPDATE songs SET status='approved', reject_reason=NULL, reviewed_by=?, reviewed_at=?, updated_at=? "
+                 "WHERE id=?", (admin["id"], now, now, song_id))
     conn.commit()
     return song_public(fetch_song(conn, song_id), settings)
 
@@ -504,13 +649,31 @@ def reject_song(song_id: int, body: RejectIn, request: Request, admin=Depends(re
 
 
 @router.get("/api/admin/reports", dependencies=[Depends(require_admin)])
-def admin_reports(open: int = 1, conn: db.Connection = Depends(db.get_db)):
-    where = "r.resolved_at IS NULL" if open else "1=1"
+def admin_reports(open: int = 1, target_type: str = "", conn: db.Connection = Depends(db.get_db)):
+    """Signalements des morceaux et des dessins. `target_type=song|drawing` pour filtrer ; chaque ligne porte
+    `target_type`, `target_id`, `target_title`, `target_status` (et, pour compatibilité, `song_title`/`song_status`)."""
+    where = ["r.resolved_at IS NULL"] if open else ["1=1"]
+    args: list = []
+    if target_type:
+        if target_type not in ("song", "drawing"):
+            raise api_error(422, "bad_target_type", "target_type doit valoir song ou drawing.")
+        where.append("r.target_type=?")
+        args.append(target_type)
     rows = conn.execute(
-        f"""SELECT r.*, s.title AS song_title, s.status AS song_status, u.username AS reporter_name
-            FROM reports r JOIN songs s ON s.id = r.song_id JOIN users u ON u.id = r.reporter_id
-            WHERE {where} ORDER BY r.created_at ASC""").fetchall()
-    return {"items": [dict(r) for r in rows]}
+        f"""SELECT r.*, s.title AS song_title, s.status AS song_status, d.title AS drawing_title,
+                   d.status AS drawing_status, u.username AS reporter_name
+            FROM reports r LEFT JOIN songs s ON s.id = r.song_id LEFT JOIN drawings d ON d.id = r.drawing_id
+            JOIN users u ON u.id = r.reporter_id
+            WHERE {' AND '.join(where)} ORDER BY r.created_at ASC, r.id ASC""", args).fetchall()
+    items = []
+    for r in rows:
+        item = dict(r)
+        is_drawing = item.get("target_type") == "drawing"
+        item["target_id"] = item["drawing_id"] if is_drawing else item["song_id"]
+        item["target_title"] = item["drawing_title"] if is_drawing else item["song_title"]
+        item["target_status"] = item["drawing_status"] if is_drawing else item["song_status"]
+        items.append(item)
+    return {"items": items}
 
 
 @router.post("/api/admin/reports/{report_id}/resolve")
@@ -521,16 +684,27 @@ def resolve_report(report_id: int, body: ResolveIn, request: Request, admin=Depe
     if rep is None:
         raise api_error(404, "not_found", "Signalement introuvable.")
     now = db.now_iso()
-    if body.action == "remove_song":
-        # Le morceau est supprimé (les signalements suivent en cascade) : on renvoie l'état final directement.
-        row = conn.execute(f"{SONG_SELECT} WHERE s.id=?", (rep["song_id"],)).fetchone()
-        if row is not None:
-            delete_song(conn, settings, row)
-        return {"id": report_id, "resolution": "remove_song", "resolved_at": now, "song_removed": row is not None}
+    is_drawing = rep["target_type"] == "drawing"
+    if body.action != "dismiss":
+        # La cible est supprimée (ses signalements suivent en cascade) : on renvoie l'état final directement.
+        if is_drawing:
+            from .gallery import delete_drawing, fetch_drawing_row  # import tardif (gallery dépend de ce module)
+            row = fetch_drawing_row(conn, rep["drawing_id"])
+            if row is not None:
+                delete_drawing(conn, settings, row)
+        else:
+            row = conn.execute(f"{SONG_SELECT} WHERE s.id=?", (rep["song_id"],)).fetchone()
+            if row is not None:
+                delete_song(conn, settings, row)
+        removed = row is not None
+        return {"id": report_id, "resolution": body.action, "resolved_at": now, "target_type": rep["target_type"],
+                "song_removed": removed and not is_drawing, "drawing_removed": removed and is_drawing,
+                "target_removed": removed}
     conn.execute("UPDATE reports SET resolved_at=?, resolved_by=?, resolution=? WHERE id=?",
                  (now, admin["id"], body.action, report_id))
     conn.commit()
-    return {"id": report_id, "resolution": body.action, "resolved_at": now, "song_removed": False}
+    return {"id": report_id, "resolution": body.action, "resolved_at": now, "target_type": rep["target_type"],
+            "song_removed": False, "drawing_removed": False, "target_removed": False}
 
 
 @router.post("/api/admin/users/{user_id}/ban")
@@ -545,6 +719,8 @@ def ban_user(user_id: int, request: Request, admin=Depends(require_admin),
     conn.execute("UPDATE users SET banned=1 WHERE id=?", (user_id,))
     conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
     conn.execute("UPDATE songs SET status='rejected', reject_reason='ban', reviewed_by=?, reviewed_at=? "
+                 "WHERE uploader_id=? AND status='pending'", (admin["id"], db.now_iso(), user_id))
+    conn.execute("UPDATE drawings SET status='rejected', reject_reason='ban', reviewed_by=?, reviewed_at=? "
                  "WHERE uploader_id=? AND status='pending'", (admin["id"], db.now_iso(), user_id))
     conn.commit()
     return {"ok": True, "user_id": user_id}

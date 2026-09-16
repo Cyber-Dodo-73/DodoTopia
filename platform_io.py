@@ -24,6 +24,15 @@ VKCODES = {
 for _c in "0123456789abcdefghijklmnopqrstuvwxyz":
     VKCODES[_c] = ord(_c.upper())
 
+
+class InjectionError(RuntimeError):
+    """L'envoi des touches a ete refuse par le systeme (jeu lance en administrateur alors que DodoTopia ne
+    l'est pas : UIPI bloque SendInput). Le code Windows est dans `code`."""
+
+    def __init__(self, message, code=0):
+        super().__init__(message)
+        self.code = code
+
 # Les modules de plateforme importent SCANCODES / VKCODES depuis ce module : les tables doivent etre
 # definies avant l'import ci-dessous (le module est alors partiellement initialise, c'est voulu).
 if IS_WINDOWS:
@@ -33,6 +42,7 @@ if IS_WINDOWS:
         is_admin, mouse_hint, MidiOut, open_text_file, open_folder, open_url,
         set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
+        foreground_process_name, game_window_info, foreground_keyboard_layout,
     )
 else:
     from _linux_io import (  # noqa: E402,F401
@@ -41,4 +51,5 @@ else:
         is_admin, mouse_hint, MidiOut, open_text_file, open_folder, open_url,
         set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
+        foreground_process_name, game_window_info, foreground_keyboard_layout,
     )

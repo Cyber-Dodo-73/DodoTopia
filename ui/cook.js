@@ -3,41 +3,41 @@
 // icones (cook_calibrate('icons')), test de detection (cook_test -> test_result), boucle avec compteurs
 // dishes/fires/elapsed. Le reglage cook.max_dishes vaut 0 pour « en continu » : l'interface le presente comme
 // un choix explicite « Quantité définie » / « En continu ».
+// Textes : t('cook.*') au moment du rendu (le catalogue change a chaud) ; les textes venus du moteur
+// (phase, message, test_result, stop_reason, titres des etapes) sont affiches tels quels.
 function cookState(){ return (S && S.cook) ? S.cook : null; }
-function cookTestOk(c){ return !!(c.test_result && !/aucune|introuvable|pas reconnue|rien|erreur|impossible|échec/i.test(c.test_result)); }
+function cookTestOk(c){ return !!(c.test_result && !/aucune|introuvable|pas reconnue|rien|erreur|impossible|échec|not found|not recognised|not recognized|nothing|error|fail|unable|cannot/i.test(c.test_result)); }
 // « 2 cuisinières suivies · 1 en cuisson, 1 prête » : resume sobre de l'etat de chaque cuisinière (status.burners)
-const COOK_BURNER_LABELS = {cook: ['au repos', 'au repos'], cooking: ['en cuisson', 'en cuisson'],
-  spatula: ['feu à régler', 'feux à régler'], ready: ['prête', 'prêtes'], none: ['non vue', 'non vues']};
+// cles resolues par etat (declarees pour i18n_check) : t('cook.session.burner_cook') t('cook.session.burner_cooking')
+// t('cook.session.burner_spatula') t('cook.session.burner_ready') t('cook.session.burner_none')
+const COOK_BURNER_KEYS = {cook: 'cook.session.burner_cook', cooking: 'cook.session.burner_cooking',
+  spatula: 'cook.session.burner_spatula', ready: 'cook.session.burner_ready', none: 'cook.session.burner_none'};
 function cookBurnersText(c){
   const n = (c.settings && c.settings.cookers) || c.cookers || 1;
   if(n < 2) return '';
   const list = c.burners || [];
-  if(!list.length) return `${n} cuisinières · aucune bulle repérée pour l'instant`;
+  if(!list.length) return t('cook.session.burners_none', {n});
   const order = ['spatula', 'ready', 'cooking', 'cook', 'none'], by = {};
   list.forEach(b => { by[b.state] = (by[b.state] || 0) + 1; });
-  const parts = order.filter(k => by[k]).map(k => `${by[k]} ${COOK_BURNER_LABELS[k][by[k] > 1 ? 1 : 0]}`);
-  return `${list.length} cuisinière${list.length > 1 ? 's' : ''} suivie${list.length > 1 ? 's' : ''}`
-    + (parts.length ? ' · ' + parts.join(', ') : '');
+  const parts = order.filter(k => by[k]).map(k => t(COOK_BURNER_KEYS[k], {n: by[k]}));
+  const tracked = t('cook.session.burners_tracked', {n: list.length});
+  return parts.length ? t('cook.session.burners_summary', {tracked, parts: parts.join(', ')}) : tracked;
 }
 // résumé de la configuration : ce qui est prêt, ce qui manque
 function cookConfigSummary(c){
+  const refs = c.refs || {};
   if(!c.calibrated){
-    const miss = [];
-    const refs = c.refs || {};
-    if(!refs.cook) miss.push('l’icône « cuisiner »');
-    if(!refs.ready) miss.push('l’icône « gants »');
-    return 'Pas encore configurée' + (miss.length ? ` : il manque ${miss.join(' et ')}, et les positions à cliquer.` : ' : les positions à cliquer ne sont pas connues.');
+    const missCook = !refs.cook, missReady = !refs.ready;
+    if(!missCook && !missReady) return t('cook.config.summary_todo');
+    return t('cook.config.summary_todo_missing', {missing: missCook && missReady ? 'both' : missCook ? 'cook' : 'ready'});
   }
-  const extra = [];
-  if((c.refs || {}).spatula) extra.push('icône spatule enregistrée');
-  if(c.ring_color) extra.push('couleur de l’anneau mesurée');
-  return `Configurée : zone de la bulle, icônes, tuile de la dernière recette, bouton Cuisiner et coin d’herbe`
-    + (extra.length ? ` · ${extra.join(' · ')}` : ' · anneau vert reconnu par sa couleur standard')
-    + '. À refaire si tu changes d’écran ou de résolution.';
+  const spatula = !!refs.spatula, ring = !!c.ring_color;
+  return t('cook.config.summary_ok', {spatula: spatula ? 'yes' : 'no', ring: ring ? 'yes' : 'no', extra: (spatula || ring) ? 'some' : 'none'});
 }
 function renderCook(st){
   const c = st.cook; if(!c) return;
   const hk = st.hotkeys || {};
+  const stopKey = hk.stop || 'F7', playKey = hk.play_pause || 'F6';
   const cooking = c.state === 'cooking', calib = c.state === 'calibrating';
   const s = c.settings || {};
   const tested = cookTestOk(c);
@@ -50,42 +50,38 @@ function renderCook(st){
   $('cookQtyNum').hidden = endless;
   const inp = $('cookDishes');
   if(document.activeElement !== inp && !endless && String(inp.value) !== String(maxDishes)) inp.value = maxDishes;
-  txt('cookQtyHelp', endless
-    ? 'La boucle continue jusqu’à ce que tu l’arrêtes, ou jusqu’à ce qu’un plat ne puisse plus être lancé (ingrédients épuisés).'
-    : '');
+  txt('cookQtyHelp', endless ? t('cook.session.qty_endless_help') : '');
   $('cookQtyHelp').hidden = !endless;
   segMark($('cookCookers'), b => Number(b.dataset.v) === nCook);
   $('cookCookers').querySelectorAll('button').forEach(b => { b.disabled = cooking || calib; });
   $('cookQty').querySelectorAll('button').forEach(b => { b.disabled = cooking || calib; });
   inp.disabled = cooking || calib;
   // a une seule cuisiniere il n'y a rien a expliquer : la contrainte ne devient utile qu'au-dela.
-  txt('cookCookersHelp', nCook > 1
-    ? `Les ${nCook} bulles doivent toutes se trouver dans la zone configurée : place-toi de façon à les voir toutes, et élargis la zone si besoin (Configuration).`
-    : '');
+  txt('cookCookersHelp', nCook > 1 ? t('cook.session.cookers_help', {n: nCook}) : '');
   $('cookCookersHelp').hidden = nCook <= 1;
 
   // ---- configuration : résumé + détail
   const refs = c.refs || {};
   const items = [
-    ['positions', 'Positions à cliquer (zone, tuile, bouton Cuisiner, herbe)', c.calibrated ? 'ok' : 'no'],
-    ['cook', 'Icône « cuisiner »', refs.cook ? 'ok' : 'no'],
-    ['ready', 'Icône « gants » (plat prêt)', refs.ready ? 'ok' : 'no'],
-    ['spatula', 'Icône « spatule »', refs.spatula ? 'ok' : 'opt'],
-    ['ring', 'Couleur de l’anneau vert', c.ring_color ? 'ok' : 'opt'],
+    ['positions', t('cook.config.item_positions'), c.calibrated ? 'ok' : 'no'],
+    ['cook', t('cook.config.item_cook'), refs.cook ? 'ok' : 'no'],
+    ['ready', t('cook.config.item_ready'), refs.ready ? 'ok' : 'no'],
+    ['spatula', t('cook.config.item_spatula'), refs.spatula ? 'ok' : 'opt'],
+    ['ring', t('cook.config.item_ring'), c.ring_color ? 'ok' : 'opt'],
   ];
-  const lsig = JSON.stringify(items);
+  const lsig = JSON.stringify(items) + I18N.lang;
   if($('cookRefs').dataset.sig !== lsig){
     $('cookRefs').dataset.sig = lsig;
-    $('cookRefs').innerHTML = items.map(([k, label, state]) => `<li class="${state}"><span class="st" aria-hidden="true">${state === 'ok' ? '✓' : state === 'no' ? '✗' : '–'}</span>${esc(label)}${state === 'opt' ? '<small>facultatif</small>' : ''}</li>`).join('');
+    $('cookRefs').innerHTML = items.map(([k, label, state]) => `<li class="${state}"><span class="st" aria-hidden="true">${icon(state === 'ok' ? 'check' : state === 'no' ? 'close' : 'minus')}</span>${esc(label)}${state === 'opt' ? `<small>${esc(t('cook.config.optional'))}</small>` : ''}</li>`).join('');
   }
   const badge = $('cookCalibBadge');
   const bcls = 'chip chip--badge ' + (c.calibrated ? 'chip--ok' : 'chip--warn');
   if(badge.className !== bcls) badge.className = bcls;
-  txt('cookCalibBadge', c.calibrated ? 'configurée' : 'à configurer');
+  txt('cookCalibBadge', c.calibrated ? t('cook.config.badge_ok') : t('cook.config.badge_todo'));
   txt('cookConfigSum', cookConfigSummary(c));
   $('btnCookCalib').disabled = cooking || calib;
   // deux intentions, deux boutons : « Tester » lit l'écran, « Modifier » rouvre l'assistant
-  txt('btnCookCalib', c.calibrated ? 'Modifier la configuration' : 'Configurer la cuisine');
+  txt('btnCookCalib', c.calibrated ? t('cook.config.modify') : t('cook.config.configure'));
   $('btnCookIcons').disabled = cooking || calib || !c.calibrated;
   $('btnCookTest').disabled = cooking || calib || !c.calibrated;
   // Le test est facultatif et son bouton est juste au-dessus : annoncer « non testée » au repos
@@ -93,11 +89,10 @@ function renderCook(st){
   setNotice('cookTest', !c.calibrated || !c.test_result ? null
     // Succès : le détail brut du moteur (coordonnées, scores de correspondance) n'apprend rien à qui
     // cuisine ; on ne le montre qu'en mode debug. En échec, il reste la seule piste : on le garde.
-    : tested ? {text: 'Détection réussie — la bulle de la cuisinière est reconnue.'
-        + (st.debug ? ' ' + c.test_result : ''), kind: 'ok', icon: '🔍'}
-    : {text: 'Échec de la détection — ' + c.test_result + ' Recapture les icônes de la bulle, ou refais la configuration.', kind: 'warn', icon: '🔍'});
+    : tested ? {text: t('cook.config.test_ok') + (st.debug ? ' ' + c.test_result : ''), kind: 'ok', icon: 'search'}
+    : {text: t('cook.config.test_fail', {detail: c.test_result}), kind: 'warn', icon: 'search'});
   // rappel d'arrêt : utile pendant la boucle, encombrant au repos
-  txt('cookStopHelp', `${hk.stop || 'F7'}, n'importe quelle touche ou un mouvement de souris arrêtent tout et te rendent la main.`);
+  txt('cookStopHelp', t('cook.session.stop_help', {key: stopKey}));
   $('cookStopHelp').hidden = !cooking;
 
   // ---- bouton principal. Le moteur n'exige JAMAIS le test avant de cuisiner (cook.py, Cooker.start ne
@@ -108,79 +103,75 @@ function renderCook(st){
   $('cookConfig').hidden = cooking;
   const b = $('btnCook');
   let label, cls = 'btn btn--lg btn--cta';
-  if(cooking){ label = 'Arrêter la cuisine'; cls = 'btn btn--lg btn--danger'; }
-  else if(!c.calibrated) label = 'Configurer la cuisine';
+  if(cooking){ label = t('cook.run.stop'); cls = 'btn btn--lg btn--danger'; }
+  else if(!c.calibrated) label = t('cook.config.configure');
   else label = LABELS.cook;
   if(b.className !== cls) b.className = cls;
+  b.querySelector('use').setAttribute('href', cooking ? '#i-stop' : c.calibrated ? '#i-pot' : '#i-target');
   txt('cookLabel', label);
-  txt('cookKey', cooking ? (hk.stop || 'F7') : (hk.play_pause || 'F6'));
+  txt('cookKey', cooking ? stopKey : playKey);
   $('cookKey').hidden = !cooking && !c.calibrated;
-  b.disabled = calib || c.screen_ok === false;
-  b.title = c.screen_ok === false ? 'La lecture d’écran est indisponible sur cet ordinateur.' : '';
+  // action indisponible : la raison est ecrite sous le bouton (setAction)
+  setAction(b, {disabled: calib || c.screen_ok === false,
+    reason: c.screen_ok === false ? t('cook.run.no_screen_title') : calib ? t('cook.run.why_calib') : ''});
 
   const pill = $('cookPill');
-  let pc = 'pill', pt = 'À configurer';
-  if(cooking && c.countdown > 0){ pc = 'pill paused'; pt = `⏳ ${Math.ceil(c.countdown)} s`; }
-  else if(cooking){ pc = 'pill game'; pt = '🍳 ' + cap(c.phase || 'cuisine en cours'); }
-  else if(calib){ pc = 'pill paused'; pt = '🎯 Configuration'; }
-  else if(c.calibrated){ pc = 'pill preview'; pt = '✓ Prêt à cuisiner'; }
+  let pc = 'pill', pt = t('cook.run.pill_todo'), pi = 'target';
+  if(cooking && c.countdown > 0){ pc = 'pill paused'; pi = 'hourglass'; pt = t('cook.run.pill_countdown', {n: Math.ceil(c.countdown)}); }
+  else if(cooking){ pc = 'pill game'; pi = 'pot'; pt = t('cook.run.pill_cooking', {phase: cap(plain(c.phase || t('cook.run.phase_default')))}); }
+  else if(calib){ pc = 'pill paused'; pi = 'target'; pt = t('cook.run.pill_config'); }
+  else if(c.calibrated){ pc = 'pill preview'; pi = 'check'; pt = t('cook.run.pill_ready'); }
   if(pill.className !== pc) pill.className = pc;
-  txt('cookPill', pt);
+  html('cookPill', icon(pi) + `<span>${esc(plain(pt))}</span>`);
   $('cookDisc').classList.toggle('spin', cooking);
-  txt('cookHeadline', cooking ? `Plat ${c.dishes + 1} en cours` : 'Refaire la dernière recette en boucle');
-  txt('cookSub', cooking ? (c.phase ? cap(c.phase) : 'Démarrage…')
-    : (c.calibrated ? 'Place-toi devant la cuisinière, puis lance la boucle' : 'Configure la zone du jeu, puis lance la boucle devant la cuisinière'));
+  txt('cookHeadline', cooking ? t('cook.run.headline_cooking', {n: c.dishes + 1}) : t('cook.run.headline_idle'));
+  txt('cookSub', cooking ? (c.phase ? cap(c.phase) : t('cook.run.sub_starting'))
+    : (c.calibrated ? t('cook.run.sub_ready') : t('cook.run.sub_todo')));
   // fin de session : objectif atteint, arrêt volontaire et erreur sont distingués
   let lastState;
-  if(c.stop_reason === 'objectif') lastState = 'objectif atteint';
-  else if(c.stop_reason) lastState = `arrêt : ${c.stop_reason}`;
-  else lastState = c.message || (c.calibrated ? 'prêt' : 'à configurer');
+  if(c.stop_reason === 'objectif') lastState = t('cook.run.last_goal');
+  else if(c.stop_reason) lastState = t('cook.run.last_stop', {reason: c.stop_reason});
+  else lastState = c.message || (c.calibrated ? t('cook.run.last_ready') : t('cook.run.last_todo'));
   const burners = cookBurnersText(c);
   // Avant lancement, des compteurs à zéro n'apprennent rien : une seule ligne rappelle la session passée.
+  // Les messages *_html ne contiennent que du balisage sur et des nombres ; les textes du moteur passent par esc().
   if(cooking){
-    html('cookStats', `<span class="stat">🍽️ <b>${c.dishes}</b>${maxDishes ? ` / ${maxDishes}` : ''} plat${c.dishes > 1 ? 's' : ''}${endless ? ' (en continu)' : ''}</span>`
-      + `<span class="stat">🔥 <b>${c.fires}</b> feu${c.fires > 1 ? 'x' : ''} ajusté${c.fires > 1 ? 's' : ''}</span>`
-      + (burners ? `<span class="stat" title="Une machine à états par cuisinière">🍳 ${esc(burners)}</span>` : '')
-      + `<span class="stat">⏱️ <b>${fmtDur(c.elapsed)}</b></span>`);
+    html('cookStats', `<span class="stat">${icon('plate')}${plain(maxDishes ? t('cook.run.stat_dishes_of_html', {n: c.dishes, max: maxDishes}) : t('cook.run.stat_dishes_html', {n: c.dishes}))}</span>`
+      + `<span class="stat">${icon('fire')}${plain(t('cook.run.stat_fires_html', {n: c.fires}))}</span>`
+      + (burners ? `<span class="stat" title="${esc(t('cook.run.stat_burners_title'))}">${icon('pot')}${esc(burners)}</span>` : '')
+      + `<span class="stat">${icon('timer')}<b>${esc(fmtDur(c.elapsed))}</b></span>`);
   } else if(c.dishes > 0){
-    html('cookStats', `<span class="stat">🛈 Dernière session : <b>${c.dishes}</b> plat${c.dishes > 1 ? 's' : ''}`
-      + `${c.fires ? `, ${c.fires} feu${c.fires > 1 ? 'x' : ''} ajusté${c.fires > 1 ? 's' : ''}` : ''} · ${esc(lastState)}</span>`);
+    html('cookStats', `<span class="stat">${icon('info')}${plain(t('cook.run.stat_last_html', {dishes: c.dishes, fires: c.fires || 0, state: esc(lastState)}))}</span>`);
   } else html('cookStats', '');
 
   let spec = null;
   if(cooking && c.countdown > 0){
-    spec = {count: Math.ceil(c.countdown), unit: 's', role: 'Cuisine', text: 'Passe sur Heartopia, devant la cuisinière, et ne touche plus à rien.',
-            meta: `${hk.stop || 'F7'} annule`, actions: [{label: LABELS.cancel, kbd: hk.stop || 'F7', api: 'cook_stop'}]};
+    spec = {count: Math.ceil(c.countdown), unit: t('image.run.unit_seconds'), role: t('cook.run.role_cook'), text: t('cook.run.countdown_text'),
+            meta: t('cook.run.meta_cancel', {key: stopKey}), actions: [{label: LABELS.cancel, kbd: stopKey, api: 'cook_stop'}]};
   } else if(cooking){
-    spec = {live: true, count: c.dishes, unit: c.dishes > 1 ? 'plats' : 'plat', role: 'Cuisine dans Heartopia',
-            text: c.phase ? cap(c.phase) : 'Cuisine en cours…',
-            meta: `${fmtDur(c.elapsed)}${maxDishes ? ` · objectif ${maxDishes} plats` : ' · en continu'} · ${hk.stop || 'F7'} arrête · ne touche ni à la souris ni au clavier`,
-            progress: maxDishes ? {pct: Math.min(100, c.dishes / maxDishes * 100), left: `${c.dishes} / ${maxDishes}`, right: 'plats'} : null,
-            actions: [{label: LABELS.stop, kbd: hk.stop || 'F7', api: 'cook_stop'}]};
+    spec = {live: true, count: c.dishes, unit: t('cook.run.unit_dishes', {n: c.dishes}), role: t('cook.run.role_cooking'),
+            text: c.phase ? cap(c.phase) : t('cook.run.cooking_text'),
+            meta: t('cook.run.cooking_meta', {time: fmtDur(c.elapsed), max: maxDishes, key: stopKey}),
+            progress: maxDishes ? {pct: Math.min(100, c.dishes / maxDishes * 100), left: t('cook.run.progress_left', {done: c.dishes, max: maxDishes}), right: t('cook.run.progress_right')} : null,
+            actions: [{label: LABELS.stop, icon: 'stop', kbd: stopKey, api: 'cook_stop'}]};
   }
   renderSession($('cookSession'), spec);
 
   let notice = null;
   if(!cooking){
-    if(c.screen_ok === false) notice = {text: 'Lecture d’écran indisponible sur cet ordinateur : la cuisine automatique ne peut pas fonctionner ici.', kind: 'danger'};
-    else if(c.message && /arrêtée|impossible|introuvable|erreur/i.test(c.message)) notice = {text: c.message, kind: 'warn'};
-    else if(!c.calibrated) notice = {text: 'Pas encore configurée : place-toi devant la cuisinière dans le jeu, puis lance « Configurer la cuisine ».', kind: 'warn'};
-    else if(nCook > 1) notice = {text: `Place-toi de façon à voir les ${nCook} bulles dans la zone configurée, puis appuie sur ${hk.play_pause || 'F6'} : DodoTopia sert les cuisinières à tour de rôle et clique l'anneau vert dès qu'il apparaît.`, kind: 'ok', icon: '✓'};
-    else notice = {text: `Devant la cuisinière avec les ingrédients de la dernière recette, appuie sur ${hk.play_pause || 'F6'} : le dernier plat est refait en boucle.`, kind: 'ok', icon: '✓'};
+    if(c.screen_ok === false) notice = {text: t('cook.run.no_screen'), kind: 'danger'};
+    else if(c.message && /arrêtée|impossible|introuvable|erreur|stopped|unable|cannot|not found|error|fail/i.test(c.message)) notice = {text: c.message, kind: 'warn'};
+    else if(!c.calibrated) notice = {text: t('cook.run.notice_todo'), kind: 'warn'};
+    else if(nCook > 1) notice = {text: t('cook.run.notice_multi', {n: nCook, key: playKey}), kind: 'ok', icon: 'check'};
+    else notice = {text: t('cook.run.notice_ready', {key: playKey}), kind: 'ok', icon: 'check'};
   }
   setNotice('cookNotice', notice);
 
   if(calib){
     renderCalibOverlay({
       kind: 'cook',
-      title: 'Configurer la cuisine',
-      prep: `<p>Dans Heartopia, avant de commencer :</p>
-        <ol class="steps">
-          <li><span class="n">1</span>Place ton personnage <b>devant la cuisinière</b>, bulle visible</li>
-          <li><span class="n">2</span>Aie les ingrédients de la recette à refaire</li>
-          <li><span class="n">3</span>Garde la fenêtre du jeu à la même taille pendant toute la configuration</li>
-        </ol>
-        <p class="hint left">Les étapes « menu » se font le menu Recettes ouvert, l'étape « spatule » pendant une cuisson, l'étape « gants » quand le plat est prêt.</p>`,
+      title: t('cook.config.configure'),
+      prep: t('cook.config.calib_prep_html'),
       steps: c.steps || [], step: c.step, hk, message: c.message,
       skippable: s => !!s.optional,
       cancel: 'cook_calibrate_cancel', skip: 'cook_calibrate_skip', back: 'cook_calibrate_back', goto: 'cook_calibrate_goto'});
@@ -192,10 +183,8 @@ $('btnCook').onclick = () => {
   if(c && !c.calibrated){ api('cook_calibrate', 'all'); return; }
   const s = (c && c.settings) || {};
   const max = Number(s.max_dishes || 0);
-  dialog({title: LABELS.cook, icon: '🍳', ok: 'Cuisiner',
-          html: `<p>Quantité : <b>${max ? max + ' plat' + (max > 1 ? 's' : '') : 'en continu, jusqu’à l’arrêt'}</b> · cuisinières : <b>${Number(s.cookers || 1)}</b>.</p>
-            <p>Dans Heartopia, place ton personnage <b>devant la cuisinière</b>, bulle « cuisiner » visible, avec les ingrédients de la <b>dernière recette cuisinée</b>.</p>
-            <small>La boucle démarre 3 s après : ne touche plus à la souris ni au clavier. Toute touche l'arrête.</small>`})
+  dialog({title: LABELS.cook, icon: 'pot', ok: t('cook.run.start_ok'), cancel: t('common.cancel'),
+          html: t('cook.run.start_html', {qty: max ? t('cook.session.qty_limited', {n: max}) : t('cook.session.qty_endless'), cookers: Number(s.cookers || 1)})})
     .then(yes => { if(yes) api('cook_start'); });
 };
 document.querySelectorAll('#cookCookers > button').forEach(b => b.onclick = () => {

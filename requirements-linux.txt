@@ -7,5 +7,7 @@ numpy
 soundcard
 websocket-client
 certifi
+pynacl
+pypresence
 pywebview[qt]
 pyinstaller

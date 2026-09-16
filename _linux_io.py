@@ -510,3 +510,20 @@ def hook(callback):
 
 def unhook(handle):
     _listener.remove_hook(handle)
+
+
+# ---------------------------------------------------------------- fenetre du jeu (non disponible sous X11 generique)
+def foreground_process_name():
+    """Nom du processus de la fenetre active, ou None quand la plateforme ne sait pas le dire (aucune
+    verification n'est alors faite par le lecteur)."""
+    return None
+
+
+def game_window_info(process_name):
+    """{found, foreground, elevated} pour l'interface ; sous Linux rien n'est detecte."""
+    return {"found": None, "foreground": None, "elevated": None}
+
+
+def foreground_keyboard_layout():
+    """Disposition clavier de la fenetre active ('azerty' | 'qwerty' | None)."""
+    return None

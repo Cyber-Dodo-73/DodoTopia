@@ -1,20 +1,26 @@
 """Connexion Discord (OAuth2 `identify`) par ticket + navigateur + polling, sessions et dépendances d'accès.
 
-Flow :
-  app  POST /api/auth/start {verifier_hash}     -> {login_id, url, expires_in}
-  nav  GET  /auth/discord/start?login_id=...     -> 302 discord.com/oauth2/authorize
-  nav  GET  /auth/discord/callback?code&state    -> échange du code, upsert user, session, 302 /auth/discord/done
-  app  POST /api/auth/poll {login_id, verifier}  -> pending | ok {token, user} (une seule fois) | error
+Flow (« device flow » : le code affiché dans l'app doit être recopié dans le navigateur, ce qui empêche un
+tiers de faire connecter quelqu'un d'autre sur SON ticket en lui envoyant l'URL) :
+  app  POST /api/auth/start {verifier_hash}     -> {login_id, url, expires_in, user_code}
+  nav  GET  /auth/discord/start?login_id=...     -> page « saisis le code affiché dans DodoTopia »
+  nav  POST /auth/discord/confirm (login_id, code) -> 302 discord.com/oauth2/authorize (5 essais, puis ticket en erreur)
+  nav  GET  /auth/discord/callback?code&state    -> échange du code, upsert user, user_id sur le ticket, 302 /done
+  app  POST /api/auth/poll {login_id, verifier}  -> pending | ok {token, user} (session créée ici, une seule fois) | error
+
+Le ticket ne porte jamais de jeton de session : la session naît au `poll`, après vérification du `verifier`.
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
+from html import escape
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from . import db
@@ -25,6 +31,9 @@ from .schemas import AuthPoll, AuthStart, clean_text
 router = APIRouter()
 
 DISCORD_API = "https://discord.com/api/v10"
+# Code à recopier : sans 0/O ni 1/I, 5 caractères (32^5 ≈ 33 millions, pour 5 essais par ticket).
+USER_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+USER_CODE_LEN = 5
 
 
 def api_error(status: int, code: str, message: str, **extra) -> HTTPException:
@@ -118,22 +127,27 @@ def create_session(conn: db.Connection, settings: Settings, user_id: int) -> str
 
 
 def user_from_token(conn: db.Connection, settings: Settings, token: str | None) -> db.Row | None:
-    """Utilisateur d'un token de session valide (expiration glissante), sinon None. Bannis exclus."""
+    """Utilisateur d'un token de session valide (expiration glissante), sinon None. Bannis exclus.
+
+    `last_used_at`, `expires_at` et `last_seen_at` ne sont réécrits que si la dernière écriture date de plus
+    de SESSION_TOUCH_S (1 h) : chaque requête authentifiée coûtait sinon deux UPDATE et un commit.
+    """
     if not token:
         return None
     h = sha256_hex(token)
     row = conn.execute(
-        """SELECT u.*, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id
+        """SELECT u.*, s.expires_at, s.last_used_at FROM sessions s JOIN users u ON u.id = s.user_id
            WHERE s.token_hash=? AND s.expires_at > ?""",
         (h, db.now_iso()),
     ).fetchone()
     if row is None or row["banned"]:
         return None
-    now = db.now_iso()
-    conn.execute("UPDATE sessions SET last_used_at=?, expires_at=? WHERE token_hash=?",
-                 (now, db.iso_in(settings.SESSION_DAYS * 86400), h))
-    conn.execute("UPDATE users SET last_seen_at=? WHERE id=?", (now, row["id"]))
-    conn.commit()
+    if row["last_used_at"] < db.iso_in(-settings.SESSION_TOUCH_S):
+        now = db.now_iso()
+        conn.execute("UPDATE sessions SET last_used_at=?, expires_at=? WHERE token_hash=?",
+                     (now, db.iso_in(settings.SESSION_DAYS * 86400), h))
+        conn.execute("UPDATE users SET last_seen_at=? WHERE id=?", (now, row["id"]))
+        conn.commit()
     return row
 
 
@@ -175,20 +189,32 @@ def require_publish_token(request: Request) -> None:
 
 # --- Endpoints -------------------------------------------------------------------
 
+def new_user_code() -> str:
+    return "".join(secrets.choice(USER_CODE_ALPHABET) for _ in range(USER_CODE_LEN))
+
+
+def normalize_user_code(code: str) -> str:
+    """Majuscules, sans espaces ni tirets (le joueur peut taper « ab c-de »)."""
+    return re.sub(r"[^A-Za-z0-9]", "", code or "").upper()
+
+
 @router.post("/api/auth/start", dependencies=[Depends(limit("auth_start", 10, 60))])
 def auth_start(body: AuthStart, request: Request, conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
     login_id = secrets.token_urlsafe(16)
     state = secrets.token_urlsafe(24)
+    user_code = new_user_code()
     conn.execute(
-        "INSERT INTO login_tickets (id, verifier_hash, state, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
-        (login_id, body.verifier_hash, state, db.now_iso()),
+        """INSERT INTO login_tickets (id, verifier_hash, state, status, user_code, attempts, created_at)
+           VALUES (?, ?, ?, 'pending', ?, 0, ?)""",
+        (login_id, body.verifier_hash, state, user_code, db.now_iso()),
     )
     conn.commit()
     return {
         "login_id": login_id,
         "url": f"{settings.public_url}/auth/discord/start?login_id={login_id}",
         "expires_in": settings.LOGIN_TICKET_S,
+        "user_code": user_code,
     }
 
 
@@ -199,21 +225,54 @@ def _live_ticket(conn: db.Connection, settings: Settings, login_id: str) -> db.R
     return row
 
 
-@router.get("/auth/discord/start")
-def discord_start(login_id: str, request: Request, conn: db.Connection = Depends(db.get_db)):
-    settings = settings_of(request)
-    t = _live_ticket(conn, settings, login_id)
-    if t is None or t["status"] != "pending":
-        return _done_page("expired", status=404)
+def _discord_authorize_url(settings: Settings, state: str) -> str:
+    # Pas de `prompt=none` : Discord affiche son écran d'autorisation (le joueur voit ce qu'il accorde et
+    # à quelle application), au lieu d'une approbation silencieuse.
     params = {
         "client_id": settings.DISCORD_CLIENT_ID,
         "redirect_uri": f"{settings.public_url}/auth/discord/callback",
         "response_type": "code",
         "scope": "identify",
-        "state": t["state"],
-        "prompt": "none",
+        "state": state,
     }
-    return RedirectResponse(f"https://discord.com/oauth2/authorize?{urlencode(params)}", status_code=302)
+    return f"https://discord.com/oauth2/authorize?{urlencode(params)}"
+
+
+@router.get("/auth/discord/start")
+def discord_start(login_id: str, request: Request, conn: db.Connection = Depends(db.get_db)):
+    settings = settings_of(request)
+    t = _live_ticket(conn, settings, login_id)
+    if t is None or t["status"] not in ("pending", "confirmed"):
+        return _done_page("expired", status=404)
+    return _code_page(login_id, remaining=settings.LOGIN_CODE_ATTEMPTS - int(t["attempts"] or 0))
+
+
+@router.post("/auth/discord/confirm", dependencies=[Depends(limit("auth_confirm", 20, 60))])
+def discord_confirm(request: Request, login_id: str = Form(""), code: str = Form(""),
+                    conn: db.Connection = Depends(db.get_db)):
+    """Vérifie le code recopié depuis l'app ; bon code -> Discord ; LOGIN_CODE_ATTEMPTS mauvais -> ticket en erreur."""
+    settings = settings_of(request)
+    login_id = (login_id or "")[:64]
+    t = _live_ticket(conn, settings, login_id)
+    if t is None or t["status"] not in ("pending", "confirmed"):
+        return _done_page("expired", status=404)
+    attempts = int(t["attempts"] or 0)
+    if attempts >= settings.LOGIN_CODE_ATTEMPTS:
+        return _done_page("code", status=403)
+    given = normalize_user_code(code)[:USER_CODE_LEN * 2]
+    if not hmac.compare_digest(given, t["user_code"] or ""):
+        attempts += 1
+        if attempts >= settings.LOGIN_CODE_ATTEMPTS:
+            conn.execute("UPDATE login_tickets SET attempts=?, status='error', error='code' WHERE id=?",
+                         (attempts, t["id"]))
+            conn.commit()
+            return _done_page("code", status=403)
+        conn.execute("UPDATE login_tickets SET attempts=? WHERE id=?", (attempts, t["id"]))
+        conn.commit()
+        return _code_page(login_id, remaining=settings.LOGIN_CODE_ATTEMPTS - attempts, wrong=True, status=400)
+    conn.execute("UPDATE login_tickets SET status='confirmed' WHERE id=?", (t["id"],))
+    conn.commit()
+    return RedirectResponse(_discord_authorize_url(settings, t["state"]), status_code=303)
 
 
 @router.get("/auth/discord/callback")
@@ -221,7 +280,8 @@ def discord_callback(request: Request, state: str = "", code: str = "", error: s
                      conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
     t = conn.execute("SELECT * FROM login_tickets WHERE state=?", (state,)).fetchone() if state else None
-    if t is None or t["status"] != "pending" or _live_ticket(conn, settings, t["id"]) is None:
+    # Seul un ticket dont le code a été confirmé a vu son `state` sortir du serveur.
+    if t is None or t["status"] != "confirmed" or _live_ticket(conn, settings, t["id"]) is None:
         return RedirectResponse("/auth/discord/done?error=expired", status_code=302)
 
     def fail(reason: str):
@@ -239,8 +299,8 @@ def discord_callback(request: Request, state: str = "", code: str = "", error: s
     user = upsert_user(conn, settings, du)
     if user["banned"]:
         return fail("banned")
-    token = create_session(conn, settings, user["id"])
-    conn.execute("UPDATE login_tickets SET status='ok', token=? WHERE id=?", (token, t["id"]))
+    # Aucune session ici : le ticket ne porte que l'identité ; le jeton naît au poll, contre le vérifieur.
+    conn.execute("UPDATE login_tickets SET status='ok', user_id=? WHERE id=?", (user["id"], t["id"]))
     conn.commit()
     return RedirectResponse("/auth/discord/done", status_code=302)
 
@@ -251,23 +311,55 @@ _DONE_MESSAGES = {
     "denied": ("Connexion refusée", "Tu as refusé l'autorisation Discord. Relance la connexion depuis DodoTopia."),
     "discord": ("Erreur Discord", "Discord n'a pas répondu correctement. Réessaie dans un instant."),
     "banned": ("Compte bloqué", "Ce compte n'est pas autorisé sur ce serveur."),
+    "code": ("Code incorrect", "Trop de tentatives : ce lien n'est plus valable. Relance la connexion depuis DodoTopia."),
 }
+
+_PAGE_STYLE = """body{font-family:system-ui,sans-serif;background:#fff7ee;color:#3b2a20;display:flex;align-items:center;
+justify-content:center;min-height:100vh;margin:0;padding:16px}main{background:#fff;border-radius:16px;padding:32px;
+max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)}h1{margin:0 0 8px;font-size:22px}
+img{width:72px;height:72px;margin:0 0 12px}input.code{font:600 28px/1.2 ui-monospace,monospace;letter-spacing:.35em;
+text-transform:uppercase;text-align:center;width:9em;max-width:100%;padding:10px 0 10px .35em;margin:12px 0;
+border:2px solid #e8a531;border-radius:12px;color:#3b2a20}button{font:600 16px system-ui,sans-serif;background:#e8a531;
+color:#3b2a20;border:0;border-radius:12px;padding:12px 24px;cursor:pointer}p.err{color:#b3261e;font-weight:600}
+p.small{font-size:14px;color:#7a6a5e}"""
+
+
+def _shell(title: str, inner: str, status: int) -> HTMLResponse:
+    # Favicon et logo : l'onglet du navigateur rattache visuellement ces pages à DodoTopia, au moment le plus
+    # sensible du parcours.
+    html = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>DodoTopia – {escape(title)}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/logo.png">
+<style>{_PAGE_STYLE}</style></head>
+<body><main><img src="/static/logo.png" width="72" height="72" alt="DodoTopia">{inner}</main></body></html>"""
+    return HTMLResponse(html, status_code=status, headers={"Cache-Control": "no-store"})
 
 
 def _done_page(error: str = "", status: int = 200) -> HTMLResponse:
     title, text = _DONE_MESSAGES.get(error, _DONE_MESSAGES["discord"])
-    # La page de retour d'OAuth n'avait ni favicon ni logo : l'onglet du navigateur restait vide et
-    # rien ne rattachait visuellement cette page a DodoTopia au moment le plus sensible du parcours.
-    html = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>DodoTopia – {title}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="/static/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="/static/logo.png">
-<style>body{{font-family:system-ui,sans-serif;background:#fff7ee;color:#3b2a20;display:flex;align-items:center;
-justify-content:center;min-height:100vh;margin:0;padding:16px}}main{{background:#fff;border-radius:16px;padding:32px;
-max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)}}h1{{margin:0 0 8px;font-size:22px}}
-img{{width:72px;height:72px;margin:0 0 12px}}</style></head>
-<body><main><img src="/static/logo.png" width="72" height="72" alt="DodoTopia"><h1>{title}</h1><p>{text}</p></main></body></html>"""
-    return HTMLResponse(html, status_code=status)
+    return _shell(title, f"<h1>{escape(title)}</h1><p>{escape(text)}</p>", status)
+
+
+def _code_page(login_id: str, remaining: int, wrong: bool = False, status: int = 200) -> HTMLResponse:
+    """Formulaire « saisis le code affiché dans DodoTopia » (POST /auth/discord/confirm)."""
+    err = ""
+    if wrong:
+        essais = "essai" if remaining == 1 else "essais"
+        err = f'<p class="err">Code incorrect. Il te reste {remaining} {essais}.</p>'
+    inner = f"""<h1>Connexion à DodoTopia</h1>
+<p>Recopie le code affiché dans la fenêtre de DodoTopia pour confirmer que c'est bien toi qui te connectes.</p>
+<form method="post" action="/auth/discord/confirm" autocomplete="off">
+<input type="hidden" name="login_id" value="{escape(login_id, quote=True)}">
+<input class="code" name="code" inputmode="latin" autocapitalize="characters" spellcheck="false"
+ maxlength="{USER_CODE_LEN + 2}" pattern="[A-Za-z0-9 -]*" required autofocus aria-label="Code affiché dans DodoTopia">
+{err}
+<div><button type="submit">Continuer avec Discord</button></div>
+</form>
+<p class="small">Si tu n'as pas lancé de connexion depuis DodoTopia, ferme cet onglet : ne saisis jamais un code
+qu'on t'a envoyé.</p>"""
+    return _shell("Connexion", inner, status)
 
 
 @router.get("/auth/discord/done")
@@ -275,7 +367,7 @@ def discord_done(error: str = ""):
     return _done_page(error, status=200 if not error else 400)
 
 
-@router.post("/api/auth/poll")
+@router.post("/api/auth/poll", dependencies=[Depends(limit("auth_poll", 60, 60))])
 def auth_poll(body: AuthPoll, request: Request, conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
     t = _live_ticket(conn, settings, body.login_id)
@@ -283,19 +375,21 @@ def auth_poll(body: AuthPoll, request: Request, conn: db.Connection = Depends(db
         raise api_error(404, "unknown_login", "Connexion inconnue ou expirée.")
     if not hmac.compare_digest(sha256_hex(body.verifier), t["verifier_hash"]):
         raise api_error(403, "bad_verifier", "Vérificateur incorrect.")
-    if t["status"] == "pending":
+    if t["status"] in ("pending", "confirmed"):
         return {"status": "pending"}
     if t["status"] == "error":
         return {"status": "error", "error": t["error"]}
     if t["status"] == "used":
         raise api_error(410, "consumed", "Cette connexion a déjà été récupérée.")
-    # ok : livré une seule fois
-    conn.execute("UPDATE login_tickets SET status='used', token=NULL WHERE id=?", (t["id"],))
+    # ok : la session est créée maintenant, contre le vérifieur, et livrée une seule fois
+    conn.execute("UPDATE login_tickets SET status='used', user_id=NULL WHERE id=?", (t["id"],))
+    user = conn.execute("SELECT * FROM users WHERE id=?", (t["user_id"],)).fetchone() if t["user_id"] else None
+    if user is None or user["banned"]:
+        conn.commit()
+        return {"status": "error", "error": "banned" if user is not None else "session"}
+    token = create_session(conn, settings, user["id"])
     conn.commit()
-    user = user_from_token(conn, settings, t["token"])
-    if user is None:
-        return {"status": "error", "error": "session"}
-    return {"status": "ok", "token": t["token"], "user": user_public(user, settings)}
+    return {"status": "ok", "token": token, "user": user_public(user, settings)}
 
 
 @router.get("/api/me")
@@ -310,6 +404,53 @@ def logout(request: Request, conn: db.Connection = Depends(db.get_db)):
         conn.execute("DELETE FROM sessions WHERE token_hash=?", (sha256_hex(token),))
         conn.commit()
     return {"ok": True}
+
+
+@router.delete("/api/me", dependencies=[Depends(limit("delete_me", 3, 3600))])
+def delete_me(request: Request, user: db.Row = Depends(get_current_user), conn: db.Connection = Depends(db.get_db)):
+    """Suppression du compte : sessions, tickets et signalements effacés ; les morceaux approuvés restent dans la
+    bibliothèque mais sont anonymisés (uploader_id NULL -> « Compte supprimé ») ; les morceaux en attente ou
+    refusés disparaissent avec leurs fichiers ; puis la ligne `users` elle-même."""
+    from . import social
+    from .gallery import drawing_files  # imports tardifs (library et gallery dépendent de auth)
+    from .library import song_path
+
+    settings = settings_of(request)
+    uid = user["id"]
+    doomed = conn.execute("SELECT id, sha256 FROM songs WHERE uploader_id=? AND status<>'approved'", (uid,)).fetchall()
+    kept = conn.execute("SELECT COUNT(*) FROM songs WHERE uploader_id=? AND status='approved'", (uid,)).fetchone()[0]
+    doomed_drawings = conn.execute("SELECT id, png_sha256 FROM drawings WHERE uploader_id=? AND status<>'approved'",
+                                   (uid,)).fetchall()
+    kept_drawings = conn.execute("SELECT COUNT(*) FROM drawings WHERE uploader_id=? AND status='approved'",
+                                 (uid,)).fetchone()[0]
+    with conn.transaction():
+        conn.execute("DELETE FROM reports WHERE reporter_id=?", (uid,))
+        conn.execute("UPDATE reports SET resolved_by=NULL WHERE resolved_by=?", (uid,))
+        social.remove_user_likes(conn, uid)
+        for song in doomed:
+            conn.execute("DELETE FROM songs WHERE id=?", (song["id"],))
+        conn.execute("UPDATE songs SET uploader_id=NULL WHERE uploader_id=?", (uid,))
+        conn.execute("UPDATE songs SET reviewed_by=NULL WHERE reviewed_by=?", (uid,))
+        for drawing in doomed_drawings:
+            conn.execute("DELETE FROM drawings WHERE id=?", (drawing["id"],))
+        conn.execute("UPDATE drawings SET uploader_id=NULL WHERE uploader_id=?", (uid,))
+        conn.execute("UPDATE drawings SET reviewed_by=NULL WHERE reviewed_by=?", (uid,))
+        conn.execute("DELETE FROM login_tickets WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    for song in doomed:
+        try:
+            song_path(settings, song["sha256"]).unlink()
+        except OSError:
+            pass
+    for drawing in doomed_drawings:
+        for path in drawing_files(settings, drawing["png_sha256"]):
+            try:
+                path.unlink()
+            except OSError:
+                pass
+    return {"ok": True, "songs_kept": kept, "songs_deleted": len(doomed), "drawings_kept": kept_drawings,
+            "drawings_deleted": len(doomed_drawings)}
 
 
 def cleanup(conn: db.Connection, settings: Settings) -> None:

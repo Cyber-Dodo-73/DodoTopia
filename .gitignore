@@ -33,10 +33,30 @@ tests_client/__pycache__/
 # C'est config.default.json, régénéré au build par make_default_config.py, qui est livré et versionné.
 config.json
 
-# Outils et captures de vérification locale
-.tools/
+# Outils et captures de vérification locale (fichiers listés plus bas exceptés)
+.tools/*
 artifacts/ux-review/
 
 # Artefacts de livraison et briefs de travail : hors du depot public
 DodoTopia-Instruments-Pack.zip
 Prompt-Claude-Code-*.md
+
+# Outils necessaires au build et aux tests (le reste de .tools/ reste local)
+!.tools/make_legal.py
+!.tools/i18n_check.py
+!.tools/i18n_merge.py
+!.tools/post_social.py
+!.tools/make_og.py
+!.tools/ux_check.py
+
+# Données locales de DodoTopia 2.0 lancé depuis les sources (DATA_DIR = dossier du projet)
+webview/
+exports/
+nowplaying.txt
+instance.json
+instance.key
+dodotopia.log.*
+config.json.broken-*
+*.tmp-*
+# Captures de vérification de l'interface
+artifacts/

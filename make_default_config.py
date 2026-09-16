@@ -63,10 +63,12 @@ def sanitize(cfg):
                 if k in tools:
                     tools[k] = None
         d["formats"] = {}                      # rect + validated + grilles mesurees : propres a l'ecran
+        d.pop("empty_colors", None)            # teintes de la toile vide lues sur cet ecran
 
     c = cfg.get("cook")
     if isinstance(c, dict):
         c.update(COOK_RESET)
+        c.pop("screen", None)                  # empreinte de l'ecran du calibrage : propre a cette machine
 
     m = cfg.get("multi")
     if isinstance(m, dict):
@@ -75,6 +77,28 @@ def sanitize(cfg):
                 m[k] = v
 
     _reset_instruments(cfg)
+
+    # Reglages de lecture et raccourcis : toujours les valeurs par defaut du code (core.DEFAULT_CONFIG). La
+    # config de developpement sert aussi aux essais (raccourci d'arret change, delai de 0,05 s, arret au
+    # clavier coupe...) : sans cette remise a zero, ces essais partiraient chez tous les nouveaux joueurs.
+    import core
+    for k, v in core.DEFAULT_CONFIG.items():
+        if k in ("instruments", "songs_folder"):
+            continue
+        cfg[k] = json.loads(json.dumps(v))
+    cfg["hotkeys"]["draw_point"] = "F3"
+    cfg["hotkeys_migrated_f12"] = True
+    # Dessin et cuisine : memes regles pour les preferences (rythme, mode precis, nombre de plats...) ; le
+    # calibrage a deja ete retire plus haut, la palette par defaut reste celle du code.
+    import cook as _cook
+    import draw as _draw
+    for section, defaults, keep in (("draw", _draw.DEFAULT_DRAW, ("palette", "tools", "formats")),
+                                    ("cook", _cook.DEFAULT_COOK, ("points", "refs"))):
+        node = cfg.get(section)
+        if isinstance(node, dict):
+            for k, v in defaults.items():
+                if k not in keep:
+                    node[k] = json.loads(json.dumps(v))
 
     # preferences de session, pas des reglages a livrer
     cfg["instrument"] = "piano"
@@ -85,6 +109,11 @@ def sanitize(cfg):
     if os.path.isabs(str(cfg.get("songs_folder", "songs"))):
         cfg["songs_folder"] = "songs"
     cfg.pop("online", None)                    # l'URL du serveur a ses valeurs par defaut dans online.py
+    # Conditions d'utilisation : chaque joueur les accepte lui-meme. Une acceptation livree dans la config par
+    # defaut ferait passer l'ecran bloquant a tous les nouveaux installes.
+    for k in ("terms_accepted_version", "terms_accepted_at", "terms_accepted_lang"):
+        cfg.pop(k, None)
+    cfg.pop("general", None)                   # langue : "auto" par defaut (langue du systeme)
     return cfg
 
 

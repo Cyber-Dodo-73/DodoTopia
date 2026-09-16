@@ -1,0 +1,22 @@
+{
+  "terms.title": "Condiciones de uso de DodoTopia",
+  "terms.sub": "Versión {v} · La versión francesa es la que prevalece.",
+  "terms.gist": "Lo esencial en 6 puntos",
+  "terms.full": "Texto completo de las condiciones",
+  "terms.lang_en": "Leer en inglés",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "He leído y acepto las condiciones de uso",
+  "terms.accept": "Aceptar y continuar",
+  "terms.refuse": "Rechazar y salir",
+  "terms.why_scroll": "Desplázate por el texto hasta el final",
+  "terms.why_check": "Marca la casilla para aceptar",
+  "terms.ready": "Todo listo, puedes continuar.",
+  "terms.loading": "Cargando las condiciones…",
+  "terms.error": "No se pudieron cargar las condiciones de uso.",
+  "terms.confirm": "¿Salir de DodoTopia sin aceptar?",
+  "terms.yes": "Sí, salir",
+  "terms.no": "Volver",
+  "terms.pos": "{p}% leído",
+  "terms.pos_done": "Leído hasta el final ✓",
+  "terms.accept_failed": "No se pudo guardar tu aceptación. Inténtalo de nuevo."
+}

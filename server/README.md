@@ -39,7 +39,9 @@ sur ton profil > **Copier l'identifiant**.
    *Settings* > *Git* > *GitHub* > installer l'app Dokploy sur le dépôt). Choisis le dépôt, la branche `main`, et
    **Compose Path** = `./server/docker-compose.yml`. *Compose Type* : `Docker Compose`.
 4. **Variables** : onglet *Environment* : colle le contenu de `.env.example` en remplissant `PUBLIC_URL`,
-   `POSTGRES_PASSWORD`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `ADMIN_DISCORD_IDS`, `PUBLISH_TOKEN`
+   `POSTGRES_PASSWORD`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `ADMIN_DISCORD_IDS`, `PUBLISH_TOKEN`,
+   et de préférence `RELEASE_SIGNING_PUBLIC_KEY` (manifestes signés, §5) ; `FORWARDED_ALLOW_IPS` seulement si
+   Traefik n'est pas sur un réseau Docker (§8)
    (`python -c "import secrets; print(secrets.token_urlsafe(32))"` pour les secrets). Dokploy écrit ce contenu dans
    le `.env` lu par le compose (`env_file: .env` et `${POSTGRES_PASSWORD}`). Laisse `DATABASE_URL` vide : le compose
    la construit (`postgresql://dodo:${POSTGRES_PASSWORD}@db:5432/dodo`).
@@ -107,8 +109,24 @@ racine du projet (`PUBLISH_URL=…`, `PUBLISH_TOKEN=…`, ignoré par git et Doc
 
 Les clients interrogent `GET /api/releases/latest?current=<version>&platform=windows-setup|windows-portable|linux-x64`
 et téléchargent `https://dodotopia.cyber-dodo.fr/dl/<version>/<fichier>` (servi par l'API : `FileResponse`, requêtes `Range`
-acceptées pour la reprise, `Cache-Control: max-age=3600`).
+acceptées pour la reprise, `Cache-Control: max-age=3600`). Chaque asset compte ses téléchargements (`downloads` dans le
+manifeste ; une requête entière ou `Range: bytes=0-` compte, une reprise partielle non) ; `GET /api/stats` publie les
+totaux (cache 60 s).
 Retirer une version : `curl -X DELETE -H "X-Publish-Token: …" https://dodotopia.cyber-dodo.fr/api/admin/releases/<version>`.
+
+**Manifeste signé (Ed25519).** Le manifeste expose `signed_payload` (JSON canonique, `sort_keys`, sans espace, de
+`{version, assets{platform:{sha256, size, filename}}, mandatory, published_at}`) et `signature` (base64, 64 octets).
+`publish_release.py` construit ce même texte à partir des assets déposés, de `mandatory` et d'un `published_at` qu'il
+choisit, le signe avec la clé privée (secret GitHub), puis envoie `{notes, mandatory, published_at, signature}` à
+`POST /api/admin/releases/{v}/publish`. Si `RELEASE_SIGNING_PUBLIC_KEY` est renseignée dans le `.env`, le serveur
+vérifie la signature et refuse toute publication non signée (422 `signature_required`) ou mal signée
+(400 `bad_signature`) ; sans clé, la signature est facultative et stockée telle quelle. Le client vérifie
+`signature` contre `signed_payload` avec la clé publique embarquée (`RELEASE_SIGNING_PUBLIC_KEY` dans `online.py`),
+puis compare `signed_payload` au manifeste reçu ; toute divergence → aucune mise à jour proposée.
+Génération de la paire : `py publish_release.py --gen-key` (ou voir `.env.example`). La clé privée (base64) va dans
+le secret GitHub `RELEASE_SIGNING_KEY` (ou `RELEASE_SIGNING_KEY=` dans `publish.env` pour une publication à la main,
+avec `pip install pynacl`) ; la clé publique va à la fois dans le `.env` du serveur et dans `online.py`. Sans secret,
+la CI publie sans signature et l'indique en avertissement.
 
 ## 6. Modération de la bibliothèque
 
@@ -120,11 +138,37 @@ Tout utilisateur connecté peut déposer un `.mid` (≤ 2 Mo, type 0/1, 1 s à 3
 |---|---|
 | File d'attente | `GET /api/admin/songs?status=pending` |
 | Valider / refuser | `POST /api/admin/songs/{id}/approve` · `POST /api/admin/songs/{id}/reject {"reason": "…"}` |
-| Signalements ouverts | `GET /api/admin/reports?open=1` |
-| Traiter un signalement | `POST /api/admin/reports/{id}/resolve {"action": "dismiss" \| "remove_song"}` |
-| Bannir | `POST /api/admin/users/{id}/ban` (sessions révoquées, dépôts en attente refusés) |
+| Dessins en attente | `GET /api/admin/drawings?status=pending` · `POST /api/admin/drawings/{id}/approve` · `…/reject {"reason": "…"}` |
+| Signalements ouverts | `GET /api/admin/reports?open=1&target_type=song\|drawing` (chaque ligne : `target_type`, `target_id`, `target_title`, `target_status`) |
+| Traiter un signalement | `POST /api/admin/reports/{id}/resolve {"action": "dismiss" \| "remove_song" \| "remove_drawing" \| "remove_target"}` (tout `remove_*` supprime la cible) |
+| Bannir | `POST /api/admin/users/{id}/ban` (sessions révoquées, morceaux et dessins en attente refusés) |
 
 Le token de session d'un admin se trouve dans `account.json` du dossier de données de DodoTopia.
+
+Suppression d'un compte par son titulaire : `DELETE /api/me` (sessions, tickets et signalements effacés ; morceaux
+en attente ou refusés supprimés avec leurs fichiers ; morceaux approuvés conservés mais anonymisés, `uploader_id`
+NULL et « Compte supprimé » comme déposant ; mêmes règles pour les dessins ; « J'aime » du compte retirés et
+compteurs recalculés ; puis la ligne `users`).
+
+**Galerie de dessins.** `POST /api/drawings` (multipart `png` ≤ 512 Ko, `title` ≤ 60, `cells` JSON facultatif
+≤ 200 Ko, 5 dépôts/heure) : signature et dimensions (≤ 1024×1024) lues dans l'en-tête, décodage complet par Pillow
+(PNG tronqué, animé ou bombe de décompression refusés), puis **ré-encodage** depuis les pixels seuls (aucune
+métadonnée ni donnée après `IEND` ne survit) et vignette de 400 px. Fichiers dans `DATA_DIR/drawings/<sha256>.png`
+(+ `.thumb.png`). Même cycle que les morceaux : en attente, puis validé ou refusé par un administrateur.
+
+**Import par lien.** `POST /api/import {url}` récupère un MIDI sur Online Sequencer, BitMidi ou une URL https en
+`.mid` (anti-SSRF : https et port 443 seulement, hôtes sur liste blanche pour les deux sites et, si
+`IMPORT_DIRECT_HOSTS` est renseigné, pour les liens directs ; résolution DNS et refus de toute adresse non publique à
+chaque redirection, 2 au plus ; 10 s ; `MAX_MIDI_BYTES`). Le fichier est validé comme un dépôt, gardé 7 jours dans
+`DATA_DIR/import_cache/`, puis rendu une seule fois par `GET /api/import/{token}` (10 min). **Rien n'est publié dans
+la bibliothèque** : le joueur dépose ensuite le fichier s'il le souhaite.
+
+**Annonces.** Avec `DISCORD_ANNOUNCE_WEBHOOK` (URL https d'un webhook de salon Discord), chaque publication de
+version envoie, après la réponse, un embed « DodoTopia x.y.z » (notes tronquées à 1 500 caractères, lien
+`/fr/telecharger`). `releases.announced_at` garantit une seule annonce par version (remis à vide si Discord refuse,
+pour réessayer à la publication suivante). X et Bluesky sont annoncés par la CI (`.tools/post_social.py`, dernier
+step de `release.yml`, secrets GitHub `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`,
+`BSKY_HANDLE`, `BSKY_APP_PASSWORD` ; chaque réseau est ignoré si ses secrets manquent ; `--dry-run` pour relire).
 
 ## 7. Sauvegarde et restauration
 
@@ -133,8 +177,8 @@ Sur le VPS (les noms de conteneurs se trouvent avec `docker ps` ; `<compose>` es
 ```bash
 # base Postgres (cohérente même pendant l'utilisation)
 docker exec <compose>-db-1 pg_dump -U dodo -Fc dodo > dodo-$(date +%F).dump
-# fichiers (morceaux + binaires publiés)
-docker run --rm -v <compose>_dodo_data:/data -v "$PWD":/out alpine tar czf /out/dodo-data-$(date +%F).tgz -C /data songs releases
+# fichiers (morceaux, dessins, binaires publiés ; import_cache et og_cache se régénèrent)
+docker run --rm -v <compose>_dodo_data:/data -v "$PWD":/out alpine tar czf /out/dodo-data-$(date +%F).tgz -C /data songs drawings releases
 ```
 
 Restauration : arrêter le service dans Dokploy (*Stop*), puis
@@ -152,9 +196,18 @@ Dokploy > service > *Logs* (choisir `api` ou `db`), ou sur le VPS `docker logs -
 - **Un seul worker uvicorn** est indispensable : les salons vivent en mémoire du processus. Ne pas ajouter
   `--workers` ni `deploy.replicas`.
 - Le conteneur tourne sans privilèges (utilisateur `app`), le port 8000 n'est jamais publié : seul Traefik y accède.
-  `--proxy-headers --forwarded-allow-ips=*` : l'IP réelle (limitation de débit) vient de `X-Forwarded-For`.
-- Limites de débit (429 + `Retry-After`) : 10 `auth/start`/min/IP, 10 dépôts/h, 20 signalements/j, 10 salons créés/min/IP,
-  20 messages WebSocket/s par connexion. `RATE_LIMIT=0` les désactive (tests uniquement).
+  `--proxy-headers` : l'IP réelle (limitation de débit) vient de `X-Forwarded-For`, mais seulement quand la requête
+  arrive d'un proxy listé dans **`FORWARDED_ALLOW_IPS`** (défaut `172.16.0.0/12`, les réseaux Docker où vit Traefik).
+  Si Traefik tourne ailleurs (autre réseau, autre hôte), mets son adresse ou son réseau dans cette variable ;
+  `*` ferait confiance à n'importe quel client, qui forgerait alors son IP.
+- Limites de débit (429 + `Retry-After`, par IP sauf mention) : 10 `auth/start`/min, 60 `auth/poll`/min,
+  20 confirmations de code/min, 3 suppressions de compte/h, 10 dépôts/h (par compte), 20 signalements/j (par compte),
+  60 téléchargements de morceau/min, 30 `releases/latest`/min, 10 `/dl/*`/min, 20 ouvertures de WebSocket/min,
+  10 salons créés/min, 20 `join`/min, 20 messages WebSocket/s par connexion. `RATE_LIMIT=0` les désactive (tests).
+- WebSocket : le premier message (`create`/`join`) doit arriver sous 10 s, sinon fermeture 1008 ; messages
+  limités à 64 Ko par uvicorn (`--ws-max-size`) et à 16 Ko par l'application.
+- Réponses HTTP : `Strict-Transport-Security`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff` sur tout (pas encore de CSP).
 - 502 sur le domaine : le service `api` n'est pas *healthy* (voir ses logs : mot de passe Postgres, migration) ou
   n'est pas sur `dokploy-network` (§3.5).
 
@@ -182,21 +235,47 @@ puis `docker compose up -d --build`. Variables utiles pour les essais de salons 
 
 Règles pour écrire une requête (`app/db.py`) : paramètres `?` (traduits en `%s` pour psycopg), lignes = dict,
 `INSERT … RETURNING id`, booléens en 0/1, horodatages ISO texte, `LOWER(col) LIKE LOWER(?)`, `ON CONFLICT … DO UPDATE`.
-Nouvelle migration = nouvelle entrée dans `db.MIGRATIONS` (placeholders `{ID}`, `{REAL}` pour les types qui diffèrent).
+Nouvelle migration = nouvelle entrée dans `db.MIGRATIONS` (placeholders `{ID}`, `{REAL}` pour les types qui diffèrent ;
+un dict `{"sqlite": …, "postgres": …}` quand les deux dialectes divergent). Sous Postgres, `db.POSTGRES_OPTIONAL`
+tente au démarrage `CREATE EXTENSION pg_trgm` et deux index GIN trigrammes (recherche `LIKE '%mot%'` sur titre et
+artiste) ; un échec est journalisé et ignoré.
 
 ## 10. Référence rapide de l'API
 
-- Auth : `POST /api/auth/start {verifier_hash}` → `{login_id, url, expires_in}` ; le navigateur suit `url` ;
-  `POST /api/auth/poll {login_id, verifier}` → `{status: pending}` | `{status: ok, token, user}` (une seule fois, 410
-  ensuite) | `{status: error, error}` ; `GET /api/me` ; `POST /api/auth/logout`.
-- Bibliothèque : `GET /api/songs?q&page&per_page&sort=recent|popular|title`, `GET /api/songs/{id}`,
-  `GET /api/songs/{id}/download` (`ETag` = sha256), `POST /api/songs` (multipart `file`, `title?`, `artist?`) →
-  201 / 409 `{detail:{code:"duplicate", existing_id}}` / 413 / 422, `PATCH`/`DELETE /api/songs/{id}`,
-  `POST /api/songs/{id}/report {reason}`.
+- Auth : `POST /api/auth/start {verifier_hash}` → `{login_id, url, expires_in, user_code}` ; l'app affiche
+  `user_code` (5 caractères) et ouvre `url` ; la page demande de recopier le code (5 essais, formulaire
+  `POST /auth/discord/confirm`), puis redirige vers Discord ; `POST /api/auth/poll {login_id, verifier}` →
+  `{status: pending}` | `{status: ok, token, user}` (session créée à cet instant, livrée une seule fois, 410 ensuite) |
+  `{status: error, error}` (`denied`, `discord`, `banned`, `code` = trop d'essais, `expired`) ; `GET /api/me` ;
+  `DELETE /api/me` ; `POST /api/auth/logout`.
+- Bibliothèque : `GET /api/songs?q&tag&instrument&page&per_page&sort=recent|trending|popular|likes|title`
+  (`trending` = (téléchargements + 3 × likes) / (âge en heures + 2)^1,5, calculé sur les 500 plus récents),
+  `GET /api/songs/{id}` (champs `tags`, `instrument`, `source_url`, `source_name`, `license`, `likes`, `updated_at`,
+  et `liked_by_me` si session), `GET /api/songs/{id}/download` (`ETag` = sha256), `POST /api/songs` (multipart `file`,
+  `title?`, `artist?`, `tags?` (JSON ou virgules, ≤ 8 parmi `schemas.SONG_TAGS`), `instrument?`, `source_url?`
+  (https), `source_name?`, `license?` = `own|public_domain|cc|unknown`) → 201 / 409
+  `{detail:{code:"duplicate", existing_id}}` / 413 / 422 (`bad_tags`, `bad_instrument`, `bad_source_url`,
+  `bad_license`, `invalid_midi`), `PATCH`/`DELETE /api/songs/{id}`, `POST`/`DELETE /api/songs/{id}/like`
+  (idempotent, 60/min) → `{ok, id, liked, likes}`, `POST /api/songs/{id}/report {reason}`.
+- Import : `POST /api/import {url}` (session, 10/min) → `{ok, filename, size, sha256, source_url, source_name,
+  source_author, download_token, download_url, expires_in}` ; `GET /api/import/{token}` → fichier, une fois.
+- Galerie : `GET /api/drawings?page&per_page&sort=recent|popular`, `GET /api/drawings/{id}`,
+  `GET /api/drawings/{id}.png`, `GET /api/drawings/{id}/thumb.png`, `GET /api/drawings/{id}/cells` →
+  `{format, w, h, cells}`, `POST /api/drawings` (multipart `png`, `title?`, `cells?`),
+  `POST`/`DELETE /api/drawings/{id}/like`, `DELETE /api/drawings/{id}` (auteur ou admin),
+  `POST /api/drawings/{id}/report {reason}`.
+- Site public : `/{lang}/morceaux` (`songs`, `canciones`, `lieder`, `musicas`) et la fiche
+  `/{lang}/morceaux/{id}-{slug}` (301 si le slug est faux, `noindex` sous `SONG_INDEX_MIN_NOTES` notes, image
+  `/og/song/{id}.png` en cache disque `DATA_DIR/og_cache`), `/{lang}/galerie[/{id}]`, `/{lang}/salon/{CODE}`
+  (`noindex`, ouvre `dodotopia://room/{CODE}`), `/sitemap-songs.xml`, `/sitemap-gallery.xml`. Liens profonds :
+  `dodotopia://song/{id}`, `dodotopia://drawing/{id}`, `dodotopia://room/{code}`.
 - Versions : `GET /api/releases`, `/api/releases/{version}`, `/api/releases/latest?current&platform` →
-  manifeste `{version, published_at, notes, mandatory, assets{platform:{url, filename, sha256, size}}, update_available, asset}` ;
-  `GET /dl/{version}/{filename}` (Range OK) ; publication : `PUT /api/admin/releases/{v}/assets/{platform}`
-  (en-têtes `X-Publish-Token`, `X-Sha256`, `X-Filename`), `POST /api/admin/releases/{v}/publish {notes, mandatory}`.
+  manifeste `{version, published_at, notes, mandatory, assets{platform:{url, filename, sha256, size, downloads}},
+  signature, signed_payload, update_available, asset}` ; `GET /dl/{version}/{filename}` (Range OK) ;
+  `GET /api/stats` → `{downloads_total, songs_approved, users, rooms_open}` ; publication :
+  `PUT /api/admin/releases/{v}/assets/{platform}` (en-têtes `X-Publish-Token`, `X-Sha256`, `X-Filename`),
+  `POST /api/admin/releases/{v}/publish {notes, mandatory, published_at?, signature?}`.
 - Salons : WebSocket `wss://dodotopia.cyber-dodo.fr/ws` (protocole documenté en tête de `app/rooms.py`) ;
-  `POST /api/rooms/{code}/song` (chef, multipart ≤ 512 Ko) ; `GET /api/rooms/{code}/song/{sha256}` (membres).
+  `POST /api/rooms/{code}/song` (chef, multipart ≤ 512 Ko) ; `GET /api/rooms/{code}/song/{sha256}` (membres) ;
+  `GET /api/rooms/{code}/exists` → `{code, exists, full}` (sans compte, 30/min par IP).
 - Erreurs : `{"detail": {"code": "...", "message": "..."}}` (les erreurs de validation FastAPI gardent leur format).

@@ -1,0 +1,22 @@
+{
+  "terms.title": "DodoTopia 利用規約",
+  "terms.sub": "バージョン {v} · フランス語版が正本となります。",
+  "terms.gist": "6 つの要点",
+  "terms.full": "規約の全文",
+  "terms.lang_en": "Read in English",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "利用規約を読み、同意します",
+  "terms.accept": "同意して続ける",
+  "terms.refuse": "同意せずに終了",
+  "terms.why_scroll": "テキストを最後までスクロールしてください",
+  "terms.why_check": "同意するにはチェックボックスをオンにしてください",
+  "terms.ready": "準備ができました。続けられます。",
+  "terms.loading": "規約を読み込み中…",
+  "terms.error": "利用規約を読み込めませんでした。",
+  "terms.confirm": "同意せずに DodoTopia を終了しますか？",
+  "terms.yes": "はい、終了します",
+  "terms.no": "戻る",
+  "terms.pos": "{p}% 読了",
+  "terms.pos_done": "最後まで読みました ✓",
+  "terms.accept_failed": "同意を保存できませんでした。もう一度お試しください。"
+}

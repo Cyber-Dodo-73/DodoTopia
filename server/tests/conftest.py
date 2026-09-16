@@ -73,13 +73,15 @@ def mock_discord(monkeypatch):
 
 
 def login(client: TestClient, discord_id: str) -> tuple[str, dict]:
-    """Déroule tout le flow ticket -> navigateur -> callback -> poll. Renvoie (token, user)."""
+    """Déroule tout le flow ticket -> navigateur (code recopié) -> callback -> poll. Renvoie (token, user)."""
     verifier = f"verif-{discord_id}"
     r = client.post("/api/auth/start", json={"verifier_hash": hashlib.sha256(verifier.encode()).hexdigest()})
     assert r.status_code == 200, r.text
-    login_id = r.json()["login_id"]
+    login_id, user_code = r.json()["login_id"], r.json()["user_code"]
     r = client.get(f"/auth/discord/start?login_id={login_id}")
-    assert r.status_code == 302, r.text
+    assert r.status_code == 200, r.text
+    r = client.post("/auth/discord/confirm", data={"login_id": login_id, "code": user_code})
+    assert r.status_code == 303, r.text
     state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
     r = client.get(f"/auth/discord/callback?code={discord_id}&state={state}")
     assert r.status_code == 302 and r.headers["location"] == "/auth/discord/done", r.text

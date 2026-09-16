@@ -1,5 +1,5 @@
 // DodoTopia : apercu sans backend (tests) : index.html?mock[&image][&calib|&drawing|&autocal][&cook|&ccalib][&dialog][&toast][&help][&account][&tab=cook][&view=library|discover|together]
-//   [&settings[=general|audio|hotkeys|draw|cook|online|about]][&empty (bibliotheque vide)][&multi (compte a rebours Multi audio)][&audio (mode Multi audio au repos)]
+//   [&settings[=audio|hotkeys|draw|cook|online|general (Apparence)|storage|about]][&empty (bibliotheque vide)][&multi (compte a rebours Multi audio)][&audio (mode Multi audio au repos)]
 //   [&game (lecture dans le jeu)][&error (arret anormal, non admin)]
 //   Instruments : [&inst=<id> (instrument actif : piano, lute, conga, conch...)][&qwerty (libelles QWERTY)]
 //   [&sel (selecteur ouvert)][&keys (panneau des touches)]
@@ -7,7 +7,40 @@
 //   En ligne / Salon : [&online (connecte + catalogue)][&online=out (deconnecte)][&online=off (serveur injoignable)]
 //   [&online=wait (connexion Discord en attente)][&admin (file de moderation)][&lobby (salon en attente, 3 joueurs)]
 //   [&lobby=count (compte a rebours du salon)][&update (mise a jour disponible : carte + toast persistant)]
+//   Conditions d'utilisation : [&terms (modale bloquante, texte lorem fr)][&terms=en (ouverte en anglais)][&terms=fail (echec du chargement)]
+//   [&terms=short (texte plus court que la zone : compte comme lu)]
+//   Langue : [&lang=en|es|de|pt-BR|zh-CN|ja|th (catalogue ui/i18n/<lang>.json charge par fetch : http seulement)]
+//   Thème : [&theme=dark|light (data-theme force sur <html>)]
+//   Phase 2 : [&onboarding (découverte ouverte)][&deeplink (lien dodotopia:// à confirmer : salon K7P2QD)]
+//   [&gamewin=off|admin|none (fenêtre du jeu : non lancé, en administrateur alors que DodoTopia non, non vérifié ;
+//    défaut : détecté)][&tracks (« Réglages du morceau » ouverts, pistes MIDI simulées)]
+//   Phase 3 : [&gallery (galerie des dessins ouverte, connecté)][&share (Découvrir + menu Partager ouvert sur la
+//   première ligne)][&importurl (dialogue « Importer depuis un lien »)][&shareform (formulaire de partage d'un
+//   morceau)][&published (dessin converti, dépôt en attente de modération)][&tag=<tag> (filtre actif dans Découvrir)]
+// &theme=dark|light : thème forcé (le mode headless ne lit pas localStorage de façon fiable)
 if(location.search.includes('mock')){
+  const themeArg = (/[?&]theme=(dark|light)/.exec(location.search) || [])[1];
+  if(themeArg) document.documentElement.dataset.theme = themeArg;
+  // ---- faux get_i18n : meme forme que le backend {lang, available, catalogue, fallback, meta}, catalogues assembles
+  // (py .tools/i18n_merge.py) lus par fetch ; la liste des langues vient des _meta de chaque catalogue.
+  const MOCK_LANGS = ['fr', 'en', 'es', 'de', 'pt-BR', 'zh-CN', 'ja', 'th'];
+  const catCache = {};
+  const fetchCat = tag => catCache[tag] || (catCache[tag] = fetch('i18n/' + tag + '.json').then(r => r.ok ? r.json() : null).catch(() => null));
+  window.MOCK_I18N = lang => {
+    lang = MOCK_LANGS.includes(lang) ? lang : 'fr';
+    return Promise.all(MOCK_LANGS.map(fetchCat)).then(all => {
+      const cats = {}; MOCK_LANGS.forEach((tag, i) => { if(all[i]) cats[tag] = all[i]; });
+      const available = MOCK_LANGS.filter(tag => cats[tag]).map(tag => ({tag, name: (cats[tag]._meta || {}).name || tag, beta: !!(cats[tag]._meta || {}).beta}));
+      const cur = cats[lang] || cats.fr || {}, fb = cats.fr || {};
+      const strip = c => { const o = Object.assign({}, c); delete o._meta; return o; };
+      return {lang: cats[lang] ? lang : 'fr', available, catalogue: strip(cur), fallback: cur === fb ? {} : strip(fb), meta: cur._meta || {}};
+    });
+  };
+  const langArg = (/[?&]lang=([A-Za-z-]+)/.exec(location.search) || [])[1] || 'fr';
+  // la langue est chargee AVANT le rendu (comme onReady dans l'application) ; sans serveur http, on rend quand meme
+  window.MOCK_I18N(langArg).then(applyI18nData, e => console.warn('mock : catalogue i18n non charge', e)).then(mockMain);
+}
+function mockMain(){
   const q = location.search;
   const has = k => new RegExp('[?&]' + k + '(?:&|$)').test(q);
   const keysP = [",","l",".",";","/","o","0","p","-","[","=","]","z","s","x","d","c","v","g","b","h","n","j","m","q","2","w","3","e","r","5","t","6","y","7","u","i"];
@@ -63,7 +96,9 @@ if(location.search.includes('mock')){
               {kind: 'octave', value: -12, coverage: 84, label: 'Descendre d’une octave : 84 % à la hauteur exacte'},
               {kind: 'omit', value: 132, coverage: 80, label: 'Omettre 132 notes hors registre : 80 % à la hauteur exacte, aucune note déplacée d’octave'}]};
   const onl = arg('online'), adm = !!has('admin'), lob = arg('lobby'), upd = arg('update');
-  const wantOnline = !!(onl || adm || lob || upd);
+  const galArg = has('gallery'), shareArg = has('share'), importArg = has('importurl'), formArg = has('shareform'), pubArg = has('published');
+  const tagArg = typeof arg('tag') === 'string' ? arg('tag') : '';
+  const wantOnline = !!(onl || adm || lob || upd || galArg || shareArg || importArg || formArg || pubArg || tagArg);
   const offline = onl === 'off', out = onl === 'out', waiting = onl === 'wait';
   const logged = wantOnline && !offline && !out && !waiting;
   const mode = has('multi') || has('audio') ? 'audio' : (has('room') || lob) ? 'room' : 'solo';
@@ -72,12 +107,33 @@ if(location.search.includes('mock')){
   const MOCK_USER = {id: '204255221017214977', name: 'Dodo', username: 'Dodo', avatar: '', is_admin: adm};
   const MOCK_ITEMS = [
     {id: 11, title: 'AriaMath', artist: 'C418', uploader_name: 'Dodo', duration_s: 318, downloads: 128, sha256: 'a1',
-     created_at: new Date(Date.now() - 3600e3 * 5).toISOString(), status: 'approved', local: null},
+     created_at: new Date(Date.now() - 3600e3 * 5).toISOString(), status: 'approved', local: null,
+     tags: ['piano', 'jeu-video', 'calme'], likes: 42, liked_by_me: true, page_url: 'https://dodotopia.cyber-dodo.fr/fr/morceaux/11-ariamath'},
     {id: 12, title: 'Wish You Were Here', artist: 'Pink Floyd', uploader_name: 'Lila', duration_s: 95, downloads: 17, sha256: 'b2',
-     created_at: new Date(Date.now() - 86400e3 * 2).toISOString(), status: 'approved', local: 'b'},
+     created_at: new Date(Date.now() - 86400e3 * 2).toISOString(), status: 'approved', local: 'b',
+     tags: ['rock', 'facile'], likes: 7, liked_by_me: false, page_url: 'https://dodotopia.cyber-dodo.fr/fr/morceaux/12-wish-you-were-here'},
     {id: 13, title: 'Blinding Lights (version longue pour tester le debordement du titre)', artist: 'The Weeknd',
      uploader_name: 'Marin', duration_s: 124, downloads: 8, sha256: 'c3',
-     created_at: new Date(Date.now() - 86400e3 * 9).toISOString(), status: 'approved', local: null}];
+     created_at: new Date(Date.now() - 86400e3 * 9).toISOString(), status: 'approved', local: null,
+     tags: ['pop'], likes: 0, liked_by_me: false, page_url: 'https://dodotopia.cyber-dodo.fr/fr/morceaux/13-blinding-lights'}];
+  // galerie : vignettes pixel art générées (palette du jeu), une sans grille, une à moi
+  const mockThumb = (w, h, seed) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'); const pal = DEFAULT_PALETTE;
+    for(let j = 0; j < h; j++) for(let i = 0; i < w; i++){
+      const d = Math.hypot(i - w / 2, j - h / 2), k = Math.floor(d / 3 + seed * 7 + ((i * seed) % 5 === 0 ? 1 : 0)) % 12;
+      x.fillStyle = hex(pal[(10 + seed * 17 + k * 10) % pal.length]); x.fillRect(i, j, 1, 1);
+    }
+    return c.toDataURL('image/png');
+  };
+  const MOCK_DRAWINGS = [
+    {id: 31, title: 'Chat roux au soleil', w: 48, h: 36, uploader_name: 'Lila', likes: 18, liked_by_me: true, has_cells: true, mine: false},
+    {id: 32, title: 'Maison de Heartopia', w: 40, h: 40, uploader_name: 'Dodo', likes: 5, liked_by_me: false, has_cells: true, mine: true},
+    {id: 33, title: 'Coucher de soleil sur la plage (titre long pour tester)', w: 64, h: 36, uploader_name: 'Marin', likes: 0, liked_by_me: false, has_cells: false, mine: false},
+    {id: 34, title: 'Champignon', w: 30, h: 40, uploader_name: 'Nina', likes: 3, liked_by_me: false, has_cells: true, mine: false},
+    {id: 35, title: 'Logo du club', w: 36, h: 36, uploader_name: 'Nino', likes: 11, liked_by_me: false, has_cells: true, mine: false}]
+    .map((d, i) => Object.assign(d, {status: 'approved', thumb_url: mockThumb(d.w, d.h, i + 1), thumb_w: d.w * 6, thumb_h: d.h * 6,
+      page_url: 'https://dodotopia.cyber-dodo.fr/fr/galerie/' + d.id, created_at: new Date(Date.now() - 86400e3 * (i + 1)).toISOString()}));
   const MOCK_PENDING = [
     {id: 21, title: 'Gymnopédie n°1', artist: 'Erik Satie', uploader_name: 'Nina', duration_s: 210,
      created_at: new Date(Date.now() - 3600e3 * 2).toISOString(), status: 'pending'},
@@ -110,24 +166,50 @@ if(location.search.includes('mock')){
       start_at_ms: null, max_players: null, seq: 0, clock: {}, net_offset_ms: 0, can_start: false,
       start_blocker: 'Pas de salon', me: {}, error: '', last_room: 'K7P2QD', min_version: '1.6.0'}};
   const MOCK_UPDATE = upd
-    ? {state: upd === 'ready' ? 'ready' : 'downloading', current: '1.7.0', latest: '1.8.0',
+    ? {state: upd === 'ready' ? 'ready' : 'downloading', current: '2.0.0', latest: '2.0.1',
        notes: 'Salons en ligne, bibliothèque partagée et mise à jour automatique.', mandatory: false, kind: 'setup',
        progress: 0.35, done_mb: 4.2, size_mb: 12.0, path: null, error: '', checked_at: NOW}
-    : {state: offline ? 'idle' : 'uptodate', current: '1.7.0', latest: '1.7.0', notes: '', mandatory: false, kind: 'setup',
+    : {state: offline ? 'idle' : 'uptodate', current: '2.0.0', latest: '2.0.0', notes: '', mandatory: false, kind: 'setup',
        progress: 0, done_mb: 0, size_mb: 0, path: null, error: '', checked_at: offline ? 0 : NOW};
   const MOCK_ONLINE = !wantOnline ? undefined : {
-    server_url: 'https://dodotopia.cyber-dodo.fr', server_ok: !offline, server_version: '1.7.0', min_client: '1.6.0',
+    server_url: 'https://dodotopia.cyber-dodo.fr', server_ok: !offline, server_version: '2.0.0', min_client: '1.6.0',
     client_too_old: false, offline_reason: offline ? 'connexion impossible (délai dépassé)' : '', checked_at: NOW,
     logged_in: logged, user: logged ? MOCK_USER : null, is_admin: adm && logged,
     login: waiting ? {state: 'waiting', url: 'https://dodotopia.cyber-dodo.fr/auth/discord/start?login_id=4f2b9c1e', error: '', expires_in: 540}
                    : {state: 'idle', url: '', error: '', expires_in: null},
     update: MOCK_UPDATE,
-    library: {q: '', sort: 'recent', page: 1, pages: offline ? 0 : 2, total: offline ? 0 : 3,
-      items: offline ? [] : MOCK_ITEMS, loading: false, error: '', at: offline ? 0 : NOW},
+    library: {q: '', sort: tagArg ? 'trending' : 'recent', tag: tagArg, instrument: '', page: 1, pages: offline ? 0 : 2, total: offline ? 0 : 3,
+      items: offline ? [] : (tagArg ? MOCK_ITEMS.filter(it => it.tags.includes(tagArg)) : MOCK_ITEMS), loading: false, error: '', at: offline ? 0 : NOW},
+    gallery: {sort: 'recent', page: 1, pages: 2, total: 29, items: offline ? [] : MOCK_DRAWINGS, loading: false, error: '', at: offline ? 0 : NOW},
+    gallery_upload: pubArg ? {state: 'done', error: '', seq: 1, item: {id: 36, title: 'logo', status: 'pending', page_url: 'https://dodotopia.cyber-dodo.fr/fr/galerie/36'}}
+                           : {state: 'idle', error: '', item: null, seq: 0},
+    drawing_open: {state: 'idle', id: null, title: '', error: '', seq: 0},
+    room_url: lob ? 'https://dodotopia.cyber-dodo.fr/fr/salon/K7P2QD' : null,
+    meta: {tags: ['piano', 'flute', 'lute', 'violin', 'harp', 'percussion', 'pop', 'rock', 'classique', 'jeu-video', 'anime', 'film', 'folk', 'noel', 'calme', 'rapide', 'facile', 'difficile'], max_tags: 8, licenses: ['own', 'public_domain', 'cc', 'unknown']},
     pending: {page: 1, pages: 1, total: adm ? MOCK_PENDING.length : 0, items: adm ? MOCK_PENDING : [], loading: false, error: '', at: adm ? NOW : 0},
     reports: {items: adm ? MOCK_REPORTS : [], loading: false, error: '', at: adm ? NOW : 0},
-    jobs: {downloads: logged && !offline ? {'13': {state: 'downloading', progress: 0.42, error: '', song_id: null}} : {}, uploads: {}},
+    jobs: {downloads: logged && !offline ? {'13': {state: 'downloading', progress: 0.42, error: '', song_id: null}} : {}, uploads: {}, imports: {}},
     room: MOCK_ROOM || MOCK_IDLE_ROOM, clock: (MOCK_ROOM || MOCK_IDLE_ROOM).room.clock};
+  // fenêtre du jeu (get_state().game_window) et réponses simulées des appels de la phase 2 (core.js : window.MOCK_API)
+  const gw = arg('gamewin');
+  const MOCK_GAME = {found: gw !== 'off', foreground: false, elevated: gw === 'admin', checked: gw !== 'none', process: 'Heartopia.exe'};
+  const later = (v, ms) => new Promise(res => setTimeout(() => res(v), ms));
+  window.MOCK_API = {
+    song_tracks: () => later({ok: true, off: [4], tracks: [
+      {index: 0, name: '', notes: 0, channels: [], drums: false},
+      {index: 1, name: 'Piano droit', notes: 812, channels: [0], drums: false},
+      {index: 2, name: 'Basse', notes: 344, channels: [1], drums: false},
+      {index: 3, name: '', notes: 176, channels: [2], drums: false},
+      {index: 4, name: 'Batterie', notes: 96, channels: [9], drums: true}]}, 150),
+    test_key: () => later({ok: true, reason: 'Touche « Z » envoyée au jeu : tu dois avoir entendu une note.'}, 1200),
+    protocol_status: () => later({registered: false, command: '', current: false}, 120),
+    register_protocol: () => later({ok: true, error: null}, 400),
+    online_import_url: url => later(/^https:\/\//.test(url) ? {ok: true, key: '1', error: null} : {ok: false, key: null, error: 'Lien invalide : colle l’adresse complète (https://…).'}, 500),
+    room_exists: code => later({ok: true, code, valid: true, exists: true, full: false}, 150),
+    save_drawing_png: (u, name) => later({ok: true, name: name + '.png', path: 'exports/' + name + '.png'}, 300),
+    gallery_share: () => later({ok: true, error: null}, 600),
+    open_external: () => later({ok: true, error: null}, 50),
+  };
   const MOCK_TOASTS = [];
   if(location.search.includes('toast')) MOCK_TOASTS.push({id: 1, t: 0, msg: '2 musiques importées', kind: 'ok', sticky: false},
     {id: 2, t: 0, msg: 'Arrêt : touche pressée', kind: 'warn', sticky: false});
@@ -152,7 +234,52 @@ if(location.search.includes('mock')){
     keyboard_layout: has('qwerty') ? 'qwerty' : 'azerty',
     keyboard_layout_detected: has('qwerty') ? null : 'azerty'};
 
-  render({version:'1.7.0', instruments: MOCK_INSTRUMENTS,
+  // ---- conditions d'utilisation : faux get_terms (api() renvoie null hors pywebview, terms.js lit window.MOCK_TERMS)
+  const termsArg = arg('terms');
+  if(termsArg){
+    const LOREM = ['Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.',
+      'Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat.',
+      'Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum augue.',
+      'Praesent egestas leo in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae.'];
+    const T = {
+      fr: {h1: 'Conditions générales d’utilisation de DodoTopia', art: 'Article', foi: 'La version française des CGU fait foi ; la traduction anglaise n’est fournie qu’à titre d’information.',
+        summary: ['DodoTopia est gratuit, pour ton usage personnel. Tu ne peux ni le revendre, ni le redistribuer, ni le modifier, ni le décompiler.',
+          'DodoTopia n’a aucun lien avec Heartopia ni avec XD Games. C’est un projet indépendant fait par des joueurs.',
+          'DodoTopia automatise le jeu : il envoie des touches et des clics à ta place, et il lit ton écran. Si tu l’utilises, tu risques une sanction dans le jeu : c’est ton choix et ta responsabilité.',
+          'Aucune garantie. L’outil est fourni « en l’état » : il peut cesser de fonctionner à la prochaine mise à jour du jeu.',
+          'Ce que tu partages (fichiers MIDI) reste sous ta responsabilité : tu dois en avoir le droit.',
+          'Ton compte Discord ne sert qu’à t’identifier ; aucune donnée n’est revendue.']},
+      en: {h1: 'DodoTopia Terms of Use', art: 'Section', foi: 'The French version of the terms prevails; this English translation is provided for information only.',
+        summary: ['DodoTopia is free, for your personal use. You may not sell, redistribute, modify or decompile it.',
+          'DodoTopia is not affiliated with Heartopia or XD Games. It is an independent project made by players.',
+          'DodoTopia automates the game: it sends keys and clicks on your behalf and reads your screen. Using it may get you sanctioned in the game: that is your choice and your responsibility.',
+          'No warranty. The tool is provided “as is”: it may stop working with the next game update.',
+          'What you share (MIDI files) remains your responsibility: you must have the right to share it.',
+          'Your Discord account is only used to identify you; no data is ever sold.']}};
+    window.MOCK_TERMS = lang => {
+      if(termsArg === 'fail') return null;
+      const t = T[lang] || T.fr;
+      const nb = termsArg === 'short' ? 0 : 40;   // short : l'essentiel et une ligne, sans article (plus court que la zone)
+      let html = nb ? `<h1>${t.h1}</h1><p>Version : 2026-10</p><p>${t.foi}</p>` : `<p>${t.foi}</p>`, md = `# ${t.h1}
+
+Version : 2026-10
+
+${t.foi}
+`;
+      for(let a = 1, p = 0; p < nb; a++){
+        html += `<h2>${t.art} ${a} — Lorem ipsum ${a}</h2>`; md += `
+## ${t.art} ${a} — Lorem ipsum ${a}
+`;
+        for(let k = 0; k < 4 && p < nb; k++, p++){ html += `<p>${LOREM[(p + a) % LOREM.length]}</p>`; md += `
+${LOREM[(p + a) % LOREM.length]}
+`; }
+      }
+      return {version: '2026-10', lang, summary: t.summary, markdown: md, html};
+    };
+    if(termsArg === 'en') TERMS.lang = 'en';
+  }
+
+  render({version:'2.0.0', instruments: MOCK_INSTRUMENTS,
     instrument: instIdx, instrument_id: instCur.id, instrument_ready: instCur.ready,
     instrument_blocked: instCur.ready ? '' : instCur.blocked_reason,
     instrument_favorites: ['piano', 'lyre'], instrument_wizard: null,
@@ -172,7 +299,9 @@ if(location.search.includes('mock')){
     online: MOCK_ONLINE,
     error: has('error') ? {msg:'Sortie audio introuvable : mode Multi indisponible (la capture audio ne démarre pas)', kind:'danger', since: Date.now()/1000, target:'game', reason:'erreur'} : null,
     draw_stats: {available:true, pencil_cells:1830, fill_zones:42, fill_cells:3354, total_cells:5184},
-    log:[], is_admin: !has('error'),
+    log:[], is_admin: !has('error') && gw !== 'admin', game_window: MOCK_GAME,
+    deeplink: has('deeplink') ? {id: 1, action: 'room', label: 'Rejoindre le salon K7P2QD ?', params: {code: 'K7P2QD'}} : null,
+    terms: {required: !!termsArg, version: '2026-10', accepted_version: null, accepted_at: null},
     toasts: MOCK_TOASTS,
     draw:{state: has('calib') ? 'calibrating' : has('drawing') ? 'drawing' : has('autocal') ? 'autocal' : 'idle', format:'16:9', step:2, progress_msg: has('autocal') ? 'mesure des cases…' : 'couleur 3 / 12',
       steps:[{key:'tl',title:'Coin haut-gauche de la toile',help:'Place la souris exactement sur le coin haut-gauche de la zone rayée où l’on dessine (pas le cadre).'},{key:'br',title:'Coin bas-droit de la toile',help:'Place la souris sur le coin bas-droit de la zone rayée.'},{key:'pal0',title:'Première couleur de la palette',help:'Survole la première pastille de couleur (en haut à gauche de la palette).'},{key:'pal1',title:'Dernière couleur de la palette',help:'Survole la dernière pastille (en bas à droite de la palette).'},{key:'palbtn',title:'Bouton « palette » (ouvre les nuances)',help:'Sans cliquer, survole le bouton rond avec l’icône palette, à gauche des pastilles de couleur.'},{key:'strip',title:'Bande des familles : la pastille du centre',help:'Clique sur le bouton palette : un bloc de 10 nuances apparaît. Survole la pastille au centre de la bande (celle encadrée en blanc).'},{key:'prev',title:'Flèche « précédent » de la bande',help:'Survole la flèche < à gauche de la bande des familles.'},{key:'next',title:'Flèche « suivant » de la bande',help:'Survole la flèche > à droite de la bande des familles.'},{key:'sub0',title:'Nuances : celle en haut à gauche',help:'Survole la nuance en haut à gauche du bloc de 10 nuances.'},{key:'sub1',title:'Nuances : celle en bas à droite',help:'Survole la nuance en bas à droite du même bloc.'},{key:'pencil',title:'Outil crayon',help:'Survole le bouton du crayon, à gauche.'},{key:'bucket',title:'Outil pot de peinture',help:'Survole le bouton du pot de peinture (remplissage).'},{key:'undo',title:'Bouton Annuler',help:'Survole la flèche « Annuler » au-dessus de la toile (facultatif).'}],
@@ -197,12 +326,24 @@ if(location.search.includes('mock')){
   if(mv) showMusicView(mv[1]);
   if(adm) setTimeout(adminPanel, 0);              // espace d'administration ouvert
   if(has('help')) setTimeout(() => helpPanel(S), 0);        // panneau Aide
+  if(has('tracks')){ $('songSet').open = true; render(S); setTimeout(() => $('songSet').scrollIntoView({block: 'start'}), 400); }  // réglages du morceau ouverts : pistes MIDI
   if(has('account')) setTimeout(accountPanel, 0);           // panneau Mon compte
   if(has('image') || has('drawing') || has('autocal')) loadImageData({name: 'logo', data: '../assets/logo.png'});
-  if(location.search.includes('dialog')) dialog({title:'Retirer la musique', icon:'🗑️', danger:true, ok:'Retirer', html:`Retirer <b>AriaMath</b> de la bibliothèque ?<br><small>Le fichier d'origine n'est pas touché.</small>`});
+  // &published : grille reprise de la galerie (cases générées) et dépôt en attente de modération
+  if(pubArg){
+    const W = 40, H = 40, cells = [];
+    for(let j = 0; j < H; j++) for(let i = 0; i < W; i++){ const d = Math.hypot(i - 20, j - 20); cells.push(d > 19 ? -1 : [14, 54, 64, 44, 24, 34][Math.floor(d / 3.3) % 6]); }
+    setTimeout(() => { loadGridJob({id: 36, title: 'Soleil de Heartopia', job: {format: '1:1', w: W, h: H, cells}}); DSHARE.upSeq = 1; render(S); }, 0);
+  }
+  if(galArg){ showTab('image'); setTimeout(() => showDrawView('gallery'), 0); }
+  if(importArg) setTimeout(() => importUrlDialog(''), 0);
+  if(shareArg || lob) window.MOCK_KEEP_MENU = true;
+  if(shareArg) setTimeout(() => { showMusicView('discover'); const b = document.querySelector('#onlineList [data-act="share"]'); if(b) b.click(); }, 1500);
+  if(formArg) setTimeout(() => shareSongDialog(Object.assign({}, S.songs[0], {source_url: 'https://onlinesequencer.net/1234567', source_name: 'Online Sequencer'})), 0);
+  if(location.search.includes('dialog')) dialog({title:'Retirer la musique', icon:'trash', danger:true, ok:'Retirer', html:`Retirer <b>AriaMath</b> de la bibliothèque ?<br><small>Le fichier d'origine n'est pas touché.</small>`});
 
   // ?mock&settings[=multi] : panneau Réglages avec un schéma factice (même forme que get_settings_schema)
-  const ms = /[?&]settings(?:=([a-z]+))?/.exec(location.search);
+  const ms = /[?&]settings(?:=([a-z]+))?/.exec(location.search);   // section : id de SETTINGS_SECTIONS
   if(ms){
     const F = {};
     const num = (p, sec, d, min, max, unit, step, v) => { F[p] = {type:'num', section:sec, default:d, value:v === undefined ? d : v, min, max, unit, step}; };
@@ -227,12 +368,14 @@ if(location.search.includes('mock')){
     int('cook.max_dishes', 'cook', 0, 0, 999, '', 10); num('cook.cook_timeout', 'cook', 240, 30, 900, 's', 10); num('cook.match', 'cook', 0.62, 0.3, 0.9, '', 0.05);
     int('cook.green_px', 'cook', 60, 10, 2000, 'px'); num('cook.click_delay', 'cook', 300, 0, 1000, 'ms', 10);
     str('online.server_url', 'online', 'https://dodotopia.cyber-dodo.fr'); bool('online.check_updates', 'online', true);
-    try{ localStorage.setItem('settingsSection', ms[1] || 'general'); }catch(e){}
+    bool('online.auto_update', 'online', false); bool('online.rich_presence', 'online', true); bool('online.now_playing_file', 'online', false);
+    choice('general.lang', 'general', 'auto', ['auto', 'fr', 'en', 'es', 'de', 'pt-BR', 'zh-CN', 'ja', 'th']);
     if(location.search.includes('adv')) SET.advOpen = true;   // &adv : « Avancé » déplié
-    openSettings({fields:F, sections:['lecture', 'hotkeys', 'multi', 'draw', 'grids', 'cook', 'online'],
-      hotkey_labels:{play_pause:'Jouer / pause', stop:'Arrêter', next_song:'Musique suivante', prev_song:'Musique précédente', speed_down:'Ralentir', speed_up:'Accélérer', next_instrument:'Instrument suivant', draw_point:'Repère (calibrage du dessin)'},
+    openSettings({fields:F, sections:['general', 'lecture', 'hotkeys', 'multi', 'draw', 'grids', 'cook', 'online'],
       multi_devices:['Digital Audio (S/PDIF) (High Definition Audio Device)', 'Casque (2- CORSAIR VOID ELITE Wireless Gaming Headset)', 'VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)'],
-      songs_folder:'C:\\Users\\moi\\AppData\\Local\\DodoTopia\\songs', data_dir:'C:\\Users\\moi\\AppData\\Local\\DodoTopia', version:'1.7.0', install_kind:'setup',
-      logs:{multi:true, dessin:true, cuisine:false, online:false}, online_ready:false});
+      songs_folder:'C:\\Users\\moi\\AppData\\Local\\DodoTopia\\songs', data_dir:'C:\\Users\\moi\\AppData\\Local\\DodoTopia', version:'2.0.0', install_kind:'setup',
+      logs:{multi:true, dessin:true, cuisine:false, online:false}, online_ready:false}, ms[1] || null);
+    const sq = /[?&]settingsq=([^&]+)/.exec(location.search);   // &settingsq=texte : recherche dans les réglages
+    if(sq){ const inp = $('settingsSearch'); inp.value = decodeURIComponent(sq[1]); inp.oninput(); }
   }
 }

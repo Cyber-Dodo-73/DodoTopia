@@ -35,6 +35,10 @@ def isolate_data_dir(tmp_path, monkeypatch):
     data.mkdir()
     monkeypatch.setattr(core, "DATA_DIR", str(data))
     monkeypatch.setattr(core, "CONFIG_PATH", str(data / "config.json"))
+    # aucune fenetre de jeu pendant les tests : la verification « jeu au premier plan » est neutre
+    import platform_io
+    monkeypatch.setattr(platform_io, "foreground_process_name", lambda: None)
+    monkeypatch.setattr(platform_io, "game_window_info", lambda name: {"found": None, "foreground": None, "elevated": None})
     before = {n: _stamp(n) for n in _GUARDED}
     yield
     after = {n: _stamp(n) for n in _GUARDED}

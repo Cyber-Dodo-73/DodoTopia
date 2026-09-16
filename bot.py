@@ -4,7 +4,24 @@ interruptible, deplacement « comme une main », clic, detection d'une souris ou
 import random
 import time
 
-from platform_io import cursor_pos, mouse_move, mouse_down, mouse_up, mouse_hint
+from platform_io import cursor_pos, mouse_move, mouse_down, mouse_up, mouse_hint, foreground_process_name, virtual_screen
+
+
+def screen_fingerprint():
+    """[x, y, largeur, hauteur] du bureau virtuel : un calibrage en pixels absolus n'est valable que pour cet
+    agencement d'ecrans (resolution, mise a l'echelle, ecran ajoute ou retire). None si indisponible."""
+    try:
+        return [int(v) for v in virtual_screen()]
+    except Exception:  # noqa
+        return None
+
+
+def screen_changed(saved):
+    """Vrai si une empreinte enregistree existe et differe de l'ecran actuel (calibrage perime)."""
+    if not saved:
+        return False
+    cur = screen_fingerprint()
+    return cur is not None and list(saved) != cur
 
 
 class MouseBot:
@@ -122,9 +139,37 @@ class MouseBot:
         self._expected_pos = (x, y)
         return True
 
+    def _game_in_front(self):
+        """None si aucune verification (reglage `game_process` vide ou plateforme muette), sinon vrai/faux."""
+        wanted = str(self.cfg.get("game_process") or "").strip().lower()
+        if not wanted:
+            return None
+        try:
+            name = foreground_process_name()
+        except Exception:  # noqa
+            return None
+        if name is None:
+            return None
+        return name.rsplit("\\", 1)[-1].rsplit("/", 1)[-1].lower() == wanted
+
+    def _check_game_front(self):
+        """Au plus toutes les 0,25 s : si le jeu a quitte le premier plan, on arrete avant le prochain clic
+        (les clics partiraient dans une autre application)."""
+        now = time.perf_counter()
+        if now - getattr(self, "_front_check", 0.0) < 0.25:
+            return True
+        self._front_check = now
+        if self._game_in_front() is False:
+            self.log("le jeu n'est pas au premier plan : arrêt")
+            self.stop("jeu pas au premier plan")
+            return False
+        return True
+
     def _click(self, x, y, delay=None):
         if self._user_moved():
             self.stop("souris bougée")
+            return False
+        if not self._check_game_front():
             return False
         if not self._move(x, y):
             return False

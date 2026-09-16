@@ -1,0 +1,22 @@
+{
+  "terms.title": "Conditions d’utilisation de DodoTopia",
+  "terms.sub": "Version {v} · La version française fait foi.",
+  "terms.gist": "L’essentiel en 6 points",
+  "terms.full": "Texte intégral des conditions",
+  "terms.lang_en": "Read in English",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "J’ai lu et j’accepte les conditions d’utilisation",
+  "terms.accept": "Accepter et continuer",
+  "terms.refuse": "Refuser et quitter",
+  "terms.why_scroll": "Fais défiler le texte jusqu’en bas",
+  "terms.why_check": "Coche la case pour accepter",
+  "terms.ready": "Tout est prêt, tu peux continuer.",
+  "terms.loading": "Chargement des conditions…",
+  "terms.error": "Impossible de charger les conditions d’utilisation.",
+  "terms.confirm": "Quitter DodoTopia sans accepter ?",
+  "terms.yes": "Oui, quitter",
+  "terms.no": "Revenir",
+  "terms.pos": "{p} % lu",
+  "terms.pos_done": "Lu jusqu’au bout",
+  "terms.accept_failed": "L’acceptation n’a pas pu être enregistrée. Réessaie."
+}

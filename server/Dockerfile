@@ -20,7 +20,11 @@ USER app
 VOLUME ["/data"]
 EXPOSE 8000
 
-# Un seul worker : les salons vivent en mémoire. --proxy-headers : IP réelle derrière Traefik (Dokploy).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips=*", \
-     "--ws-ping-interval", "20", "--ws-ping-timeout", "20"]
+# Un seul worker : les salons vivent en mémoire. --proxy-headers : IP réelle derrière Traefik (Dokploy), mais
+# seuls les proxys de FORWARDED_ALLOW_IPS (défaut : réseaux Docker 172.16.0.0/12) ont le droit de la déclarer,
+# sinon n'importe quel client forgerait X-Forwarded-For et contournerait la limitation de débit.
+# --ws-max-size : un message WebSocket dépasse rarement quelques centaines d'octets (16 Ko côté applicatif).
+# `exec` : uvicorn reste le processus 1 (signaux d'arrêt reçus directement).
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+     --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS:-172.16.0.0/12}\" \
+     --ws-max-size 65536 --ws-ping-interval 20 --ws-ping-timeout 20"]

@@ -275,7 +275,7 @@ def test_parse_midi_refuses_a_non_midi_file(tmp_path):
 def test_parse_midi_refuses_too_many_events(tmp_path):
     p = midi_bomb(str(tmp_path / "bombe.mid"))
     assert os.path.getsize(p) < core.MAX_MIDI_BYTES
-    with pytest.raises(core.MidiRefused, match="trop charge"):
+    with pytest.raises(core.MidiRefused, match="trop charg"):
         core.parse_midi(p, {})
 
 

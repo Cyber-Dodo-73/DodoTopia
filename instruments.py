@@ -14,13 +14,17 @@ du clavier de l'utilisateur et ne change jamais la position envoyee au jeu.
 Provenance : les correspondances viennent de projets communautaires. « documente par une source » n'est pas
 « confirme sur cette installation », et aucun profil n'a ete teste dans Heartopia depuis ce depot.
 
-Ce module n'importe que la bibliotheque standard et platform_io : c'est core.py qui importe instruments.
+Ce module n'importe que la bibliotheque standard, i18n et platform_io : c'est core.py qui importe instruments.
+
+Textes affiches (noms, categories, dispositions, statuts, raisons de blocage, conflits) : traduits a la lecture
+par i18n.t dans la langue courante ; les identifiants et les noms des touches ne changent jamais.
 """
 import hashlib
 import json
 import os
 import sys
 
+import i18n
 from platform_io import SCANCODES
 
 SCHEMA_VERSION = 1
@@ -35,13 +39,31 @@ STATUS_CUSTOM = "custom"
 STATUS_QUICK = "quick-tested"
 STATUS_CONFIRMED = "confirmed"
 STATUSES = (STATUS_UNKNOWN, STATUS_DOCUMENTED, STATUS_CUSTOM, STATUS_QUICK, STATUS_CONFIRMED)
-STATUS_LABELS = {
-    STATUS_UNKNOWN: "Touches à configurer",
-    STATUS_DOCUMENTED: "Profil documenté · à vérifier",
-    STATUS_CUSTOM: "Touches personnalisées · à vérifier",
-    STATUS_QUICK: "Test rapide réussi · vérification partielle",
-    STATUS_CONFIRMED: "Confirmé sur cet ordinateur",
-}
+# Libelles des statuts : cles `inst.status.<statut>` (voir status_label / status_labels).
+I18N_KEYS = ["inst.status.unknown", "inst.status.documented", "inst.status.custom", "inst.status.quick-tested",
+             "inst.status.confirmed", "inst.category.strings", "inst.category.winds", "inst.category.keys",
+             "inst.category.percussion", "inst.layout.diatonic-15-2row", "inst.layout.diatonic-15-3row",
+             "inst.layout.piano-diatonic-22", "inst.layout.piano-chromatic-37",
+             "settings.hotkeys.play_pause.label", "settings.hotkeys.stop.label", "settings.hotkeys.next_song.label",
+             "settings.hotkeys.prev_song.label", "settings.hotkeys.speed_down.label", "settings.hotkeys.speed_up.label",
+             "settings.hotkeys.next_instrument.label", "settings.hotkeys.draw_point.label"]
+
+
+def _tr(key, default):
+    """Traduction de `key` si un catalogue la connait (langue courante ou repli), sinon `default`."""
+    if i18n.has(key) or i18n.has(key, i18n.FALLBACK_LANG):
+        return i18n.t(key)
+    return default
+
+
+def status_label(status):
+    """Libelle affiche d'un statut de verification (langue courante) ; un statut inconnu est rendu tel quel."""
+    return i18n.t(f"inst.status.{status}") if status in STATUSES else str(status)
+
+
+def status_labels():
+    """{statut: libelle} pour l'interface."""
+    return {st: status_label(st) for st in STATUSES}
 # Statuts qui autorisent la lecture (un instrument percussif au statut « documented » reste candidat :
 # une source communautaire donne une correspondance MIDI, cela ne prouve pas ce que produit chaque frappe).
 PLAYABLE_STATUSES = (STATUS_DOCUMENTED, STATUS_CUSTOM, STATUS_QUICK, STATUS_CONFIRMED)
@@ -100,7 +122,12 @@ def detect_keyboard_layout():
         return None
     try:
         import ctypes
-        hkl = ctypes.windll.user32.GetKeyboardLayout(0)
+        u32 = ctypes.windll.user32
+        # disposition du fil de la fenetre active (celle que lit le jeu quand il est devant), a defaut celle
+        # de DodoTopia : avec plusieurs claviers installes, les deux peuvent differer
+        hwnd = u32.GetForegroundWindow()
+        tid = u32.GetWindowThreadProcessId(hwnd, None) if hwnd else 0
+        hkl = u32.GetKeyboardLayout(tid or 0)
     except Exception:  # noqa : pas de detection, pas de conclusion
         return None
     langid = int(hkl) & 0xFFFF
@@ -168,6 +195,11 @@ class Layout:
                                "position": n.get("position") or ""})
         self._bindings = {n["midi"]: n["key"] for n in self.notes}
 
+    @property
+    def name(self):
+        """Libelle affiche dans la langue courante (`inst.layout.<id>`), sinon le libelle francais du fichier."""
+        return _tr(f"inst.layout.{self.id}", self.label)
+
     def bindings(self):
         """{note MIDI : position de touche} de la disposition."""
         return dict(self._bindings)
@@ -177,7 +209,7 @@ class Layout:
         return _split_rows(self.notes, self.rows)
 
     def to_dict(self, with_notes=True):
-        d = {"layoutId": self.id, "labelFr": self.label, "descriptionFr": self.description,
+        d = {"layoutId": self.id, "labelFr": self.label, "label": self.name, "descriptionFr": self.description,
              "noteCount": self.note_count, "rows": list(self.rows), "autoTranspose": self.auto_transpose,
              "keyboardReference": self.keyboard_reference, "status": self.status,
              "sourceUrls": list(self.source_urls), "inGameLayoutMustMatch": self.must_match}
@@ -240,10 +272,15 @@ class Catalogue:
         return [self.layouts[lid] for lid in t.supported_layout_ids if lid in self.layouts]
 
     def category_label(self, category_id):
+        """Libelle d'une categorie dans la langue courante (`inst.category.<id>`), sinon le libelle francais."""
         for cid, label in self.categories:
             if cid == category_id:
-                return label
+                return _tr(f"inst.category.{cid}", label)
         return category_id or ""
+
+    def category_labels(self):
+        """[{id, label}] dans l'ordre du catalogue, libelles traduits."""
+        return [{"id": cid, "label": self.category_label(cid)} for cid, _ in self.categories]
 
 
 def data_dir(res_dir=None):
@@ -268,13 +305,13 @@ def load_catalogue(res_dir=None):
         with open(lay_path, "r", encoding="utf-8") as f:
             layouts_raw = json.load(f)
     except OSError as e:
-        raise InstrumentDataError(f"catalogue des instruments illisible ({e.strerror or e})") from None
+        raise InstrumentDataError(i18n.t("inst.data.unreadable", error=e.strerror or e)) from None
     except ValueError as e:
-        raise InstrumentDataError(f"catalogue des instruments invalide ({e})") from None
+        raise InstrumentDataError(i18n.t("inst.data.invalid", error=e)) from None
     if not raw.get("instruments"):
-        raise InstrumentDataError("catalogue des instruments vide")
+        raise InstrumentDataError(i18n.t("inst.data.empty"))
     if not layouts_raw.get("layouts"):
-        raise InstrumentDataError("aucune disposition de touches dans layouts.json")
+        raise InstrumentDataError(i18n.t("inst.data.no_layouts"))
     cat = Catalogue(raw, layouts_raw)
     _CACHE[folder] = cat
     return cat
@@ -591,7 +628,7 @@ class Instrument:
     def __init__(self, itype, profile=None, layout=None):
         self.type = itype
         self.id = itype.id
-        self.name = itype.label_fr
+        self.label_fr = itype.label_fr
         self.label_en = itype.label_en
         self.aliases = list(itype.aliases)
         self.category = itype.category
@@ -606,7 +643,6 @@ class Instrument:
         self.profile = prof
         self.layout = layout
         self.layout_id = prof.get("layoutId") or (layout.id if layout is not None else None)
-        self.layout_label = layout.label if layout is not None else ""
         self.status = prof.get("verificationStatus") or STATUS_UNKNOWN
         self.verified_at = prof.get("verifiedAt")
         self.game_version = prof.get("gameVersion")
@@ -634,18 +670,35 @@ class Instrument:
         else:
             self.auto = "octave" if self.chromatic else "key"
 
-        self.ready, self.blocked_reason = self._readiness()
+        self.ready, self._blocked_code = self._readiness()
         self.fingerprint = self._fingerprint()
+
+    # ---- affichage dependant de la langue (relu a chaque acces : la langue peut changer en cours de route)
+    @property
+    def name(self):
+        """Nom affiche : anglais hors francais quand le catalogue en donne un, sinon le nom francais."""
+        if i18n.current_lang() != i18n.FALLBACK_LANG and self.label_en:
+            return self.label_en
+        return self.label_fr
+
+    @property
+    def layout_label(self):
+        return self.layout.name if self.layout is not None else ""
+
+    @property
+    def blocked_reason(self):
+        """Pourquoi l'instrument ne peut pas jouer (vide s'il est pret), dans la langue courante."""
+        return i18n.t(f"inst.blocked.{self._blocked_code}") if self._blocked_code else ""
 
     # ---- etat
     def _readiness(self):
+        """(pret, code de blocage) ; les codes sont les cles `inst.blocked.<code>`."""
         if not self.bindings:
-            return False, "Les touches de cet instrument restent à configurer."
+            return False, "unconfigured"
         if self.status not in PLAYABLE_STATUSES:
-            return False, "Les touches de cet instrument restent à configurer."
+            return False, "unconfigured"
         if self.percussive and self.status == STATUS_DOCUMENTED:
-            return False, ("Profil de percussion candidat : fais le test des frappes avant de jouer "
-                           "(une correspondance MIDI documentée ne prouve pas ce que produit chaque frappe).")
+            return False, "percussion_candidate"
         return True, ""
 
     def _fingerprint(self):
@@ -655,7 +708,7 @@ class Instrument:
 
     @property
     def status_label(self):
-        return STATUS_LABELS.get(self.status, self.status)
+        return status_label(self.status)
 
     @property
     def kind(self):
@@ -759,25 +812,24 @@ def conflicts(bindings, cfg):
         key = b[midi]
         if key in seen:
             out.append({"kind": "duplicate", "midi": midi, "key": key, "severity": "error",
-                        "message": f"La touche {key_label(key, kb)} joue déjà {solfege(seen[key])} : "
-                                   f"une position ne peut pas porter deux notes."})
+                        "message": i18n.t("inst.conflict.duplicate", label=key_label(key, kb),
+                                          note=i18n.note_name(seen[key]))})
         else:
             seen[key] = midi
         if key not in SCANCODES:
             out.append({"kind": "not-injectable", "midi": midi, "key": key, "severity": "error",
-                        "message": "Cette touche ne peut pas être envoyée au jeu."})
+                        "message": i18n.t("inst.conflict.not_injectable")})
         name = hotkeys.get(key)
         if name:
             protected = name in PROTECTED_HOTKEYS
             out.append({"kind": "hotkey", "midi": midi, "key": key,
                         "severity": "error" if protected else "warn",
-                        "message": (f"La touche {key_label(key, kb)} est le raccourci « {name} » : "
-                                    + ("choisis une autre touche, l'arrêt doit rester accessible."
-                                       if protected else "le raccourci ne fonctionnera plus pendant la lecture."))})
+                        "message": i18n.t("inst.conflict.hotkey", label=key_label(key, kb),
+                                          hotkey=_tr(f"settings.hotkeys.{name}.label", name),
+                                          protected="true" if protected else "false")})
         if vk and key_needs_shift(key, kb):
             out.append({"kind": "shift", "midi": midi, "key": key, "severity": "warn",
-                        "message": (f"En AZERTY, {key_label(key, kb)} demande Maj pour produire « {key} » : "
-                                    "le mode d'entrée « code virtuel » peut envoyer le mauvais caractère.")})
+                        "message": i18n.t("inst.conflict.shift", label=key_label(key, kb), key=key)})
     return out
 
 

@@ -67,3 +67,54 @@ def test_postgres_layer(tmp_path):
 def test_bad_url():
     with pytest.raises(ValueError):
         db.Database("mysql://x", db.Path("x.db"))
+
+
+def test_sqlite_migration_v1_to_v2_keeps_data_and_reports(tmp_path, monkeypatch):
+    """Une base au schéma v1 (avant le chantier sécurité) migre sans perdre ni morceaux ni signalements :
+    la reconstruction de `songs` ne doit pas déclencher le ON DELETE CASCADE de `reports`."""
+    settings = make_settings(tmp_path, DATABASE_URL="")
+    full = list(db.MIGRATIONS)
+    monkeypatch.setattr(db, "MIGRATIONS", full[:1])
+    db.init(settings)
+    conn = db.connect(settings)
+    try:
+        now = db.now_iso()
+        conn.execute("INSERT INTO users (discord_id, username, created_at, last_seen_at) VALUES ('1', 'a', ?, ?)",
+                     (now, now))
+        conn.execute("INSERT INTO users (discord_id, username, created_at, last_seen_at) VALUES ('2', 'b', ?, ?)",
+                     (now, now))
+        conn.execute("INSERT INTO songs (sha256, title, artist, size, duration_s, note_count, uploader_id, status, "
+                     "downloads, created_at) VALUES (?, 'T', 'A', 10, 1.5, 12, 1, 'approved', 7, ?)", ("f" * 64, now))
+        conn.execute("INSERT INTO reports (song_id, reporter_id, reason, created_at) VALUES (1, 2, 'r', ?)", (now,))
+        conn.execute("INSERT INTO login_tickets (id, verifier_hash, state, created_at) VALUES ('t', 'h', 's', ?)",
+                     (now,))
+        conn.commit()
+        assert conn.execute("SELECT version FROM schema_version").fetchone()["version"] == 1
+    finally:
+        conn.close()
+    monkeypatch.setattr(db, "MIGRATIONS", full)
+    db.init(settings)
+    conn = db.connect(settings)
+    try:
+        assert conn.execute("SELECT version FROM schema_version").fetchone()["version"] == len(full)
+        song = conn.execute("SELECT * FROM songs").fetchone()
+        assert song["id"] == 1 and song["title"] == "T" and song["downloads"] == 7 and song["uploader_id"] == 1
+        assert conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0] == 1
+        t = conn.execute("SELECT * FROM login_tickets").fetchone()
+        assert t["attempts"] == 0 and t["user_code"] is None and t["user_id"] is None
+        # uploader_id est devenu nullable, les clés étrangères sont de nouveau actives
+        conn.execute("UPDATE songs SET uploader_id=NULL WHERE id=1")
+        conn.commit()
+        assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        with pytest.raises(db.IntegrityError):
+            conn.execute("INSERT INTO songs (sha256, title, size, duration_s, note_count, uploader_id, created_at) "
+                         "VALUES (?, 'X', 1, 1, 1, 999, ?)", ("e" * 64, db.now_iso()))
+        conn.rollback()
+        conn.execute("DELETE FROM songs WHERE id=1")
+        conn.commit()
+        assert conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0] == 0     # cascade normale conservée
+        names = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
+        assert {"songs_status", "songs_status_created", "songs_status_downloads", "sessions_expires",
+                "login_tickets_created"} <= names
+    finally:
+        conn.close()

@@ -16,7 +16,14 @@ import threading
 import time
 from collections import deque
 
+import i18n
 from platform_io import mouse_button_down
+
+
+def _stop_text(code):
+    """Phrase d'arret pour un code (core.stop_reason_text ; import a l'appel : core importe sync a la demande)."""
+    from core import stop_reason_text
+    return stop_reason_text(code)
 
 MAX_PLAYERS = 5
 PATTERN_NOTES = [72, 67]                 # DO5, SOL4 : debut commun de tous les motifs
@@ -361,6 +368,7 @@ class SyncSession:
         self.mode = ""              # start | calibrate | test
         self.role = ""
         self.message = ""
+        self.last_error = ""        # message d'une session terminee sur une erreur (capture audio, sortie...)
         self.device = ""
         self.deadline = None
         self.countdown_end = None
@@ -429,7 +437,7 @@ class SyncSession:
                 p.stop(join=True)
             song = p.current()
             if mode == "start" and not song:
-                self.notify("Aucune musique sélectionnée", "warn")
+                self.notify(i18n.t("multi.no_song"), "warn")
                 return False
             self._t_f6 = time.perf_counter()
             self._log_header(mode)
@@ -440,7 +448,8 @@ class SyncSession:
             self.role = ""
             self.leader_id = None
             self.players = []
-            self.message = "Écoute du jeu…"
+            self.message = i18n.t("multi.state.listening")
+            self.last_error = ""
             self.deadline = None
             self.countdown_end = None
             with p._lock:
@@ -467,7 +476,7 @@ class SyncSession:
         m = self.cfg.get("multi", {})
         return {"enabled": bool(m.get("enabled")), "state": self.state, "mode": self.mode, "role": self.role,
                 "seconds_left": round(left, 1) if left is not None else None, "message": self.message,
-                "device": self.device, "latency": m.get("latency"), "test": self.last_test,
+                "error": self.last_error, "device": self.device, "latency": m.get("latency"), "test": self.last_test,
                 "player_id": self.player_id(), "leader_id": self.leader_id, "players": list(self.players),
                 "calib": m.get("calib")}
 
@@ -495,7 +504,7 @@ class SyncSession:
                 block = cap.read()
                 q.put((block, time.perf_counter()))
         except Exception as e:  # noqa
-            q.put(("fail", f"capture interrompue : {e}"))
+            q.put(("fail", i18n.t("multi.error.capture_interrupted", error=e)))
         finally:
             cap.close()
 
@@ -508,9 +517,9 @@ class SyncSession:
         try:
             first = q.get(timeout=6)
         except queue.Empty:
-            first = ("fail", "la capture audio ne démarre pas")
+            first = ("fail", i18n.t("multi.error.capture_start"))
         if first[0] == "fail":
-            raise RuntimeError(f"Sortie audio introuvable : mode Multi indisponible ({first[1]})")
+            raise RuntimeError(i18n.t("multi.error.no_audio", error=first[1]))
         self.device = first[1]
         self.log(f"multi : écoute de « {self.device} »")
         return cap, q, stop
@@ -523,7 +532,7 @@ class SyncSession:
             return None
         if isinstance(item[0], str):
             if item[0] == "fail":
-                raise RuntimeError(f"capture audio : {item[1]}")
+                raise RuntimeError(i18n.t("multi.error.capture", error=item[1]))
             return None
         self._record(item[0])
         return det.push(item[0], item[1])
@@ -597,15 +606,14 @@ class SyncSession:
             latency = m.get("latency")
             if latency is None:
                 latency = 0.25
-                self.notify("Latence non mesurée : fais « Tester la détection » dans Réglages", "warn")
+                self.notify(i18n.t("multi.no_latency"), "warn")
             gap, hold, lead = float(m["beacon_gap"]), float(m["beacon_hold"]), float(m["lead"])
             offset = float(m.get("offset_ms", 0)) / 1000.0
             det = BeaconDetector(cap.sr, gap, m.get("tune", 1.0), log=self.log)
             self._rec = []
             self.countdown_end = self._t_f6 + float(m["countdown"]) + (me - 1) * COUNTDOWN_STEP
             extend_until = self.countdown_end + MAX_EXTEND
-            self.message = ("Écoute du jeu… meneur à la fin du compte à rebours" if self.mode == "start"
-                            else "Calibrage : écoute du jeu…")
+            self.message = i18n.t("multi.state.listening_start" if self.mode == "start" else "multi.calib.listening")
             t0 = None
             stop_on_input = cfg.get("stop_on_input", True)
             mouse_check = 0.0
@@ -625,7 +633,7 @@ class SyncSession:
                             return
                         self.state = "armed"
                         self.deadline = t1 - latency + lead + offset
-                        self.message = f"Signal du joueur {pid} reçu : départ imminent"
+                        self.message = i18n.t("multi.state.follower", player=pid)
                         self.log(f"multi : suiveur du joueur {pid}, départ dans {self.deadline - now:.2f} s")
                     elif self.state == "armed" and pid != me and pid < (self.leader_id or me):
                         # deux motifs presque en meme temps (F6 simultanes) : tout le monde se cale sur le plus
@@ -635,7 +643,7 @@ class SyncSession:
                         self.deadline = t1 - latency + lead + offset
                         self.role = "follower"
                         self.leader_id = pid
-                        self.message = f"Signal du joueur {pid} : on se cale sur lui"
+                        self.message = i18n.t("multi.state.rally", player=pid)
                         self.log(f"multi : motif du joueur {pid} pendant l'attente, ralliement "
                                  f"(départ {self.deadline - old:+.2f} s)")
                     elif self.state == "armed":
@@ -652,17 +660,17 @@ class SyncSession:
                         self._calibrate_leader(q, det, my_notes, my_keys, latency, gap, hold, me)
                         return
                     self.state = "beacon"
-                    self.message = "Meneur : note repère"
+                    self.message = i18n.t("multi.state.leader_beacon")
                     t0 = self._play_pattern(my_notes, my_keys, det, latency, gap, hold)
                     self.deadline = t0 + lead + offset
                     self.state = "armed"
-                    self.message = "Meneur : départ imminent"
+                    self.message = i18n.t("multi.state.leader_armed")
                     self.log(f"multi : meneur (joueur {me}), note repère envoyée, départ dans {self.deadline - time.perf_counter():.2f} s")
                 if self.state == "armed":
                     if stop_on_input and now - mouse_check > 0.03:
                         mouse_check = now
                         if mouse_button_down():
-                            raise _Aborted("clic souris")
+                            raise _Aborted("mouse")
                     if now >= self.deadline - 0.12:
                         break
             # 2. lecture synchronisee
@@ -675,17 +683,17 @@ class SyncSession:
                 self.log("multi : analyse trop longue, départ immédiat avec rattrapage")
             p.play_at(self.deadline, prepared, "game")
             self.state = "playing"
-            self.message = "Lecture synchronisée" + (f" (suiveur du joueur {self.leader_id})" if self.role == "follower" else " (meneur)")
+            self.message = i18n.t("multi.state.playing", role=self.role, leader=self.leader_id)
             while p.state in ("playing", "paused") and not self._abort.is_set():
                 time.sleep(0.1)
         except _Aborted as e:
             reason = str(e) or self.abort_reason or "stop"
             self.log(f"multi : annulé ({reason})")
-            self.message = f"Annulé ({reason})"
+            self.message = _stop_text(reason)
         except Exception as e:  # noqa
-            reason = "erreur"
+            reason = "error"
             self.log(f"multi : {e}")
-            self.message = str(e)
+            self.message = self.last_error = str(e)
             self.notify(str(e), "warn")
         finally:
             if stop_cap is not None:
@@ -704,7 +712,7 @@ class SyncSession:
         """Meneur du calibrage : motif, puis echo de chaque reponse dans son creneau."""
         m = self.cfg["multi"]
         inst = self.player.instrument
-        self.message = f"Calibrage : meneur (joueur {me}), note repère…"
+        self.message = i18n.t("multi.calib.leader_beacon", player=me)
         t0 = self._play_pattern(my_notes, my_keys, det, latency, gap, hold)
         self.log(f"multi : calibrage, meneur joueur {me}")
         end = t0 + REPLY_BASE + REPLY_STEP * MAX_PLAYERS + 1.0
@@ -712,7 +720,7 @@ class SyncSession:
         while time.perf_counter() < end:
             self._check_abort()
             left = end - time.perf_counter()
-            self.message = f"Calibrage : meneur, en attente des réponses… ({left:.0f} s)"
+            self.message = i18n.t("multi.calib.leader_waiting", seconds=int(round(left)))
             found = self._pump(q, det)
             if found is None:
                 continue
@@ -727,10 +735,10 @@ class SyncSession:
             keys = beacon_keys(inst, notes)
             self._sleep_until(t1 - latency + ECHO_DELAY)
             self._play_pattern(notes, keys, det, latency, gap, hold)
-        names = ", ".join(str(k) for k in sorted(heard)) or "aucun"
+        names = ", ".join(str(k) for k in sorted(heard)) or i18n.t("multi.calib.nobody")
         m["calib"] = {"role": "leader", "leader": me, "players": sorted(heard), "when": time.time()}
         self._save()
-        self.message = f"Calibrage terminé : joueurs entendus {names}"
+        self.message = i18n.t("multi.calib.done", names=names)
         self.notify(self.message, "ok" if heard else "warn")
         self.log("multi : " + self.message)
 
@@ -738,13 +746,14 @@ class SyncSession:
         """Suiveur du calibrage : reponse dans son creneau, attente de l'echo, decalage = aller-retour / 2."""
         m = self.cfg["multi"]
         if leader == me:
-            self.message = f"Le meneur a le même numéro que toi ({me}) : choisis des numéros différents"
+            self.message = i18n.t("multi.calib.same_id", player=me)
             self.notify(self.message, "warn")
             self.log("multi : " + self.message)
             return
         t_leader = t1 - latency                      # appui estime du meneur
         reply_at = t_leader + REPLY_BASE + REPLY_STEP * (me - 1)
-        self.message = f"Calibrage : meneur joueur {leader}, réponse dans {max(0.0, reply_at - time.perf_counter()):.1f} s"
+        self.message = i18n.t("multi.calib.follower_reply", leader=leader,
+                              seconds=round(max(0.0, reply_at - time.perf_counter()), 1))
         self.log(f"multi : calibrage, suiveur du joueur {leader}, réponse dans le créneau {me}")
         # on continue a lire la capture en attendant notre creneau
         while time.perf_counter() < reply_at - 0.02:
@@ -752,7 +761,7 @@ class SyncSession:
             self._pump(q, det)
         self._sleep_until(reply_at)
         S = self._play_pattern(my_notes, my_keys, det, latency, gap, hold)
-        self.message = "Calibrage : réponse envoyée, attente de l'écho…"
+        self.message = i18n.t("multi.calib.follower_echo")
         end = S + ECHO_DELAY + 3.0
         echo = None
         while time.perf_counter() < end:
@@ -764,7 +773,7 @@ class SyncSession:
         if echo is None:
             m["calib"] = {"role": "follower", "leader": leader, "rtt_ms": None, "offset_ms": None, "when": time.time()}
             self._save()
-            self.message = f"Pas d'écho du meneur (joueur {leader}) : décalage inchangé"
+            self.message = i18n.t("multi.calib.no_echo", leader=leader)
             self.notify(self.message, "warn")
             self.log("multi : " + self.message)
             return
@@ -775,7 +784,7 @@ class SyncSession:
         m["calib"] = {"role": "follower", "leader": leader, "rtt_ms": int(round(rtt * 1000)),
                       "offset_ms": m["offset_ms"], "when": time.time()}
         self._save()
-        self.message = f"Calé sur le joueur {leader} : aller-retour {rtt * 1000:.0f} ms, tu joueras {-m['offset_ms']} ms plus tôt"
+        self.message = i18n.t("multi.calib.locked", leader=leader, rtt=int(round(rtt * 1000)), ms=-m["offset_ms"])
         self.notify(self.message, "ok")
         self.log("multi : " + self.message)
 
@@ -801,7 +810,8 @@ class SyncSession:
             self.state = "test"
             self.mode = "test"
             self.role = ""
-            self.message = "Test : passe sur Heartopia, instrument ouvert…"
+            self.message = i18n.t("multi.test.go")
+            self.last_error = ""
             self.last_test = None
             with p._lock:
                 p.state = "sync"
@@ -843,10 +853,10 @@ class SyncSession:
                 return found
 
             self._sleep_until(time.perf_counter() + 3.0)     # le temps de passer sur le jeu
-            self.message = "Test : écoute…"
+            self.message = i18n.t("multi.test.listening")
             pump(time.perf_counter() + 1.0)
             spurious = sum(det.total_onsets)
-            self.message = "Test : note repère…"
+            self.message = i18n.t("multi.test.beacon")
             presses = []
             t0 = None
             for i, k in enumerate(keys):
@@ -860,9 +870,7 @@ class SyncSession:
             stop_cap.set()
             if found is None:
                 onsets = sum(det.total_onsets) - spurious
-                result["message"] = ("Rien détecté : vérifie que le jeu sort bien sur la sortie audio écoutée, que "
-                                     "l'instrument est ouvert dans le jeu et que le volume n'est pas coupé"
-                                     + (f" ({onsets} attaque(s) vue(s) mais pas le motif)" if onsets else ""))
+                result["message"] = i18n.t("multi.test.nothing", onsets=onsets)
                 result["device"] = self.device
                 return
             t1, pid = found
@@ -901,22 +909,22 @@ class SyncSession:
             m["tune"] = round(tune, 5) if 0.9 < tune < 1.1 else 1.0
             self._save()
             worst = max(abs(c) for c in cents) if cents else 0.0
-            msg = f"Motif du joueur {pid} détecté après {latency * 1000:.0f} ms (latence enregistrée)"
+            msg = i18n.t("multi.test.detected", player=pid, ms=int(round(latency * 1000)))
             if pid != me:
-                msg += f" ; attention : reconnu comme joueur {pid} au lieu de {me} (note d'identité mal jouée ?)"
+                msg += i18n.t("multi.test.wrong_player", player=pid, me=me)
             if abs(1200 * math.log2(tune)) > 5:
-                msg += f" ; accord du jeu {1200 * math.log2(tune):+.0f} centièmes (pris en compte)"
+                msg += i18n.t("multi.test.tune", cents=f"{1200 * math.log2(tune):+.0f}")
             if worst > 25:
-                msg += f" ; note à {worst:.0f} centièmes de la hauteur attendue (mauvaise touche ?)"
+                msg += i18n.t("multi.test.off_pitch", cents=int(round(worst)))
             if spurious:
-                msg += f" ; {spurious} attaque(s) parasite(s) pendant 1 s d'écoute"
+                msg += i18n.t("multi.test.spurious", n=spurious)
             result.update({"ok": pid == me, "message": msg, "latency": round(latency, 3), "freqs": freqs,
                            "cents": cents, "tune": m["tune"], "device": self.device, "spurious": spurious})
             self.log(f"multi : test ok, latence {latency * 1000:.0f} ms, fréquences {freqs} Hz, accord {m['tune']}")
-        except _Aborted as e:
-            result["message"] = f"Test annulé ({e or self.abort_reason or 'stop'})"
+        except _Aborted:
+            result["message"] = i18n.t("multi.test.cancelled")
         except Exception as e:  # noqa
-            result["message"] = str(e)
+            result["message"] = self.last_error = str(e)
             self.log(f"multi : test : {e}")
         finally:
             if stop_cap is not None:
@@ -934,7 +942,8 @@ class SyncSession:
             self.abort_reason = ""
             self.state = "test"
             self.mode = "test"
-            self.message = f"Écoute de {seconds:.0f} s…"
+            self.message = i18n.t("multi.listen.start", seconds=int(round(seconds)))
+            self.last_error = ""
             self.last_test = None
             self._thread = threading.Thread(target=self._listen_run, args=(float(seconds),), name="multi-listen", daemon=True)
             self._thread.start()
@@ -954,32 +963,32 @@ class SyncSession:
             peak = 0.0
             while time.perf_counter() < end:
                 self._check_abort()
-                self.message = f"Écoute… {end - time.perf_counter():.0f} s"
+                self.message = i18n.t("multi.listen.progress", seconds=int(round(end - time.perf_counter())))
                 try:
                     item = q.get(timeout=0.02)
                 except queue.Empty:
                     continue
                 if isinstance(item[0], str):
-                    raise RuntimeError(f"capture audio : {item[1]}")
+                    raise RuntimeError(i18n.t("multi.error.capture", error=item[1]))
                 peak = max(peak, float(abs(item[0]).max()) if len(item[0]) else 0.0)
                 self._record(item[0])
                 det.push(item[0], item[1])
             n = sum(det.total_onsets)
             if det.matched:
-                who = ", ".join(f"joueur {pid} à {t - t_ref:.1f} s" for t, pid in det.matched)
-                msg = f"{det.matches} motif(s) reconnu(s) ({who}) et {n} attaque(s) en {seconds:.0f} s"
+                who = ", ".join(i18n.t("multi.listen.who", player=pid, seconds=round(t - t_ref, 1)) for t, pid in det.matched)
+                msg = i18n.t("multi.listen.matched", matches=det.matches, who=who, n=n, seconds=int(round(seconds)))
             else:
-                msg = f"aucun motif reconnu, {n} attaque(s) isolée(s) en {seconds:.0f} s"
-            msg += " ; aucun son capté : la sortie écoutée est-elle celle du jeu ?" if peak < 1e-4 else ""
+                msg = i18n.t("multi.listen.none", n=n, seconds=int(round(seconds)))
+            msg += i18n.t("multi.listen.silent") if peak < 1e-4 else ""
             result.update({"ok": True, "message": msg, "matches": det.matches, "onsets": n,
                            "matched": [pid for _, pid in det.matched], "device": self.device, "peak": round(peak, 4)})
             self.log(f"multi : écoute test : {msg}")
             self.log("multi : " + det.summary(t_ref))
             self._save_capture(cap.sr)
-        except _Aborted as e:
-            result["message"] = f"Écoute annulée ({e or self.abort_reason or 'stop'})"
+        except _Aborted:
+            result["message"] = i18n.t("multi.listen.cancelled")
         except Exception as e:  # noqa
-            result["message"] = str(e)
+            result["message"] = self.last_error = str(e)
         finally:
             if stop_cap is not None:
                 stop_cap.set()

@@ -3,7 +3,7 @@
 import threading
 import time
 
-from bot import MouseBot
+from bot import MouseBot, screen_changed, screen_fingerprint
 from platform_io import cursor_pos, mouse_move, mouse_down, mouse_up, grab, mouse_hint, SCREEN_OK  # noqa: F401
 
 FORMATS = ["16:9", "4:3", "1:1", "3:4", "9:16"]
@@ -474,6 +474,11 @@ class Drawer(MouseBot):
         self._cell_px = 0.0
         self._empty_colors = []
         self.repaired = 0
+        self._geo = None              # [x1, y1, cw, ch, W, H] du dessin en cours (corrige en direct)
+        self._fill_box = None         # rectangle rempli mesure a l'ecran (avant correction par les reperes)
+        self._marks_done = set()      # couleurs deja utilisees pour les reperes de geometrie
+        self._last_seen = None        # derniere lecture du canevas (_read_canvas)
+        self._used = None             # nuances utilisees par le dessin en cours (les autres se lisent « vide »)
         ensure_defaults(cfg)
 
     @property
@@ -595,6 +600,7 @@ class Drawer(MouseBot):
             return
         f = d["formats"].setdefault(self.fmt, {})
         f["rect"] = rect
+        f["screen"] = screen_fingerprint()
         # le nombre de cases est connu par format ; la detection ne sert qu'a verifier
         f.setdefault("cols", DEFAULT_GRIDS[self.fmt][0])
         f.setdefault("rows", DEFAULT_GRIDS[self.fmt][1])
@@ -750,6 +756,14 @@ class Drawer(MouseBot):
             self.log(self.message)
             self.on_change()
             return False
+        if screen_changed(self.draw_cfg["formats"].get(fmt, {}).get("screen")):
+            # resolution, mise a l'echelle ou ecrans changes depuis la configuration : les positions
+            # enregistrees ne tombent plus sur la toile ni sur la palette
+            self.message = (f"L'écran a changé depuis la configuration du format {fmt} (résolution, mise à "
+                            f"l'échelle ou écrans) : refais la configuration de la zone du jeu.")
+            self.log(self.message)
+            self.on_change()
+            return False
         self.state = "drawing"
         self.fmt = fmt
         self.last_stop_reason = ""
@@ -810,34 +824,65 @@ class Drawer(MouseBot):
 
     # ---- lecture du canevas a l'ecran (verification et reparation)
     def _read_canvas(self, geo):
-        """Pour chaque case, l'index de la couleur de palette vue a l'ecran (-1 = vide / inconnu)."""
+        """Pour chaque case, l'index de la couleur de palette vue a l'ecran (-1 = vide / inconnu).
+        Vote sur une croix de 5 pixels au centre de la case (le centre compte double), des que la case fait au
+        moins 3,5 px : avec des cases de 4 px dont 1 px de ligne de grille, un seul pixel tombait une fois sur
+        quatre sur la grille ou dans la case voisine, et une case bien peinte passait pour manquante (repeinte
+        a chaque passe, puis « perdue »). Un bloc de 3 x 3 serait trop large : il mordrait sur la grille (3 px
+        de couleur utile seulement). Une couleur de l'image vue sur au moins deux points bat le « vide » : une
+        ligne de grille traverse souvent la croix (centre + gauche + droite), une couleur peinte n'y apparait
+        pas par hasard. Les teintes que l'image n'utilise pas (self._used, grille lue comme un gris de la
+        palette) comptent comme vide."""
         x1, y1, cw, ch, W, H = geo
-        im = grab((x1, y1, int(round(x1 + cw * W)), int(round(y1 + ch * H))))
+        ox, oy = int(x1), int(y1)
+        im = grab((ox, oy, int(round(x1 + cw * W)) + 1, int(round(y1 + ch * H)) + 1))
         if im is None:
             return None
         px = im.load()
         iw, ih = im.size
         colors = self.colors()
         empties = self._empty_colors
+        used = self._used
         cache = {}
+        block = ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)) if min(cw, ch) >= 3.5 else ((0, 0),)
+
+        def classify(c):
+            key = (c[0] >> 2, c[1] >> 2, c[2] >> 2)
+            k = cache.get(key)
+            if k is None:
+                best = -1
+                bd = min(_cdist(c, e) for e in empties) if empties else 10 ** 9
+                for i, pc in enumerate(colors):
+                    dd = _cdist(c, pc)
+                    if dd < bd:
+                        bd, best = dd, i
+                k = best if bd < 45 * 45 else -1
+                if used is not None and k >= 0 and k not in used:
+                    k = -1
+                cache[key] = k
+            return k
+
         out = [-1] * (W * H)
+        fx, fy = x1 - ox, y1 - oy
         for cy in range(H):
-            py = min(ih - 1, int((cy + 0.5) * ch))
+            py = min(ih - 1, int(fy + (cy + 0.5) * ch))
             for cx in range(W):
-                pxx = min(iw - 1, int((cx + 0.5) * cw))
-                c = px[pxx, py][:3]
-                key = (c[0] >> 2, c[1] >> 2, c[2] >> 2)
-                k = cache.get(key)
-                if k is None:
-                    best = -1
-                    bd = min(_cdist(c, e) for e in empties) if empties else 10 ** 9
-                    for i, pc in enumerate(colors):
-                        dd = _cdist(c, pc)
-                        if dd < bd:
-                            bd, best = dd, i
-                    k = best if bd < 45 * 45 else -1
-                    cache[key] = k
-                out[cy * W + cx] = k
+                pxx = min(iw - 1, int(fx + (cx + 0.5) * cw))
+                k0 = classify(px[pxx, py][:3])
+                if len(block) == 1:
+                    out[cy * W + cx] = k0
+                    continue
+                votes = {k0: 2}
+                for dx, dy in block[1:]:
+                    xx, yy = pxx + dx, py + dy
+                    if 0 <= xx < iw and 0 <= yy < ih:
+                        k = classify(px[xx, yy][:3])
+                        votes[k] = votes.get(k, 0) + 1
+                # une couleur vue au moins deux fois bat le vide ; sinon majorite, a egalite le pixel central
+                colored = [k for k, v in votes.items() if k >= 0 and v >= 2]
+                pool = colored or list(votes)
+                out[cy * W + cx] = max(pool, key=lambda k: (votes[k], k == k0))
+        self._last_seen = out
         return out
 
     def colors(self):
@@ -852,7 +897,8 @@ class Drawer(MouseBot):
 
     def _find_dot(self, x, y, color, radius):
         """Centre (float) de la tache de couleur `color` autour de (x, y) a l'ecran, ou None."""
-        im = grab((int(x - radius), int(y - radius), int(x + radius + 1), int(y + radius + 1)))
+        ox, oy = int(x - radius), int(y - radius)      # origine entiere : la capture commence sur un pixel
+        im = grab((ox, oy, int(x + radius) + 1, int(y + radius) + 1))
         if im is None:
             return None
         px = im.load()
@@ -866,7 +912,7 @@ class Drawer(MouseBot):
                     ys.append(j)
         if len(xs) < 4:
             return None
-        return (x - radius + (min(xs) + max(xs)) / 2.0, y - radius + (min(ys) + max(ys)) / 2.0)
+        return (ox + (min(xs) + max(xs)) / 2.0, oy + (min(ys) + max(ys)) / 2.0)
 
     def _refine_by_fill(self, x1, y1, x2, y2, rgb):
         """Apres le pot de peinture : le rectangle de couleur `rgb` a l'ecran est le canevas exact."""
@@ -890,35 +936,177 @@ class Drawer(MouseBot):
                  f"(calibrage {x1:.0f},{y1:.0f} → {x2:.0f},{y2:.0f})")
         return float(nx1), float(ny1), float(nx2), float(ny2)
 
-    def _refine_geometry(self, cells, W, H, x1, y1, cw, ch, color, cell_a, cell_b):
-        """Peint deux cases repères, les retrouve a l'ecran et en deduit la taille et la position exactes
-        des cases. Retourne (x1, y1, cw, ch) corriges, ou None."""
-        (ax, ay), (bx, by) = cell_a, cell_b
-        if bx - ax < 10 or by - ay < 10:
-            return None
-        if not self._select(color):
-            return None
-        found = []
-        for cx, cy in (cell_a, cell_b):
-            px_ = x1 + (cx + 0.5) * cw
-            py_ = y1 + (cy + 0.5) * ch
-            if not self._click(int(round(px_)), int(round(py_)), delay=0.12):
+    def _same(self, k, colors=None):
+        """Indices des nuances que l'ecran ne distingue pas de k (certaines nuances de familles voisines sont
+        quasi identiques)."""
+        cols = colors or self.colors()
+        ck = cols[k]
+        return {k} | {i for i, c in enumerate(cols) if _cdist(c, ck) < 18 * 18}
+
+    def _apply_geo(self, x0, y0, pw, ph):
+        """Nouvelle geometrie des cases (origine, taille) : appliquee au dessin en cours (self._geo, lu par
+        toutes les fonctions de centre) et enregistree dans le calibrage du format. Si le rectangle rempli a
+        ete mesure, l'ecart entre ce rectangle et les cases est memorise (fill_inset) pour que le prochain
+        dessin tombe juste des le remplissage."""
+        geo = self._geo
+        W, H = geo[4], geo[5]
+        geo[0], geo[1], geo[2], geo[3] = float(x0), float(y0), float(pw), float(ph)
+        f = self.draw_cfg["formats"].setdefault(self.fmt, {})
+        f["rect"] = [round(x0, 2), round(y0, 2), round(x0 + pw * W, 2), round(y0 + ph * H, 2)]
+        if self._fill_box:
+            fb = self._fill_box
+            f["fill_inset"] = [round(x0 - fb[0], 2), round(y0 - fb[1], 2),
+                               round(x0 + pw * W - fb[2], 2), round(y0 + ph * H - fb[3], 2)]
+        self._cell_px = min(pw, ph)
+        try:
+            self.save()
+        except Exception:
+            pass
+
+    def _empties_setup(self, x1, y1, x2, y2, used):
+        """Teintes de la toile vide (rayures, grille), indispensables pour lire l'ecran. 16 pixels isoles de la
+        toile, regroupes par teinte (les groupes d'un seul pixel sont ignores) : c'est ce que la toile montre
+        MAINTENANT, rayures si elle est vide, couleurs peintes sinon. En attendant de savoir (voir
+        _settle_empties), l'ecran est lu avec les teintes enregistrees plus celles vues qui ne sont pas des
+        couleurs de l'image (`used`) : le fond deja peint ne doit pas masquer les cases en place.
+        Renvoie les teintes vues."""
+        d = self.draw_cfg
+        raw = []
+        for i in range(4):
+            for j in range(4):
+                c = sample_color(int(x1 + (x2 - x1) * (i + 0.5) / 4), int(y1 + (y2 - y1) * (j + 0.5) / 4), radius=0)
+                if c:
+                    raw.append(list(c))
+        clusters = []
+        for c in raw:
+            for cl in clusters:
+                if _cdist(c, cl[0]) < 20 * 20:
+                    cl.append(c)
+                    break
+            else:
+                clusters.append([c])
+        clusters.sort(key=len, reverse=True)
+        cur = [[sum(p[i] for p in cl) // len(cl) for i in range(3)] for cl in clusters if len(cl) >= 2]
+        stored = [list(c) for c in (d.get("empty_colors") or []) if c]
+        self._empty_colors = list(stored)
+        for c in cur:
+            if all(_cdist(c, e) >= 20 * 20 for e in self._empty_colors) and all(_cdist(c, u) >= 45 * 45 for u in used):
+                self._empty_colors.append(c)
+        return cur
+
+    def _settle_empties(self, cur, fresh, counts, colors):
+        """Toile vide (aucune case de l'image deja en place) : les teintes vues sont celles du vide, on les
+        enregistre pour les reprises. Toile entamee : on garde les teintes enregistrees ; s'il n'y en a pas
+        (ancienne config), on prend les teintes vues qui ne sont pas des couleurs de l'image (le fond peint est
+        une couleur de l'image, les rayures restantes non). Renvoie True si la liste a change (relire l'ecran)."""
+        d = self.draw_cfg
+        before = list(self._empty_colors)
+        stored = [list(c) for c in (d.get("empty_colors") or []) if c]
+        if fresh:
+            self._empty_colors = list(cur)
+            for e in stored:
+                if all(_cdist(e, c) >= 20 * 20 for c in cur) and min((_cdist(e, c) for c in cur), default=10 ** 9) < 40 * 40:
+                    self._empty_colors.append(e)      # meme toile, teinte deja connue, pas echantillonnee cette fois
+            if cur and self._empty_colors != stored:
+                d["empty_colors"] = [list(c) for c in self._empty_colors]
+                try:
+                    self.save()
+                except Exception:
+                    pass
+        elif stored:
+            self._empty_colors = stored
+        else:
+            used = [colors[k] for k in counts]
+            self._empty_colors = [c for c in cur if all(_cdist(c, u) >= 45 * 45 for u in used)]
+            if self._empty_colors:
+                self.log(f"teintes de la toile vide estimées sur la toile entamée : {self._empty_colors}")
+        return self._empty_colors != before
+
+    def _refine_marks(self, k, cells, seen, geo, colors=None):
+        """Reperes de geometrie pendant le dessin : jusqu'a 5 cases isolees a peindre en couleur k (deja
+        selectionnee), cliquees puis retrouvees a l'ecran, pour mesurer l'origine et la taille reelles des cases.
+        Le calibrage et la mesure du rectangle rempli donnent le bord du canevas, pas l'endroit exact ou le jeu
+        place ses cases : un decalage d'un tiers de case suffisait pour que des centaines de clics tombent dans
+        la case voisine (cinq passes de reparation a chaque couleur, des cases perdues quand meme).
+        Renvoie True si la geometrie a ete mesuree, False si les reperes n'ont pas suffi, None si le dessin
+        est arrete."""
+        self._marks_done.add(k)
+        if seen is None:
+            return False
+        x1, y1, cw, ch, W, H = geo
+        colors = colors or self.colors()
+        color = colors[k]
+        r = 3
+        # cases isolees : rien de la couleur k (ni d'une couleur proche) a moins de r cases, a l'ecran
+        near = {i for i, c in enumerate(colors) if _cdist(c, color) < 40 * 40}
+        cand = []
+        for i, c in enumerate(cells):
+            if c != k or seen[i] in near:
+                continue
+            x, y = i % W, i // W
+            if not (r <= x < W - r and r <= y < H - r):
+                continue
+            ok = True
+            for yy in range(y - r, y + r + 1):
+                row = yy * W
+                for xx in range(x - r, x + r + 1):
+                    if seen[row + xx] in near:
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if ok:
+                cand.append((x, y))
+        if len(cand) < 2:
+            self.log(f"repères : pas assez de cases isolées de la couleur {k} ({len(cand)}), géométrie conservée")
+            return False
+        m = max(r, W // 8)
+        targets = [(m, m), (W - 1 - m, m), (m, H - 1 - m), (W - 1 - m, H - 1 - m), (W // 2, H // 2)]
+        marks = []
+        for tx, ty in targets:
+            best = min(cand, key=lambda p: (p[0] - tx) ** 2 + (p[1] - ty) ** 2)
+            if all(max(abs(best[0] - mx), abs(best[1] - my)) > 2 * r for mx, my in marks):
+                marks.append(best)
+        center = self._center_fn(geo)
+        for cx, cy in marks:
+            if not self._click(*center(cx, cy), delay=0.05):
                 return None
-            found.append(self._find_dot(px_, py_, self.colors()[color], max(8, 3.0 * max(cw, ch))))
-        if not all(found):
-            self.log("repères non retrouvés à l'écran, géométrie du calibrage conservée")
+        if not self._sleep(0.15):
             return None
-        (fax, fay), (fbx, fby) = found
-        ncw = (fbx - fax) / (bx - ax)
-        nch = (fby - fay) / (by - ay)
-        if not (0.8 * cw < ncw < 1.2 * cw and 0.8 * ch < nch < 1.2 * ch):
-            self.log(f"repères incohérents (cases {ncw:.2f}×{nch:.2f} px au lieu de {cw:.2f}×{nch:.2f}), calibrage conservé")
-            return None
-        nx1 = min((fax - (ax + 0.5 + k) * ncw for k in range(-2, 3)), key=lambda v: abs(v - x1))
-        ny1 = min((fay - (ay + 0.5 + k) * nch for k in range(-2, 3)), key=lambda v: abs(v - y1))
-        self.log(f"géométrie affinée : cases {ncw:.3f}×{nch:.3f} px (calibrage {cw:.3f}×{ch:.3f}), "
-                 f"origine décalée de {nx1 - x1:+.1f},{ny1 - y1:+.1f} px")
-        return nx1, ny1, ncw, nch
+        pairs = []
+        rad = max(8, 2.5 * max(cw, ch))
+        for cx, cy in marks:
+            fx, fy = x1 + (cx + 0.5) * cw, y1 + (cy + 0.5) * ch
+            p = self._find_dot(fx, fy, color, rad)
+            if p:
+                pairs.append((cx + 0.5, cy + 0.5, p[0], p[1]))
+        if len(pairs) < 2:
+            self.log(f"repères : {len(pairs)}/{len(marks)} retrouvés à l'écran, géométrie conservée")
+            return False
+
+        def fit(us, vs, scale, span_min):
+            """v = v0 + u * scale ; l'echelle n'est ajustee (moindres carres) que si les reperes couvrent au
+            moins 60 % de la toile : le jeu arrondit chaque bord de case au pixel, et sur 15 cases d'ecart ce
+            bruit fausserait l'echelle de plusieurs pixels au bout de la toile."""
+            n = len(us)
+            um, vm = sum(us) / n, sum(vs) / n
+            var = sum((u - um) ** 2 for u in us)
+            if max(us) - min(us) >= span_min and var > 0:
+                s = sum((u - um) * (v - vm) for u, v in zip(us, vs)) / var
+                if 0.9 * scale < s < 1.1 * scale:
+                    scale = s
+            return vm - um * scale, scale
+
+        x0, pw = fit([p[0] for p in pairs], [p[2] for p in pairs], cw, max(10, int(0.6 * W)))
+        y0, ph = fit([p[1] for p in pairs], [p[3] for p in pairs], ch, max(10, int(0.6 * H)))
+        resid = max(max(abs(fx - (x0 + u * pw)), abs(fy - (y0 + v * ph))) for u, v, fx, fy in pairs)
+        if resid > max(1.5, 0.35 * min(pw, ph)):
+            self.log(f"repères incohérents (écart {resid:.1f} px sur {len(pairs)} repères), géométrie conservée")
+            return False
+        self.log(f"géométrie mesurée sur {len(pairs)} repères : cases {pw:.3f}×{ph:.3f} px (avant {cw:.3f}×{ch:.3f}), "
+                 f"origine décalée de {x0 - x1:+.1f},{y0 - y1:+.1f} px")
+        self._apply_geo(x0, y0, pw, ph)
+        return True
 
     def _apply_inset(self, f, box):
         ins = f.get("fill_inset")
@@ -1221,10 +1409,7 @@ class Drawer(MouseBot):
         if seen is None:
             return None
         idx = only if only is not None else range(len(cells))
-        cols = self.colors()
-        ck = cols[k]
-        # certaines nuances de familles voisines sont quasi identiques : on les accepte
-        same = {k} | {i for i, c in enumerate(cols) if _cdist(c, ck) < 18 * 18}
+        same = self._same(k)
         return [i for i in idx if cells[i] == k and seen[i] not in same]
 
     def _run(self, job, delay):
@@ -1263,6 +1448,7 @@ class Drawer(MouseBot):
             self.state = "idle"
             self.started_at = None
             self._expected_pos = None
+            self._used = None
             self.progress_msg = ""
             self.log("dessin terminé" if not self.last_stop_reason else f"dessin arrêté ({self.last_stop_reason})")
             self.on_change()
@@ -1283,9 +1469,7 @@ class Drawer(MouseBot):
             # la couleur la plus claire de la palette est consideree comme le blanc
             colors = self.colors()
             skip.add(max(range(len(colors)), key=lambda i: sum(colors[i])))
-
-        def center(cx, cy):
-            return [int(round(x1 + (cx + 0.5) * cw)), int(round(y1 + (cy + 0.5) * ch))]
+        tools = d["tools"]
 
         counts = {}
         for k in cells:
@@ -1301,143 +1485,197 @@ class Drawer(MouseBot):
             raise RuntimeError("l'image utilise des nuances : refais le calibrage en faisant les 6 étapes « nuances » (bouton palette, bande des familles, flèches, deux nuances)")
         order = sorted(counts, key=lambda k: -counts[k])
         fill_color = None
-        if d.get("fill_background") and d["tools"].get("bucket") and d["tools"].get("pencil"):
+        if d.get("fill_background") and tools.get("bucket") and tools.get("pencil"):
             fill_color = order[0]
-
-        # plan : par couleur, traits en zigzag sans lever le crayon (le jeu trace la ligne entre deux
-        # positions de souris : seuls les changements de direction sont envoyes)
-        outline = bool(d.get("outline", True)) and bool(d["tools"].get("bucket")) and bool(d["tools"].get("pencil"))
+        outline = bool(d.get("outline", True)) and bool(tools.get("bucket")) and bool(tools.get("pencil"))
         if d.get("outline", True) and not outline:
             self.log("mode contours indisponible : calibre le crayon et le pot de peinture (étapes du calibrage)")
-        plan = []   # (couleur, [strokes]) ; stroke = (points en coordonnees cases, nb de cases)
-        pencil = fills = None
-        if outline:
-            # mode contours : traits seulement sur les cases de contour, le reste au pot de peinture
-            ostrokes, pencil, fills, ostats = plan_outline(cells, W, H, skip, fill_color)
-            for k in order:
-                if k == fill_color:
-                    continue
-                plan.append((k, ostrokes.get(k, [])))
-        else:
-            for k in order:
-                if k == fill_color:
-                    continue
-                plan.append((k, build_strokes(cells, W, H, k)))
-        self.total = sum(counts.values())
-        self.done = 0
-        self.actions_done = 0
-        self.actions_total = sum(len(p) + 1 for _, strokes in plan for p, _ in strokes) + len(plan) + (
-            4 if fill_color is not None else (1 if d["tools"].get("pencil") else 0))
-        if outline:
-            self.actions_total += 2 * ostats["fill_zones"] + 1
-        self.started_at = time.perf_counter()
-        self.log(f"dessin {fmt} : {self.total} cases, {len(plan) + (1 if fill_color is not None else 0)} couleurs, "
-                 f"{sum(len(s) for _, s in plan)} traits, {self.actions_total} actions"
-                 + (f" ; mode contours : {ostats['pencil_cells']} cases au crayon, {ostats['fill_zones']} zones au pot "
-                    f"({ostats['fill_cells']} cases)" if outline else ""))
-        self._expected_pos = None
-        self._check_mouse(*center(W // 2, H // 2))
-        # teintes du canevas vide (rayures), lues avant le premier coup de pinceau
-        self._empty_colors = []
-        for fx, fy in ((0.5, 0.5), (0.25, 0.25), (0.75, 0.75), (0.5, 0.25)):
-            c = sample_color(int(x1 + (x2 - x1) * fx), int(y1 + (y2 - y1) * fy), radius=1)
-            if c:
-                self._empty_colors.append(c)
 
-        refine = d.get("refine", True) and SCREEN_OK
-        colors = self.colors()
-
-        def apply_geo(nx1, ny1, ncw, nch):
-            nonlocal x1, y1, x2, y2, cw, ch
-            x1, y1, cw, ch = nx1, ny1, ncw, nch
-            x2, y2 = x1 + cw * W, y1 + ch * H
-            f["rect"] = [round(x1, 2), round(y1, 2), round(x2, 2), round(y2, 2)]
-            try:
-                self.save()
-            except Exception:
-                pass
-
-        # 1. remplissage du fond, puis mesure exacte du canevas sur le rectangle rempli
-        if fill_color is not None:
-            if not self._select(fill_color):
-                return
-            if not self._click(*d["tools"]["bucket"], delay=0.15):
-                return
-            if not self._click(*center(W // 2, H // 2), delay=0.3):
-                return
-            self.done += counts[fill_color]
-            if refine and all(_cdist(colors[fill_color], e) > 40 * 40 for e in self._empty_colors):
-                box = self._refine_by_fill(x1, y1, x2, y2, colors[fill_color])
-                if box:
-                    box = self._apply_inset(f, box)
-                    apply_geo(box[0], box[1], (box[2] - box[0]) / W, (box[3] - box[1]) / H)
-                    self.log(f"cases {cw:.3f}×{ch:.3f} px")
-            if not self._click(*d["tools"]["pencil"], delay=0.15):
-                return
-        else:
-            measured = False
-            if refine and d["tools"].get("bucket") and d["tools"].get("undo") and d["tools"].get("pencil"):
-                # remplissage temporaire avec la couleur la plus eloignee du fond vide, mesure, puis Annuler
-                mk = max(sorted(avail), key=lambda i: min(_cdist(colors[i], e) for e in self._empty_colors) if self._empty_colors else 0)
-                if not self._select(mk):
-                    return
-                if not self._click(*d["tools"]["bucket"], delay=0.15):
-                    return
-                if not self._click(*center(W // 2, H // 2), delay=0.3):
-                    return
-                box = self._refine_by_fill(x1, y1, x2, y2, colors[mk])
-                if not self._click(*d["tools"]["undo"], delay=0.3):
-                    return
-                if box:
-                    box = self._apply_inset(f, box)
-                    apply_geo(box[0], box[1], (box[2] - box[0]) / W, (box[3] - box[1]) / H)
-                    self.log(f"cases {cw:.3f}×{ch:.3f} px")
-                    measured = True
-            if d["tools"].get("pencil"):
-                if not self._click(*d["tools"]["pencil"], delay=0.15):
-                    return
-            if refine and not measured:
-                # deux cases reperes de la couleur principale, a 3 cases des bords
-                m = 3
-                k0 = order[0]
-                own = [(i % W, i // W) for i, c in enumerate(cells)
-                       if c == k0 and m <= i % W < W - m and m <= i // W < H - m]
-                if not own:
-                    own = [(i % W, i // W) for i, c in enumerate(cells) if c == k0]
-                cell_a = min(own, key=lambda p: p[0] + p[1])
-                cell_b = max(own, key=lambda p: p[0] + p[1])
-                geo_new = self._refine_geometry(cells, W, H, x1, y1, cw, ch, k0, cell_a, cell_b)
-                if self._stop.is_set():
-                    return
-                if geo_new:
-                    apply_geo(*geo_new)
-
-        # 2. crayon, couleur par couleur, avec verification a l'ecran et reparation
-        geo = (x1, y1, cw, ch, W, H)
+        # geometrie partagee (liste : les fonctions de centre lisent la valeur courante, corrigee en cours de
+        # dessin par les reperes et les passes de reparation)
+        geo = self._geo = [x1, y1, cw, ch, W, H]
+        center = self._center_fn(geo)
+        self._fill_box = None
+        self._marks_done = set()
+        self._last_seen = None
         self._cell_px = min(cw, ch)
-        verify = d.get("verify", True) and SCREEN_OK
-        colors = self.colors()
         self.stride = None if not d.get("dense") else max(2.0, min(cw, ch))
         self._probed = self.stride is not None
         self.repaired = 0
         self._seen = None
+        self.total = sum(counts.values())
+        self.done = 0
+        self.actions_done = 0
+        self.actions_total = 0
+        self.started_at = time.perf_counter()
+        self._expected_pos = None
+        self._check_mouse(*center(W // 2, H // 2))
+
+        # toile vide (dessin neuf) ou deja entamee (reprise) : on lit l'ecran ; si des cases de l'image sont
+        # deja en place, c'est une reprise et on ne peindra que ce qui manque
+        colors = self.colors()
+        cur = self._empties_setup(x1, y1, x2, y2, [colors[k] for k in counts])
+        verify = d.get("verify", True) and SCREEN_OK
+        refine = d.get("refine", True) and SCREEN_OK
+        same = {k: self._same(k, colors) for k in counts}
+        self._used = set().union(*same.values())
+        seen = self._read_canvas(geo) if SCREEN_OK else None
+
+        def in_place(seen_):
+            return sum(1 for i, k in enumerate(cells) if k in same and seen_[i] in same[k]) if seen_ is not None else 0
+
+        def pending_of(k, seen_):
+            return [i for i, c in enumerate(cells) if c == k and (seen_ is None or seen_[i] not in same[k])]
+
+        already = in_place(seen)
+        # cases lues d'une couleur de palette qui contredit l'image : massif sur une toile uniforme (vide dont
+        # les rayures ressemblent a une nuance), rare sur un dessin entame
+        contra = sum(1 for i, k in enumerate(cells) if k in same and seen[i] >= 0 and seen[i] not in same[k])             if seen is not None else 0
+        fresh = already <= 0.02 * self.total or contra >= 0.5 * self.total
+        if self._settle_empties(cur, fresh, counts, colors) and seen is not None:
+            seen = self._read_canvas(geo)
+            already = in_place(seen)
+        if not fresh:
+            self.log(f"reprise d'un dessin : {already} cases déjà en place à l'écran, {self.total - already} à peindre")
+            self.done = already
+            if outline:
+                self.log("mode contours : la reprise se fait au crayon, sur les cases manquantes")
+                outline = False
+
+        # plan : par couleur, traits en zigzag sans lever le crayon (le jeu trace la ligne entre deux
+        # positions de souris : seuls les changements de direction sont envoyes)
+        plan = []
+        pencil = fills = ostats = None
+        if outline:
+            # mode contours : traits seulement sur les cases de contour, le reste au pot de peinture
+            ostrokes, pencil, fills, ostats = plan_outline(cells, W, H, skip, fill_color)
+            plan = [(k, ostrokes.get(k, [])) for k in order if k != fill_color]
+            self.actions_total = sum(len(p) + 1 for _, strokes in plan for p, _ in strokes) + len(plan) + 4 \
+                + 2 * ostats["fill_zones"] + 1
+            self.log(f"dessin {fmt} : {self.total} cases, {len(plan) + 1} couleurs, "
+                     f"{sum(len(s) for _, s in plan)} traits, {self.actions_total} actions ; mode contours : "
+                     f"{ostats['pencil_cells']} cases au crayon, {ostats['fill_zones']} zones au pot ({ostats['fill_cells']} cases)")
+        else:
+            # reprise : le fond aussi passe au crayon la ou le pot ne l'aura pas atteint
+            plan_colors = [k for k in order if k != fill_color] + ([fill_color] if fill_color is not None and not fresh else [])
+            est = 0
+            for k in plan_colors:
+                pend = pending_of(k, seen)
+                if pend:
+                    sub = [-2] * (W * H)
+                    for i in pend:
+                        sub[i] = k
+                    est += sum(len(p) + 1 for p, _ in build_strokes(sub, W, H, k, through=cells)) + 1
+            self.actions_total = est + (4 if fill_color is not None else 1)
+            self.log(f"dessin {fmt} : {self.total} cases, {len(plan_colors) + (1 if fill_color is not None and fresh else 0)} couleurs, "
+                     f"{self.actions_total} actions" + ("" if fresh else " (reprise)"))
+
+        # 1. fond au pot de peinture : toute la toile si elle est vide (puis mesure exacte du canevas sur le
+        # rectangle rempli) ; en reprise, seulement la zone vide autour d'une case du fond encore vide
+        if fill_color is not None:
+            seed = None
+            if fresh:
+                seed = (W // 2, H // 2)
+            elif seen is not None:
+                empty_fill = [i for i, k in enumerate(cells) if k == fill_color and (seen[i] == -1 or seen[i] not in counts)]
+                if empty_fill:
+                    si = min(empty_fill, key=lambda i: (i % W - W / 2) ** 2 + (i // W - H / 2) ** 2)
+                    seed = (si % W, si // W)
+            if seed is not None:
+                if not self._select(fill_color):
+                    return
+                if not self._click(*tools["bucket"], delay=0.15):
+                    return
+                if not self._click(*center(*seed), delay=0.3):
+                    return
+                if fresh:
+                    self.done += counts[fill_color]
+                    if refine and self._checkable(colors[fill_color]):
+                        box = self._refine_by_fill(x1, y1, x2, y2, colors[fill_color])
+                        if box:
+                            self._fill_box = box
+                            box = self._apply_inset(f, box)
+                            self._apply_geo(box[0], box[1], (box[2] - box[0]) / W, (box[3] - box[1]) / H)
+                            self.log(f"cases {geo[2]:.3f}×{geo[3]:.3f} px")
+                else:
+                    seen = self._read_canvas(geo)
+                    self.done = in_place(seen)
+            if not self._click(*tools["pencil"], delay=0.15):
+                return
+        else:
+            if fresh and refine and tools.get("bucket") and tools.get("undo") and tools.get("pencil"):
+                # remplissage temporaire avec la couleur la plus eloignee du fond vide, mesure, puis Annuler
+                mk = max(sorted(avail), key=lambda i: min(_cdist(colors[i], e) for e in self._empty_colors) if self._empty_colors else 0)
+                if not self._select(mk):
+                    return
+                if not self._click(*tools["bucket"], delay=0.15):
+                    return
+                if not self._click(*center(W // 2, H // 2), delay=0.3):
+                    return
+                box = self._refine_by_fill(x1, y1, x2, y2, colors[mk])
+                if not self._click(*tools["undo"], delay=0.3):
+                    return
+                if box:
+                    self._fill_box = box
+                    box = self._apply_inset(f, box)
+                    self._apply_geo(box[0], box[1], (box[2] - box[0]) / W, (box[3] - box[1]) / H)
+                    self.log(f"cases {geo[2]:.3f}×{geo[3]:.3f} px")
+            if tools.get("pencil"):
+                if not self._click(*tools["pencil"], delay=0.15):
+                    return
+
+        # 2. crayon, couleur par couleur : seules les cases qui manquent a l'ecran ; reperes de geometrie sur la
+        # premiere couleur verifiable ; verification et reparation apres chaque couleur
         if outline:
             self._paint_outline(plan, pencil, fills, cells, geo, verify, colors, d)
             return
-        for k, strokes in plan:
+        ncol = len(plan_colors)
+        for ci, k in enumerate(plan_colors, 1):
             if self._stop.is_set():
                 return
+            if self._last_seen is not None:
+                seen = self._last_seen
+            pending = pending_of(k, seen)
+            if not pending:
+                continue
+            self.progress_msg = f"Couleur {ci}/{ncol} : {len(pending)} cases"
             if not self._select(k):
                 return
             # couleur proche du fond vide : impossible a verifier a l'ecran
             checkable = verify and self._checkable(colors[k])
-            if not self._paint_strokes(k, strokes, geo, cells, checkable):
+            if refine and checkable and not self._marks_done:
+                r = self._refine_marks(k, cells, seen, geo, colors)
+                if r is None:
+                    return
+                if r:
+                    seen = self._read_canvas(geo)
+                    pending = pending_of(k, seen)
+            sub = [-2] * (W * H)
+            for i in pending:
+                sub[i] = k
+            if not self._paint_strokes(k, build_strokes(sub, W, H, k, through=cells), geo, cells, checkable):
                 return
             if not checkable:
                 continue
             if self._repair(k, cells, geo) is None:
                 return
+
+        # 3. verification finale de toutes les couleurs verifiables (une case peut avoir ete recouverte par un
+        # clic voisin, un repere ou un trait decale)
+        if verify:
+            self.progress_msg = "Vérification finale"
+            seen = self._read_canvas(geo)
+            checks = list(plan_colors) + ([fill_color] if fill_color is not None and fill_color not in plan_colors else [])
+            for k in checks:
+                if seen is None or not self._checkable(colors[k]):
+                    continue
+                if pending_of(k, seen):
+                    if self._repair(k, cells, geo, select=True) is None:
+                        return
+                    seen = self._last_seen if self._last_seen is not None else seen
+        self.progress_msg = ""
         self.message = "Dessin terminé !" + (f" ({self.repaired} cases repeintes après vérification)" if self.repaired else "") + (
+            "" if fresh else f" (reprise : {already} cases étaient déjà en place)") + (
             f" Attention : {self.unrepaired} cases n'ont pas pu être repeintes, voir le journal." if self.unrepaired else "")
 
     def _checkable(self, rgb):
@@ -1468,7 +1706,24 @@ class Drawer(MouseBot):
                 self._probed = True
                 idx = _stroke_cells(pts, W)
                 miss = self._missing(geo, cells, k, idx)
+                geom = False
                 if miss is not None and len(miss) > len(idx) * 0.05:
+                    # le meme trait, a la meme vitesse : si les MEMES cases manquent encore, ce sont les clics
+                    # qui tombent a la frontiere des cases (geometrie), pas des positions perdues (hasard) ;
+                    # ralentir n'y changerait rien, la reparation et les reperes s'en chargent
+                    if not self._drag([center(*p) for p in pts]):
+                        return False
+                    if not self._sleep(0.08):
+                        return False
+                    again = self._missing(geo, cells, k, idx)
+                    if again is not None and len(again) > len(idx) * 0.05:
+                        common = len(set(miss) & set(again))
+                        geom = common >= 0.7 * min(len(miss), len(again))
+                    miss = again
+                if geom:
+                    self.log(f"sonde : {len(miss)}/{len(idx)} cases manquantes, les mêmes deux fois de suite : "
+                             f"clics à la frontière des cases (géométrie), pas un problème de rythme")
+                elif miss is not None and len(miss) > len(idx) * 0.05:
                     # d'abord plus lent, puis un point par case si ca ne suffit pas
                     for k_try in range(3):
                         self._slower(f"sonde : {len(miss)}/{len(idx)} cases manquantes", dense=k_try >= 1)
@@ -1483,24 +1738,58 @@ class Drawer(MouseBot):
                     self.log(f"sonde : lignes longues bien tracées ({len(miss) if miss is not None else '?'} manquante(s) sur {len(idx)})")
         return True
 
+    def _shift_hint(self, miss, seen, cells, k, W, H):
+        """Les cases manquantes sont-elles peintes a cote (dans une case voisine qui n'attend pas k) ? C'est un
+        decalage des clics, pas des positions perdues par le jeu. Renvoie (decalage a essayer en cases, part
+        des manquantes concernees) ; le decalage vaut None si rien ne se dessine."""
+        if seen is None or not miss:
+            return None, 0.0
+        same = self._same(k)
+        dirs = {(-1, 0): 0, (1, 0): 0, (0, -1): 0, (0, 1): 0}
+        for i in miss:
+            x, y = i % W, i // W
+            for dx, dy in dirs:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < W and 0 <= ny < H:
+                    j = ny * W + nx
+                    if cells[j] != k and seen[j] in same:
+                        dirs[(dx, dy)] += 1
+        (dx, dy), n = max(dirs.items(), key=lambda kv: kv[1])
+        frac = n / len(miss)
+        if frac < 0.4:
+            return None, frac
+        return (-0.3 * dx, -0.3 * dy), frac      # la peinture est au-dessus : il faut cliquer plus bas
+
     def _repair(self, k, cells, geo, only=None, select=False):
         """Reparation : jusqu'a 5 passes sur les cases de couleur k encore manquantes (only : sous-ensemble
-        d'indices). A partir de la 2e passe le clic est decale d'un tiers de case (gauche, droite, haut, bas) :
-        quand le centre calcule tombe sur la frontiere entre deux cases du jeu, une position un peu decalee
-        tombe dedans. select : selectionner la couleur avant de repeindre (sinon elle l'est deja).
-        Retourne la liste des cases restantes, ou None si le dessin est arrete."""
-        x1, y1, cw, ch, W, H = geo
+        d'indices). A partir de la 2e passe le clic est decale d'un tiers de case (gauche, droite, haut, bas ;
+        d'abord dans la direction ou la peinture est visiblement partie, voir _shift_hint) : quand le centre
+        calcule tombe sur la frontiere entre deux cases du jeu, une position un peu decalee tombe dedans. Si la
+        premiere passe n'a presque rien repare, la geometrie est d'abord re-mesuree sur des reperes (voir
+        _refine_marks) ; et si un decalage a nettement mieux marche que le centre, il est adopte pour toute la
+        suite du dessin. On ne ralentit jamais ici : une passe inefficace au meme rythme prouve que ce n'est pas
+        le rythme (l'ancienne version ralentissait a chaque couleur, jusqu'a un dessin quatre fois plus lent).
+        select : selectionner la couleur avant de repeindre (sinon elle l'est deja). Retourne la liste des cases
+        restantes, ou None si le dessin est arrete."""
+        W, H = geo[4], geo[5]
         saved_stride = self.stride
         prev = None
         miss = []
         selected = not select
         nudges = [(0, 0), (-0.3, 0), (0.3, 0), (0, -0.3), (0, 0.3)]
-        for attempt, (ox, oy) in enumerate(nudges):
+        queue = list(nudges)
+        attempt = 0
+        history = []          # [decalage, manquantes avant la passe, manquantes apres]
+        marks_tried = k in self._marks_done or not self.draw_cfg.get("refine", True)
+        while queue:
+            ox, oy = queue.pop(0)
             if self._stop.is_set():
                 return None
             if not self._sleep(0.08):
                 return None
             miss = self._missing(geo, cells, k, only)
+            if history:
+                history[-1][2] = len(miss) if miss is not None else None
             if miss is None or not miss:
                 miss = miss or []
                 break
@@ -1508,12 +1797,28 @@ class Drawer(MouseBot):
                 if not self._select(k):
                     return None
                 selected = True
-            if prev is not None and len(miss) > prev * 0.7 and attempt <= 1:
-                self._slower(f"réparation inefficace ({prev} → {len(miss)} manquantes)", dense=True)
+            hint, frac = self._shift_hint(miss, self._last_seen, cells, k, W, H)
+            if hint is not None and attempt == 0 and (ox, oy) == (0, 0):
+                # la peinture est a cote : on essaie tout de suite dans la bonne direction
+                self.log(f"réparation : {frac:.0%} des cases manquantes sont peintes à côté, clic décalé de "
+                         f"{hint[0]:+.1f},{hint[1]:+.1f} case d'abord")
+                queue.insert(0, (0, 0))
+                ox, oy = hint
+            if prev is not None and len(miss) > prev * 0.7 and attempt <= 1 and hint is None and not marks_tried:
+                # repeindre les memes cases n'a rien change : les clics tombent a cote (geometrie), on mesure
+                # les reperes avant d'essayer les decalages (ralentir ne servirait a rien : ancienne erreur)
+                marks_tried = True
+                r = self._refine_marks(k, cells, self._last_seen, geo)
+                if r is None:
+                    return None
+                if r:
+                    queue, attempt, prev, history = list(nudges), 0, None, []
+                    continue
             prev = len(miss)
             self.log(f"réparation {attempt + 1} : {len(miss)} case(s) manquante(s)"
                      + (f", clic décalé de {ox:+.1f},{oy:+.1f} case" if (ox or oy) else ""))
-            self.stride = max(2.0, min(cw, ch))
+            history.append([(ox, oy), len(miss), None])
+            self.stride = max(2.0, min(geo[2], geo[3]))
             sub = [-2] * (W * H)
             for i in miss:
                 sub[i] = k
@@ -1527,6 +1832,27 @@ class Drawer(MouseBot):
                     return None
                 self.repaired += n
             self.on_change()
+            attempt += 1
+        if history and history[-1][2] is None:
+            # la derniere passe a peint sans relecture : on lit, sinon son resultat (souvent le bon decalage,
+            # essaye en dernier) serait ignore et les cases annoncees manquantes a tort
+            if not self._sleep(0.08):
+                return None
+            miss = self._missing(geo, cells, k, only)
+            if miss is None:
+                miss = []
+            history[-1][2] = len(miss)
+        # decalage appris : si un clic decale a repare bien mieux que le centre, les centres etaient a cote
+        gains = {}
+        for nudge, before, after in history:
+            if after is not None and before:
+                gains[nudge] = max(gains.get(nudge, 0.0), 1 - after / before)
+        best = max((n for n in gains if n != (0, 0)), key=lambda n: gains[n], default=None)
+        if best is not None and gains[best] >= 0.5 and gains.get((0, 0), 0.0) < 0.5:
+            ox, oy = best
+            self._apply_geo(geo[0] + ox * geo[2], geo[1] + oy * geo[3], geo[2], geo[3])
+            self.log(f"décalage appris : les clics tombent juste à {ox:+.1f},{oy:+.1f} case du centre calculé, "
+                     f"géométrie corrigée pour la suite")
         if miss:
             cols_ = sorted(set(i % W for i in miss))
             rows_ = sorted(set(i // W for i in miss))
@@ -1557,7 +1883,11 @@ class Drawer(MouseBot):
             self.progress_msg = f"Contours : couleur {i}/{ncol}"
             if self._stop.is_set() or not self._select(k):
                 return
-            if not self._paint_strokes(k, strokes, geo, cells, verify and self._checkable(colors[k])):
+            checkable = verify and self._checkable(colors[k])
+            if checkable and d.get("refine", True) and not self._marks_done:
+                if self._refine_marks(k, cells, self._read_canvas(geo), geo, colors) is None:
+                    return
+            if not self._paint_strokes(k, strokes, geo, cells, checkable):
                 return
         # A'. verification des contours
         if verify:

@@ -1,0 +1,12 @@
+{
+  "settings.error.unknown_path": "ไม่รู้จักการตั้งค่า: {path}",
+  "settings.error.number_expected": "ต้องเป็นตัวเลข",
+  "settings.error.range": "ระหว่าง {lo} ถึง {hi} {unit}",
+  "settings.error.unknown_value": "ไม่รู้จักค่านี้",
+  "settings.error.too_long": "สูงสุด {max} ตัวอักษร",
+  "settings.error.key_required": "เลือกปุ่ม",
+  "settings.error.key_unknown": "ไม่รู้จักปุ่มนี้",
+  "settings.error.hotkey_taken": "ถูกใช้แล้วสำหรับ \"{label}\"",
+  "settings.error.unknown_type": "ไม่รู้จักประเภท",
+  "settings.error.unknown_section": "ไม่รู้จักหมวด: {section}"
+}

@@ -1,0 +1,12 @@
+{
+  "settings.error.unknown_path": "unbekannte Einstellung: {path}",
+  "settings.error.number_expected": "Zahl erwartet",
+  "settings.error.range": "zwischen {lo} und {hi} {unit}",
+  "settings.error.unknown_value": "unbekannter Wert",
+  "settings.error.too_long": "maximal {max} Zeichen",
+  "settings.error.key_required": "wähle eine Taste",
+  "settings.error.key_unknown": "unbekannte Taste",
+  "settings.error.hotkey_taken": "schon für \"{label}\" belegt",
+  "settings.error.unknown_type": "unbekannter Typ",
+  "settings.error.unknown_section": "unbekannter Abschnitt: {section}"
+}

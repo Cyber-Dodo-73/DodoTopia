@@ -48,6 +48,7 @@ import time
 from collections import deque
 
 import core
+import i18n
 import online          # SHA256_RE / SONG_MAX_BYTES (online n'importe room qu'à l'appel)
 from platform_io import mouse_button_down
 from sync import _Aborted, choose_common_extra, ensure_defaults
@@ -58,6 +59,13 @@ CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 def now_ms():
     return time.perf_counter() * 1000.0
+
+
+# Codes d'erreur du serveur de salons dont le message est traduit ici (`room.server.<code>`) ; les autres
+# (not_all_have_song, version_too_old...) portent des details que seul le serveur connait : texte du serveur.
+SERVER_ERROR_CODES = ("bad_message", "bad_token", "rate_limited", "room_not_found", "room_full", "not_host", "bad_state")
+I18N_KEYS = ["room.server.bad_message", "room.server.bad_token", "room.server.rate_limited", "room.server.room_not_found",
+             "room.server.room_full", "room.server.not_host", "room.server.bad_state"]
 
 
 def normalize_code(code):
@@ -300,7 +308,7 @@ class RoomSession:
     def join(self, code, name=None):
         code = normalize_code(code)
         if len(code) < 4:
-            self.notify("Code de salon invalide", "warn")
+            self.notify(i18n.t("room.error.bad_code"), "warn")
             return False
         msg = {"type": "join", "room_code": code, "name": self._name(name), "instrument": self._instrument(),
                "version": VERSION}
@@ -313,7 +321,7 @@ class RoomSession:
         self.log("salon : on quitte")
         self._leaving.set()
         self._send({"type": "leave"})
-        self._disarm("salon quitté")
+        self._disarm("room_left")
         self._close_ws()
         return True
 
@@ -321,13 +329,13 @@ class RoomSession:
         """Chef : choisit le fichier du salon (song_id local, chemin, ou identifiant en ligne). Calcule sha256,
         durée, tonalité commune ; dépose le fichier sur le serveur si nécessaire. Dans un thread."""
         if self.state == "idle":
-            self.notify("Pas de salon", "warn")
+            self.notify(i18n.t("room.no_room"), "warn")
             return False
         if not self.is_host():
-            self.notify("Seul le chef du salon choisit la musique", "warn")
+            self.notify(i18n.t("room.host_only.song"), "warn")
             return False
         if self.room_state != "lobby":
-            self.notify("Attends la fin de la lecture", "warn")
+            self.notify(i18n.t("room.wait_end"), "warn")
             return False
         threading.Thread(target=self._set_song_run, args=(spec,), name="room-song", daemon=True).start()
         return True
@@ -353,7 +361,7 @@ class RoomSession:
 
     def start(self, countdown_s=None, force=False):
         if not self.is_host():
-            self.notify("Seul le chef lance le top départ", "warn")
+            self.notify(i18n.t("room.host_only.start"), "warn")
             return False
         blocker = self._start_blocker()
         if blocker and not force:
@@ -376,7 +384,7 @@ class RoomSession:
         if self.state == "idle":
             return False
         if not self.is_host():
-            self.notify("Seul le chef arrête tout le monde (F7 : arrêt local)", "warn")
+            self.notify(i18n.t("room.host_only.stop"), "warn")
             return False
         return self._send({"type": "stop"})
 
@@ -394,10 +402,10 @@ class RoomSession:
         compte à rebours -> chef : annuler, autres : annulation locale ; lecture -> arrêt synchronisé."""
         st = self.state
         if st == "idle":
-            self.notify("Crée ou rejoins un salon (onglet En ligne)", "warn")
+            self.notify(i18n.t("room.join_first"), "warn")
             return False
         if st in ("connecting", "downloading"):
-            self.notify("Connexion ou téléchargement en cours…", "info")
+            self.notify(i18n.t("room.busy"), "info")
             return False
         if st == "armed":
             if self.is_host():
@@ -408,10 +416,10 @@ class RoomSession:
             return self.stop() if self.is_host() else self.stop_local("stop")
         # lobby
         if self.room_state == "countdown":
-            self.notify("Compte à rebours en cours (tu n'as pas le fichier)", "warn")
+            self.notify(i18n.t("room.countdown_no_file"), "warn")
             return False
         if self.room_state == "playing":
-            self.notify("Lecture en cours : attends la fin", "warn")
+            self.notify(i18n.t("room.playing_wait"), "warn")
             return False
         if self.is_host():
             return self.start()
@@ -486,7 +494,7 @@ class RoomSession:
                 name = str(self.get_player_name() or "").strip()
             except Exception:  # noqa
                 name = ""
-        return (name or "Joueur")[:24]
+        return (name or i18n.t("room.default_player_name"))[:24]
 
     def _instrument(self):
         try:
@@ -499,20 +507,21 @@ class RoomSession:
 
     def _start_blocker(self):
         if self.state == "idle":
-            return "Pas de salon"
+            return i18n.t("room.no_room")
         if not self.is_host():
-            return "Seul le chef lance le top départ"
+            return i18n.t("room.host_only.start")
         if self.room_state != "lobby":
-            return "Déjà en cours"
+            return i18n.t("room.blocker.busy")
         if not self.song:
-            return "Choisis d'abord une musique"
+            return i18n.t("room.blocker.no_song")
         inst = getattr(self.player, "instrument", None)
         if inst is not None and not getattr(inst, "ready", True):
-            return f"{getattr(inst, 'name', 'Instrument')} : {getattr(inst, 'blocked_reason', '')}"
+            return i18n.t("room.blocker.instrument", name=getattr(inst, "name", "Instrument"),
+                          reason=getattr(inst, "blocked_reason", ""))
         missing = [p.get("name") or str(p.get("id")) for p in self.players
                    if p.get("connected", True) and not p.get("have_song")]
         if missing:
-            return "Fichier pas encore reçu : " + ", ".join(missing[:4])
+            return i18n.t("room.blocker.missing_file", names=", ".join(missing[:4]))
         return ""
 
     def _sleep_until(self, t):
@@ -551,14 +560,14 @@ class RoomSession:
     def _connect(self, first_msg, what):
         with self._lock:
             if self.state != "idle" or (self._ws_thread and self._ws_thread.is_alive()):
-                self.notify("Déjà dans un salon (quitte-le d'abord)", "warn")
+                self.notify(i18n.t("room.error.already_in"), "warn")
                 return False
             factory = self._ws_factory
             if factory is None:
                 try:
                     import websocket
                 except ImportError:
-                    self.notify("Module websocket-client manquant : pip install websocket-client", "warn")
+                    self.notify(i18n.t("room.error.no_websocket"), "warn")
                     return False
 
                 def factory(url, **cbs):
@@ -567,7 +576,7 @@ class RoomSession:
             self._reset_fields()
             tok = self._token()
             if self.account is not None and not tok:
-                self.notify("Connecte-toi avec Discord (onglet En ligne) pour utiliser les salons", "warn")
+                self.notify(i18n.t("room.error.login_first"), "warn")
                 return False
             if tok:
                 first_msg["token"] = tok      # jeton de session Discord ; `seat_token` = jeton de siège (reprise)
@@ -582,7 +591,7 @@ class RoomSession:
             self._prep_key = None
             self._song_path = None
             self.state = "connecting"
-            self.message = "Connexion au serveur…"
+            self.message = i18n.t("room.state.connecting")
             self._log_header(what)
             self._ws_thread = threading.Thread(target=self._ws_loop, name="room-ws", daemon=True)
             self._ws_thread.start()
@@ -616,19 +625,19 @@ class RoomSession:
             if self._leaving.is_set() or self._fatal:
                 break
             if self.seat_token is None:
-                self.notify("Serveur de salons injoignable", "warn")
+                self.notify(i18n.t("room.error.unreachable"), "warn")
                 self.log("salon : connexion impossible")
                 break
             if self._lost_at is None:
                 self._lost_at = time.perf_counter()
                 attempt = 0
             if time.perf_counter() - self._lost_at > self.reconnect_max_s:
-                self.notify("Connexion au salon perdue", "warn")
+                self.notify(i18n.t("room.error.lost"), "warn")
                 self.log("salon : reconnexion abandonnée")
                 break
             delay = self.backoff[min(attempt, len(self.backoff) - 1)]
             attempt += 1
-            self.message = f"Connexion perdue, nouvel essai dans {delay:g} s"
+            self.message = i18n.t("room.state.retry", seconds=float(delay))
             self.log(f"salon : connexion perdue, nouvel essai dans {delay:g} s")
             if self._leaving.wait(delay):
                 break
@@ -641,14 +650,14 @@ class RoomSession:
 
     def _finish_session(self):
         self._hb_stop.set()
-        self._disarm("salon fermé")
+        self._disarm("room_closed")
         with self._lock:
             self._ws = None
             self.connected = False
             self._stop_pending = False
             if self.state != "idle":
                 self.state = "idle"
-            self.message = self.message or "Salon quitté"
+            self.message = self.message or i18n.t("room.bye.left")
         self.log("salon : session terminée")
 
     def _heartbeat(self):
@@ -713,7 +722,7 @@ class RoomSession:
             self.error = ""
             if self.state == "connecting":
                 self.state = "lobby"
-            self.message = f"Salon {self.code}"
+            self.message = i18n.t("room.state.joined", code=self.code)
             mm = ensure_defaults(self.cfg)
             if mm.get("last_room") != self.code:
                 mm["last_room"] = self.code
@@ -721,7 +730,7 @@ class RoomSession:
         self.log(f"salon : {'reconnecté' if reconnect else 'entré'} dans {self.code} (joueur {self.player_id})")
         self._burst(8)
         if not reconnect:
-            self.notify(f"Salon {self.code}", "ok")
+            self.notify(i18n.t("room.state.joined", code=self.code), "ok")
 
     def _on_state(self, m):
         with self._lock:
@@ -752,15 +761,15 @@ class RoomSession:
                 self._pending_have = None
                 self._send({"type": "song_status", "sha256": want[0], "have": True})
             if st == "armed":
-                self._disarm("annulé")
+                self._disarm("cancel")
             elif st == "playing" and not self._stop_pending:
                 self.log("salon : le serveur est revenu au lobby, arrêt local")
-                self.player.stop(reason="fin du salon")
+                self.player.stop(reason="room_ended")
         if st in ("lobby", "downloading"):
             if self.room_state == "playing":
-                self.message = "Lecture en cours : attends la fin"
+                self.message = i18n.t("room.playing_wait")
             elif st == "lobby":
-                self.message = f"Salon {self.code} · {len(self.players)} joueur(s)"
+                self.message = i18n.t("room.state.lobby", code=self.code, n=len(self.players))
 
     def _on_start(self, m):
         with self._lock:
@@ -779,17 +788,18 @@ class RoomSession:
         if want and want == self._have and self.start_at_ms:
             self._arm(self.start_at_ms)
         else:
-            self.message = "Pas le fichier : tu regardes"
+            self.message = i18n.t("room.state.spectating")
             self._send({"type": "player_state", "status": "no_song"})
             self.log("salon : top départ reçu sans le fichier")
 
     def _on_cancelled(self, m):
         by = m.get("by")
-        name = next((p.get("name") for p in self.players if p.get("id") == by), None) or "le chef"
+        name = next((p.get("name") for p in self.players if p.get("id") == by), None) or i18n.t("room.the_host")
         self.room_state = "lobby"
         self.start_at_ms = None
-        self._disarm(f"annulé par {name}")
-        self.notify(f"Top départ annulé par {name}", "warn")
+        if self._disarm("cancel"):
+            self.message = i18n.t("room.state.cancelled_by", name=name)
+        self.notify(i18n.t("room.cancelled_by", name=name), "warn")
 
     def _on_stop(self, m):
         at_ms = m.get("at_ms")
@@ -802,9 +812,9 @@ class RoomSession:
             while time.perf_counter() < t and not self._leaving.is_set():
                 time.sleep(min(0.005, max(0.0, t - time.perf_counter())))
             if self.state == "armed":
-                self._disarm("stop du salon")
+                self._disarm("room_stop")
             elif self.state == "playing":
-                self.player.stop(reason="stop du salon")
+                self.player.stop(reason="room_stop")
             self.log(f"salon : stop synchronisé (écart {(time.perf_counter() - t) * 1000:+.1f} ms)")
         finally:
             self._stop_pending = False
@@ -819,7 +829,12 @@ class RoomSession:
         self._last_pong = time.perf_counter()
 
     def _on_error(self, m):
-        code, text, fatal = m.get("code", ""), m.get("message") or m.get("code") or "erreur", bool(m.get("fatal"))
+        code, fatal = str(m.get("code") or ""), bool(m.get("fatal"))
+        # code connu : message traduit ici ; sinon le texte du serveur (qui seul connait les details)
+        if code in SERVER_ERROR_CODES:
+            text = i18n.t(f"room.server.{code}")
+        else:
+            text = m.get("message") or code or i18n.t("room.error.generic")
         self.error = str(text)
         self.log(f"salon : erreur {code} : {text}" + (" (fatale)" if fatal else ""))
         self.notify(str(text), "warn")
@@ -830,9 +845,9 @@ class RoomSession:
 
     def _on_bye(self, m):
         reason = m.get("reason") or "left"
-        texts = {"left": "Salon quitté", "kicked": "Tu as été exclu du salon", "room_closed": "Salon fermé",
-                 "replaced": "Connexion remplacée (ouverte ailleurs)"}
-        self.message = texts.get(reason, f"Fin de session ({reason})")
+        keys = {"left": "room.bye.left", "kicked": "room.bye.kicked", "room_closed": "room.bye.room_closed",
+                "replaced": "room.bye.replaced"}
+        self.message = i18n.t(keys[reason]) if reason in keys else i18n.t("room.bye.other", reason=reason)
         self.log(f"salon : bye ({reason})")
         if reason != "left":
             self.notify(self.message, "warn")
@@ -849,18 +864,18 @@ class RoomSession:
         sha = str(song.get("sha256") or "").lower()
         key_shift = int(song.get("key_shift") or 0)
         # `name` vient du chef du salon : nettoyé avant tout affichage et tout usage comme nom de fichier.
-        name = core.clean_display_text(song.get("name"), 200) or "musique"
+        name = core.clean_display_text(song.get("name"), 200) or i18n.t("room.default_song_name")
         tmpdir = None
         try:
             if not online.SHA256_RE.match(sha):
-                raise RuntimeError("empreinte du morceau invalide")
+                raise RuntimeError(i18n.t("room.file.bad_sha"))
             lib = self.player.library
             sid = lib.find_by_sha(sha)
             path = os.path.join(self.player.songs_folder, sid) if sid else None
             if not path or not os.path.isfile(path):
                 if self.state == "lobby":
                     self.state = "downloading"
-                self.message = f"Téléchargement de « {name} »…"
+                self.message = i18n.t("room.state.downloading", name=name)
                 self.log(f"salon : téléchargement de {name} ({sha[:12]}…)")
                 tmpdir = tempfile.mkdtemp(prefix="dodotopia-salon-")
                 tmp = os.path.join(tmpdir, sha + ".mid")   # nom dérivé du sha256 validé, pas d'un texte
@@ -870,15 +885,15 @@ class RoomSession:
                     url = f"/api/rooms/{self.code}/song/{sha}"
                 got = self.client.download(url, tmp, sha, max_bytes=online.SONG_MAX_BYTES)
                 if str(got).lower() != sha:
-                    raise RuntimeError("empreinte du fichier reçu différente de celle annoncée")
+                    raise RuntimeError(i18n.t("room.file.sha_mismatch"))
                 if self.import_file is None:
-                    raise RuntimeError("import de fichier indisponible")
+                    raise RuntimeError(i18n.t("room.file.no_import"))
                 title = core.safe_song_filename(name)[:-4]
                 sid = self.import_file(tmp, {"title": title, "sha256": sha, "online_id": song.get("online_id")})
                 if isinstance(sid, (list, tuple)):        # _import_files(paths) -> (added, skipped)
                     sid = sid[0][0] if sid and sid[0] else None
                 if not sid:
-                    raise RuntimeError("import du fichier refusé")
+                    raise RuntimeError(i18n.t("room.file.import_refused"))
                 path = os.path.join(self.player.songs_folder, sid)
                 lib.set_online(sid, online_id=song.get("online_id"), sha256=sha)
                 lib.sha256(sid, path)
@@ -889,10 +904,10 @@ class RoomSession:
             self._song_path = path
             if self.state == "downloading":
                 self.state = "lobby"
-            self.message = f"Prêt : {name}"
+            self.message = i18n.t("room.state.ready", name=name)
             if self.room_state == "playing":
                 self._pending_have = sha        # le serveur compterait sur notre `ended` pour finir la manche
-                self.message += " · lecture en cours, attends la fin"
+                self.message = i18n.t("room.state.ready_wait", name=name)
             else:
                 self._send({"type": "song_status", "sha256": sha, "have": True})
             self.log(f"salon : fichier prêt ({name}, tonalité {key_shift:+d})")
@@ -905,8 +920,8 @@ class RoomSession:
             self._prepared = None
             if self.state == "downloading":
                 self.state = "lobby"
-            self.message = f"Fichier indisponible : {e}"
-            self.notify(f"Fichier du salon indisponible : {e}", "warn")
+            self.message = i18n.t("room.state.file_unavailable", error=e)
+            self.notify(i18n.t("room.file.unavailable", error=e), "warn")
             self.log(f"salon : fichier : {e}")
             self._send({"type": "song_status", "sha256": sha, "have": False})
         finally:
@@ -958,7 +973,7 @@ class RoomSession:
                 online_id = lib.meta(sid).get("online_id")
             source = "library" if online_id is not None else "room"
             if source == "room":
-                self.message = "Envoi du fichier au salon…"
+                self.message = i18n.t("room.state.uploading")
                 self.client.upload(f"/api/rooms/{self.code}/song", {"title": name}, "file", path)
             msg = {"type": "set_song", "sha256": sha, "name": name, "duration_ms": duration_ms,
                    "key_shift": int(key_shift), "source": source}
@@ -967,7 +982,7 @@ class RoomSession:
             self._send(msg)
             self.log(f"salon : musique {name} ({source}, tonalité {key_shift:+d}, {duration_ms / 1000:.0f} s)")
         except Exception as e:  # noqa
-            self.notify(f"Musique impossible à choisir : {e}", "warn")
+            self.notify(i18n.t("room.song.choose_failed", error=e), "warn")
             self.log(f"salon : set_song : {e}")
 
     def _resolve_song(self, spec):
@@ -989,29 +1004,29 @@ class RoomSession:
             if online_id is None and str(path).isdigit():
                 online_id = int(path)
         if online_id is None:
-            raise RuntimeError("fichier introuvable")
+            raise RuntimeError(i18n.t("room.file.not_found"))
         sid = p.library.find_by_online_id(online_id)
         if sid and os.path.isfile(os.path.join(p.songs_folder, sid)):
             return os.path.join(p.songs_folder, sid), online_id
         info = self.client.get(f"/api/songs/{online_id}", auth=False)
         sha = str(info.get("sha256") or "").lower()
         if not online.SHA256_RE.match(sha):
-            raise RuntimeError("le serveur n'annonce pas d'empreinte pour ce morceau")
+            raise RuntimeError(i18n.t("room.file.no_sha"))
         tmpdir = tempfile.mkdtemp(prefix="dodotopia-salon-")
         try:
             tmp = os.path.join(tmpdir, sha + ".mid")
             got = self.client.download(f"/api/songs/{online_id}/download", tmp, sha,
                                        max_bytes=online.SONG_MAX_BYTES)
             if str(got).lower() != sha:
-                raise RuntimeError("empreinte du fichier reçu différente de celle annoncée")
+                raise RuntimeError(i18n.t("room.file.sha_mismatch"))
             if self.import_file is None:
-                raise RuntimeError("import de fichier indisponible")
+                raise RuntimeError(i18n.t("room.file.no_import"))
             title = core.safe_song_filename(core.clean_display_text(info.get("title")))[:-4]
             sid = self.import_file(tmp, {"title": title, "sha256": sha, "online_id": online_id})
             if isinstance(sid, (list, tuple)):
                 sid = sid[0][0] if sid and sid[0] else None
             if not sid:
-                raise RuntimeError("import du fichier refusé")
+                raise RuntimeError(i18n.t("room.file.import_refused"))
             p.library.set_online(sid, online_id=online_id, sha256=sha)
             return os.path.join(p.songs_folder, sid), online_id
         finally:
@@ -1026,23 +1041,23 @@ class RoomSession:
             if start_at_ms == self._aborted_start_at:
                 return False
             if self.state == "armed":
-                self._disarm("nouveau départ")
+                self._disarm("restart")
             if self._have is None or self._song_path is None:
                 self._send({"type": "player_state", "status": "no_song"})
                 return False
             if self.clock.offset_ms is None:
-                self.notify("Horloge non synchronisée : impossible de se caler", "warn")
+                self.notify(i18n.t("room.error.clock"), "warn")
                 self._send({"type": "player_state", "status": "aborted", "reason": "horloge"})
                 return False
             if not getattr(p.instrument, "ready", True):
                 # profil sans touches : preparer une chronologie vide laisserait le lecteur en « sync »
-                self.notify(f"{p.instrument.name} : {p.instrument.blocked_reason}", "warn")
+                self.notify(i18n.t("room.blocker.instrument", name=p.instrument.name, reason=p.instrument.blocked_reason), "warn")
                 self._send({"type": "player_state", "status": "aborted", "reason": "instrument"})
                 return False
             try:
                 prepared = self._prepare(self._song_path, *self._have)
             except Exception as e:  # noqa
-                self.notify(f"Fichier illisible : {e}", "warn")
+                self.notify(i18n.t("room.file.unreadable", error=e), "warn")
                 self._send({"type": "player_state", "status": "aborted", "reason": "fichier"})
                 return False
             if p.state != "stopped":
@@ -1059,7 +1074,7 @@ class RoomSession:
                 p.last_stop_reason = ""
             self.state = "armed"
             left = self.deadline - time.perf_counter()
-            self.message = f"Top départ dans {left:.1f} s"
+            self.message = i18n.t("room.state.armed", seconds=round(left, 1))
             c = self.clock
             if not c.valid():
                 self.log("salon : horloge peu fiable (moins de 4 échantillons ou trop ancienne)")
@@ -1085,7 +1100,7 @@ class RoomSession:
                 if stop_on_input and now - mouse_check > 0.03:
                     mouse_check = now
                     if mouse_button_down():
-                        raise _Aborted("clic souris")
+                        raise _Aborted("mouse")
                 if now >= self.deadline - 0.12:
                     break
                 time.sleep(0.005)
@@ -1097,7 +1112,7 @@ class RoomSession:
                     self.log("salon : départ déjà passé, rattrapage")
                 p.play_at(self.deadline, prepared, "game")
                 self.state = "playing"
-                self.message = "Lecture synchronisée"
+                self.message = i18n.t("room.state.playing")
             self._send({"type": "player_state", "status": "playing"})
             self.log(f"salon : play_at({self.deadline:.3f})")
             self._watch_end()
@@ -1116,8 +1131,8 @@ class RoomSession:
             self.deadline = None
             self.armed_start_at = None
             p.lock_speed = False
-            self.message = "Lecture terminée" if not reason else f"Arrêt ({reason})"
-        if reason and reason not in ("stop du salon", "fin du salon"):
+            self.message = core.stop_reason_text(reason) if reason else i18n.t("room.state.ended")
+        if reason and reason not in ("room_stop", "room_ended"):
             self._send({"type": "player_state", "status": "aborted", "reason": str(reason)[:200]})
         else:
             self._send({"type": "player_state", "status": "ended"})
@@ -1137,7 +1152,7 @@ class RoomSession:
             self.deadline = None
             self._aborted_start_at = self.armed_start_at
             self.armed_start_at = None
-            self.message = f"Annulé ({reason})"
+            self.message = core.stop_reason_text(reason)
         self.log(f"salon : armement annulé ({reason})")
         self._send({"type": "player_state", "status": "aborted", "reason": str(reason)[:200]})
         return True

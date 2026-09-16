@@ -1,0 +1,12 @@
+{
+  "settings.error.unknown_path": "不明な設定：{path}",
+  "settings.error.number_expected": "数値が必要です",
+  "settings.error.range": "{lo}〜{hi} {unit}",
+  "settings.error.unknown_value": "不明な値",
+  "settings.error.too_long": "最大 {max} 文字",
+  "settings.error.key_required": "キーを選んでください",
+  "settings.error.key_unknown": "認識できないキー",
+  "settings.error.hotkey_taken": "「{label}」ですでに使われています",
+  "settings.error.unknown_type": "不明なタイプ",
+  "settings.error.unknown_section": "不明なセクション：{section}"
+}

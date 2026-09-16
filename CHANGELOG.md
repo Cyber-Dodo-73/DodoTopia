@@ -5,6 +5,31 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.0.0
+- **Huit langues** : français, anglais, et en bêta espagnol, allemand, portugais du Brésil, chinois simplifié, japonais et thaï. La langue du système est choisie automatiquement, modifiable dans Réglages › Apparence, sans redémarrer.
+- **Nouvelle interface** : un seul système de couleurs, **thème sombre**, icônes dessinées à la place des emojis, textes jamais sous 12 px, cibles plus grandes, polices adaptées au chinois, japonais et thaï.
+- **Découverte guidée** au premier lancement (langue et thème, état du jeu, premier morceau avec « Tester une note »), relançable depuis l'Aide.
+- **État du jeu** dans l'en-tête (détecté, non lancé, lancé en administrateur) ; la lecture, le dessin et la cuisine s'arrêtent si Heartopia quitte le premier plan, et l'envoi de touches refusé par Windows est signalé.
+- **Conditions d'utilisation obligatoires** : présentées par l'installeur, puis redemandées au premier lancement et à chaque nouvelle version des CGU. Tant qu'elles ne sont pas acceptées, rien ne peut agir.
+- **Bibliothèque partagée** : tags, « j'aime », tri Tendance et Les plus aimés, source et licence de chaque morceau ; **import par lien** depuis Online Sequencer, BitMidi ou un lien vers un fichier .mid.
+- **Galerie de dessins** : exporter un dessin en image, le publier (après modération), reproduire le dessin d'un autre joueur.
+- **Partage** : lien public de chaque morceau, dessin et salon, copiable pour Discord ; liens `dodotopia://` qui ouvrent DodoTopia (toujours avec confirmation) ; Discord Rich Presence ; fichier « en cours de lecture » pour OBS.
+- Lecteur : F10/F11 en cours de morceau sans rafale ni silence, notes tenues ré-enfoncées après une pause, appui minimal de 20 ms, pédale de sustain, choix des pistes MIDI, polyphonie de l'instrument respectée ; le jargon technique passe sous « Détails ».
+- Dessin et cuisine : un changement d'écran (résolution, mise à l'échelle, écrans) depuis la configuration est détecté au lieu de cliquer à côté ; lecture d'écran bien plus légère.
+- Réglages : recherche, nouvelles sections, raisons affichées sous les boutons désactivés, suppression du compte en ligne.
+- Fiabilité : journal `dodotopia.log` avec toute erreur interne, réglages écrits sans risque de corruption (un fichier illisible est mis de côté au lieu d'empêcher le démarrage), une seule instance ouverte à la fois.
+- Serveur et site : site public en huit langues (pages par activité, téléchargement, aide, nouveautés, morceaux, galerie), connexion Discord protégée par un code, mises à jour signées, annonce des versions sur Discord.
+- F12 n'est plus le raccourci « instrument suivant » par défaut (capture d'écran de Steam).
+- Inclut toutes les corrections de la 1.9.1 ci-dessous (dessin au pixel près, réajustement et reprise d'un dessin, cuisine à plusieurs cuisinières).
+
+## 1.9.1
+- **Dessin : la souris tombait 1 à 2 px à côté** de la position demandée (formule de conversion SendInput fausse, mesurée sur 154 positions) : avec des cases de 4 px, une bonne partie des clics manquaient leur case. Corrigé, exact au pixel.
+- **Dessin : réajustement en direct.** Le calibrage et le rectangle rempli donnent le bord de la toile, pas l'endroit exact où le jeu place ses cases : un décalage d'un tiers de case suffisait pour que des centaines de clics tombent dans la case voisine (cinq passes de réparation à chaque couleur, des cases perdues quand même, et un dessin ralenti ×4 parce que la « sonde » prenait ces cases décalées pour des positions perdues). Dès la première couleur, quelques cases repères sont peintes et retrouvées à l'écran pour mesurer l'origine et la taille réelles des cases ; la mesure est refaite si une couleur montre encore trop de manques, et un décalage qui répare nettement mieux que le centre est adopté pour toute la suite. La réparation ne ralentit plus jamais le tracé (une passe inefficace au même rythme prouve que ce n'est pas le rythme), la sonde repeint le même trait pour distinguer géométrie et rythme, et la dernière passe de réparation est enfin relue (ses cases étaient annoncées manquantes à tort).
+- **Dessin : reprise d'un dessin interrompu.** Au lancement, DodoTopia lit la toile et ne peint que ce qui manque : un dessin arrêté (touche, souris) reprend là où il en était en le relançant sur la même toile, le fond n'est pas rempli deux fois, et une vérification finale repasse sur toutes les couleurs. Les teintes de la toile vide sont mémorisées pour lire une toile déjà entamée.
+- Dessin : lecture de l'écran par vote sur cinq pixels au centre de chaque case (la ligne de grille du jeu faisait passer une case bien peinte pour manquante).
+- Cuisine à plusieurs cuisinières : un menu Recettes ouvert hors lancement (bulle « gants » cliquée deux fois) est utilisé pour lancer la recette au lieu d'être cliqué dans l'herbe en boucle muette ; l'anneau vert autour d'une bulle suivie suffit pour cliquer la spatule même si son icône n'est pas reconnue ; arrêt explicite si le menu ne se ferme pas après trois essais.
+- Tests : faux jeu de dessin (`tests_draw`, grille décalée, pot, nuances, Annuler) et scénarios de reprise.
+
 ## 1.9.0
 - **Instruments** : 19 types au lieu de trois (piano, flûte à bec, xiao en bambou, luth, basse en bois, cornemuse, concertina, mbira, lyre, violon, violoncelle, conga, cajón, xylophone à 8 notes, saxophone, harpe, tambour à langues métalliques, ocarina, conque). Une carte et une image par type — pas de couleurs ni d'apparences à choisir — avec recherche par nom français ou anglais, filtres par famille et favoris. Choisir ici n'équipe pas l'instrument dans Heartopia.
 - Quatre dispositions de touches documentées (15 notes en 2 ou 3 rangées, 22 notes, 37 notes chromatiques) et un état affiché pour chaque instrument : « profil documenté · à vérifier », « touches personnalisées », « test rapide réussi » ou « confirmé sur cet ordinateur ». Aucun profil livré n'a été testé dans le jeu.

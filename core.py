@@ -2,6 +2,7 @@
 """Moteur de DodoTopia : instruments, lecture MIDI, envoi des touches, ecoute integree."""
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -11,6 +12,7 @@ import time
 
 import mido
 
+import i18n
 import instruments
 import platform_io
 from instruments import Instrument  # noqa: F401 (alias historique : core.Instrument)
@@ -39,11 +41,20 @@ DEFAULT_CONFIG = {
     "instrument": "piano",
     "songs_folder": "songs",
     "hotkeys": {"play_pause": "F6", "stop": "F7", "next_song": "F8", "prev_song": "F9",
-                "speed_down": "F10", "speed_up": "F11", "next_instrument": "F12"},
+                "speed_down": "F10", "speed_up": "F11", "next_instrument": ""},
     "start_delay": 1.0, "speed": 1.0, "hold_time": 0.04, "chord_window": 0.02,
     "transpose_semitones": 0, "fold_out_of_range": True, "ignore_drums": True,
     "input_mode": "scancode", "stop_on_input": True, "preview_volume": 100,
     "hold_mode": "note", "max_hold": 4.0,
+    # appui minimal d'une touche et ecart minimal entre le relachement et l'appui suivant de la meme touche.
+    # 8 ms etait sous la duree d'une image a 60 i/s : le jeu perdait des notes repetees.
+    "min_press": 0.02, "min_gap": 0.012,
+    # pedale de sustain (CC64) : False = ignoree (duree ecrite), True = les notes tenues durent jusqu'au
+    # relachement de la pedale (borne par max_hold)
+    "sustain": False,
+    # nom du processus du jeu : la lecture dans le jeu, le dessin et la cuisine verifient qu'il est au premier
+    # plan ("" = aucune verification)
+    "game_process": "Heartopia.exe",
     "keyboard_layout": "auto", "instrument_favorites": [],
 }
 
@@ -57,13 +68,73 @@ def _log_migration(lines):
             return
 
 
+def write_json_atomic(path, data, **dump_kw):
+    """Ecrit `data` en JSON sans jamais laisser un fichier tronque : fichier temporaire dans le meme dossier,
+    fsync, puis remplacement atomique (os.replace). Une coupure pendant l'ecriture laisse l'ancien fichier
+    intact au lieu d'un JSON invalide qui empecherait l'application de demarrer."""
+    dump_kw.setdefault("indent", 2)
+    dump_kw.setdefault("ensure_ascii", False)
+    tmp = f"{path}.tmp-{os.getpid()}-{threading.get_ident()}"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, **dump_kw)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+
+def _read_config_file():
+    """Lit config.json. Un fichier illisible (tronque, corrompu) est mis de cote sous un nom horodate et on
+    repart de la configuration par defaut : l'application demarre toujours. Renvoie (cfg, recupere)."""
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        if not isinstance(cfg, dict):
+            raise ValueError("config.json n'est pas un objet JSON")
+        return cfg, False
+    except (OSError, ValueError) as e:
+        broken = f"{CONFIG_PATH}.broken-{time.strftime('%Y%m%d-%H%M%S')}"
+        try:
+            os.replace(CONFIG_PATH, broken)
+        except OSError:
+            pass
+        try:
+            print(f"config.json illisible ({e}), sauvegardé sous {os.path.basename(broken)} ; valeurs par défaut")
+        except Exception:  # noqa
+            pass
+        cfg = {}
+        if os.path.exists(DEFAULT_CONFIG_PATH):
+            try:
+                with open(DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+            except (OSError, ValueError):
+                cfg = {}
+        return (cfg if isinstance(cfg, dict) else {}), True
+
+
 def load_config():
     if not os.path.exists(CONFIG_PATH) and os.path.exists(DEFAULT_CONFIG_PATH):
         shutil.copy2(DEFAULT_CONFIG_PATH, CONFIG_PATH)
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
+    cfg, recovered = _read_config_file()
     for k, v in DEFAULT_CONFIG.items():
         cfg.setdefault(k, v)
+    cfg["_recovered"] = recovered
+    # F12 (ancien defaut d'« instrument suivant ») est la capture d'ecran Steam : on retire ce raccourci s'il
+    # n'a jamais ete change. Cycler 19 instruments a l'aveugle n'a plus de sens, le selecteur fait mieux.
+    hk = cfg.get("hotkeys")
+    if isinstance(hk, dict) and not cfg.get("hotkeys_migrated_f12"):
+        if str(hk.get("next_instrument", "")).upper() == "F12":
+            hk["next_instrument"] = ""
+        cfg["hotkeys_migrated_f12"] = True
     # Les instruments ne viennent plus de config.default.json : le catalogue (assets/instruments) fait foi.
     # La migration convertit l'ancien format, conserve les personnalisations et complete les types manquants.
     changes = instruments.migrate_config(cfg)
@@ -77,8 +148,7 @@ def load_config():
 
 def save_config(cfg):
     data = {k: v for k, v in cfg.items() if not k.startswith("_")}
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    write_json_atomic(CONFIG_PATH, data)
 
 
 # ---------------------------------------------------------------- MIDI
@@ -92,7 +162,30 @@ MAX_MIDI_NOTES = 100_000
 
 
 class MidiRefused(ValueError):
-    """Fichier MIDI illisible ou hors des plafonds : message pret a afficher."""
+    """Fichier MIDI illisible ou hors des plafonds : message pret a afficher (traduit par i18n.t)."""
+
+
+# Raisons d'arret du lecteur (Player.stop(reason=...), last_stop_reason) : des codes stables, jamais du texte.
+# Les modules dessin / cuisine posent leurs propres raisons (en francais) sur leur propre etat, pas ici.
+STOP_CODES = ("stop", "keyboard", "mouse", "closing", "error", "injection_denied", "game_not_focused",
+              "midi_out_unavailable", "mode_change", "cancel", "room_stop", "room_ended", "room_left",
+              "room_closed", "restart")
+# Arrets voulus ou attendus (information), par opposition aux arrets sur erreur (danger + toast).
+BENIGN_STOP_CODES = ("stop", "keyboard", "mouse", "closing", "mode_change", "cancel", "room_stop",
+                     "room_ended", "room_left", "room_closed", "restart")
+# Cles construites dynamiquement (`stop.{code}`), declarees pour .tools/i18n_check.py.
+I18N_KEYS = ["stop.stop", "stop.keyboard", "stop.mouse", "stop.closing", "stop.error", "stop.injection_denied",
+             "stop.game_not_focused", "stop.midi_out_unavailable", "stop.mode_change", "stop.cancel",
+             "stop.room_stop", "stop.room_ended", "stop.room_left", "stop.room_closed", "stop.restart",
+             "stop.unknown"]
+
+
+def stop_reason_text(code):
+    """Phrase affichee pour un code d'arret (langue courante) ; un code inconnu est montre tel quel."""
+    code = str(code or "")
+    if code in STOP_CODES:
+        return i18n.t(f"stop.{code}")
+    return i18n.t("stop.unknown", reason=code)
 
 
 def _open_midi(path):
@@ -100,23 +193,72 @@ def _open_midi(path):
     try:
         size = os.path.getsize(path)
     except OSError as e:
-        raise MidiRefused(f"fichier illisible ({e.strerror or e})") from None
+        raise MidiRefused(i18n.t("midi.unreadable_file", error=e.strerror or e)) from None
     if size > MAX_MIDI_BYTES:
-        raise MidiRefused(f"fichier trop gros ({size // (1024 * 1024)} Mo, maximum {MAX_MIDI_BYTES // (1024 * 1024)} Mo)")
+        raise MidiRefused(i18n.t("midi.too_big", size=size // (1024 * 1024), max=MAX_MIDI_BYTES // (1024 * 1024)))
     with open(path, "rb") as f:
         if f.read(4) != b"MThd":
-            raise MidiRefused("ce n'est pas un fichier MIDI (en-tete « MThd » absent)")
+            raise MidiRefused(i18n.t("midi.not_midi"))
     try:
         mid = mido.MidiFile(path)
     except Exception as e:  # noqa : mido leve un peu de tout
-        raise MidiRefused(f"fichier MIDI illisible ({type(e).__name__})") from None
+        raise MidiRefused(i18n.t("midi.corrupt", error=type(e).__name__)) from None
     if mid.type not in (0, 1):
-        raise MidiRefused(f"fichier MIDI de type {mid.type} non pris en charge (type 0 ou 1 attendu)")
+        raise MidiRefused(i18n.t("midi.type_unsupported", type=mid.type))
     return mid
 
 
-def parse_midi(path, cfg, stats=None):
+def midi_tracks(path):
+    """Pistes du fichier pour l'interface : [{index, name, notes, channels, drums}]. Les pistes sans note
+    (tempo, paroles) sont listees avec notes = 0 pour que les index restent ceux du fichier."""
+    mid = _open_midi(path)
+    out = []
+    for i, track in enumerate(mid.tracks):
+        name = ""
+        notes = 0
+        channels = set()
+        for msg in track:
+            if msg.type == "track_name" and not name:
+                name = clean_display_text(msg.name, 60)
+            elif msg.type == "note_on" and msg.velocity > 0:
+                notes += 1
+                channels.add(msg.channel)
+        out.append({"index": i, "name": name, "notes": notes, "channels": sorted(channels),
+                    "drums": bool(channels) and channels <= {9}})
+    return out
+
+
+def _merged_messages(mid, skip_tracks):
+    """Messages fusionnes en secondes (comme `for msg in mid`) en ignorant les notes des pistes `skip_tracks`.
+    Les meta-messages (tempo, signature) des pistes ignorees sont conserves : le tempo est souvent sur la
+    piste 0, la retirer casserait la chronologie de toutes les autres."""
+    if not skip_tracks:
+        return iter(mid)
+    skip = {int(i) for i in skip_tracks}
+    tracks = []
+    for i, track in enumerate(mid.tracks):
+        if i in skip:
+            kept = mido.MidiTrack()
+            t_acc = 0
+            for msg in track:
+                t_acc += msg.time
+                if msg.is_meta:
+                    kept.append(msg.copy(time=t_acc))
+                    t_acc = 0
+            tracks.append(kept)
+        else:
+            tracks.append(track)
+    copy = mido.MidiFile(type=mid.type, ticks_per_beat=mid.ticks_per_beat)
+    copy.tracks.extend(tracks)
+    return iter(copy)
+
+
+def parse_midi(path, cfg, stats=None, skip_tracks=None):
     """Liste triee [(t, [(note, duree, velocite), ...])], accords regroupes.
+
+    `skip_tracks` : index de pistes dont les notes sont ignorees (choix de l'utilisateur par morceau).
+    Pedale de sustain (CC64) : avec cfg["sustain"], une note relachee pedale enfoncee dure jusqu'au
+    relachement de la pedale (comme au piano) ; sinon la duree ecrite est gardee.
 
     `stats` : dict facultatif rempli au passage avec "drums" (notes de percussion ignorees) et "channels"
     (canaux MIDI rencontres). La signature reste retro-compatible.
@@ -125,16 +267,19 @@ def parse_midi(path, cfg, stats=None):
     mid = _open_midi(path)
     notes = []          # (t_on, note, dur, vel)
     pending = {}        # (channel, note) -> (t_on, vel)
+    sustain = bool(cfg.get("sustain", False))
+    pedal = set()       # canaux dont la pedale est enfoncee
+    held = {}           # (channel, note) -> (t_on, vel) : relachees pedale enfoncee, en attente du CC64
     t = 0.0
     events = 0
     drums = 0
     channels = set()
-    for msg in mid:
+    for msg in _merged_messages(mid, skip_tracks):
         events += 1
         if events > MAX_MIDI_EVENTS:
-            raise MidiRefused(f"fichier MIDI trop charge (plus de {MAX_MIDI_EVENTS} evenements)")
+            raise MidiRefused(i18n.t("midi.too_many_events", n=MAX_MIDI_EVENTS))
         if len(notes) > MAX_MIDI_NOTES:
-            raise MidiRefused(f"fichier MIDI trop charge (plus de {MAX_MIDI_NOTES} notes)")
+            raise MidiRefused(i18n.t("midi.too_many_notes", n=MAX_MIDI_NOTES))
         t += msg.time
         if msg.type in ("note_on", "note_off"):
             channels.add(msg.channel)
@@ -143,6 +288,9 @@ def parse_midi(path, cfg, stats=None):
                 drums += 1
                 continue
             key = (msg.channel, msg.note)
+            if key in held:     # rejouee pendant le sustain : la tenue precedente s'arrete ici
+                t0, v0 = held.pop(key)
+                notes.append((t0, msg.note, max(0.05, t - t0), v0))
             if key in pending:  # re-declenchee sans note_off
                 t0, v0 = pending.pop(key)
                 notes.append((t0, msg.note, max(0.05, t - t0), v0))
@@ -151,8 +299,19 @@ def parse_midi(path, cfg, stats=None):
             key = (msg.channel, msg.note)
             if key in pending:
                 t0, v0 = pending.pop(key)
-                notes.append((t0, msg.note, max(0.05, t - t0), v0))
-    for (ch, note), (t0, v0) in pending.items():
+                if sustain and msg.channel in pedal:
+                    held[key] = (t0, v0)
+                else:
+                    notes.append((t0, msg.note, max(0.05, t - t0), v0))
+        elif sustain and msg.type == "control_change" and msg.control == 64:
+            if msg.value >= 64:
+                pedal.add(msg.channel)
+            elif msg.channel in pedal:
+                pedal.discard(msg.channel)
+                for key in [k for k in held if k[0] == msg.channel]:
+                    t0, v0 = held.pop(key)
+                    notes.append((t0, key[1], max(0.05, t - t0), v0))
+    for (ch, note), (t0, v0) in list(pending.items()) + list(held.items()):
         notes.append((t0, note, 0.5, v0))
     notes.sort()
     window = cfg.get("chord_window", 0.02)
@@ -222,9 +381,20 @@ def fit_notes(grouped, inst, cfg, extra_fixed=None, shift=None):
                     "exact": 0, "coverage": 0}
     lo, hi = inst.lowest, inst.lowest + inst.span
     result = []
-    dropped = folded = snapped = out_of_range = exact = 0
+    dropped = folded = snapped = out_of_range = exact = dropped_poly = 0
+    try:
+        polyphony = int(getattr(inst, "polyphony", None) or 0)
+    except (TypeError, ValueError):
+        polyphony = 0
     for t, ns in grouped:
         keys, played = [], []
+        if polyphony > 0 and len(ns) > polyphony:
+            # l'instrument ne tient pas autant de notes a la fois : on garde la plus grave (basse) et les
+            # plus aigues (melodie), les intermediaires sont omises
+            ordered = sorted(ns, key=lambda x: x[0])
+            keep = [ordered[0]] + ordered[-(polyphony - 1):] if polyphony > 1 else ordered[-1:]
+            dropped_poly += len(ns) - len(keep)
+            ns = sorted(keep, key=lambda x: x[0])
         for n, dur, vel in ns:
             m = n + shift
             in_range = lo <= m <= hi
@@ -251,7 +421,8 @@ def fit_notes(grouped, inst, cfg, extra_fixed=None, shift=None):
         if keys:
             result.append((t, keys, played))
     info = {"shift": shift, "folded": folded, "snapped": snapped,
-            "dropped": dropped, "hits": len(result), "notes": len(all_notes),
+            "dropped": dropped + dropped_poly, "dropped_poly": dropped_poly, "hits": len(result),
+            "notes": len(all_notes),
             "out_of_range": out_of_range, "missing_accidental": snapped, "exact": exact,
             "coverage": round(100 * exact / len(all_notes)) if all_notes else 0}
     return result, info
@@ -264,17 +435,15 @@ def coverage_at(grouped, inst, cfg, shift):
 
 
 def _option_label(kind, value, coverage):
+    """Libelle d'une option du diagnostic, dans la langue courante (pluriels par i18n)."""
     if kind == "octave":
-        sens = "Monter" if value > 0 else "Descendre"
-        n = abs(value) // 12
-        return f"{sens} de {n} octave{'s' if n > 1 else ''} : {coverage} % des notes à la hauteur exacte"
+        return i18n.t("compat.option.octave", dir="up" if value > 0 else "down", n=abs(value) // 12,
+                      coverage=coverage)
     if kind == "transpose":
-        return f"Transposer de {value:+d} demi-ton{'s' if abs(value) > 1 else ''} : {coverage} % à la hauteur exacte"
-    note = "note hors registre" if value <= 1 else "notes hors registre"
+        return i18n.t("compat.option.transpose", delta=f"{value:+d}", n=abs(value), coverage=coverage)
     if kind == "fold":
-        return (f"Rejouer {value} {note} une octave plus loin au lieu de les omettre : "
-                f"{coverage} % à la hauteur exacte")
-    return f"Omettre {value} {note} : {coverage} % à la hauteur exacte, aucune note déplacée d'octave"
+        return i18n.t("compat.option.fold", n=value, coverage=coverage)
+    return i18n.t("compat.option.omit", n=value, coverage=coverage)
 
 
 def compat_report(grouped, inst, cfg, extra=None, stats=None):
@@ -323,18 +492,26 @@ def compat_report(grouped, inst, cfg, extra=None, stats=None):
             "options": options[:4]}
 
 
-def build_timeline(events, target, hold, hold_mode="note", max_hold=4.0):
+MIN_PRESS_DEFAULT = 0.02    # appui minimal d'une touche (une image a 60 i/s dure 16,7 ms)
+MIN_GAP_DEFAULT = 0.012     # ecart minimal entre le relachement et l'appui suivant de la meme touche
+
+
+def build_timeline(events, target, hold, hold_mode="note", max_hold=4.0,
+                   min_press=MIN_PRESS_DEFAULT, min_gap=MIN_GAP_DEFAULT):
     """Transforme les evenements en actions triees : (t, ordre, type, data).
     type 'on'/'off' ; data = touches (jeu) ou (note, vel) (ecoute).
     hold_mode 'note' : chaque touche reste enfoncee la duree reelle de la note (appuis longs) ;
-    hold_mode 'tap'  : appui bref fixe de `hold` secondes."""
+    hold_mode 'tap'  : appui bref fixe de `hold` secondes.
+    min_press / min_gap : planchers (secondes) pour que le jeu voie chaque appui et chaque relachement."""
     tl = []
+    min_press = max(0.001, float(min_press or MIN_PRESS_DEFAULT))
+    min_gap = max(0.001, float(min_gap or MIN_GAP_DEFAULT))
     if target == "game":
         if hold_mode == "tap":
             for i, (t, keys, _) in enumerate(events):
-                release = t + hold
+                release = t + max(hold, min_press)
                 if i + 1 < len(events):
-                    release = min(release, max(t + 0.008, events[i + 1][0] - 0.005))
+                    release = min(release, max(t + min_press, events[i + 1][0] - min_gap))
                 tl.append((t, 1, "on", keys))
                 tl.append((release, 0, "off", keys))
         else:
@@ -349,9 +526,9 @@ def build_timeline(events, target, hold, hold_mode="note", max_hold=4.0):
                 per_key[idx] = (t, k, dur, next_press.get(k))
                 next_press[k] = t
             for t, k, dur, nxt in per_key:
-                release = t + max(hold, min(dur, max_hold))
+                release = t + max(hold, min_press, min(dur, max_hold))
                 if nxt is not None:
-                    release = min(release, max(t + 0.008, nxt - 0.012))
+                    release = min(release, max(t + min_press, nxt - min_gap))
                 tl.append((t, 1, "on", [k]))
                 tl.append((release, 0, "off", [k]))
     else:
@@ -464,6 +641,7 @@ class Library:
     def __init__(self, path):
         self.path = path
         self.data = {}
+        self.version = 0            # incremente a chaque enregistrement : signature de cache pour l'interface
         self._lock = threading.RLock()
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -473,11 +651,23 @@ class Library:
 
     def save(self):
         with self._lock:
+            self.version += 1
             try:
-                with open(self.path, "w", encoding="utf-8") as f:
-                    json.dump(self.data, f, indent=2, ensure_ascii=False)
-            except (OSError, ValueError, RuntimeError):
-                pass
+                write_json_atomic(self.path, self.data)
+            except (OSError, ValueError, RuntimeError) as e:
+                logging.getLogger("library").warning("library.json non enregistré : %s", e)
+
+    def set_tracks_off(self, song_id, indexes):
+        """Pistes ignorees a la lecture pour ce morceau (liste d'index, videe si aucune)."""
+        with self._lock:
+            m = self.meta(song_id)
+            off = sorted({int(i) for i in (indexes or [])})
+            if off:
+                m["tracks_off"] = off
+            else:
+                m.pop("tracks_off", None)
+            self.save()
+            return off
 
     def meta(self, song_id):
         m = self.data.get(song_id)
@@ -601,11 +791,18 @@ class Player:
         self._pause = threading.Event()
         self._lock = threading.Lock()
         self._held = []
+        self._held_at_pause = []    # touches enfoncees au moment de la pause (a re-enfoncer a la reprise)
         self._start_time = None
         self._pos_at_pause = 0.0
+        # horloge de lecture : (position dans le morceau, instant perf_counter) de reference. La boucle et
+        # position() la relisent a chaque fois ; set_speed() et la reprise la recalent (sous _clock_lock).
+        self._clock = None
+        self._clock_lock = threading.Lock()
+        self._clock_changed = threading.Event()     # leve par set_speed : _wait() se reveille et recalcule
         self._durations = {}
         self._midi = None
         self._expected = {}         # (scan_code, 'down'|'up') -> compteur des frappes injectees
+        self._exp_lock = threading.Lock()   # partage entre le fil de lecture et le crochet clavier
         self._hook = None
         self.library = Library(os.path.join(DATA_DIR, "library.json"))
         self.refresh_songs()
@@ -635,13 +832,27 @@ class Player:
         self.index = min(self.index, max(0, len(self.songs) - 1))
 
     def song_duration(self, path):
+        """Duree du morceau, lue dans library.json si le fichier n'a pas change ; sinon calculee une fois et
+        memorisee (l'appelant ne doit pas etre le tick de l'interface : voir Api._songs_state)."""
         try:
-            key = (path, os.path.getmtime(path))
+            mtime = os.path.getmtime(path)
         except OSError:
             return 0.0
-        if key not in self._durations:
-            self._durations[key] = midi_duration(path)
-        return self._durations[key]
+        key = (path, mtime)
+        if key in self._durations:
+            return self._durations[key]
+        sid = os.path.basename(path)
+        m = self.library.meta(sid)
+        if m.get("duration") is not None and m.get("dur_mtime") == mtime:
+            self._durations[key] = float(m["duration"])
+            return self._durations[key]
+        dur = midi_duration(path)
+        self._durations[key] = dur
+        with self.library._lock:
+            m["duration"] = dur
+            m["dur_mtime"] = mtime
+            self.library.save()
+        return dur
 
     def current(self):
         return self.songs[self.index] if self.songs else None
@@ -659,19 +870,19 @@ class Player:
         ids = [i.id for i in self.instruments]
         if isinstance(index_or_id, str):
             if index_or_id not in ids:
-                return False, "Instrument inconnu."
+                return False, i18n.t("player.unknown_instrument")
             index = ids.index(index_or_id)
         else:
             try:
                 index = int(index_or_id)
             except (TypeError, ValueError):
-                return False, "Instrument inconnu."
+                return False, i18n.t("player.unknown_instrument")
             if not 0 <= index < len(self.instruments):
-                return False, "Instrument inconnu."
+                return False, i18n.t("player.unknown_instrument")
         if index == self.inst_index:
             return True, ""
         if self.state != "stopped":
-            return False, "Arrête la lecture avant de changer d'instrument."
+            return False, i18n.t("player.stop_before_instrument_change")
         self._silence()
         self.inst_index = index
         self.cfg["instrument"] = self.instrument.id
@@ -680,11 +891,20 @@ class Player:
 
     # ---- position
     def position(self):
-        if self.state == "playing" and self._start_time is not None:
-            return max(0.0, (time.perf_counter() - self._start_time) * self.speed)
+        if self.state == "playing":
+            clock = self._clock
+            if clock is not None:
+                t_ref, perf_ref = clock
+                return max(0.0, t_ref + (time.perf_counter() - perf_ref) * self.speed)
+            return 0.0
         if self.state == "paused":
             return self._pos_at_pause
         return 0.0
+
+    def _set_clock(self, t_ref, perf_ref=None):
+        with self._clock_lock:
+            self._clock = (float(t_ref), time.perf_counter() if perf_ref is None else float(perf_ref))
+            self._clock_changed.clear()
 
     # ---- actions
     def play(self, target="preview"):
@@ -705,11 +925,7 @@ class Player:
         same = target is None or target == self.target
         with self._lock:
             if self.state == "playing" and same:
-                self._pos_at_pause = self.position()
-                self._pause.set()
-                self.state = "paused"
-                self._silence()
-                self.log("pause")
+                self._do_pause()
                 return
             if self.state == "paused" and same:
                 self._pause.clear()
@@ -722,11 +938,16 @@ class Player:
     def pause(self):
         with self._lock:
             if self.state == "playing":
-                self._pos_at_pause = self.position()
-                self._pause.set()
-                self.state = "paused"
-                self._silence()
-                self.log("pause")
+                self._do_pause()
+
+    def _do_pause(self):
+        """Sous self._lock. Memorise la position et les touches tenues, relache tout."""
+        self._pos_at_pause = self.position()
+        self._pause.set()
+        self.state = "paused"
+        self._held_at_pause = list(self._held)
+        self._silence()
+        self.log("pause")
 
     def stop(self, join=False, reason=""):
         with self._lock:
@@ -742,6 +963,8 @@ class Player:
                     # une erreur. On remet l'etat a l'arret ici, sinon le lecteur reste bloque pour de bon.
                     self.state = "stopped"
                     self._start_time = None
+                    with self._clock_lock:
+                        self._clock = None
                     self.lock_speed = False
                     self._silence()
         self._abort_sessions(reason or "stop")
@@ -769,7 +992,7 @@ class Player:
         ready = [i for i, inst in enumerate(self.instruments) if inst.ready]
         if not ready:
             self.log("aucun instrument prêt : configure d'abord ses touches")
-            return False, "Aucun instrument prêt : configure d'abord ses touches."
+            return False, i18n.t("player.no_ready_instrument")
         index = next((i for i in ready if i > self.inst_index), ready[0])
         return self.set_instrument(index)
 
@@ -777,10 +1000,19 @@ class Player:
         if self.lock_speed:
             self.log("vitesse verrouillée à x1.00 en lecture synchronisée")
             return
-        old_pos = self.position()
-        self.speed = clamp_speed(value)
-        if self.state == "playing" and self._start_time is not None:
-            self._start_time = time.perf_counter() - old_pos / self.speed
+        with self._clock_lock:
+            # recalage de l'horloge a la position courante : la boucle de lecture relit (t_ref, perf_ref) a
+            # chaque iteration, la nouvelle vitesse s'applique donc sans rafale ni silence
+            now = time.perf_counter()
+            clock = self._clock
+            if self.state == "playing" and clock is not None:
+                t_ref, perf_ref = clock
+                pos = max(0.0, t_ref + (now - perf_ref) * self.speed)
+                self.speed = clamp_speed(value)
+                self._clock = (pos, now)
+                self._clock_changed.set()
+            else:
+                self.speed = clamp_speed(value)
         self.cfg["speed"] = self.speed
 
     def speed_up(self):
@@ -806,28 +1038,33 @@ class Player:
         if self.state == "sync" and self.cfg.get("stop_on_input", True) and (self.sync is not None
                                                                               or self.room is not None):
             # mode Multi / salon en attente : nos notes reperes sont attendues, une autre touche annule
-            key = (event.scan_code, event.event_type)
-            n = self._expected.get(key, 0)
-            if n > 0:
-                self._expected[key] = n - 1
+            if self._consume_expected(event):
                 return
             if (event.name or "").lower() in self._hotkey_names() or event.event_type != "down":
                 return
-            self._abort_sessions("clavier touche")
+            self._abort_sessions("keyboard")
             return
         if self.state != "playing" or self.target != "game" or not self.cfg.get("stop_on_input", True):
             return
         if self._start_time is None or time.perf_counter() < self._start_time:
             return  # pendant le delai de depart (la touche du raccourci est encore enfoncee)
-        key = (event.scan_code, event.event_type)
-        n = self._expected.get(key, 0)
-        if n > 0:
-            self._expected[key] = n - 1
+        if self._consume_expected(event):
             return
         name = (event.name or "").lower()
         if name in self._hotkey_names():
             return
-        self.stop(reason="clavier touche")
+        self.stop(reason="keyboard")
+
+    def _consume_expected(self, event):
+        """Vrai si l'evenement est une de nos frappes injectees (compteur decremente sous verrou : le fil de
+        lecture incremente au meme moment, sans verrou un accord rapide passait pour une frappe reelle)."""
+        key = (event.scan_code, event.event_type)
+        with self._exp_lock:
+            n = self._expected.get(key, 0)
+            if n > 0:
+                self._expected[key] = n - 1
+                return True
+        return False
 
     def _hotkey_names(self):
         names = set()
@@ -840,9 +1077,24 @@ class Player:
     def _expect(self, keys, up):
         mode = self.cfg["input_mode"]
         et = "up" if up else "down"
-        for k in keys:
-            key = (scan_code_for(k, mode), et)
-            self._expected[key] = self._expected.get(key, 0) + 1
+        with self._exp_lock:
+            for k in keys:
+                key = (scan_code_for(k, mode), et)
+                self._expected[key] = self._expected.get(key, 0) + 1
+
+    def _game_in_front(self):
+        """None si aucune verification (reglage vide ou plateforme sans support), sinon vrai/faux selon que le
+        processus du jeu est au premier plan."""
+        wanted = str(self.cfg.get("game_process") or "").strip().lower()
+        if not wanted:
+            return None
+        try:
+            name = platform_io.foreground_process_name()
+        except Exception:  # noqa
+            return None
+        if name is None:
+            return None
+        return os.path.basename(name).lower() == wanted
 
     # ---- lecture
     def _start(self, target, deadline=None, prepared=None):
@@ -866,8 +1118,12 @@ class Player:
         self.target = target
         self.last_stop_reason = ""
         self._held = []
-        self._expected = {}
+        self._held_at_pause = []
+        with self._exp_lock:
+            self._expected = {}
         self._start_time = None
+        with self._clock_lock:
+            self._clock = None
         self.library.record_play(os.path.basename(song))
         self._thread = threading.Thread(target=self._run, args=(song, self.instrument, target, deadline, prepared),
                                         daemon=True)
@@ -891,7 +1147,7 @@ class Player:
         """Analyse le fichier et construit la chronologie sans jouer. common_key : tonalite commune a tous
         les joueurs (mode Multi audio, calculee ici), vitesse ignoree. extra : decalage de tonalite impose tel
         quel (salon en ligne : fixe par le chef et envoye a tous)."""
-        grouped = parse_midi(song, self.cfg)
+        grouped = parse_midi(song, self.cfg, skip_tracks=self.song_skip_tracks(song))
         if extra is not None:
             extra = int(extra)
         elif common_key:
@@ -899,9 +1155,19 @@ class Player:
             extra = choose_common_extra([n for _, ns in grouped for n, _, _ in ns])
         events, info = fit_notes(grouped, inst, self.cfg, extra)
         timeline = build_timeline(events, target, float(self.cfg.get("hold_time", 0.04)),
-                                  self.cfg.get("hold_mode", "note"), float(self.cfg.get("max_hold", 4.0)))
+                                  self.cfg.get("hold_mode", "note"), float(self.cfg.get("max_hold", 4.0)),
+                                  float(self.cfg.get("min_press", MIN_PRESS_DEFAULT)),
+                                  float(self.cfg.get("min_gap", MIN_GAP_DEFAULT)))
         return {"song": song, "events": events, "info": info, "timeline": timeline,
                 "duration": events[-1][0] if events else 0.0}
+
+    def song_skip_tracks(self, song):
+        """Pistes ignorees pour ce morceau (choix de l'utilisateur, dans library.json)."""
+        try:
+            off = self.library.meta(os.path.basename(song)).get("tracks_off") or []
+            return [int(i) for i in off]
+        except (TypeError, ValueError):
+            return []
 
     def play_keys(self, keys, hold=0.12):
         """Appuie puis relache `keys` dans le jeu (note repere du mode Multi). Renvoie l'instant de l'appui."""
@@ -941,7 +1207,7 @@ class Player:
             self._run_body(song, inst, target, deadline, prepared)
         except Exception as e:  # noqa - panne silencieuse dans un build fenetre : on journalise
             self.log(f"erreur pendant la lecture : {e!r}")
-            self.last_stop_reason = self.last_stop_reason or "erreur"
+            self.last_stop_reason = self.last_stop_reason or "error"
         finally:
             self._finish()
 
@@ -959,6 +1225,13 @@ class Player:
         if target == "preview":
             if self._midi is None:
                 self._midi = MidiOut()
+            if not getattr(self._midi, "ok", True):
+                # synthetiseur Windows indisponible (peripherique occupe, service audio arrete) : une ecoute
+                # muette sans explication passait pour un bug
+                self.log(f"sortie MIDI indisponible : {getattr(self._midi, 'error', '') or 'midiOutOpen a échoué'}")
+                self._midi = None
+                self.stop(reason="midi_out_unavailable")
+                return
             self._midi.program(inst.gm_program)
             self._midi.volume(int(self.cfg.get("preview_volume", 100)) * 127 // 100)
         self.log(f"{'ecoute' if target == 'preview' else 'jeu'} : {os.path.basename(song)} sur {inst.name} "
@@ -976,38 +1249,65 @@ class Player:
             # attend que les boutons de la souris et le raccourci soient relaches
             while mouse_button_down() and not self._stop.is_set():
                 time.sleep(0.02)
+        if target == "game" and self._game_in_front() is False:
+            # les touches partiraient dans une autre application (Discord, navigateur...)
+            self.log("le jeu n'est pas au premier plan : lecture annulée")
+            self.stop(reason="game_not_focused")
+            return
 
-        start = self._start_time
+        # horloge : position 0 a l'instant de depart ; relue a chaque iteration (set_speed la recale)
+        self._set_clock(0.0, self._start_time)
         i = 0
         mouse_check = 0.0
+        front_check = time.perf_counter()
         while i < len(timeline) and not self._stop.is_set():
             if self._pause.is_set():
-                pause_at = time.perf_counter()
                 while self._pause.is_set() and not self._stop.is_set():
                     time.sleep(0.02)
-                start += time.perf_counter() - pause_at
-                self._start_time = start
+                if self._stop.is_set():
+                    break
+                # reprise : l'horloge repart de la position de pause, et les touches qui etaient tenues
+                # (mode « note ») sont re-enfoncees, sinon la suite du morceau les croit deja appuyees
+                self._set_clock(self._pos_at_pause)
+                if target == "game" and self._held_at_pause:
+                    keys = [k for k in self._held_at_pause]
+                    self._held_at_pause = []
+                    self._expect(keys, False)
+                    send_keys(keys, False, mode)
+                    self._held = [k for k in self._held if k not in keys] + keys
                 continue
             t, _, kind, data = timeline[i]
             now = time.perf_counter()
-            target_t = start + t / self.speed
+            t_ref, perf_ref = self._clock
+            target_t = perf_ref + (t - t_ref) / self.speed
             if target_t > now:
                 if self._wait(target_t - now):
                     break
                 continue
             if target == "game":
-                if kind == "on":
-                    self._expect(data, False)
-                    send_keys(data, False, mode)
-                    self._held = [k for k in self._held if k not in data] + list(data)
-                else:
-                    self._expect(data, True)
-                    send_keys(data, True, mode)
-                    self._held = [k for k in self._held if k not in data]
+                try:
+                    if kind == "on":
+                        self._expect(data, False)
+                        send_keys(data, False, mode)
+                        self._held = [k for k in self._held if k not in data] + list(data)
+                    else:
+                        self._expect(data, True)
+                        send_keys(data, True, mode)
+                        self._held = [k for k in self._held if k not in data]
+                except platform_io.InjectionError as e:
+                    self.log(f"envoi des touches refusé : {e}")
+                    self.stop(reason="injection_denied")
+                    break
                 if self.cfg.get("stop_on_input", True) and now - mouse_check > 0.03:
                     mouse_check = now
                     if mouse_button_down():
-                        self.stop(reason="clic souris")
+                        self.stop(reason="mouse")
+                        break
+                if now - front_check > 0.25:
+                    front_check = now
+                    if self._game_in_front() is False:
+                        self.log("le jeu a quitté le premier plan : arrêt")
+                        self.stop(reason="game_not_focused")
                         break
             else:
                 note, vel = data
@@ -1027,12 +1327,16 @@ class Player:
                 return True
             if self._pause.is_set():
                 return False
+            if self._clock_changed.is_set() and self._clock is not None:
+                # vitesse changee pendant l'attente : l'instant vise n'est plus le bon, la boucle le recalcule
+                self._clock_changed.clear()
+                return False
             now = time.perf_counter()
             rem = end - now
             if rem <= 0:
                 return False
             if check_mouse and self._start_time is not None and now >= self._start_time and mouse_button_down():
-                self.stop(reason="clic souris")
+                self.stop(reason="mouse")
                 return True
             time.sleep(min(rem, 0.01))
 
@@ -1041,6 +1345,9 @@ class Player:
         with self._lock:
             self.state = "stopped"
         self._start_time = None
+        with self._clock_lock:
+            self._clock = None
+        self._held_at_pause = []
         self.lock_speed = False
         self.log("fin")
 
@@ -1050,24 +1357,3 @@ class Player:
             self._midi.close()
             self._midi = None
 
-
-def bind_hotkeys(player, cfg):
-    """Raccourcis globaux + hook d'interruption. Retourne les handles a retirer."""
-    hk = cfg["hotkeys"]
-    actions = {
-        "play_pause": lambda: player.play_pause("game"), "stop": player.stop,
-        "next_song": player.next_song, "prev_song": player.prev_song,
-        "speed_down": player.speed_down, "speed_up": player.speed_up,
-        "next_instrument": player.next_instrument,
-    }
-    handles = []
-    for name, fn in actions.items():
-        combo = hk.get(name)
-        if combo:
-            try:
-                handles.append(platform_io.add_hotkey(combo, fn))
-            except Exception as e:  # noqa
-                player.log(f"raccourci invalide {combo!r} : {e}")
-    if player._hook is None:
-        player._hook = platform_io.hook(player._on_key_event)
-    return handles

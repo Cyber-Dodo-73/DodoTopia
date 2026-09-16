@@ -169,7 +169,7 @@ def test_cancel_during_countdown(env):
     assert env.A.on_f6()          # chef pendant le compte a rebours : annule
     wait_for(lambda: env.A.state == "lobby" and env.B.state == "lobby", what="annule")
     assert env.pA.state == "stopped" and env.pB.state == "stopped"
-    assert "annulé" in env.pB.last_stop_reason and env.pB.started_at is None
+    assert env.pB.last_stop_reason == "cancel" and env.pB.started_at is None
     time.sleep(1.2)
     assert env.pA.started_at is None and env.pB.started_at is None
     assert env.server.room_of(env.A.code).state == "lobby"
@@ -188,7 +188,7 @@ def test_synchronized_stop(tmp_path):
         assert e.A.on_f6()                # chef en lecture : arret synchronise pour tout le monde
         wait_for(lambda: e.pA.stop_calls and e.pB.stop_calls, timeout=2, what="stops")
         assert abs(e.pA.stop_calls[0][1] - e.pB.stop_calls[0][1]) < 0.005
-        assert e.pA.stop_calls[0][0] == "stop du salon"
+        assert e.pA.stop_calls[0][0] == "room_stop"
         wait_for(lambda: e.A.state == "lobby" and e.B.state == "lobby", what="lobby")
         assert e.server.room_of(e.A.code).state == "lobby"
     finally:
@@ -200,9 +200,9 @@ def test_local_abort_keystroke(env):
     env.choose_song()
     assert env.A.start()
     wait_for(lambda: env.B.state == "armed", what="B arme")
-    env.pB.stop(reason="clavier touche")     # Player.stop -> room.on_player_stop
+    env.pB.stop(reason="keyboard")     # Player.stop -> room.on_player_stop
     wait_for(lambda: env.B.state == "lobby", what="B annule localement")
-    assert env.pB.state == "stopped" and env.pB.last_stop_reason == "clavier touche"
+    assert env.pB.state == "stopped" and env.pB.last_stop_reason == "keyboard"
     wait_for(lambda: env.pA.started_at is not None, timeout=3, what="A demarre quand meme")
     assert env.pB.started_at is None
     assert env.B.stop_local("stop") is False
@@ -330,7 +330,7 @@ def test_stop_request_host_stops_everyone(tmp_path):
         # chef : arret diffuse (le Player n'est pas coupe par stop_request, le serveur fixe l'instant)
         assert e.A.stop_request("stop") is True
         wait_for(lambda: e.pA.stop_calls, timeout=2, what="arret de A")
-        assert e.pA.stop_calls[0][0] == "stop du salon"
+        assert e.pA.stop_calls[0][0] == "room_stop"
         wait_for(lambda: e.A.state == "lobby", what="lobby")
     finally:
         e.close()

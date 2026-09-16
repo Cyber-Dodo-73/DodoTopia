@@ -1,15 +1,22 @@
-"""Publie une version de DodoTopia sur le serveur (stdlib uniquement).
+"""Publie une version de DodoTopia sur le serveur (stdlib, + PyNaCl pour signer le manifeste).
 
     py publish_release.py --version 1.7.0 [--notes-file CHANGELOG.md | --notes "..."] [--mandatory]
                           [--dry-run] [--force] [--skip-linux] [--release-dir release]
+    py publish_release.py --gen-key        # imprime une paire de clés Ed25519 (privée + publique, base64)
 
-PUBLISH_URL et PUBLISH_TOKEN sont lus dans l'environnement, sinon dans `publish.env` (lignes CLE=valeur).
-Étapes : sha256 de chaque artefact, PUT de chaque asset (streamé, timeout 600 s), POST publish, puis GET latest.
-Code de sortie 0 seulement si la version publiée est bien devenue `latest`.
+PUBLISH_URL, PUBLISH_TOKEN et RELEASE_SIGNING_KEY sont lus dans l'environnement, sinon dans `publish.env`
+(lignes CLE=valeur). Étapes : sha256 de chaque artefact, PUT de chaque asset (streamé, timeout 600 s), POST publish,
+puis GET latest. Code de sortie 0 seulement si la version publiée est bien devenue `latest`.
+
+Manifeste signé : RELEASE_SIGNING_KEY (clé privée Ed25519, 32 octets en base64, secret CI) signe le texte canonique
+`{"assets":{platform:{"filename","sha256","size"}},"mandatory":bool,"published_at":iso,"version":v}` (json.dumps
+sort_keys, sans espace : exactement ce que reconstruit server/app/releases.py et que vérifie online.py). Sans clé,
+la publication part sans signature (rétro-compatibilité ; refusée par un serveur qui exige une signature).
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -18,6 +25,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 VERSION_RE = re.compile(r"^[0-9]+(\.[0-9]+){1,3}$")
@@ -40,7 +48,7 @@ def read_version_py() -> str:
 
 
 def load_publish_env() -> dict:
-    """PUBLISH_URL / PUBLISH_TOKEN : environnement d'abord, puis publish.env à côté du script."""
+    """PUBLISH_URL / PUBLISH_TOKEN / RELEASE_SIGNING_KEY : environnement d'abord, puis publish.env à côté du script."""
     values = {}
     p = ROOT / "publish.env"
     if p.is_file():
@@ -50,10 +58,64 @@ def load_publish_env() -> dict:
                 continue
             k, v = line.split("=", 1)
             values[k.strip()] = v.strip().strip('"').strip("'")
-    for k in ("PUBLISH_URL", "PUBLISH_TOKEN"):
+    for k in ("PUBLISH_URL", "PUBLISH_TOKEN", "RELEASE_SIGNING_KEY"):
         if os.environ.get(k):
             values[k] = os.environ[k]
     return values
+
+
+# --- signature du manifeste (Ed25519) --------------------------------------------
+
+def signed_payload(version: str, assets: dict, mandatory: bool, published_at: str) -> str:
+    """Même texte que server/app/releases.py.signed_payload : JSON canonique de
+    {version, assets{platform:{sha256, size, filename}}, mandatory, published_at}."""
+    doc = {
+        "version": version,
+        "assets": {p: {"sha256": a["sha256"], "size": a["size"], "filename": a["filename"]}
+                   for p, a in sorted(assets.items())},
+        "mandatory": bool(mandatory),
+        "published_at": published_at,
+    }
+    return json.dumps(doc, sort_keys=True, separators=(",", ":"))
+
+
+def now_iso_utc() -> str:
+    """Horodatage ISO 8601 UTC à la seconde, suffixe Z (ex. 2026-09-16T10:04:05Z)."""
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sign_payload(private_key_b64: str, payload: str) -> str:
+    """Signature Ed25519 (base64, 64 octets) de `payload` avec la clé privée base64 (32 octets)."""
+    try:
+        from nacl.signing import SigningKey
+    except ImportError:
+        raise SystemExit("PyNaCl manquant pour signer le manifeste : pip install pynacl")
+    try:
+        raw = base64.b64decode(private_key_b64.strip(), validate=True)
+    except ValueError:
+        raise SystemExit("RELEASE_SIGNING_KEY : base64 invalide")
+    if len(raw) != 32:
+        raise SystemExit(f"RELEASE_SIGNING_KEY : {len(raw)} octets au lieu de 32")
+    sig = SigningKey(raw).sign(payload.encode("utf-8")).signature
+    return base64.b64encode(sig).decode("ascii")
+
+
+def gen_key() -> int:
+    """Imprime une nouvelle paire Ed25519 : la privée va dans le secret CI RELEASE_SIGNING_KEY (jamais dans git),
+    la publique dans RELEASE_SIGNING_PUBLIC_KEY (.env du serveur) ET dans online.RELEASE_SIGNING_PUBLIC_KEY."""
+    try:
+        from nacl.signing import SigningKey
+    except ImportError:
+        print("PyNaCl manquant : pip install pynacl")
+        return 2
+    k = SigningKey.generate()
+    priv = base64.b64encode(bytes(k)).decode("ascii")
+    pub = base64.b64encode(bytes(k.verify_key)).decode("ascii")
+    print("Clé privée  (secret GitHub RELEASE_SIGNING_KEY, ou RELEASE_SIGNING_KEY= dans publish.env ; ne la commite jamais) :")
+    print(f"  {priv}")
+    print("Clé publique (RELEASE_SIGNING_PUBLIC_KEY dans le .env du serveur ET dans online.py) :")
+    print(f"  {pub}")
+    return 0
 
 
 def notes_for_version(text: str, version: str) -> str | None:
@@ -162,7 +224,11 @@ def main(argv=None) -> int:
     ap.add_argument("--skip-linux", action="store_true", help="ne pas exiger ni envoyer l'archive Linux")
     ap.add_argument("--url", default=None, help="PUBLISH_URL (sinon env / publish.env)")
     ap.add_argument("--token", default=None, help="PUBLISH_TOKEN (sinon env / publish.env)")
+    ap.add_argument("--gen-key", action="store_true", help="imprime une paire de clés Ed25519 et s'arrête")
     args = ap.parse_args(argv)
+
+    if args.gen_key:
+        return gen_key()
 
     version = args.version or read_version_py()
     try:
@@ -177,6 +243,12 @@ def main(argv=None) -> int:
     if not url or not token:
         print("ERREUR : PUBLISH_URL et PUBLISH_TOKEN manquants (environnement ou publish.env).")
         return 2
+    signing_key = (env.get("RELEASE_SIGNING_KEY") or "").strip()
+    if signing_key:
+        sign_payload(signing_key, "test")      # clé et PyNaCl vérifiés avant d'envoyer des centaines de Mo
+    else:
+        print("Avertissement : RELEASE_SIGNING_KEY absente, le manifeste sera publié SANS signature "
+              "(refusé par un serveur qui l'exige ; `py publish_release.py --gen-key` pour créer la paire).")
 
     notes = args.notes or ""
     if args.notes_file:
@@ -238,14 +310,15 @@ def main(argv=None) -> int:
         return 1
 
     if args.dry_run:
-        print(f"[dry-run] Publierait {version} ({'obligatoire' if args.mandatory else 'facultative'}), "
-              f"{len(notes)} caractères de notes, assets :")
+        print(f"[dry-run] Publierait {version} ({'obligatoire' if args.mandatory else 'facultative'}, "
+              f"{'manifeste signé' if signing_key else 'sans signature'}), {len(notes)} caractères de notes, assets :")
         for platform, path, sha in assets:
             print(f"  PUT /api/admin/releases/{version}/assets/{platform}  {path.name}  {sha}")
         print(f"  POST /api/admin/releases/{version}/publish")
         print("[dry-run] Rien n'a été envoyé.")
         return 0
 
+    uploaded = {}
     for platform, path, sha in assets:
         print(f"Envoi de {path.name} ({platform}) ...", flush=True)
         status, body = api.put_file(f"/api/admin/releases/{version}/assets/{platform}", path, sha)
@@ -253,12 +326,27 @@ def main(argv=None) -> int:
             print(f"ERREUR : PUT {platform} -> {status} {_detail(body)}")
             return 1
         print(f"  ok -> {body.get('url')}")
+        # Le manifeste signé décrit ce que le serveur a enregistré (sa réponse), pas ce qu'on croit avoir envoyé.
+        uploaded[platform] = {"sha256": body.get("sha256") or sha, "size": int(body.get("size") or path.stat().st_size),
+                              "filename": body.get("filename") or path.name}
 
-    status, body = api.json("POST", f"/api/admin/releases/{version}/publish",
-                            {"notes": notes, "mandatory": bool(args.mandatory)})
+    publish_body = {"notes": notes, "mandatory": bool(args.mandatory)}
+    if signing_key:
+        published_at = now_iso_utc()
+        payload = signed_payload(version, uploaded, bool(args.mandatory), published_at)
+        publish_body.update({"published_at": published_at, "signature": sign_payload(signing_key, payload)})
+        print(f"Manifeste signé ({published_at}) : {payload}")
+    status, body = api.json("POST", f"/api/admin/releases/{version}/publish", publish_body)
     if status != 200:
         print(f"ERREUR : publish -> {status} {_detail(body)}")
+        detail = body.get("detail") if isinstance(body.get("detail"), dict) else {}
+        if signing_key and detail.get("code") == "bad_signature":
+            print("  Le serveur a signé un autre jeu d'assets que celui envoyé : une plateforme déposée lors d'une "
+                  "publication précédente (ex. --skip-linux avec une archive Linux déjà présente) ? Republie-la, ou "
+                  "supprime la version (DELETE /api/admin/releases/<v>) avant de recommencer.")
         return 1
+    if signing_key and not body.get("signature"):
+        print("Avertissement : le serveur n'a pas renvoyé la signature dans le manifeste.")
     print(f"Version {version} publiée ({body.get('published_at')}), plateformes : {', '.join(sorted(body['assets']))}")
 
     status, latest = api.request("GET", "/api/releases/latest")

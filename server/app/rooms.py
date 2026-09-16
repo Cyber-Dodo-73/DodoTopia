@@ -21,14 +21,14 @@ import secrets
 import time
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
 from . import db
 from .auth import api_error, get_current_user, user_from_token
 from .config import Settings
 from .library import MidiError, read_upload, validate_midi
-from .ratelimit import TokenBucket, limit
+from .ratelimit import TokenBucket, client_ip, limit
 from .schemas import WS_MODELS
 
 log = logging.getLogger("dodo.rooms")
@@ -38,6 +38,10 @@ ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LEN = 6
 MAX_MSG_BYTES = 16 * 1024
 WS_MSGS_PER_S = 20
+FIRST_MSG_TIMEOUT_S = 10.0      # create/join attendu dans ce délai, sinon fermeture 1008 (connexions muettes)
+WS_OPEN_PER_MIN = 20            # ouvertures de WebSocket par IP et par minute, refusées avant accept()
+ROOM_CREATE_PER_MIN = 10
+ROOM_JOIN_PER_MIN = 20
 STOP_LEAD_MS = 250
 END_MARGIN_S = 10
 COUNTDOWN_MIN, COUNTDOWN_MAX, COUNTDOWN_DEFAULT = 3, 15, 5
@@ -206,7 +210,6 @@ class RoomManager:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.rooms: dict[str, Room] = {}
-        self.create_buckets: dict[str, TokenBucket] = {}
         self._reaper: asyncio.Task | None = None
 
     # --- cycle de vie ---
@@ -297,18 +300,17 @@ class RoomManager:
         if user is None:
             raise RoomError("bad_token", "Connexion Discord requise (session invalide ou expirée).", fatal=True)
         name = body.name.strip()[:24]
+        limiter = ws.app.state.ratelimiter
+        ip = client_ip(ws)
 
         if kind == "create":
-            ip = ws.client.host if ws.client else "?"
-            if s.RATE_LIMIT:
-                b = self.create_buckets.get(ip)
-                if b is None:
-                    b = self.create_buckets[ip] = TokenBucket(10, 10 / 60)
-                if b.take() > 0:
-                    raise RoomError("rate_limited", "Trop de salons créés, patiente une minute.", fatal=True)
+            if limiter.check("room_create", ip, ROOM_CREATE_PER_MIN, 60) > 0:
+                raise RoomError("rate_limited", "Trop de salons créés, patiente une minute.", fatal=True)
             room = self.create(body.max_players)
             seat = room.add_seat(user, name, body.instrument, body.version)
         else:
+            if limiter.check("room_join", ip, ROOM_JOIN_PER_MIN, 60) > 0:
+                raise RoomError("rate_limited", "Trop de tentatives, patiente une minute.", fatal=True)
             room = self.get(body.room_code)
             if room is None:
                 raise RoomError("room_not_found", "Salon introuvable.", fatal=True)
@@ -530,13 +532,25 @@ async def _recv(ws: WebSocket) -> dict:
 @router.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket):
     manager: RoomManager = websocket.app.state.rooms
+    # Limitation par IP avant même la poignée de main : une rafale d'ouvertures n'occupe ni tâche ni tampon.
+    if websocket.app.state.ratelimiter.check("ws_open", client_ip(websocket), WS_OPEN_PER_MIN, 60) > 0:
+        await _safe_close(websocket, code=1008)
+        return
     await websocket.accept()
     room: Room | None = None
     seat: Seat | None = None
     try:
         while True:
             try:
-                msg = await _recv(websocket)
+                if seat is None:
+                    # Une connexion ouverte qui ne dit rien (scanner, client planté) est fermée sans attendre le
+                    # ROOM_IDLE_S du reaper, qui ne s'applique qu'aux sièges.
+                    msg = await asyncio.wait_for(_recv(websocket), timeout=FIRST_MSG_TIMEOUT_S)
+                else:
+                    msg = await _recv(websocket)
+            except asyncio.TimeoutError:
+                await _safe_close(websocket, code=1008)
+                return
             except RoomError as e:
                 await _send_error(websocket, e)
                 if seat is None:
@@ -642,3 +656,15 @@ def room_download_song(code: str, sha256: str, request: Request, user=Depends(ge
                         headers={"ETag": f'"{sha256}"', "X-Sha256": sha256,
                                  "Content-Disposition": f'attachment; filename="{sha256[:12]}.mid"',
                                  "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/api/rooms/{code}/exists", dependencies=[Depends(limit("room_exists", 30, 60))])
+def room_exists(code: str, request: Request):
+    """Le salon existe-t-il encore ? (page publique `/{lang}/salon/{code}`, lien d'invitation). Sans compte ; rien
+    d'autre que l'existence et la place restante n'est révélé (ni pseudos, ni morceau)."""
+    norm = normalize_code(code[:32])
+    room = request.app.state.rooms.get(norm) if len(norm) == CODE_LEN else None
+    if room is None:
+        return JSONResponse({"code": norm, "exists": False, "full": False}, headers={"Cache-Control": "no-store"})
+    return JSONResponse({"code": room.code, "exists": True, "full": len(room.seats) >= room.max_players},
+                        headers={"Cache-Control": "no-store"})

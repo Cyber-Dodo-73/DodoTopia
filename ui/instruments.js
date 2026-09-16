@@ -9,29 +9,55 @@
 // instImageHtml, instCatalogue.
 
 // ------------------------------------------------ vocabulaire et tables
-const INST_CATS = [['strings', 'Cordes'], ['winds', 'Vents'], ['keys', 'Claviers'], ['percussion', 'Percussions']];
-const INST_CAT_LABEL = {strings: 'Cordes', winds: 'Vents', keys: 'Claviers', percussion: 'Percussions'};
-// statut de verification : libelle affiche + teinte de pastille. Jamais « teste dans Heartopia ».
+// Tous les libelles passent par t() AU MOMENT DU RENDU (le catalogue change a chaud) : ici, seules des cles.
+const INST_CATS = ['strings', 'winds', 'keys', 'percussion'];
+// cles par famille (declarees pour i18n_check) : t('inst.picker.cat_strings') t('inst.picker.cat_winds')
+// t('inst.picker.cat_keys') t('inst.picker.cat_percussion')
+const INST_CAT_KEY = {strings: 'inst.picker.cat_strings', winds: 'inst.picker.cat_winds', keys: 'inst.picker.cat_keys', percussion: 'inst.picker.cat_percussion'};
+function instCatLabel(cat){ return INST_CAT_KEY[cat] ? t(INST_CAT_KEY[cat]) : ''; }
+// statut de verification : cle du libelle + teinte de pastille. Jamais « teste dans Heartopia ».
+// cles par statut (declarees pour i18n_check) : t('inst.status.unknown') t('inst.status.documented')
+// t('inst.status.custom') t('inst.status.quick_tested') t('inst.status.confirmed')
 const INST_STATUS = {
-  unknown:        {label: 'Touches à configurer',                 chip: 'chip--warn'},
-  documented:     {label: 'Profil documenté · à vérifier',        chip: 'chip--info'},
-  custom:         {label: 'Touches personnalisées · à vérifier',  chip: 'chip--info'},
-  'quick-tested': {label: 'Test rapide réussi · vérification partielle', chip: 'chip--warn'},
-  confirmed:      {label: 'Confirmé sur cet ordinateur',          chip: 'chip--ok'},
+  unknown:        {key: 'inst.status.unknown',      chip: 'chip--warn'},
+  documented:     {key: 'inst.status.documented',   chip: 'chip--info'},
+  custom:         {key: 'inst.status.custom',       chip: 'chip--info'},
+  'quick-tested': {key: 'inst.status.quick_tested', chip: 'chip--warn'},
+  confirmed:      {key: 'inst.status.confirmed',    chip: 'chip--ok'},
 };
-function instStatus(s){ return INST_STATUS[s] || INST_STATUS.unknown; }
+function instStatus(s){ const e = INST_STATUS[s] || INST_STATUS.unknown; return {label: t(e.key), chip: e.chip}; }
+// nom affiche d'un instrument : `name` (francais) ou `label_en` hors francais (le catalogue moteur porte les deux)
+function instName(inst){
+  if(!inst) return '';
+  const en = I18N.lang !== 'fr' && inst.label_en;
+  return cap(String(en || inst.name || inst.id || ''));
+}
+// libelle / description d'une disposition du catalogue : labelEn hors francais quand il existe, sinon labelFr
+function instLayText(l, field){
+  if(!l) return '';
+  const fr = l[field + 'Fr'] != null ? l[field + 'Fr'] : l[field];
+  const en = l[field + 'En'];
+  return String((I18N.lang !== 'fr' && en) ? en : (fr || ''));
+}
 
-// noms de notes, convention d'affichage du dossier : Do4 / C4 = MIDI 60
-const INST_FR = ['Do', 'Do♯', 'Ré', 'Ré♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
+// noms de notes, convention d'affichage du dossier : Do4 / C4 = MIDI 60. Le nom depend de la langue :
+// NOTE_NAMES (core.js) donne la forme locale (« DO#, RÉ… » ou « C#, D… »), ramenee a la casse du dossier.
 const INST_EN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-function noteFr(m){ m = Number(m); return INST_FR[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+function instNoteBase(pc){
+  const names = (typeof NOTE_NAMES === 'function') ? NOTE_NAMES() : NOTE_NAMES;
+  const raw = String((names && names[pc]) || INST_EN[pc]);
+  return cap(raw.toLowerCase()).replace('#', '♯');
+}
+function noteFr(m){ m = Number(m); return instNoteBase(((m % 12) + 12) % 12) + (Math.floor(m / 12) - 1); }
 function noteEn(m){ m = Number(m); return INST_EN[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
 function noteOctave(m){ return Math.floor(Number(m) / 12) - 1; }
-// une note peut arriver en entier MIDI (contrat) ou deja detaillee {midi, solfege} : les deux se lisent
+// une note peut arriver en entier MIDI (contrat) ou deja detaillee {midi, solfege} : les deux se lisent.
+// `solfege` vient du moteur en francais : hors francais, on recalcule le nom local a partir du MIDI.
 function instNoteText(n){
-  if(n != null && typeof n === 'object') return n.solfege || noteFr(n.midi);
+  if(n != null && typeof n === 'object') return (I18N.lang === 'fr' && n.solfege) || noteFr(n.midi);
   return noteFr(n);
 }
+function instSolfege(n){ return (I18N.lang === 'fr' && n.solfege) || noteFr(n.midi); }
 // l'assistant et les ecritures de profil sont refuses pendant une lecture : on le dit AVANT d'ouvrir
 function instPlaying(st){ const s = st || S || {}; return s.state != null && s.state !== 'stopped'; }
 
@@ -92,7 +118,7 @@ function instImgFail(img){
   img.classList.add('is-fb');
   const cat = img.dataset.cat || '';
   img.src = instFallbackSrc(cat);
-  img.title = 'Image indisponible' + (INST_CAT_LABEL[cat] ? ' · ' + INST_CAT_LABEL[cat] : '');
+  img.title = instCatLabel(cat) ? t('inst.picker.image_unavailable_cat', {cat: instCatLabel(cat)}) : t('inst.picker.image_unavailable');
 }
 // <img> d'un type d'instrument, servie en relatif depuis la page (donc hors ligne)
 function instImageHtml(id, cls, cat){
@@ -126,7 +152,7 @@ function instLayouts(){
 }
 function instLayoutLabel(id){
   const l = instLayouts()[id];
-  return (l && (l.labelFr || l.label)) || id || '';
+  return (l && instLayText(l, 'label')) || id || '';
 }
 function instFromState(id, st){
   st = st || S;
@@ -171,11 +197,11 @@ function instFallbackDetail(i){
 // « 15 notes · Do4 → Do6 · 15 notes, 2 rangees »
 function instSummary(ins){
   if(!ins) return '';
-  if(!ins.ready) return ins.blocked_reason || 'Touches à configurer avant de pouvoir jouer.';
+  if(!ins.ready) return ins.blocked_reason || t('inst.status.blocked');
   const out = [];
   const n = ins.count != null ? ins.count : (ins.keys || []).length;
-  if(n) out.push(n + (n > 1 ? ' notes' : ' note'));
-  if(ins.lowest != null && ins.span != null && n) out.push(noteFr(ins.lowest) + ' → ' + noteFr(ins.lowest + ins.span));
+  if(n) out.push(t('inst.picker.notes_n', {n}));
+  if(ins.lowest != null && ins.span != null && n) out.push(t('inst.picker.range', {low: noteFr(ins.lowest), high: noteFr(ins.lowest + ins.span)}));
   // le libellé de disposition commence par « 15 notes, … » : on ne répète pas le compte déjà écrit
   let lab = ins.layout_label || instLayoutLabel(ins.layout_id);
   if(lab && n) lab = lab.replace(new RegExp('^' + n + ' notes?,?\\s*'), '');
@@ -198,7 +224,7 @@ function renderInstPick(st){
       else instImgFail(img);
     }
   }
-  txt('instPickName', (ins && ins.name) ? cap(ins.name) : 'Aucun instrument');
+  txt('instPickName', (ins && ins.name) ? instName(ins) : t('inst.picker.none'));
   const stt = instStatus(ins && ins.status);
   const badge = $('instPickStatus');
   if(badge){
@@ -210,7 +236,7 @@ function renderInstPick(st){
   if(pick) pick.classList.toggle('is-blocked', !!(ins && !ins.ready));
   txt('instSumTxt', instSummary(ins));
   const keys = $('btnKeys');
-  if(keys) keys.textContent = (ins && ins.ready) ? 'Voir les touches' : 'Configurer les touches';
+  if(keys) keys.textContent = (ins && ins.ready) ? t('inst.picker.keys') : t('inst.picker.setup');
   // meme condition que music.js : pendant une session, la ligne instrument laisse la place au bandeau
   const sum = $('instSum');
   if(sum) sum.hidden = !!($('instRow') && $('instRow').hidden);
@@ -218,7 +244,7 @@ function renderInstPick(st){
 view('instPick', {
   sig: st => {
     const i = instActive(st) || {};
-    return [i.id, i.status, i.ready, i.count, i.layout_id, i.lowest, i.span, st.keyboard_layout,
+    return [i.id, i.status, i.ready, i.count, i.layout_id, i.lowest, i.span, st.keyboard_layout, I18N.lang,
             instFavs(st).join(','), $('instRow') && $('instRow').hidden ? 1 : 0].join('|');
   },
   draw: renderInstPick,
@@ -241,11 +267,11 @@ function instDrawFilters(st){
   const box = $('instFilters');
   if(!box) return;
   const list = st.instruments || [];
-  const tabs = [['all', 'Tous']];
-  if(instFavs(st).length) tabs.push(['fav', 'Favoris']);            // pas de filtre vide
-  INST_CATS.forEach(([id, lab]) => { if(list.some(i => i.category === id)) tabs.push([id, lab]); });
-  if(!tabs.some(t => t[0] === INST.filter)) INST.filter = 'all';
-  const sig = tabs.map(t => t[0]).join(',') + '#' + INST.filter;
+  const tabs = [['all', t('inst.picker.filter_all')]];
+  if(instFavs(st).length) tabs.push(['fav', t('inst.picker.filter_fav')]);            // pas de filtre vide
+  INST_CATS.forEach(id => { if(list.some(i => i.category === id)) tabs.push([id, instCatLabel(id)]); });
+  if(!tabs.some(tab => tab[0] === INST.filter)) INST.filter = 'all';
+  const sig = tabs.map(tab => tab[0] + ':' + tab[1]).join(',') + '#' + INST.filter;
   if(box.dataset.sig !== sig){
     box.dataset.sig = sig;
     box.innerHTML = tabs.map(([id, lab]) =>
@@ -263,17 +289,18 @@ function instCardHtml(st, i, activeId){
   const fav = instFavs(st).includes(i.id);
   const isActive = i.id === activeId;
   const isSel = i.id === INST.sel;
+  const name = instName(i);
   return `<div class="instcell">
     <button type="button" class="instcard${isActive ? ' is-active' : ''}${isSel ? ' is-sel' : ''}" data-id="${esc(i.id)}"
         aria-current="${isSel ? 'true' : 'false'}" tabindex="${isSel ? '0' : '-1'}">
-      <span class="instcard__check" aria-hidden="true">✓</span>
+      <span class="instcard__check" aria-hidden="true">${icon('check')}</span>
       ${instImageHtml(i.id, 'instcard__img', i.category)}
-      <span class="instcard__name">${esc(cap(i.name || i.id))}</span>
-      <span class="sr-only">${esc(INST_CAT_LABEL[i.category] || '')}. ${isActive ? 'Instrument actif. ' : ''}${esc(stt.label)}</span>
+      <span class="instcard__name">${esc(name)}</span>
+      <span class="sr-only">${esc(t('inst.picker.card_sr', {cat: instCatLabel(i.category), active: isActive ? 'yes' : 'no', status: stt.label}))}</span>
     </button>
     <button type="button" class="instfav${fav ? ' on' : ''}" data-fav="${esc(i.id)}" aria-pressed="${fav ? 'true' : 'false'}"
-      title="${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}"
-      aria-label="${fav ? 'Retirer' : 'Ajouter'} ${esc(cap(i.name || i.id))} ${fav ? 'des' : 'aux'} favoris">${fav ? '★' : '☆'}</button>
+      title="${esc(fav ? t('inst.picker.fav_remove') : t('inst.picker.fav_add'))}"
+      aria-label="${esc(fav ? t('inst.picker.fav_remove_aria', {name}) : t('inst.picker.fav_add_aria', {name}))}">${icon(fav ? 'star-fill' : 'star')}</button>
   </div>`;
 }
 function instSelDraw(){
@@ -284,7 +311,7 @@ function instSelDraw(){
   const activeId = (instActive(st) || {}).id;
   if(!INST.sel || !rows.some(i => i.id === INST.sel)) INST.sel = rows.length ? (rows.some(i => i.id === activeId) ? activeId : rows[0].id) : null;
   const grid = $('instGrid');
-  const sig = rows.map(i => [i.id, i.status, i.ready].join('~')).join(',') + '#' + INST.sel + '#' + activeId + '#' + instFavs(st).join(',');
+  const sig = rows.map(i => [i.id, i.status, i.ready].join('~')).join(',') + '#' + INST.sel + '#' + activeId + '#' + instFavs(st).join(',') + '#' + I18N.lang;
   if(grid.dataset.sig !== sig){
     // le focus vit dans la grille : on le rend a la carte selectionnee apres reconstruction
     const hadFocus = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.instcell'));
@@ -304,9 +331,7 @@ function instSelDraw(){
     });
   }
   $('instGridEmpty').hidden = rows.length > 0;
-  txt('instSelCount', rows.length
-    ? `${rows.length} instrument${rows.length > 1 ? 's' : ''} sur ${(st.instruments || []).length} · une carte par type`
-    : '');
+  txt('instSelCount', rows.length ? t('inst.picker.count', {n: rows.length, total: (st.instruments || []).length}) : '');
   instDetailDraw();
 }
 // navigation clavier dans la grille (tabindex glissant : une seule carte tabulable)
@@ -340,7 +365,7 @@ function instDetailDraw(){
   if(!box) return;
   const st = S, id = INST.sel;
   const i = instFromState(id, st);
-  if(!i){ box.innerHTML = '<p class="hint left">Choisis un instrument dans la liste.</p>'; return; }
+  if(!i){ box.innerHTML = `<p class="hint left">${esc(t('inst.picker.choose'))}</p>`; return; }
   const d = instDetailCached(id);
   const stt = instStatus(i.status);
   const activeId = (instActive(st) || {}).id;
@@ -349,69 +374,68 @@ function instDetailDraw(){
   const lay = layouts.find(l => l.layoutId === i.layout_id) || null;
   const missing = (d && d.missing_notes) || [];
   const srcs = (d && d.source_urls) || i.source_urls || [];
+  const name = instName(i);
+  // sous-titre : l'autre nom (anglais en francais, francais ailleurs) quand il differe, puis la famille
+  const other = I18N.lang === 'fr' ? (i.label_en || '') : (i.name && cap(i.name) !== name ? cap(i.name) : '');
 
   const notesTxt = i.ready
-    ? `${i.count != null ? i.count : (i.keys || []).length} notes · ${noteFr(i.lowest)} → ${noteFr(i.lowest + (i.span || 0))}`
-    : (i.blocked_reason || 'Aucune touche n’est encore associée à cet instrument.');
+    ? t('inst.picker.notes_range', {n: i.count != null ? i.count : (i.keys || []).length, low: noteFr(i.lowest), high: noteFr(i.lowest + (i.span || 0))})
+    : (i.blocked_reason || t('inst.picker.no_keys'));
   // « 15 notes · Do4 -> Do6 · 3 rangees » : ce qu'on a besoin de savoir avant de choisir, en une ligne.
-  const layLabel = lay ? (lay.labelFr || lay.layoutId) : (i.layout_label || instLayoutLabel(i.layout_id) || '');
+  const layLabel = lay ? (instLayText(lay, 'label') || lay.layoutId) : (i.layout_label || instLayoutLabel(i.layout_id) || '');
   const factsTxt = i.ready
     ? [notesTxt, String(layLabel).replace(/^\d+\s+notes?,?\s*/, '')].filter(Boolean).join(' · ')
     : notesTxt;
   const missTxt = missing.length
-    ? `<p class="instdet__warnline">Altérations absentes de cette disposition : ${esc(missing.slice(0, 8).map(instNoteText).join(', '))}${missing.length > 8 ? '…' : ''} — les morceaux qui les utilisent seront signalés avant la lecture.</p>`
+    ? `<p class="instdet__warnline">${esc(t('inst.picker.missing_alt', {list: missing.slice(0, 8).map(instNoteText).join(', '), more: missing.length > 8 ? 'yes' : 'no'}))}</p>`
     : '';
-  const percTxt = i.percussive
-    ? `<p class="instdet__warnline">Percussion : la correspondance issue des sources ne dit pas quelle frappe produit quelle hauteur. Un test adapté est demandé avant de pouvoir jouer.</p>`
-    : '';
+  const percTxt = i.percussive ? `<p class="instdet__warnline">${esc(t('inst.picker.percussion_warn'))}</p>` : '';
 
   const main = i.ready
-    ? `<button class="btn btn--cta" type="button" data-act="use"${id === activeId ? ' disabled' : ''}>${id === activeId ? 'Instrument actif' : 'Utiliser cet instrument'}</button>`
-    : `<button class="btn btn--cta" type="button" data-act="setup">Configurer les touches</button>`;
+    ? `<button class="btn btn--cta" type="button" data-act="use"${id === activeId ? ' disabled' : ''}>${esc(id === activeId ? t('inst.picker.active') : t('inst.picker.use'))}</button>`
+    : `<button class="btn btn--cta" type="button" data-act="setup">${esc(t('inst.picker.setup'))}</button>`;
 
   box.innerHTML = `
     <div class="instdet__top">
       ${instImageHtml(id, 'instdet__img', i.category)}
       <div class="instdet__id">
-        <h3>${esc(cap(i.name || id))}</h3>
-        <p class="instdet__en">${esc(i.label_en || '')}${i.label_en && i.category ? ' · ' : ''}${esc(INST_CAT_LABEL[i.category] || '')}</p>
+        <h3>${esc(name)}</h3>
+        <p class="instdet__en">${esc(other)}${other && i.category ? ' · ' : ''}${esc(instCatLabel(i.category))}</p>
         <span class="chip chip--badge ${stt.chip}">${esc(stt.label)}</span>
       </div>
       <button type="button" class="instfav${fav ? ' on' : ''}" data-act="fav" aria-pressed="${fav ? 'true' : 'false'}"
-        title="${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${fav ? '★' : '☆'}</button>
+        title="${esc(fav ? t('inst.picker.fav_remove') : t('inst.picker.fav_add'))}">${icon(fav ? 'star-fill' : 'star')}</button>
     </div>
     <p class="instdet__facts1">${esc(factsTxt)}</p>
     ${percTxt}
     <div class="instdet__acts">
       ${main}
-      <button class="btn btn--secondary btn--sm" type="button" data-act="keys">Voir les touches</button>
-      ${i.ready ? '<button class="btn btn--ghost btn--sm" type="button" data-act="setup">Reconfigurer…</button>' : ''}
+      <button class="btn btn--secondary btn--sm" type="button" data-act="keys">${esc(t('inst.picker.keys'))}</button>
+      ${i.ready ? `<button class="btn btn--ghost btn--sm" type="button" data-act="setup">${esc(t('inst.picker.reconfigure'))}</button>` : ''}
     </div>
-    ${layouts.length > 1 ? `<details class="disclosure"><summary>Dispositions possibles pour ce type (${layouts.length})</summary>
-      <div class="disclosure__body"><p class="hint left">Choisis dans le jeu la même disposition qu'ici. Elles n'ont pas les mêmes touches.</p>
+    ${layouts.length > 1 ? `<details class="disclosure"><summary>${esc(t('inst.picker.layouts_summary', {n: layouts.length}))}</summary>
+      <div class="disclosure__body"><p class="hint left">${esc(t('inst.picker.layouts_hint'))}</p>
       <div class="instlays">${layouts.map(l => `<button type="button" class="instlay${l.layoutId === i.layout_id ? ' active' : ''}" data-lay="${esc(l.layoutId)}">
-        <b>${esc(l.labelFr || l.layoutId)}</b><span>${esc(l.descriptionFr || '')}</span>
-        <span class="instlay__n">${l.noteCount != null ? l.noteCount + ' notes' : ''}</span></button>`).join('')}</div></div></details>` : ''}
-    <details class="disclosure"><summary>Détails techniques et sources</summary>
+        <b>${esc(instLayText(l, 'label') || l.layoutId)}</b><span>${esc(instLayText(l, 'description'))}</span>
+        <span class="instlay__n">${l.noteCount != null ? esc(t('inst.picker.notes_n', {n: l.noteCount})) : ''}</span></button>`).join('')}</div></div></details>` : ''}
+    <details class="disclosure"><summary>${esc(t('inst.picker.tech_summary'))}</summary>
       <div class="disclosure__body">
         ${missTxt}
         ${i.ready ? `<div class="btnrow"><button class="btn btn--ghost btn--sm" type="button" data-act="full"
-          title="Vérifier toutes les associations, par groupes de trois, pour obtenir « Confirmé sur cet ordinateur »">Validation intégrale…</button></div>` : ''}
+          title="${esc(t('inst.picker.full_title'))}">${esc(t('inst.picker.full'))}</button></div>` : ''}
         <dl class="instdet__facts instdet__facts--tech">
-          <dt>Identifiant</dt><dd>${esc(id)}</dd>
-          <dt>Disposition</dt><dd>${esc(i.layout_id || '—')}</dd>
-          <dt>Variantes d'apparence regroupées</dt><dd>${i.variant_count != null ? esc(String(i.variant_count)) : '—'} (une seule carte : même son, mêmes touches)</dd>
-          <dt>Provenance du profil</dt><dd>${esc(instProvenance(i))}</dd>
+          <dt>${esc(t('inst.picker.dt_id'))}</dt><dd>${esc(id)}</dd>
+          <dt>${esc(t('inst.picker.dt_layout'))}</dt><dd>${esc(i.layout_id || '—')}</dd>
+          <dt>${esc(t('inst.picker.dt_variants'))}</dt><dd>${esc(t('inst.picker.variants_note', {n: i.variant_count != null ? String(i.variant_count) : '—'}))}</dd>
+          <dt>${esc(t('inst.picker.dt_provenance'))}</dt><dd>${esc(instProvenance(i))}</dd>
         </dl>
-        ${srcs.length ? `<p class="hint left">Sources consultées :</p><ul class="instsrc">${srcs.map(u => `<li><code>${esc(u)}</code></li>`).join('')}</ul>
-          <button class="btn btn--ghost btn--sm" type="button" data-act="copysrc">Copier les sources</button>` : ''}
-        <p class="hint left">Les tables de touches viennent de projets communautaires. Elles n'ont pas été testées dans
-          Heartopia depuis cet ordinateur : le statut le dit pour chaque instrument.</p>
-        <p class="hint left">Profil au format JSON : seules les données sont lues, aucun contenu importé n'est exécuté.
-          Un profil vérifié ailleurs redevient « à vérifier » ici.</p>
+        ${srcs.length ? `<p class="hint left">${esc(t('inst.picker.sources'))}</p><ul class="instsrc">${srcs.map(u => `<li><code>${esc(u)}</code></li>`).join('')}</ul>
+          <button class="btn btn--ghost btn--sm" type="button" data-act="copysrc">${esc(t('inst.picker.copy_sources'))}</button>` : ''}
+        <p class="hint left">${esc(t('inst.picker.hint_community'))}</p>
+        <p class="hint left">${esc(t('inst.picker.hint_json'))}</p>
         <div class="btnrow">
-          <button class="btn btn--ghost btn--sm" type="button" data-act="export">Exporter ce profil…</button>
-          <button class="btn btn--ghost btn--sm" type="button" data-act="import">Importer un profil…</button>
+          <button class="btn btn--ghost btn--sm" type="button" data-act="export">${esc(t('inst.picker.export'))}</button>
+          <button class="btn btn--ghost btn--sm" type="button" data-act="import">${esc(t('inst.picker.import'))}</button>
         </div>
       </div>
     </details>`;
@@ -422,7 +446,7 @@ function instDetailDraw(){
   on('[data-act="full"]', () => { closeModal($('instOverlay')); openInstrumentWizard(id, 'full'); });
   on('[data-act="keys"]', () => { closeModal($('instOverlay')); openKeysPanel(id); });
   on('[data-act="fav"]', () => api('toggle_instrument_favorite', id).then(() => instSelDraw()));
-  on('[data-act="copysrc"]', () => copyText(srcs.join('\n'), 'Sources copiées'));
+  on('[data-act="copysrc"]', () => copyText(srcs.join('\n'), t('inst.picker.sources_copied')));
   on('[data-act="export"]', () => instExportProfile(id));
   on('[data-act="import"]', () => instImportProfile(id));
   box.querySelectorAll('[data-lay]').forEach(b => b.onclick = () => instSetLayout(id, b.dataset.lay));
@@ -430,30 +454,28 @@ function instDetailDraw(){
   if(!d) instDetail(id).then(r => { if(r && INST.sel === id) instDetailDraw(); });
 }
 function instProvenance(i){
-  if(i.status === 'confirmed') return 'Confirmé sur cet ordinateur';
-  if(i.status === 'quick-tested') return 'Test rapide réussi sur cet ordinateur (échantillon, pas une validation intégrale)';
-  if(i.status === 'custom') return 'Touches saisies sur cet ordinateur, non vérifiées dans le jeu';
-  if(i.status === 'documented') return 'Documenté par une source communautaire, non vérifié dans le jeu';
-  return 'Inconnu : aucune source ne documente les touches de cet instrument';
+  if(i.status === 'confirmed') return t('inst.status.provenance_confirmed');
+  if(i.status === 'quick-tested') return t('inst.status.provenance_quick_tested');
+  if(i.status === 'custom') return t('inst.status.provenance_custom');
+  if(i.status === 'documented') return t('inst.status.provenance_documented');
+  return t('inst.status.provenance_unknown');
 }
 // Export / import d'un profil : les deux methodes existent cote Python (schema valide, rien n'est
 // execute). Sans point d'entree ici, la documentation promettrait une fonction inatteignable.
 function instExportProfile(id){
   apiOpt('export_instrument_profile', id).then(r => {
-    if(r && r.ok === false){ toast(r.error || 'Export impossible', 'warn'); return; }
+    if(r && r.ok === false){ toast(r.error || t('inst.picker.export_failed'), 'warn'); return; }
     if(r && r.path) return;                                  // enregistre par la boite de dialogue systeme
-    if(r && r.text) copyText(r.text, 'Profil copié dans le presse-papiers');
+    if(r && r.text) copyText(r.text, t('inst.picker.profile_copied'));
   });
 }
 function instImportProfile(id){
   const i = instFromState(id) || {};
-  if(instPlaying()){ toast('Arrête la lecture avant d’importer un profil.', 'warn'); return; }
-  dialog({title: 'Importer un profil ?', icon: '⌨',
-    html: `<p>Choisis un fichier <code>.json</code> exporté par DodoTopia. Les touches de
-           « ${esc(cap(i.name || id))} » seront remplacées.</p>
-           <p>Un profil vérifié sur un autre ordinateur redevient « à vérifier » ici : une validation faite
-           ailleurs ne prouve rien sur cette installation.</p>`,
-    ok: 'Choisir un fichier'}).then(okv => {
+  if(instPlaying()){ toast(t('inst.picker.stop_before_import'), 'warn'); return; }
+  // le nom d'instrument entre dans un message HTML : echappe avant
+  dialog({title: t('inst.picker.import_title'), icon: 'keyboard',
+    html: t('inst.picker.import_html', {name: esc(instName(i) || id)}),
+    ok: t('inst.picker.import_ok'), cancel: t('common.cancel')}).then(okv => {
       if(!okv) return;
       api('import_instrument_profile', null, id).then(() => { instForget(); instSelDraw(); });
     });
@@ -463,15 +485,14 @@ function instUse(id){
   if(i && !i.ready){ openInstrumentWizard(id, 'setup'); return; }
   // le choix est fait : la fenetre se ferme, comme n'importe quel selecteur. Rester ouvert obligeait
   // a cliquer une deuxieme fois sur « Fermer » pour revenir a ce qu'on etait en train de faire.
-  api('set_instrument', id).then(() => { closeInstrumentSelector(); toast(`Instrument : ${cap((i && i.name) || id)}`, 'ok'); });
+  api('set_instrument', id).then(() => { closeInstrumentSelector(); toast(t('inst.picker.chosen', {name: instName(i) || id}), 'ok'); });
 }
 function instSetLayout(id, layoutId){
   const i = instFromState(id);
   if(i && i.custom){
-    dialog({title: 'Remplacer tes touches ?', icon: '⌨',
-      html: `<p>Cet instrument utilise des touches que tu as saisies toi-même. Changer de disposition les remplace
-             par la table documentée de « ${esc(instLayoutLabel(layoutId))} ».</p><p>Ta personnalisation sera perdue.</p>`,
-      ok: 'Remplacer', danger: true}).then(okv => {
+    dialog({title: t('inst.picker.replace_title'), icon: 'keyboard',
+      html: t('inst.picker.replace_html', {layout: esc(instLayoutLabel(layoutId))}),
+      ok: t('inst.picker.replace_ok'), cancel: t('common.cancel'), danger: true}).then(okv => {
         if(!okv) return;
         api('set_instrument_layout', id, layoutId, true).then(() => { instForget(); instSelDraw(); });
       });
@@ -485,7 +506,7 @@ function openInstrumentSelector(){
   INST.sel = (instActive(st) || {}).id || null;
   const f = $('instSearch');
   if(f){ f.value = ''; $('instSearchBox').classList.remove('has'); }
-  openModal($('instOverlay'), $('instPick'));
+  openModal($('instOverlay'), $('instPick'), null, closeInstrumentSelector);
   instSelDraw();
   instCatalogue().then(() => instSelDraw());
   if(INST.sel) instDetail(INST.sel).then(() => instSelDraw());
@@ -495,91 +516,88 @@ function closeInstrumentSelector(){ closeModal($('instOverlay')); }
 // le selecteur ouvert suit l'etat (changement d'instrument, favoris, fin d'assistant)
 view('instSel', {
   sig: st => $('instOverlay').classList.contains('open')
-    ? (st.instruments || []).map(i => [i.id, i.status, i.ready].join('~')).join(',') + '#' + st.instrument_id + '#' + instFavs(st).join(',')
+    ? (st.instruments || []).map(i => [i.id, i.status, i.ready].join('~')).join(',') + '#' + st.instrument_id + '#' + instFavs(st).join(',') + '#' + I18N.lang
     : 'closed',
   draw: () => instSelDraw(),
 });
 
 // ------------------------------------------------ panneau « Voir les touches »
+// cles par affectation (declarees pour i18n_check) : t('inst.keys.assign_layout') t('inst.keys.assign_custom') t('inst.keys.assign_none')
 const INST_ASSIGN = {
-  layout: ['Disposition', 'chip--info'],
-  custom: ['Personnalisée', 'chip--warn'],
-  none: ['Non affectée', 'chip--warn'],
+  layout: ['inst.keys.assign_layout', 'chip--info'],
+  custom: ['inst.keys.assign_custom', 'chip--warn'],
+  none: ['inst.keys.assign_none', 'chip--warn'],
 };
 function instKeyRowsHtml(d, kbl){
   const rows = (d && d.rows) || [];
   if(!rows.length) return '';
   return `<div class="keyboard keyboard--wide">${rows.map(r => `<div class="krow">${r.map(n =>
     `<span class="kk ${d.id === 'piano' ? 'piano' : 'round'}${[1, 3, 6, 8, 10].includes(Number(n.midi) % 12) ? ' black' : ''}"
-      title="${esc((n.solfege || noteFr(n.midi)) + ' · ' + instKeyLabel(n.key, kbl))}">${esc(instKeyLabel(n.key, kbl))}</span>`).join('')}</div>`).join('')}</div>`;
+      title="${esc(t('inst.keys.note_key_title', {note: instSolfege(n), key: instKeyLabel(n.key, kbl)}))}">${esc(instKeyLabel(n.key, kbl))}</span>`).join('')}</div>`).join('')}</div>`;
 }
+// Les messages *_html ne contiennent que du balisage sur (gras) et des valeurs controlees (AZERTY/QWERTY, mode) :
+// ils sont injectes tels quels ; tout ce qui vient du moteur ou du profil passe par esc().
 function instKeysHtml(st, d, i){
   const kbl = instKbLayout(st);
   const mode = instInputMode(st);
   const notes = (d && d.notes) || [];
   const custom = !!(i && i.custom);
   const pref = st.keyboard_layout_pref || 'auto';
+  const KBL = kbl.toUpperCase().replace(/[^A-Z]/g, '');
   const head = `<div class="instkeys__head">
       ${instImageHtml(i.id, 'instkeys__img', i.category)}
-      <div><h3 class="instkeys__name">${esc(cap(i.name || i.id))}</h3>
+      <div><h3 class="instkeys__name">${esc(instName(i))}</h3>
         <span class="chip chip--badge ${instStatus(i.status).chip}">${esc(instStatus(i.status).label)}</span></div>
       <div class="spacer"></div>
-      <div class="seg" id="kblSeg" role="radiogroup" aria-label="Disposition de mon clavier">
-        <button type="button" role="radio" data-kbl="auto">Auto</button>
+      <div class="seg" id="kblSeg" role="radiogroup" aria-label="${esc(t('inst.keys.kbl_aria'))}">
+        <button type="button" role="radio" data-kbl="auto">${esc(t('inst.keys.kbl_auto'))}</button>
         <button type="button" role="radio" data-kbl="azerty">AZERTY</button>
         <button type="button" role="radio" data-kbl="qwerty">QWERTY</button>
       </div>
     </div>
-    <p class="hint left">Disposition utilisée pour l'affichage : <b>${esc(kbl.toUpperCase())}</b>${pref === 'auto' ? ' (détectée)' : ''}.
-      DodoTopia envoie une <b>position</b> de touche au jeu : changer cette valeur change la légende affichée, pas ce qui est envoyé.</p>`;
+    <p class="hint left">${t('inst.keys.display_hint_html', {kbl: KBL, detected: pref === 'auto' ? 'yes' : 'no'})}</p>`;
   if(!notes.length){
-    return head + `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">⚠️</span>
-      <div class="notice__text">${esc(i.blocked_reason || 'Aucune touche n’est associée à cet instrument : ses touches ne sont documentées nulle part.')}
+    return head + `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span>
+      <div class="notice__text">${esc(i.blocked_reason || t('inst.keys.no_keys'))}
       </div></div>
-      <div class="btnrow"><button class="btn btn--cta" type="button" data-act="setup">Configurer les touches</button></div>`;
+      <div class="btnrow"><button class="btn btn--cta" type="button" data-act="setup">${esc(t('inst.picker.setup'))}</button></div>`;
   }
   const rows = notes.map(n => {
     const key = n.key || '';
     const lab = n.label || instKeyLabel(key, kbl);
     const state = !key ? 'none' : (custom ? 'custom' : 'layout');
-    const [sl, sc] = INST_ASSIGN[state];
+    const [sk, sc] = INST_ASSIGN[state];
     return `<tr>
-      <td class="instkeys__note">${esc(n.solfege || noteFr(n.midi))}</td>
+      <td class="instkeys__note">${esc(instSolfege(n))}</td>
       <td class="instkeys__en">${esc(n.note || noteEn(n.midi))}</td>
-      <td class="instkeys__oct">Octave ${noteOctave(n.midi)}</td>
-      <td><span class="keycap keycap--static">${esc(lab)}</span>${(n.shift != null ? n.shift : instKeyShift(key, kbl)) ? ' <span class="chip chip--badge chip--warn">Maj</span>' : ''}</td>
-      <td><span class="chip chip--badge ${sc}">${esc(sl)}</span></td>
+      <td class="instkeys__oct">${esc(t('inst.keys.octave', {n: noteOctave(n.midi)}))}</td>
+      <td><span class="keycap keycap--static">${esc(lab)}</span>${(n.shift != null ? n.shift : instKeyShift(key, kbl)) ? ` <span class="chip chip--badge chip--warn">${esc(t('inst.keys.shift'))}</span>` : ''}</td>
+      <td><span class="chip chip--badge ${sc}">${esc(t(sk))}</span></td>
     </tr>`;
   }).join('');
   const shiftWarn = (mode === 'vk' && kbl === 'azerty' && notes.some(n => (n.shift != null ? n.shift : instKeyShift(n.key, kbl))))
-    ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text">
-        « Envoi des touches » est réglé sur « Lettre affichée » et ton clavier est en AZERTY : les chiffres demandent Maj
-        et risquent de ne pas passer. Repasse sur « Position » dans Réglages › Musique et audio › Avancé.</div></div>`
+    ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(t('inst.keys.shift_warn'))}</div></div>`
     : '';
   return head + shiftWarn + instKeyRowsHtml(d, kbl) + `
     <div class="tablewrap"><table class="instkeys">
-      <thead><tr><th scope="col">Note</th><th scope="col">Nom international</th><th scope="col">Registre</th>
-        <th scope="col">Touche (${esc(kbl.toUpperCase())})</th><th scope="col">Affectation</th></tr></thead>
+      <thead><tr><th scope="col">${esc(t('inst.keys.th_note'))}</th><th scope="col">${esc(t('inst.keys.th_intl'))}</th><th scope="col">${esc(t('inst.keys.th_register'))}</th>
+        <th scope="col">${esc(t('inst.keys.th_key', {kbl: KBL}))}</th><th scope="col">${esc(t('inst.keys.th_assign'))}</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="btnrow">
-      <button class="btn btn--secondary btn--sm" type="button" data-act="setup">Modifier les touches…</button>
-      <button class="btn btn--ghost btn--sm" type="button" data-act="full">Validation intégrale…</button>
-      <button class="btn btn--ghost btn--sm" type="button" data-act="copy">Copier la table</button>
+      <button class="btn btn--secondary btn--sm" type="button" data-act="setup">${esc(t('inst.keys.edit'))}</button>
+      <button class="btn btn--ghost btn--sm" type="button" data-act="full">${esc(t('inst.picker.full'))}</button>
+      <button class="btn btn--ghost btn--sm" type="button" data-act="copy">${esc(t('inst.keys.copy'))}</button>
     </div>
-    <p class="hint left">La validation intégrale repasse <b>toutes</b> les associations dans le jeu, par groupes de trois.
-      C'est la seule procédure qui donne « Confirmé sur cet ordinateur » : un test rapide ne suffit pas.</p>
-    <details class="disclosure"><summary>Avancé : MIDI, position de référence et envoi des touches</summary>
+    <p class="hint left">${t('inst.keys.full_hint_html')}</p>
+    <details class="disclosure"><summary>${esc(t('inst.keys.adv_summary'))}</summary>
       <div class="disclosure__body">
-        <p class="hint left">Convention d'affichage : <b>Do4 = MIDI 60</b>. La colonne « position » est le nom de la
-          touche sur un clavier <b>QWERTY US</b> : c'est ce nom que DodoTopia envoie au jeu, quelle que soit ta disposition.</p>
+        <p class="hint left">${t('inst.keys.adv_convention_html')}</p>
         <div class="tablewrap"><table class="instkeys instkeys--tech">
-          <thead><tr><th scope="col">MIDI</th><th scope="col">Note</th><th scope="col">Position QWERTY</th><th scope="col">Légende ${esc(kbl.toUpperCase())}</th></tr></thead>
+          <thead><tr><th scope="col">${esc(t('inst.keys.th_midi'))}</th><th scope="col">${esc(t('inst.keys.th_note'))}</th><th scope="col">${esc(t('inst.keys.th_position'))}</th><th scope="col">${esc(t('inst.keys.th_legend', {kbl: KBL}))}</th></tr></thead>
           <tbody>${notes.map(n => `<tr><td>${esc(String(n.midi))}</td><td>${esc(n.note || noteEn(n.midi))}</td>
             <td><code>${esc(n.key || '—')}</code></td><td>${esc(n.label || instKeyLabel(n.key, kbl))}</td></tr>`).join('')}</tbody>
         </table></div>
-        <p class="hint left">Envoi des touches : <b>${mode === 'vk' ? 'Lettre affichée (vk)' : 'Position (scancode)'}</b>.
-          En « Position », la disposition du clavier ne change rien à ce que reçoit le jeu. En « Lettre affichée », un
-          clavier AZERTY modifie les chiffres et la ponctuation : c'est le seul cas où la colonne « Maj » compte.</p>
+        <p class="hint left">${t('inst.keys.send_mode_html', {mode: mode === 'vk' ? 'vk' : 'scancode'})}</p>
       </div>
     </details>`;
 }
@@ -587,11 +605,11 @@ function openKeysPanel(id){
   const st = S || {};
   id = id || (instActive(st) || {}).id;
   const i = instFromState(id, st);
-  if(!i){ toast('Instrument introuvable', 'warn'); return; }
+  if(!i){ toast(t('inst.picker.not_found'), 'warn'); return; }
   const show = d0 => {
     const d = d0 || instFallbackDetail(i) || {id: id, notes: [], rows: []};
     openPanel({
-      title: 'Touches envoyées au jeu', wide: true, opener: $('btnKeys'),
+      title: t('inst.keys.panel_title'), wide: true, opener: $('btnKeys'),
       html: instKeysHtml(S || st, d, i),
       wire: box => {
         const seg = box.querySelector('#kblSeg');
@@ -608,7 +626,7 @@ function openKeysPanel(id){
         if(fu) fu.onclick = () => { closePanel(); openInstrumentWizard(id, 'full'); };
         const c = box.querySelector('[data-act="copy"]');
         if(c) c.onclick = () => copyText(((d && d.notes) || []).map(n =>
-          `${n.solfege || noteFr(n.midi)}\t${n.note || noteEn(n.midi)}\t${n.midi}\t${n.key || ''}`).join('\n'), 'Table copiée');
+          `${instSolfege(n)}\t${n.note || noteEn(n.midi)}\t${n.midi}\t${n.key || ''}`).join('\n'), t('inst.keys.copied'));
       },
     });
   };
@@ -622,11 +640,16 @@ function openKeysPanel(id){
 
 // ------------------------------------------------ assistant de configuration (5 etapes)
 const WIZ_STEPS = ['open', 'layout', 'bind', 'test', 'save'];
-const WIZ_TITLES = {open: 'Ouvre l’instrument dans Heartopia', layout: 'Quelle disposition vois-tu ?',
-  bind: 'Associe les notes aux touches', test: 'Teste quelques touches', save: 'Enregistre ce profil'};
+// titres d'etape et frappes : des cles, resolues par t() a chaque rendu (wizDraw / wizStepHtml)
+// (declarees pour i18n_check) : t('inst.wizard.title_open') t('inst.wizard.title_layout') t('inst.wizard.title_bind')
+// t('inst.wizard.title_test') t('inst.wizard.title_save') t('inst.wizard.title_default')
+const WIZ_TITLE_KEYS = {open: 'inst.wizard.title_open', layout: 'inst.wizard.title_layout',
+  bind: 'inst.wizard.title_bind', test: 'inst.wizard.title_test', save: 'inst.wizard.title_save'};
+function wizTitle(step){ return t(WIZ_TITLE_KEYS[step] || 'inst.wizard.title_default'); }
 // frappes proposees pour une percussion : on demande CE QUI A SONNE, pas un Do/Re arbitraire
-const WIZ_STRIKES = [['low', 'Frappe grave (basse)'], ['open', 'Frappe ouverte (médium)'],
-  ['slap', 'Frappe claquée (aigu)'], ['none', 'Aucun son']];
+// (declarees pour i18n_check) : t('inst.wizard.strike_low') t('inst.wizard.strike_open') t('inst.wizard.strike_slap') t('inst.wizard.strike_none')
+const WIZ_STRIKE_KEYS = [['low', 'inst.wizard.strike_low'], ['open', 'inst.wizard.strike_open'],
+  ['slap', 'inst.wizard.strike_slap'], ['none', 'inst.wizard.strike_none']];
 const WIZ = {
   id: null, mode: 'setup', step: 'open', layoutId: null, bindings: {}, order: [],
   capture: null, msg: '', msgKind: 'warn', detail: null, tested: null, testing: false, dirty: false,
@@ -677,20 +700,19 @@ function wizConflicts(){
     if(!k) return;
     const dup = (byKey[k] || []).filter(x => x !== midi);
     if(dup.length) out.push({midi, key: k, severity: 'error',
-      message: 'Déjà utilisée par ' + dup.map(noteFr).join(', ') + ' : deux notes ne peuvent pas partager une touche.'});
+      message: t('inst.wizard.conflict_dup', {notes: dup.map(noteFr).join(', ')})});
     if(!instKeyInjectable(k)) out.push({midi, key: k, severity: 'error',
-      message: 'Cette touche ne peut pas être envoyée au jeu.'});
+      message: t('inst.wizard.conflict_uninjectable')});
     Object.keys(hk).forEach(h => {
       const parts = String(hk[h] || '').toLowerCase().split('+').map(s => s.trim()).filter(Boolean);
       if(!parts.includes(k)) return;
       const hard = (h === 'stop' || h === 'play_pause');
       out.push({midi, key: k, severity: hard ? 'error' : 'warn',
-        message: hard
-          ? `Occupée par le raccourci « ${HOTKEY_LABELS[h] || h} » (${hk[h]}). Choisis une autre touche : un raccourci d'arrêt n'est jamais supprimé pour un mapping.`
-          : `Aussi utilisée par le raccourci « ${HOTKEY_LABELS[h] || h} » (${hk[h]}).`});
+        message: hard ? t('inst.wizard.conflict_hotkey_hard', {label: HOTKEY_LABELS[h] || h, key: hk[h]})
+                      : t('inst.wizard.conflict_hotkey_soft', {label: HOTKEY_LABELS[h] || h, key: hk[h]})});
     });
     if(mode === 'vk' && instKeyShift(k, kbl)) out.push({midi, key: k, severity: 'warn',
-      message: 'En AZERTY avec l’envoi « Lettre affichée », ce chiffre demande Maj : le jeu peut ne rien recevoir.'});
+      message: t('inst.wizard.conflict_shift')});
   });
   return out;
 }
@@ -710,7 +732,7 @@ function wizKeyDown(e){
   }
   const k = INST_CODE_KEY[e.code];
   if(!k){
-    WIZ.msg = 'Cette touche ne peut pas être envoyée au jeu : utilise une lettre, un chiffre ou une ponctuation du clavier principal.';
+    WIZ.msg = t('inst.wizard.key_rejected');
     WIZ.msgKind = 'warn';
     wizDraw();
     return;
@@ -745,36 +767,29 @@ function wizStepHtml(){
   const i = wizInst();
   const st = S || {};
   const kbl = instKbLayout(st);
+  const KBL = kbl.toUpperCase().replace(/[^A-Z]/g, '');
+  // Les messages *_html ne portent que du balisage sur ; les noms d'instrument (moteur) sont echappes avant.
   if(WIZ.step === 'open'){
     return `<div class="wiz__lead">${instImageHtml(WIZ.id, 'wiz__img', i.category)}
-      <div><h3>${esc(cap(i.name || WIZ.id || ''))}</h3>
-      <p>Ouvre <b>${esc(cap(i.name || ''))}</b> dans Heartopia et place-toi devant son clavier de jeu.</p></div></div>
-      <div class="notice notice--info"><span class="notice__ic" aria-hidden="true">💡</span><div class="notice__text">
-        Choisir un instrument ici n'équipe rien dans Heartopia : DodoTopia envoie seulement des touches à la fenêtre du jeu.
-        Avant le test de l'étape 4, l'instrument doit déjà être ouvert dans le jeu.</div></div>
-      ${i.percussive ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text">
-        Cet instrument est une percussion. Les sources donnent une correspondance MIDI, mais rien ne prouve quelle frappe
-        elle produit : le test de l'étape 4 te demandera quelle frappe tu as entendue.</div></div>` : ''}
-      <p class="hint left">Tu peux revenir en arrière ou annuler à tout moment : le profil enregistré n'est remplacé
-        qu'à la dernière étape.</p>`;
+      <div><h3>${esc(instName(i) || WIZ.id || '')}</h3>
+      <p>${t('inst.wizard.open_lead_html', {name: esc(instName(i))})}</p></div></div>
+      <div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('info')}</span><div class="notice__text">${esc(t('inst.wizard.open_notice'))}</div></div>
+      ${i.percussive ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(t('inst.wizard.open_percussion'))}</div></div>` : ''}
+      <p class="hint left">${esc(t('inst.wizard.open_hint'))}</p>`;
   }
   if(WIZ.step === 'layout'){
     const list = wizLayoutList();
     const documented = !!((WIZ.detail && WIZ.detail.layouts) || []).length;
-    return `<p>Regarde le clavier de l'instrument <b>dans le jeu</b> et choisis la disposition qui lui ressemble.
-        Deux dispositions de 15 notes n'utilisent pas les mêmes touches : compare les rangées.</p>
-      ${documented ? '' : `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text">
-        Aucune source ne documente les touches de cet instrument. Les dispositions ci-dessous sont des candidates :
-        à toi de relever ce que tu vois, puis de corriger touche par touche à l'étape suivante.</div></div>`}
+    return `<p>${t('inst.wizard.layout_intro_html')}</p>
+      ${documented ? '' : `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(t('inst.wizard.layout_undocumented'))}</div></div>`}
       <div class="wizlays">${list.map(l => `<button type="button" class="wizlay${l.layoutId === WIZ.layoutId ? ' active' : ''}"
           data-lay="${esc(l.layoutId)}" aria-pressed="${l.layoutId === WIZ.layoutId ? 'true' : 'false'}">
-          <b>${esc(l.labelFr || l.layoutId)}${l.layoutId === WIZ.layoutId ? ' <span aria-hidden="true">✓</span>' : ''}</b>
-          <span class="wizlay__d">${esc(l.descriptionFr || '')}</span>
-          <span class="wizlay__n">${l.noteCount != null ? l.noteCount + ' notes' : ''}</span>
+          <b>${esc(instLayText(l, 'label') || l.layoutId)}${l.layoutId === WIZ.layoutId ? icon('check') : ''}</b>
+          <span class="wizlay__d">${esc(instLayText(l, 'description'))}</span>
+          <span class="wizlay__n">${l.noteCount != null ? esc(t('inst.picker.notes_n', {n: l.noteCount})) : ''}</span>
           <span class="wizlay__k">${(l.notes || []).slice(0, 24).map(n => `<i>${esc(instKeyLabel(n.key, kbl))}</i>`).join('')}${(l.notes || []).length > 24 ? '…' : ''}</span>
         </button>`).join('')}</div>
-      <p class="hint left">Choisis dans Heartopia la même disposition qu'ici. L'emplacement exact de ce réglage dans le
-        jeu n'est pas confirmé : DodoTopia ne te donnera pas un chemin de menus inventé.</p>`;
+      <p class="hint left">${esc(t('inst.wizard.layout_hint'))}</p>`;
   }
   if(WIZ.step === 'bind'){
     const conf = wizConflicts();
@@ -788,23 +803,21 @@ function wizStepHtml(){
         <td class="instkeys__note">${esc(noteFr(m))}</td>
         <td class="instkeys__en">${esc(noteEn(m))}</td>
         <td><button type="button" class="keycap${WIZ.capture === m ? ' is-listening' : ''}" data-cap="${m}"
-            aria-label="Touche pour ${esc(noteFr(m))}${k ? ' : ' + esc(instKeyLabel(k, kbl)) : ' : aucune'}">${WIZ.capture === m ? '…' : esc(instKeyLabel(k, kbl))}</button>
-          ${k ? `<button type="button" class="instrowx" data-clr="${m}" aria-label="Effacer la touche de ${esc(noteFr(m))}" title="Effacer">×</button>` : ''}</td>
-        <td class="wizconf">${cs.map(c => `<span class="chip chip--badge ${c.severity === 'error' ? 'chip--warn' : 'chip--info'}">${c.severity === 'error' ? '⚠️' : 'ℹ'} ${esc(c.message)}</span>`).join('')}</td>
+            aria-label="${esc(t('inst.wizard.key_for_aria', {note: noteFr(m), key: k ? instKeyLabel(k, kbl) : t('inst.wizard.key_none')}))}">${WIZ.capture === m ? '…' : esc(instKeyLabel(k, kbl))}</button>
+          ${k ? `<button type="button" class="instrowx" data-clr="${m}" aria-label="${esc(t('inst.wizard.clear_aria', {note: noteFr(m)}))}" title="${esc(t('inst.wizard.clear'))}">${icon('close')}</button>` : ''}</td>
+        <td class="wizconf">${cs.map(c => `<span class="chip chip--badge ${c.severity === 'error' ? 'chip--warn' : 'chip--info'}">${icon(c.severity === 'error' ? 'warn' : 'info')}${esc(c.message)}</span>`).join('')}</td>
       </tr>`;
     }).join('');
-    return `<p>Clique sur une touche du tableau puis <b>appuie sur la touche</b> que tu utilises dans le jeu pour cette note.
-        C'est la <b>position</b> de la touche qui est retenue, pas la lettre imprimée dessus.</p>
-      <p class="hint left">Échap annule la saisie en cours, Retour arrière efface l'association.
-        Rien n'est envoyé au jeu et les raccourcis globaux sont débranchés pendant la capture.</p>
+    return `<p>${t('inst.wizard.bind_intro_html')}</p>
+      <p class="hint left">${esc(t('inst.wizard.bind_hint'))}</p>
       <div class="wizbar">
-        <span class="chip chip--badge ${wizBound() === WIZ.order.length ? 'chip--ok' : 'chip--warn'}">${wizBound()} / ${WIZ.order.length} notes associées</span>
+        <span class="chip chip--badge ${wizBound() === WIZ.order.length ? 'chip--ok' : 'chip--warn'}">${esc(t('inst.wizard.bind_count', {bound: wizBound(), total: WIZ.order.length}))}</span>
         <div class="spacer"></div>
-        <button class="btn btn--ghost btn--sm" type="button" data-act="reset">Repartir de la disposition</button>
+        <button class="btn btn--ghost btn--sm" type="button" data-act="reset">${esc(t('inst.wizard.reset'))}</button>
       </div>
       <div class="tablewrap tablewrap--tall"><table class="instkeys">
-        <thead><tr><th scope="col">Note</th><th scope="col">Nom international</th>
-          <th scope="col">Touche (${esc(kbl.toUpperCase())})</th><th scope="col">Conflits</th></tr></thead>
+        <thead><tr><th scope="col">${esc(t('inst.keys.th_note'))}</th><th scope="col">${esc(t('inst.keys.th_intl'))}</th>
+          <th scope="col">${esc(t('inst.keys.th_key', {kbl: KBL}))}</th><th scope="col">${esc(t('inst.wizard.th_conflicts'))}</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`;
   }
   if(WIZ.step === 'test'){
@@ -823,51 +836,41 @@ function wizStepHtml(){
     const done = ((wz && wz.verified) || []).length;
     const stopKey = (S && S.hotkeys && S.hotkeys.stop) || 'F7';
     const failed = ['cancelled', 'error'].includes(tstate);
-    return `<p>Le test envoie <b>au plus 3 touches</b> à Heartopia. DodoTopia réduit sa fenêtre, compte à rebours,
-        puis envoie. Le bouton <b>Arrêter le test</b> ci-dessous et le raccourci d'arrêt (${esc(stopKey)}) coupent
-        l'envoi immédiatement.</p>
-      <div class="notice notice--info"><span class="notice__ic" aria-hidden="true">💡</span><div class="notice__text">
-        Heartopia doit être au premier plan avec ${esc(cap(wizInst().name || ''))} ouvert. Choisir l'instrument dans
-        DodoTopia ne l'équipe pas dans le jeu.</div></div>
-      ${full ? `<div class="notice notice--info"><span class="notice__ic" aria-hidden="true">✓</span><div class="notice__text">
-        <b>Validation intégrale</b> : ${done} association${done > 1 ? 's' : ''} vérifiée${done > 1 ? 's' : ''} sur ${bound}.
-        Chaque passage reprend là où tu t'es arrêté, par groupes de trois touches. Le statut
-        « Confirmé sur cet ordinateur » n'est écrit qu'une fois <b>toutes</b> les associations vérifiées.</div></div>` : ''}
+    // liste des touches envoyees : fragments <b> composes avec esc(), puis inseres dans le message
+    const sentList = sample.map(m => `<b>${esc(instKeyLabel(WIZ.bindings[m], kbl))}</b> (${esc(noteFr(m))})`).join(' · ') || '—';
+    const expected = ((test && test.solfege && I18N.lang === 'fr') ? test.solfege : sample.map(noteFr)).join(', ') || '—';
+    return `<p>${t('inst.wizard.test_intro_html', {key: esc(stopKey)})}</p>
+      <div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('info')}</span><div class="notice__text">${esc(t('inst.wizard.test_notice', {name: instName(wizInst())}))}</div></div>
+      ${full ? `<div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('check')}</span><div class="notice__text">${t('inst.wizard.full_progress_html', {done, bound})}</div></div>` : ''}
       <div class="wizbar">
-        <span class="hint left">Touches envoyées : ${sample.map(m => `<b>${esc(instKeyLabel(WIZ.bindings[m], kbl))}</b> (${esc(noteFr(m))})`).join(' · ') || '—'}</span>
+        <span class="hint left">${t('inst.wizard.sent_keys_html', {list: sentList})}</span>
         <div class="spacer"></div>
-        ${running ? '<button class="btn btn--secondary btn--sm" type="button" data-act="teststop">Arrêter le test</button>' : ''}
+        ${running ? `<button class="btn btn--secondary btn--sm" type="button" data-act="teststop">${esc(t('inst.wizard.test_stop'))}</button>` : ''}
         <button class="btn btn--cta btn--sm" type="button" data-act="test" ${running || !sample.length ? 'disabled' : ''}>
-          ${running ? 'Test en cours…' : (done ? 'Tester le groupe suivant' : 'Lancer le test')}</button>
+          ${esc(running ? t('inst.wizard.test_running') : (done ? t('inst.wizard.test_next') : t('inst.wizard.test_start')))}</button>
       </div>
-      ${running && left != null ? `<p class="hint left">Bascule vers Heartopia : ${esc(String(Math.max(0, Math.ceil(left))))} s…</p>` : ''}
-      ${running && tstate === 'playing' ? '<p class="hint left">Envoi des touches en cours…</p>' : ''}
-      ${failed ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text">
-        ${esc(test.message || 'Le test ne s’est pas déroulé jusqu’au bout.')} Aucune conclusion n'en est tirée :
-        relance-le quand tu veux.</div></div>` : ''}
+      ${running && left != null ? `<p class="hint left">${esc(t('inst.wizard.switching', {n: Math.max(0, Math.ceil(left))}))}</p>` : ''}
+      ${running && tstate === 'playing' ? `<p class="hint left">${esc(t('inst.wizard.sending'))}</p>` : ''}
+      ${failed ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(t('inst.wizard.test_failed', {message: test.message || t('inst.wizard.test_failed_default')}))}</div></div>` : ''}
       ${tstate === 'answer'
         ? (wizPercussive()
-          ? `<fieldset class="wizask"><legend>Qu'as-tu entendu ?</legend>
-              <p class="hint left">Sur une percussion, la question n'est pas « était-ce un Do ? » mais quelle frappe a sonné.</p>
-              ${WIZ_STRIKES.map(([v, lab]) => `<button type="button" class="btn btn--secondary btn--sm" data-strike="${esc(v)}">${esc(lab)}</button>`).join(' ')}
+          ? `<fieldset class="wizask"><legend>${esc(t('inst.wizard.heard'))}</legend>
+              <p class="hint left">${esc(t('inst.wizard.heard_percussion_hint'))}</p>
+              ${WIZ_STRIKE_KEYS.map(([v, key]) => `<button type="button" class="btn btn--secondary btn--sm" data-strike="${esc(v)}">${esc(t(key))}</button>`).join(' ')}
             </fieldset>`
-          : `<fieldset class="wizask"><legend>Qu'as-tu entendu ?</legend>
-              <p class="hint left">Attendu : ${esc(((test && test.solfege) || sample.map(noteFr)).join(', ') || '—')}.</p>
-              <button type="button" class="btn btn--secondary btn--sm" data-ans="1">Ces notes exactement</button>
-              <button type="button" class="btn btn--secondary btn--sm" data-ans="0">Non : autre chose, ou rien</button>
+          : `<fieldset class="wizask"><legend>${esc(t('inst.wizard.heard'))}</legend>
+              <p class="hint left">${esc(t('inst.wizard.expected', {notes: expected}))}</p>
+              <button type="button" class="btn btn--secondary btn--sm" data-ans="1">${esc(t('inst.wizard.ans_yes'))}</button>
+              <button type="button" class="btn btn--secondary btn--sm" data-ans="0">${esc(t('inst.wizard.ans_no'))}</button>
             </fieldset>`)
-        : `<p class="hint left">La question « qu'as-tu entendu ? » n'apparaît qu'une fois les touches réellement
-            envoyées : DodoTopia ne te demande jamais de valider un test qui n'a pas eu lieu.</p>`}
-      ${answered ? `<div class="notice notice--${answered.ok ? 'ok' : 'warn'}"><span class="notice__ic" aria-hidden="true">${answered.ok ? '✓' : '⚠️'}</span>
-        <div class="notice__text">${answered.ok
+        : `<p class="hint left">${esc(t('inst.wizard.heard_hint'))}</p>`}
+      ${answered ? `<div class="notice notice--${answered.ok ? 'ok' : 'warn'}"><span class="notice__ic" aria-hidden="true">${icon(answered.ok ? 'check' : 'warn')}</span>
+        <div class="notice__text">${esc(answered.ok
           ? (full
-            ? `Groupe vérifié : ${done} association${done > 1 ? 's' : ''} sur ${bound}.`
-              + (bound && done >= bound
-                ? ' Toutes les associations sont vérifiées : le profil sera enregistré « Confirmé sur cet ordinateur ».'
-                : ' Continue avec le groupe suivant.')
-            : 'Test rapide réussi · vérification partielle. Trois touches ne prouvent pas les ' + WIZ.order.length + ' associations : la validation intégrale reste à faire.')
-          : 'Réponse enregistrée : le profil restera « touches personnalisées · à vérifier ». Reviens à l’étape précédente pour corriger.'}</div></div>` : ''}
-      <p class="hint left">Tu peux aussi passer cette étape : le profil sera enregistré comme « à vérifier ».</p>`;
+            ? t('inst.wizard.group_ok', {done, bound, all: (bound && done >= bound) ? 'yes' : 'no'})
+            : t('inst.wizard.quick_ok', {n: WIZ.order.length}))
+          : t('inst.wizard.answer_no'))}</div></div>` : ''}
+      <p class="hint left">${esc(t('inst.wizard.skip_hint'))}</p>`;
   }
   // save
   const conf = wizConflicts();
@@ -876,24 +879,21 @@ function wizStepHtml(){
   const wzs = (S && S.instrument_wizard) || null;
   const status = hard.length ? null
     : ((wzs && wzs.next_status) || (WIZ.tested && WIZ.tested.ok ? 'quick-tested' : 'custom'));
-  return `<p>Profil de <b>${esc(cap(i.name || WIZ.id || ''))}</b> :</p>
+  return `<p>${t('inst.wizard.save_profile_html', {name: esc(instName(i) || WIZ.id || '')})}</p>
     <dl class="instdet__facts">
-      <dt>Disposition</dt><dd>${esc(instLayoutLabel(WIZ.layoutId) || 'saisie manuelle')}</dd>
-      <dt>Notes associées</dt><dd>${wizBound()} sur ${WIZ.order.length}</dd>
-      <dt>Clavier utilisé pour l'affichage</dt><dd>${esc(instKbLayout(S).toUpperCase())}</dd>
-      <dt>Statut enregistré</dt><dd>${hard.length ? '— (conflits à corriger)' : esc(instStatus(status).label)}</dd>
+      <dt>${esc(t('inst.wizard.save_layout'))}</dt><dd>${esc(instLayoutLabel(WIZ.layoutId) || t('inst.wizard.save_manual'))}</dd>
+      <dt>${esc(t('inst.wizard.save_notes'))}</dt><dd>${esc(t('inst.wizard.save_notes_val', {n: wizBound(), total: WIZ.order.length}))}</dd>
+      <dt>${esc(t('inst.wizard.save_kbl'))}</dt><dd>${esc(instKbLayout(S).toUpperCase())}</dd>
+      <dt>${esc(t('inst.wizard.save_status'))}</dt><dd>${esc(hard.length ? t('inst.wizard.save_conflicts') : instStatus(status).label)}</dd>
     </dl>
-    ${hard.length ? `<div class="notice notice--danger"><span class="notice__ic" aria-hidden="true">⚠️</span><div class="notice__text">
-        ${hard.length} conflit${hard.length > 1 ? 's' : ''} à corriger avant d'enregistrer : ${esc(hard.map(c => noteFr(c.midi)).join(', '))}.
-        Reviens à l'étape « Touches ». Aucun raccourci d'arrêt ne sera supprimé pour accepter ce mapping.</div></div>` : ''}
-    <p class="hint left">Ce statut décrit ce qui a réellement été fait sur cet ordinateur. Il ne dit jamais que le profil
-      a été validé dans Heartopia tant que toutes les touches n'ont pas été vérifiées une par une.</p>`;
+    ${hard.length ? `<div class="notice notice--danger"><span class="notice__ic" aria-hidden="true">${icon('danger')}</span><div class="notice__text">${esc(t('inst.wizard.save_conflicts_notice', {n: hard.length, notes: hard.map(c => noteFr(c.midi)).join(', ')}))}</div></div>` : ''}
+    <p class="hint left">${esc(t('inst.wizard.save_hint'))}</p>`;
 }
 function wizDraw(){
   if(!$('wizOverlay').classList.contains('open')) return;
   const idx = WIZ_STEPS.indexOf(WIZ.step);
-  txt('wizTitle', WIZ_TITLES[WIZ.step] || 'Configurer les touches');
-  txt('wizCount', `Étape ${idx + 1} sur ${WIZ_STEPS.length} · ${cap(wizInst().name || '')}`);
+  txt('wizTitle', wizTitle(WIZ.step));
+  txt('wizCount', t('inst.wizard.count', {i: idx + 1, n: WIZ_STEPS.length, name: instName(wizInst())}));
   $('wizFill').style.width = Math.round((idx / (WIZ_STEPS.length - 1)) * 100) + '%';
   stepsMark($('wizSteps'), WIZ_STEPS.slice(0, idx), WIZ.step, {});
   const body = $('wizBody');
@@ -920,13 +920,13 @@ function wizDraw(){
   $('wizBack').disabled = idx === 0;
   const next = $('wizNext');
   if(WIZ.step === 'save'){
-    next.textContent = 'Enregistrer ce profil';
+    next.textContent = t('inst.wizard.btn_save');
     next.disabled = wizBlocking(wizConflicts()).length > 0 || !wizBound();
   } else if(WIZ.step === 'test'){
-    next.textContent = WIZ.tested ? 'Continuer' : 'Passer le test';
+    next.textContent = WIZ.tested ? t('inst.wizard.btn_continue') : t('inst.wizard.btn_skip_test');
     next.disabled = false;
   } else {
-    next.textContent = 'Continuer';
+    next.textContent = t('inst.wizard.btn_continue');
     next.disabled = (WIZ.step === 'layout' && !WIZ.layoutId) || (WIZ.step === 'bind' && !wizBound());
   }
   // saisie en cours : la touche ecoutee reprend le focus apres la reconstruction du corps
@@ -960,7 +960,7 @@ function wizStopTest(){
 function wizRunTest(){
   const sample = wizTestSample();
   if(!sample.length) return;
-  if(S && S.state !== 'stopped'){ WIZ.msg = 'Arrête la lecture avant de tester les touches.'; WIZ.msgKind = 'warn'; wizDraw(); return; }
+  if(S && S.state !== 'stopped'){ WIZ.msg = t('inst.wizard.stop_before_test'); WIZ.msgKind = 'warn'; wizDraw(); return; }
   WIZ.testing = true; WIZ.msg = ''; wizDraw();
   api('instrument_wizard_test', sample).finally(() => { WIZ.testing = false; wizDraw(); });
 }
@@ -991,15 +991,15 @@ function wizBack(){
 }
 function wizSave(){
   const hard = wizBlocking(wizConflicts());
-  if(hard.length){ WIZ.msg = 'Corrige les conflits avant d’enregistrer.'; WIZ.msgKind = 'danger'; wizDraw(); return; }
-  const id = WIZ.id, label = cap(wizInst().name || id || '');
+  if(hard.length){ WIZ.msg = t('inst.wizard.fix_conflicts'); WIZ.msgKind = 'danger'; wizDraw(); return; }
+  const id = WIZ.id, label = instName(wizInst()) || id || '';
   api('instrument_wizard_save').then(r => {
     instForget();
     if(WIZ.id !== id) return;                 // un autre assistant a ete ouvert entre-temps
     // Python renvoie {ok, error, state} : sans ce verdict, un refus (lecture en cours, conflit calcule
     // cote moteur) fermait la modale en annoncant « Profil enregistré » et le travail etait perdu.
     if(r && typeof r === 'object' && r.ok === false){
-      WIZ.msg = r.error || "Le profil n'a pas été enregistré.";
+      WIZ.msg = r.error || t('inst.wizard.save_failed');
       WIZ.msgKind = 'danger';
       const wz = (S && S.instrument_wizard) || null;
       if(wz && wz.step) WIZ.step = WIZ_STEPS[Math.max(0, Math.min(WIZ_STEPS.length - 1, Number(wz.step) - 1))];
@@ -1008,7 +1008,7 @@ function wizSave(){
     }
     wizCaptureEnd();
     closeModal($('wizOverlay'));
-    toast('Profil enregistré pour ' + label, 'ok');
+    toast(t('inst.wizard.saved', {name: label}), 'ok');
     WIZ.id = null; WIZ.dirty = false;
   });
 }
@@ -1020,22 +1020,22 @@ function wizCancel(){
     WIZ.id = null; WIZ.dirty = false;
   };
   if(!WIZ.dirty){ done(); return; }
-  dialog({title: 'Abandonner la configuration ?', icon: '⌨',
-    html: '<p>Les touches saisies dans l’assistant seront perdues. Le profil déjà enregistré pour cet instrument reste inchangé.</p>',
-    ok: 'Abandonner', cancel: 'Continuer', danger: true}).then(v => { if(v) done(); });
+  dialog({title: t('inst.wizard.cancel_title'), icon: 'keyboard',
+    html: t('inst.wizard.cancel_html'),
+    ok: t('inst.wizard.cancel_ok'), cancel: t('inst.wizard.cancel_continue'), danger: true}).then(v => { if(v) done(); });
 }
 function openInstrumentWizard(id, mode){
   const st = S || {};
   id = id || (instActive(st) || {}).id;
   const i = instFromState(id, st);
-  if(!i){ toast('Instrument introuvable', 'warn'); return; }
+  if(!i){ toast(t('inst.picker.not_found'), 'warn'); return; }
   // Python refuse d'ouvrir l'assistant pendant une lecture (preecoute comprise : elle laisse #instRow
   // visible). On ne presente pas une modale qui n'enregistrerait rien.
-  if(instPlaying(st)){ toast('Arrête la lecture avant de configurer les touches.', 'warn'); return; }
+  if(instPlaying(st)){ toast(t('inst.wizard.stop_before_setup'), 'warn'); return; }
   WIZ.id = id; WIZ.mode = mode === 'full' ? 'full' : 'setup'; WIZ.step = 'open';
   WIZ.bindings = {}; WIZ.order = []; WIZ.layoutId = null; WIZ.capture = null;
   WIZ.msg = ''; WIZ.tested = null; WIZ.testing = false; WIZ.dirty = false; WIZ.detail = null;
-  openModal($('wizOverlay'), $('instPick'), () => { wizCaptureEnd(); });
+  openModal($('wizOverlay'), $('instPick'), () => { wizCaptureEnd(); }, () => wizCancel());
   wizDraw();
   // le focus doit ENTRER dans la modale : sinon la tabulation repart dans les commandes du lecteur derriere
   setTimeout(() => { const b = $('wizBody'); if(b && $('wizOverlay').classList.contains('open')) b.focus(); }, 30);
@@ -1068,7 +1068,7 @@ function openInstrumentWizard(id, mode){
 }
 // compte a rebours / etat du test cote Python : on repeint l'etape 4
 view('instWiz', {
-  sig: st => $('wizOverlay').classList.contains('open') ? JSON.stringify((st.instrument_wizard || {}).test || null) + '#' + WIZ.step : 'closed',
+  sig: st => $('wizOverlay').classList.contains('open') ? JSON.stringify((st.instrument_wizard || {}).test || null) + '#' + WIZ.step + '#' + I18N.lang : 'closed',
   draw: () => wizDraw(),
 });
 
@@ -1105,9 +1105,5 @@ view('instWiz', {
   if($('wizBack')) $('wizBack').onclick = () => wizBack();
   if($('wizNext')) $('wizNext').onclick = () => wizNext();
   $('wizOverlay').onclick = e => { if(e.target === $('wizOverlay')) wizCancel(); };
-  document.addEventListener('keydown', e => {
-    if(e.key !== 'Escape' || $('dlgOverlay').classList.contains('open')) return;
-    if($('wizOverlay').classList.contains('open')){ e.preventDefault(); wizCancel(); return; }
-    if($('instOverlay').classList.contains('open')){ e.preventDefault(); close(); }
-  });
+  // Échap : gestionnaire unique des modales (core.js) ; les fermetures sont passées à openModal
 })();

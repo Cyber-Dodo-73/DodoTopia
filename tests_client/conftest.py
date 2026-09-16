@@ -28,6 +28,16 @@ def _stamp(name):
 
 
 @pytest.fixture(autouse=True)
+def french_messages():
+    """Les tests comparent des textes français : la langue de Python est fixée avant chaque test (un test
+    peut l'avoir changée, et Api() la relit depuis le système)."""
+    import i18n
+    i18n.set_lang("fr")
+    yield
+    i18n.set_lang("fr")
+
+
+@pytest.fixture(autouse=True)
 def isolate_data_dir(tmp_path, monkeypatch):
     import core
     import online
@@ -35,6 +45,10 @@ def isolate_data_dir(tmp_path, monkeypatch):
     data.mkdir()
     monkeypatch.setattr(core, "DATA_DIR", str(data))
     monkeypatch.setattr(core, "CONFIG_PATH", str(data / "config.json"))
+    # aucune fenetre de jeu pendant les tests : la verification « jeu au premier plan » est neutre
+    import platform_io
+    monkeypatch.setattr(platform_io, "foreground_process_name", lambda: None)
+    monkeypatch.setattr(platform_io, "game_window_info", lambda name: {"found": None, "foreground": None, "elevated": None})
     monkeypatch.setattr(online, "ACCOUNT_PATH", str(data / "account.json"))
     monkeypatch.setattr(online, "UPDATES_DIR", str(data / "updates"))
     monkeypatch.setattr(online, "DOWNLOADS_DIR", str(data / "downloads"))

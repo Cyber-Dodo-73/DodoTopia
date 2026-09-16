@@ -1,0 +1,12 @@
+{
+  "settings.error.unknown_path": "configuração desconhecida: {path}",
+  "settings.error.number_expected": "número esperado",
+  "settings.error.range": "entre {lo} e {hi} {unit}",
+  "settings.error.unknown_value": "valor desconhecido",
+  "settings.error.too_long": "máximo de {max} caracteres",
+  "settings.error.key_required": "escolha uma tecla",
+  "settings.error.key_unknown": "tecla não reconhecida",
+  "settings.error.hotkey_taken": "já usada para \"{label}\"",
+  "settings.error.unknown_type": "tipo desconhecido",
+  "settings.error.unknown_section": "seção desconhecida: {section}"
+}

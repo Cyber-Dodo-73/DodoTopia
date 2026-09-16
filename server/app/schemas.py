@@ -74,10 +74,110 @@ class AuthPoll(Lenient):
     verifier: str = Field(min_length=1, max_length=256)
 
 
+# --- Métadonnées de la bibliothèque (tags, licence, source) ----------------------------
+
+# Liste blanche des tags d'un morceau (identifiants stables, traduits à l'affichage : `site.tags.<tag>`).
+SONG_TAGS = ("piano", "flute", "lute", "violin", "harp", "percussion", "pop", "rock", "classique", "jeu-video",
+             "anime", "film", "folk", "noel", "calme", "rapide", "facile", "difficile")
+MAX_TAGS = 8
+MAX_TAG_LEN = 24
+LICENSES = ("own", "public_domain", "cc", "unknown")
+MAX_SOURCE_URL_LEN = 500
+MAX_SOURCE_NAME_LEN = 60
+_URL_BAD_CHARS = re.compile(r"[\s\x00-\x1f\x7f<>\"'`\\]")
+
+
+class MetaError(ValueError):
+    """Métadonnée refusée : `code` stable pour le client, message en français."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+def normalize_tag(value: str) -> str:
+    """« Jeu vidéo » -> `jeu-video` : minuscules, sans accents, espaces et soulignés en tirets."""
+    s = unicodedata.normalize("NFKD", clean_text(value, 200)).encode("ascii", "ignore").decode("ascii").lower()
+    s = re.sub(r"[\s_]+", "-", s.strip())
+    return re.sub(r"-{2,}", "-", s).strip("-")
+
+
+def normalize_tags(value) -> list[str]:
+    """Liste JSON, ou texte séparé par des virgules -> tags normalisés, dédoublonnés, dans l'ordre. MetaError si un
+    tag est inconnu, trop long ou s'il y en a plus de MAX_TAGS."""
+    if value is None or value == "":
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("["):
+            import json
+            try:
+                value = json.loads(text)
+            except ValueError:
+                raise MetaError("bad_tags", "Tags illisibles (liste JSON ou texte séparé par des virgules).")
+        else:
+            value = text.split(",")
+    if not isinstance(value, (list, tuple)) or len(value) > 64:
+        raise MetaError("bad_tags", "Tags illisibles (liste JSON ou texte séparé par des virgules).")
+    out: list[str] = []
+    for raw in value:
+        if not isinstance(raw, str):
+            raise MetaError("bad_tags", "Chaque tag est un texte.")
+        tag = normalize_tag(raw)
+        if not tag:
+            continue
+        if len(tag) > MAX_TAG_LEN or tag not in SONG_TAGS:
+            raise MetaError("bad_tags", f"Tag inconnu : {tag[:MAX_TAG_LEN]!r} (autorisés : {', '.join(SONG_TAGS)}).")
+        if tag not in out:
+            out.append(tag)
+    if len(out) > MAX_TAGS:
+        raise MetaError("bad_tags", f"Au plus {MAX_TAGS} tags.")
+    return out
+
+
+def normalize_license(value: str | None) -> str:
+    v = (value or "").strip().lower() or "unknown"
+    if v not in LICENSES:
+        raise MetaError("bad_license", f"Licence inconnue (attendu : {', '.join(LICENSES)}).")
+    return v
+
+
+def normalize_source_url(value: str | None) -> str | None:
+    """URL https absolue, sans espace, identifiants ni caractère de contrôle ; "" -> None."""
+    from urllib.parse import urlsplit
+    if value is None:
+        return None
+    v = str(value).strip()
+    if not v:
+        return None
+    if len(v) > MAX_SOURCE_URL_LEN or _URL_BAD_CHARS.search(v):
+        raise MetaError("bad_source_url", "Lien source invalide.")
+    try:
+        parts = urlsplit(v)
+        host = parts.hostname
+    except ValueError:
+        raise MetaError("bad_source_url", "Lien source invalide.")
+    if parts.scheme.lower() != "https":
+        raise MetaError("bad_source_url", "Le lien source doit commencer par https://.")
+    if not host or "@" in parts.netloc or "." not in host:
+        raise MetaError("bad_source_url", "Lien source invalide.")
+    return v
+
+
+def normalize_source_name(value: str | None) -> str | None:
+    return clean_text(value, MAX_SOURCE_NAME_LEN) or None
+
+
 class SongPatch(Lenient):
     # max_length généreux à l'entrée : clean_text retire l'invisible puis coupe à 120.
     title: Annotated[str | None, Field(None, min_length=1, max_length=400), AfterValidator(_clean120)] = None
     artist: Annotated[str | None, Field(None, max_length=400), AfterValidator(_clean120)] = None
+    # Métadonnées : absentes = inchangées ; "" (ou liste vide) = effacées. Validées par la route (codes d'erreur).
+    tags: list[str] | str | None = Field(None)
+    instrument: str | None = Field(None, max_length=64)
+    source_url: str | None = Field(None, max_length=2000)
+    source_name: str | None = Field(None, max_length=400)
+    license: str | None = Field(None, max_length=32)
 
 
 class ReportIn(Lenient):
@@ -89,12 +189,21 @@ class RejectIn(Lenient):
 
 
 class ResolveIn(Lenient):
-    action: Literal["dismiss", "remove_song"]
+    # remove_song / remove_drawing / remove_target : supprime la cible du signalement (quel que soit son type).
+    action: Literal["dismiss", "remove_song", "remove_drawing", "remove_target"]
+
+
+class ImportIn(Lenient):
+    url: str = Field(min_length=1, max_length=2000)
 
 
 class PublishIn(Lenient):
     notes: str = Field("", max_length=20000)
     mandatory: bool = False
+    # Signature Ed25519 (base64) du `signed_payload` du manifeste ; `published_at` (ISO 8601) est alors l'horodatage
+    # signé, qui devient celui de la publication. Sans signature, le serveur horodate lui-même.
+    signature: str | None = Field(None, min_length=1, max_length=200)
+    published_at: str | None = Field(None, min_length=1, max_length=40)
 
 
 # --- WebSocket des salons (client -> serveur) ---------------------------------

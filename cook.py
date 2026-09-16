@@ -13,7 +13,7 @@ import os
 import threading
 import time
 
-from bot import MouseBot
+from bot import MouseBot, screen_changed, screen_fingerprint
 from draw import sample_color, _cdist
 from platform_io import cursor_pos, grab, mouse_up, SCREEN_OK
 
@@ -215,6 +215,7 @@ class Burner:
         self.lost = 0               # suivis locaux consecutifs sans reconnaissance
         self.launched = 0.0         # instant du dernier « Cuisiner » clique
         self.fired = 0.0            # instant du dernier feu ajuste
+        self.collected = 0.0        # instant de la derniere recuperation (la bulle « gants » reste un instant)
         self.dishes = 0
         self.fires = 0
         self.clicks = 0             # feux ajustes pour le plat en cours
@@ -272,6 +273,9 @@ class Cooker(MouseBot):
         self._last_im = None
         self._burners = []           # multi-cuisinieres : une machine a etats par cuisiniere (Burner)
         self._wide_at = 0.0          # instant de la derniere recherche large
+        self._menu_for = None        # cuisiniere dont la bulle a ete cliquee en dernier (a qui est le menu)
+        self._menu_tries = 0         # essais de suite pour fermer un menu Recettes reste ouvert
+        self._wide_origin = (0, 0)   # coin haut-gauche (absolu) de la derniere recherche large
         ensure_defaults(cfg)
 
     @property
@@ -475,6 +479,7 @@ class Cooker(MouseBot):
                 refs[k] = {"png": encode_mask(p["_ref_" + k][0]), "radius": round(p["_ref_" + k][1], 1)}
         if "_ring" in p:
             c["ring_color"] = p["_ring"]
+        c["screen"] = screen_fingerprint()
         self._masks = None
         self.points = {}
         self.state = "idle"
@@ -508,6 +513,12 @@ class Cooker(MouseBot):
             return False
         if not SCREEN_OK:
             self.message = "Lecture d'écran indisponible (Pillow manquant)."
+            self.log(self.message)
+            self.on_change()
+            return False
+        if screen_changed(self.cook_cfg.get("screen")):
+            self.message = ("L'écran a changé depuis la configuration de la cuisine (résolution, mise à "
+                            "l'échelle ou écrans) : refais la configuration.")
             self.log(self.message)
             self.on_change()
             return False
@@ -651,6 +662,8 @@ class Cooker(MouseBot):
         timeout = float(c.get("cook_timeout", 240.0))
         self._burners = []
         self._wide_at = 0.0
+        self._menu_for = None
+        self._menu_tries = 0
         last_action = time.perf_counter()
         last_neutral = time.perf_counter()
         while not self._stop.is_set():
@@ -658,22 +671,27 @@ class Cooker(MouseBot):
                 self.message = f"{self.dishes} plat(s) cuisiné(s), objectif atteint."
                 return
             if self._menu_open():
-                # un menu Recettes reste ouvert (clic manque, plus d'ingredients) : il cache les bulles
+                # menu Recettes ouvert hors lancement (clic de trop sur une bulle redevenue « cuisiner »...) :
+                # il cache les bulles et un clic dans l'herbe ne le ferme pas -> on lance la recette
                 self.phase = "menu"
-                if not self._click(*p["neutral"], delay=0.3):
+                if not self._menu_recover():
                     return
+                last_action = time.perf_counter()
                 continue
+            self._menu_tries = 0
             burners = self._scan()
             if self._guard():
                 return
             now = time.perf_counter()
-            # (a) anneau vert : minute, tout le reste attend
-            b = next((x for x in burners if x.state == "spatula"), None)
+            # (a) anneau vert : minute, tout le reste attend (sauf la meme spatule cliquee a l'instant,
+            # le temps que le jeu retire l'anneau)
+            b = next((x for x in burners if x.state == "spatula" and now - x.fired >= 0.8), None)
             if b is not None:
                 self.phase = "feu"
                 if b.clicks >= 8:
                     raise RuntimeError(f"le feu ne se règle pas sur la cuisinière {b.index} "
                                        f"(8 clics sur la spatule sans effet)")
+                self._menu_for = b
                 if not self._click(*b.pos, delay=0.5):
                     return
                 b.clicks += 1
@@ -684,22 +702,26 @@ class Cooker(MouseBot):
                 self.log(f"bulle {b.index} : feu ajusté ({b.clicks})")
                 self.on_change()
                 continue
-            # (b) plat pret
-            b = next((x for x in burners if x.state == "ready"), None)
+            # (b) plat pret (pas deux fois de suite : la bulle « gants » reste affichee un instant apres le
+            # clic, et un second clic tombe sur la bulle « cuisiner » et ouvre le menu Recettes)
+            b = next((x for x in burners if x.state == "ready" and now - x.collected >= 1.5), None)
             if b is not None:
                 self.phase = "récupération"
+                self._menu_for = b
                 if not self._click(*b.pos, delay=0.8):
                     return
                 b.dishes += 1
                 b.clicks = 0
                 b.launched = b.fired = 0.0
+                b.collected = time.perf_counter()
                 self.dishes += 1
-                last_action = time.perf_counter()
+                last_action = b.collected
                 self.log(f"bulle {b.index} : plat {b.dishes} récupéré ({self.dishes} en tout)")
                 self.on_change()
                 continue
             # (c) cuisiniere au repos : bulle « cuisiner » stable depuis un instant (pas un scintillement)
-            b = next((x for x in burners if x.state == "cook" and now - x.since >= 0.3), None)
+            b = next((x for x in burners if x.state == "cook" and now - x.since >= 0.3
+                      and now - x.collected >= 1.0), None)
             if b is not None and self._may_launch(b, burners):
                 self.phase = "lancement"
                 if not self._launch_one(b):
@@ -744,6 +766,7 @@ class Cooker(MouseBot):
         Cuisiner. False seulement si la boucle doit s'arreter (un echec est journalise et retente au tour
         suivant)."""
         p = self.cook_cfg["points"]
+        self._menu_for = b
         if not self._click(*b.pos, delay=0.3):
             return False
         if not self._wait_menu(True, 6.0):
@@ -770,6 +793,39 @@ class Cooker(MouseBot):
         b.fails = 0
         b.state, b.since = "cooking", b.launched
         self.log(f"bulle {b.index} : cuisson lancée")
+        self.on_change()
+        return True
+
+    def _menu_recover(self):
+        """Multi-cuisinieres : le menu Recettes est ouvert alors qu'aucun lancement n'est en cours. On lance la
+        recette (tuile + Cuisiner) sur la cuisiniere dont la bulle a ete cliquee en dernier ; apres 3 essais
+        sans que le menu se ferme, on arrete (plus d'ingredients, ou couleur du bouton mal calibree).
+        False si la boucle doit s'arreter."""
+        c = self.cook_cfg
+        p = c["points"]
+        b = self._menu_for
+        self._menu_tries += 1
+        if self._menu_tries > 3:
+            raise RuntimeError("le menu Recettes reste ouvert : plus d'ingrédients pour cette recette ? "
+                               "(ou recalibre le bouton « Cuisiner »)")
+        col = sample_color(*p["cook_btn"], radius=4)
+        who = f"bulle {b.index}" if b else "cuisinière inconnue"
+        self.log(f"menu Recettes ouvert ({who}, couleur du bouton {col}) : lancement de la recette ({self._menu_tries})")
+        if not self._click(*p["tile"], delay=0.4):
+            return False
+        if self._menu_open():
+            if not self._click(*p["cook_btn"], delay=0.5):
+                return False
+        if not self._wait_menu(False, 5.0):
+            return not self._stop.is_set()
+        self._menu_tries = 0
+        if b is not None:
+            b.launched = time.perf_counter()
+            b.clicks = 0
+            b.fails = 0
+            b.state, b.since = "cooking", b.launched
+            self.log(f"bulle {b.index} : cuisson lancée")
+        self._menu_for = None
         self.on_change()
         return True
 
@@ -1110,6 +1166,7 @@ class Cooker(MouseBot):
         if im is None:
             raise RuntimeError("capture d'écran impossible")
         self._last_im = im
+        self._wide_origin = (rect[0], rect[1])
         wm = dilate(white_mask(im))
         W, H = im.size
         cands = [(x, y) for y in range(0, max(1, H - REF + 1), COARSE) for x in range(0, max(1, W - REF + 1), COARSE)]
@@ -1155,11 +1212,18 @@ class Cooker(MouseBot):
         scores = {k: round(v[0], 2) for k, v in best.items()}
         found = self._pick(wm, masks, best, ox, oy, match, scores)
         if not found:
-            return None
+            return self._ring_only(burner, im, ox, oy)
         name, s, pos = found
         det = {"pos": pos, "state": "cooking" if name == "spatula" else name, "scores": scores}
         self._add_green(det, im, ox, oy)
         return det
+
+    def _ring_only(self, burner, im=None, ox=0, oy=0):
+        """Icone non reconnue (spatule animee, recouverte...) : si l'anneau vert entoure la derniere position
+        connue de la bulle, c'est quand meme une spatule a cliquer (comme _find avec une seule cuisiniere)."""
+        det = {"pos": burner.pos, "state": "none", "scores": {}}
+        self._add_green(det, im, ox, oy)
+        return det if det["state"] == "spatula" else None
 
     def _scan(self, wide=False):
         """Met a jour les cuisinieres suivies. Suivi local tant que toutes les bulles sont retrouvees ;
@@ -1212,7 +1276,7 @@ class Cooker(MouseBot):
             self.log(f"cuisinière {b.index} repérée en {b.pos[0]},{b.pos[1]}")
             self._apply(b, det)
         for b in free:
-            self._apply(b, None)
+            self._apply(b, self._ring_only(b, self._last_im, *self._wide_origin))
 
     def _apply(self, b, det):
         """Applique une detection (ou son absence) a une cuisiniere et journalise les changements d'etat."""

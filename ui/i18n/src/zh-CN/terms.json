@@ -1,0 +1,22 @@
+{
+  "terms.title": "DodoTopia 使用条款",
+  "terms.sub": "版本 {v} · 以法语版本为准。",
+  "terms.gist": "6 条要点",
+  "terms.full": "条款全文",
+  "terms.lang_en": "Read in English",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "我已阅读并接受使用条款",
+  "terms.accept": "接受并继续",
+  "terms.refuse": "拒绝并退出",
+  "terms.why_scroll": "请将文本滚动到底部",
+  "terms.why_check": "勾选复选框以接受",
+  "terms.ready": "一切就绪，你可以继续了。",
+  "terms.loading": "正在加载条款…",
+  "terms.error": "无法加载使用条款。",
+  "terms.confirm": "不接受就退出 DodoTopia？",
+  "terms.yes": "是，退出",
+  "terms.no": "返回",
+  "terms.pos": "已阅读 {p}%",
+  "terms.pos_done": "已读到底部 ✓",
+  "terms.accept_failed": "无法保存你的接受状态。请重试。"
+}
