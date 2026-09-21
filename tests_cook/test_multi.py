@@ -9,6 +9,7 @@ aucune vraie souris, aucun fichier du projet touché (voir conftest.py).
 
 Les durées sont raccourcies : les temporisations fixes des clics de cook.py sont divisées par 10 (voir
 `souris_rapide`) et le jeu simulé cuit en quelques dixièmes de seconde."""
+import sys
 import threading
 import time
 
@@ -104,6 +105,8 @@ class Ecran:
         self.menu_colle = False     # vrai jeu : un clic dans l'herbe ne ferme pas le menu Recettes
         self.gants_restent = 0.0    # durée d'affichage des gants après la récupération
         self.icone_cachee = False   # l'icône de la spatule n'est pas reconnaissable pendant l'anneau
+        self.sans_bulle_en_cuisson = False   # vrai jeu : aucune bulle tant que ça cuit (hors anneau et gants)
+        self.clics_perdus = 0       # vrai jeu : les N premiers clics sur un anneau ne sont pas pris
         self.vues = None            # vrai jeu : {index du poste: (dx, dy)} = glissement de TOUTES les bulles
         self.cam = (0, 0)           # quand le personnage rejoint ce poste (la caméra le suit)
 
@@ -134,6 +137,8 @@ class Ecran:
         now = time.perf_counter()
         for p in self.postes:
             icone = "ready" if now < p.gants_jusqua else PHASE_ICONE[p.phase]
+            if self.sans_bulle_en_cuisson and p.phase in ("cuisson", "mijote") and now >= p.gants_jusqua:
+                continue
             if p.phase == "anneau" and self.icone_cachee:
                 x, y = self.ou(p)
                 d.ellipse((x - 40, y - 40, x + 40, y + 40), fill=GRIS)
@@ -181,6 +186,10 @@ class Ecran:
                     self.menu = True
                     self.attente = p
                 elif p.phase == "anneau":
+                    if self.clics_perdus > 0:
+                        self.clics_perdus -= 1             # clic pas pris : l'anneau reste, il faut recliquer
+                        self.events.append(("clic perdu", p.index))
+                        return
                     self.events.append(("anneau", p.index))
                     p.passe("mijote")
                 elif p.phase == "pret":
@@ -358,6 +367,39 @@ def test_anneau_clique_en_son_centre_apres_le_glissement(jeu, souris_rapide):
     assert c.dishes >= 4, c.logs
     assert ecran.rates == 0, (ecran.events, c.logs)
     assert all(p.plats >= 1 for p in ecran.postes), ecran.events
+
+
+def test_comme_dans_le_vrai_jeu(jeu, souris_rapide, monkeypatch):
+    """Tout ce qui a été relevé en jeu le 2026-09-22, en même temps : pas de bulle pendant la cuisson, la caméra
+    suit le personnage, l'icône est illisible pendant l'anneau, et des clics sur l'anneau ne sont pas pris.
+    Attendu : les deux cuisinières tournent, aucun plat raté, tous les plats prêts sont ramassés."""
+    monkeypatch.setattr(sys.modules[__name__], "RING_TTL", 2.5)
+    ecran, c = jeu()
+    ecran.vues = {1: (250, 15), 2: (0, 0)}
+    ecran.sans_bulle_en_cuisson = True
+    ecran.icone_cachee = True
+    ecran.clics_perdus = 2
+    tourne(c, ecran, duree=40.0, plats=6)
+    assert c.dishes >= 6, c.logs
+    assert all(p.plats >= 2 for p in ecran.postes), (ecran.events, c.logs)
+    assert ecran.rates == 0, (ecran.events, c.logs)
+    assert [e for e in ecran.events if e[0] == "clic perdu"], "le scénario n'a pas joué les clics perdus"
+
+
+def test_un_plat_pret_est_ramasse_meme_sans_cuisiniere_rattachee(jeu, souris_rapide):
+    """Journal du 2026-09-22 : « bulle ready ignorée (2 cuisinières déjà suivies) » pendant 7 s. La boucle agit
+    sur ce qu'elle voit : un plat prêt est ramassé même si le suivi des cuisinières est faux."""
+    ecran, c = jeu(phases=("pret", "cuisson"))
+    ecran.sans_bulle_en_cuisson = True
+    vrai = cook.Cooker._assign
+
+    def faux(self, dets):
+        vrai(self, dets)
+        for d in dets:
+            d.pop("burner", None)                       # le suivi ne rattache rien
+    c._assign = faux.__get__(c)
+    tourne(c, ecran, duree=10.0, plats=1)
+    assert ecran.postes[0].plats >= 1, (ecran.events, c.logs)
 
 
 def test_find_rings_ne_garde_que_les_anneaux():
