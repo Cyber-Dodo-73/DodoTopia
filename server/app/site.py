@@ -53,6 +53,10 @@ LAST_UPDATE = {"fr": "17 septembre 2026", "en": "September 17, 2026"}
 STATIC_IMMUTABLE = "public, max-age=31536000, immutable"
 STATIC_SHORT = "public, max-age=86400"
 REDIRECT_CACHE = "public, max-age=3600"
+# Pages HTML : toujours revalidées (ETag -> 304, quelques octets). Avec « max-age=3600 », un navigateur gardait
+# une heure l'ancienne version d'une page déjà visitée : après la refonte, le propriétaire voyait encore l'ancien
+# site sur Dessin, Cuisine et Aide. Le cache du rendu reste côté serveur (SITE_PAGE_TTL_S).
+HTML_CACHE = "public, max-age=0, must-revalidate"
 
 MONTHS_FR = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
              "septembre", "octobre", "novembre", "décembre")
@@ -751,7 +755,7 @@ def page_header(lang: str, eyebrow: str, h1: str, lead: str, actions: str = "", 
 
 # --- Routes ---------------------------------------------------------------------------------------------
 
-def _html_response(request: Request, html: str, etag: str, cache: str = "public, max-age=300",
+def _html_response(request: Request, html: str, etag: str, cache: str = HTML_CACHE,
                    status: int = 200) -> Response:
     nonce = getattr(request.state, "csp_nonce", "") or secrets.token_urlsafe(16)
     headers = {"Cache-Control": cache, "ETag": etag}
@@ -978,7 +982,7 @@ def localized_page(lang: str, slug: str, request: Request):
         if query:
             html, etag = render_page(request.app, page_id, lang, query)
             ttl = int(request.app.state.settings.SITE_PAGE_TTL_S)
-            return _html_response(request, html, etag, cache=f"public, max-age={ttl}")
+            return _html_response(request, html, etag, cache=HTML_CACHE)
     if page_id is None:
         # Slug d'une autre langue (lien recopié) : on renvoie vers la bonne adresse dans cette langue.
         for other in LANGS:
@@ -989,7 +993,7 @@ def localized_page(lang: str, slug: str, request: Request):
         return _not_found(request)
     html, etag = render_page(request.app, page_id, lang)
     ttl = request.app.state.settings.SITE_PAGE_TTL_S if page_id in DB_PAGES else 3600
-    return _html_response(request, html, etag, cache=f"public, max-age={int(ttl)}")
+    return _html_response(request, html, etag, cache=HTML_CACHE)
 
 
 _SONG_REST = re.compile(r"^(\d{1,10})(?:-[A-Za-z0-9-]*)?$")
@@ -1020,7 +1024,7 @@ def _dynamic_page(request: Request, lang: str, slug: str) -> Response:
             return _redirect(canonical)
         html, etag = render_dynamic(app, lang, "songs", ("song", int(row["id"]), lang, row["updated_at"]),
                                     lambda s, lg, ctx: songs_page.render_detail(s, lg, ctx, row))
-        return _html_response(request, html, etag, cache=f"public, max-age={ttl}")
+        return _html_response(request, html, etag, cache=HTML_CACHE)
     if section in ROUTES["gallery"].values():
         m = _DRAWING_REST.match(rest)
         row = gallery_page.fetch_public_drawing(settings, int(m.group(1))) if m else None
@@ -1031,7 +1035,7 @@ def _dynamic_page(request: Request, lang: str, slug: str) -> Response:
             return _redirect(canonical)
         html, etag = render_dynamic(app, lang, "gallery", ("drawing", int(row["id"]), lang),
                                     lambda s, lg, ctx: gallery_page.render_detail(s, lg, ctx, row))
-        return _html_response(request, html, etag, cache=f"public, max-age={ttl}")
+        return _html_response(request, html, etag, cache=HTML_CACHE)
     if section in ROOM_SLUGS.values():
         code = room_page.normalize_code(rest)
         if code is None:
@@ -1114,7 +1118,9 @@ class SecurityHeadersMiddleware:
                 for name, value in self.HEADERS:
                     if name not in names:
                         headers.append((name, value))
-                if b"content-security-policy" not in names:
+                # 304 : pas de nouvelle CSP. Le navigateur réutilise le corps en cache, dont les scripts portent
+                # le nonce de la réponse d'origine ; une CSP au nonce neuf les bloquerait tous.
+                if b"content-security-policy" not in names and message.get("status") != 304:
                     csp = self.AUTH_CSP if is_auth else self.csp(nonce)
                     headers.append((b"content-security-policy", csp.encode()))
                 if is_static and b"cache-control" not in names:

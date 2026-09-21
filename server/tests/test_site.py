@@ -188,6 +188,15 @@ def test_etag_and_conditional_get(client):
     assert "max-age" in r.headers["cache-control"]
     r2 = client.get("/en/help", headers={"If-None-Match": etag})
     assert r2.status_code == 304 and not r2.content
+    # le corps en cache garde le nonce de la première réponse : un 304 ne doit pas apporter une autre CSP
+    assert "content-security-policy" not in r2.headers
+
+
+def test_html_pages_are_always_revalidated(client):
+    """Une page gardée une heure par le navigateur masquait la refonte du site à ceux qui l'avaient déjà visitée."""
+    for path in ("/fr/", "/fr/dessin", "/fr/aide", "/fr/morceaux"):
+        cc = client.get(path).headers["cache-control"]
+        assert "max-age=0" in cc and "must-revalidate" in cc, (path, cc)
 
 
 def test_gzip(client):
