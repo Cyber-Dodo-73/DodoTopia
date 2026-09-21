@@ -8,7 +8,7 @@ import re
 
 from ..i18n import t
 from ..rooms import ALPHABET, CODE_LEN
-from ..site import NONCE, esc
+from ..site import NONCE, decor, esc
 from ._listing import app_buttons, plain
 
 _CODE_RE = re.compile(rf"^[{ALPHABET}]{{{CODE_LEN}}}$")
@@ -32,7 +32,9 @@ def render_room(settings, lang: str, ctx, code: str) -> str:
               '.then(function(r){return r.json()}).then(function(x){'
               's.textContent=x.exists?(x.full?d.texts.full:d.texts.open):d.texts.gone}).catch(function(){});'
               'setTimeout(function(){window.location.href="dodotopia://room/"+d.code},400)})();</script>')
-    return f"""<section class="section"><div class="wrap">
+    ctx.body_class = "page-room theme-rooms"
+    return f"""<section class="errorpage"><span class="sky" aria-hidden="true">{decor("cloud cloud--a", "cloud cloud--b", "cloud cloud--c", "motif motif--a", "motif motif--b")}</span>
+<div class="wrap">
   <div class="errorbox">
     <p class="eyebrow">{esc(t(lang, "site.room.eyebrow"))}</p>
     <h1>{t(lang, "site.room.h1", code=code)}</h1>
@@ -41,6 +43,6 @@ def render_room(settings, lang: str, ctx, code: str) -> str:
     <p class="dl-note" id="room-status" role="status" aria-live="polite"></p>
     {app_buttons(lang, f"dodotopia://room/{code}", "site.room.open_app", ctx.latest)}
   </div>
-</div></section>
+</div><span class="hills" aria-hidden="true"></span></section>
 {script}
 """

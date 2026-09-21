@@ -50,7 +50,7 @@
   "settings.sustain.label": "サステインペダル",
   "settings.sustain.help": "ピアノのように、ファイルのペダル（CC64）で伸ばされた音を延長します。",
   "settings.game_process.label": "ゲームのプログラム",
-  "settings.game_process.help": "前面にある必要がある実行ファイルの名前です。前面でなくなると演奏、お絵描き、料理が停止します。空欄 = 確認しない。",
+  "settings.game_process.help": "ゲームのプログラム名（カンマ区切り。Heartopia は xdt.exe として動作します）。タイトルが「Heartopia」のウィンドウも認識されます。ほかのウィンドウが前面に来ると、演奏・お絵描き・料理は停止します。空欄 = チェックしない。",
   "settings.multi.device.label": "聞き取るオーディオ出力",
   "settings.multi.device.help": "ゲームの音が出ている出力です。リストはパネルを開くたびに読み直されます。選んだデバイスが外された場合も、「見つかりません」と表示されてリストに残ります。",
   "settings.multi.device.opt.default": "既定の出力（おすすめ）",

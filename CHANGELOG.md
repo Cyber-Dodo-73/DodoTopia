@@ -5,6 +5,15 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.0.1
+- **F6 rejoue dans le jeu.** La 2.0.0 refusait de jouer avec « le jeu n'est pas au premier plan » : elle cherchait un programme nommé Heartopia.exe, alors que le jeu tourne sous xdt.exe. Le jeu est maintenant reconnu par son programme ou par le titre de sa fenêtre, et si DodoTopia ne le trouve pas du tout, il ne bloque plus rien.
+- **Cuisine à plusieurs cuisinières réparée.** Quand le personnage rejoint une cuisinière, la caméra le suit et toutes les bulles glissent à l'écran : DodoTopia les perdait ou les confondait (une seule cuisinière servie, plats prêts oubliés, anneau vert cliqué à côté). Les bulles sont maintenant suivies ensemble, l'anneau est cliqué en son centre, une bulle qui bouge encore n'est pas cliquée, et la deuxième cuisinière n'attend plus 8 secondes après chaque lancement et chaque feu ajusté.
+- Les boutons « Importer un MIDI », « Importer une image » et l'export/import de profils d'instrument refonctionnent (ils ne faisaient rien en 2.0.0).
+- Un raccourci posé sur une touche de note (par exemple Arrêter = B) arrêtait la lecture tout seul : c'est maintenant refusé dans les Réglages, et réparé automatiquement au démarrage.
+- Linux : l'archive n'embarque plus les bibliothèques graphiques ni libstdc++ du système de construction (crash au lancement et fenêtre vide sur les distributions récentes), les conditions d'utilisation sont bien livrées, le lanceur est exécutable, et `DODO_SOFTWARE_RENDER=1` force le rendu logiciel. Chaque archive est contrôlée automatiquement et démarrée sur une Debian récente avant publication.
+- Les erreurs de l'interface sont écrites dans `dodotopia.log` au lieu de disparaître.
+- Site : les fichiers téléchargés ne sont plus recompressés par le serveur (l'archive Linux arrivait « compressée deux fois » avec Firefox), la taille et la reprise du téléchargement reviennent ; les moteurs de recherche peuvent lire le plan du site ; les nouveautés s'affichent mises en forme.
+
 ## 2.0.0
 - **Huit langues** : français, anglais, et en bêta espagnol, allemand, portugais du Brésil, chinois simplifié, japonais et thaï. La langue du système est choisie automatiquement, modifiable dans Réglages › Apparence, sans redémarrer.
 - **Nouvelle interface** : un seul système de couleurs, **thème sombre**, icônes dessinées à la place des emojis, textes jamais sous 12 px, cibles plus grandes, polices adaptées au chinois, japonais et thaï.

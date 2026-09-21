@@ -170,6 +170,18 @@ pour réessayer à la publication suivante). X et Bluesky sont annoncés par la 
 step de `release.yml`, secrets GitHub `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`,
 `BSKY_HANDLE`, `BSKY_APP_PASSWORD` ; chaque réseau est ignoré si ses secrets manquent ; `--dry-run` pour relire).
 
+**Moteurs de recherche.** `/sitemap.xml` est un index : il liste `/sitemap-pages.xml` et, seulement s'ils ont au
+moins une URL, `/sitemap-songs.xml` (morceaux approuvés d'au moins `SONG_INDEX_MIN_NOTES` notes) et
+`/sitemap-gallery.xml` (dessins approuvés), chacun avec son `<lastmod>` ; un sitemap vide listé dans l'index est
+signalé en erreur par Google et Bing. Tout le site (pages, `robots.txt`, sitemaps, redirections) et `/api/health`
+répondent à `HEAD` comme à `GET`, sans corps ; le reste de l'API garde ses méthodes. Les fichiers (`/dl/…`, morceaux,
+dessins, import) ne sont jamais compressés en gzip : ils gardent `Content-Length` et `Accept-Ranges` (progression,
+reprise, et pas de `.tar.gz` doublement compressé). **IndexNow** : avec `INDEXNOW_KEY` (8 à 128 caractères parmi
+a-z, A-Z, 0-9 et `-` ; `python -c "import secrets; print(secrets.token_hex(16))"`), la clé est servie sur
+`<PUBLIC_URL>/<clé>.txt` et un `POST https://api.indexnow.org/indexnow` part en tâche de fond à chaque version
+publiée (accueil, téléchargement et nouveautés, toutes langues) et à chaque morceau ou dessin approuvé (sa fiche,
+toutes langues). Un échec est journalisé (`dodo.indexnow`) et n'affecte jamais la requête. Vide = désactivé.
+
 ## 7. Sauvegarde et restauration
 
 Sur le VPS (les noms de conteneurs se trouvent avec `docker ps` ; `<compose>` est le nom donné par Dokploy) :

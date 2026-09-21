@@ -50,7 +50,7 @@
   "settings.sustain.label": "Pedal de resonancia",
   "settings.sustain.help": "Alarga las notas sostenidas por el pedal del archivo (CC64), como en un piano.",
   "settings.game_process.label": "Programa del juego",
-  "settings.game_process.help": "Nombre del ejecutable que debe estar en primer plano: tocar, dibujar y cocinar se detienen si deja de estarlo. Vacío = sin comprobación.",
+  "settings.game_process.help": "Programas del juego, separados por comas (Heartopia se ejecuta como xdt.exe). La ventana titulada «Heartopia» también se reconoce. La reproducción, el dibujo y la cocina se detienen si otra ventana pasa al frente. Vacío = sin comprobación.",
   "settings.multi.device.label": "Salida de audio escuchada",
   "settings.multi.device.help": "Aquella por la que el juego emite su sonido; la lista se vuelve a leer cada vez que se abre el panel. Si el dispositivo elegido se desconectó, sigue en la lista, marcado como «no encontrado».",
   "settings.multi.device.opt.default": "Salida predeterminada (recomendado)",

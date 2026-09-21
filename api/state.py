@@ -67,7 +67,8 @@ class StateMixin:
         if now - at > 1.0:
             name = str(self._cfg.get("game_process") or "").strip()
             try:
-                info = platform_io.game_window_info(name) if name else {"found": None, "foreground": None, "elevated": None}
+                info = (platform_io.game_window_info(platform_io.game_names(name), platform_io.GAME_TITLES)
+                        if name else {"found": None, "foreground": None, "elevated": None})
             except Exception:  # noqa
                 info = {"found": None, "foreground": None, "elevated": None}
             info = dict(info)

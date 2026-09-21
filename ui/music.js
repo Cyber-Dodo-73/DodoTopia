@@ -52,7 +52,7 @@ function openInstrumentConfig(id){
 function apiOpt(name, ...args){
   try{
     if(!window.pywebview || !window.pywebview.api || typeof window.pywebview.api[name] !== 'function') return Promise.resolve(null);
-    return Promise.resolve(api(name, ...args)).catch(() => null);
+    return Promise.resolve(api(name, ...args)).catch(e => { console.error('appel facultatif ' + name + ' :', e); return null; });
   }catch(e){ return Promise.resolve(null); }
 }
 // la carte #instPick est dessinee par instruments.js ; s'il enregistre deja sa vue, on ne la redessine pas.

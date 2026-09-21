@@ -30,7 +30,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import db, i18n, releases
+from . import db, i18n, legal_md, releases
 from .config import SERVER_VERSION
 from .i18n import DEFAULT_LANG, LANG_INFO, LANGS, t
 
@@ -44,6 +44,8 @@ OG_DIR = STATIC_DIR / "og"
 # Windows ne connaît pas .woff2 dans la base de registre : sans ça StaticFiles renvoie
 # application/octet-stream pour les polices.
 mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/svg+xml", ".svg")
 
 NONCE = "__NONCE__"                     # marqueur dans le HTML en cache, remplacé à chaque envoi
 LAST_UPDATE_ISO = "2026-09-17"          # dernière mise à jour du contenu rédigé (légal, aide) ; sitemap lastmod
@@ -117,6 +119,16 @@ for _slugs in (*ROUTES.values(), ROOM_SLUGS):
 PAGE_IDS = tuple(ROUTES)
 _FR_SLUGS = {slugs["fr"]: page_id for page_id, slugs in ROUTES.items()}
 
+# Ambiance de couleur par rubrique : classe `theme-<nom>` sur <body> (et sur les sections de l'accueil), lue par
+# la feuille de style à travers les variables `--t-*`. Tout le reste est « neutral ».
+THEMES = {"music": "music", "draw": "draw", "cook": "cook", "together": "rooms", "songs": "music",
+          "gallery": "draw"}
+
+
+def theme_of(page_id: str) -> str:
+    return THEMES.get(page_id, "neutral")
+
+
 # Pages dont le contenu vient de la base (dernière version, morceaux, dessins) : TTL court.
 DB_PAGES = frozenset({"home", "download", "news", "songs", "gallery"})
 # Hints du sitemap (changefreq, priority).
@@ -176,6 +188,40 @@ def human_date(iso: str | None, lang: str = "fr") -> str:
 def dl_path(version: str, filename: str) -> str:
     """Chemin de téléchargement, chaque segment encodé (les données viennent de la base)."""
     return f"/dl/{quote(str(version), safe='')}/{quote(str(filename), safe='')}"
+
+
+_QUOTE_MARK = chr(0xE000)               # zone à usage privé : remplace `"` le temps de la conversion Markdown
+_NOTES_HEADING = re.compile(r"<(/?)h[1-3]>")
+_NOTES_DEEP_HEADING = re.compile(r"^#{4,6}(?=\s)")
+
+
+def notes_line_count(raw: str | None) -> int:
+    """Nombre de lignes non vides des notes d'une version (ce que compte `max_items` de `notes_html`)."""
+    return sum(1 for line in (raw or "").splitlines() if line.strip())
+
+
+def notes_html(raw: str | None, max_items: int | None = None) -> str:
+    """Notes de version (Markdown du CHANGELOG : listes, **gras**, `code`, liens https) -> HTML sûr.
+
+    Le rendu est celui de `legal_md.markdown_to_html`, qui échappe tout le texte avant d'ajouter son balisage ;
+    les guillemets sont échappés en plus (`&quot;`, y compris dans l'adresse d'un lien : pas d'attribut injecté),
+    les titres sont rétrogradés en <h4> (la page a déjà son <h1> et un <h2> par version), et `max_items` garde les
+    N premières lignes non vides AVANT la conversion (couper du HTML laisserait des balises ouvertes)."""
+    lines: list[str] = []
+    kept = 0
+    for line in (raw or "").replace(_QUOTE_MARK, "").strip().splitlines():
+        if line.strip():
+            if max_items is not None and kept >= max_items:
+                break
+            kept += 1
+            line = _NOTES_DEEP_HEADING.sub("###", line)
+            if line.lstrip().startswith("•"):
+                line = line.replace("•", "-", 1)
+        lines.append(line)
+    if not kept:
+        return ""
+    html = legal_md.markdown_to_html("\n".join(lines).replace('"', _QUOTE_MARK))
+    return _NOTES_HEADING.sub(r"<\1h4>", html).replace(_QUOTE_MARK, "&quot;")
 
 
 def last_update(lang: str) -> str:
@@ -302,6 +348,7 @@ class Ctx:
         self.og: tuple | None = None
         self.crumb: tuple[str, str] | None = None
         self.canonical = True
+        self.body_class: str | None = None      # remplace `page-<id> theme-<thème>` (404, salon)
 
     @cached_property
     def latest(self) -> dict | None:
@@ -473,13 +520,13 @@ def lang_switcher(lang: str, page_id: str, paths: dict[str, str] | None = None) 
         for code in LANGS)
     label = f'{t(lang, "site.nav.language")}: {LANG_INFO[lang]["name"]}'
     return (f'<details class="langs"><summary aria-label="{esc(label)}">'
-            f'<span class="langs__ico" aria-hidden="true">🌐</span><span class="langs__code">{esc(lang.upper())}</span>'
+            f'<span class="langs__ico" aria-hidden="true"></span><span class="langs__code">{esc(lang.upper())}</span>'
             f'</summary><ul class="langs__menu">{items}</ul></details>')
 
 
 def head(settings, lang: str, page_id: str, title: str, description: str, extra: str = "",
          robots: str = "index, follow", canonical: bool = True, paths: dict[str, str] | None = None,
-         og: tuple | None = None) -> str:
+         og: tuple | None = None, body_class: str | None = None) -> str:
     base = settings.public_url
     paths = paths or {code: url_for(code, page_id) for code in LANGS}
     url = f"{base}{paths[lang]}"
@@ -510,9 +557,11 @@ def head(settings, lang: str, page_id: str, title: str, description: str, extra:
                          f'src="{esc(script_url)}"></script>\n')
     canon = f'<link rel="canonical" href="{esc(url)}">\n{alternates}' if canonical else ""
     nav_items = "".join(
-        f'<a href="{url_for(lang, pid)}"' + (' aria-current="page"' if pid == page_id else "")
+        f'<a href="{url_for(lang, pid)}"' + (f' class="nav--{pid}"' if pid in ("music", "draw", "cook") else "")
+        + (' aria-current="page"' if pid == page_id else "")
         + f'>{esc(t(lang, f"site.nav.{pid}"))}</a>'
         for pid in ("music", "draw", "cook", "songs", "gallery", "help"))
+    body_class = body_class or f"page-{page_id} theme-{theme_of(page_id)}"
     beta = ""
     if i18n.is_beta(lang):
         beta = (f'<div class="beta" role="note"><div class="wrap"><p>{t(lang, "site.common.beta_banner")} '
@@ -526,8 +575,8 @@ def head(settings, lang: str, page_id: str, title: str, description: str, extra:
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
 {canon}<meta name="robots" content="{esc(robots)}">
-<meta name="theme-color" content="#f4ead8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#231c18" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fff9ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d1715" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 {verif}<meta property="og:type" content="website">
 <meta property="og:site_name" content="DodoTopia">
@@ -545,15 +594,14 @@ def head(settings, lang: str, page_id: str, title: str, description: str, extra:
 <meta name="twitter:image" content="{esc(image)}">
 <link rel="icon" href="/static/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="{static_url('logo.png')}">
-<link rel="preload" href="{static_url('fonts/fredoka-latin.woff2')}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{css_href()}">
 {plausible}{extra}</head>
-<body>
+<body class="{esc(body_class)}">
 <a class="skip" href="#contenu">{esc(t(lang, "site.common.skip"))}</a>
-{beta}<header class="site-header"><div class="wrap">
+{beta}<header class="site-header"><div class="wrap wrap--wide">
   <a class="brand" href="{url_for(lang, 'home')}" aria-label="DodoTopia — {esc(t(lang, 'site.nav.home'))}">
-    <img class="brand__logo" src="{static_url('logo.png')}" width="48" height="48" decoding="async"
-         alt="{esc(t(lang, 'site.brand.logo_alt'))}">
+    {dodo_picture(lang, 48, "brand__logo", lazy=False, alt_key="site.brand.logo_alt")}
     <span class="brand__name">DodoTopia</span>
   </a>
   <nav class="header-nav" aria-label="{esc(t(lang, 'site.nav.main_label'))}">
@@ -575,26 +623,29 @@ def foot(settings, lang: str, page_id: str, version_line: str, paths: dict[str, 
     support = "".join(link(p) for p in ("help", "community"))
     support += f'<li><a href="mailto:{EDITEUR_COURRIEL}">{esc(t(lang, "site.footer.contact"))}</a></li>'
     legal = "".join(link(p) for p in ("legal", "privacy", "terms"))
-    langs = " · ".join(f'<a href="{esc(paths[code])}" hreflang="{code}" lang="{code}">'
-                       f'{esc(LANG_INFO[code]["name"])}</a>' for code in LANGS)
+    langs = "".join(f'<a href="{esc(paths[code])}" hreflang="{code}" lang="{code}"'
+                    + (' aria-current="true"' if code == lang else "")
+                    + f'>{esc(LANG_INFO[code]["name"])}</a>' for code in LANGS)
     return f"""</main>
-<footer class="site-footer"><div class="wrap">
-  <div class="footer-grid">
+<footer class="site-footer"><span class="site-footer__hills" aria-hidden="true"></span><div class="wrap">
+  <div class="footer-top">
     <div class="footer-brand">
-      <img src="{static_url('logo.png')}" width="40" height="40" loading="lazy" decoding="async"
-           alt="{esc(t(lang, 'site.brand.logo_alt'))}">
+      {dodo_picture(lang, 72)}
       <p><strong>DodoTopia</strong><br>{t(lang, 'site.footer.tagline')}</p>
     </div>
+    <p class="footer-trust">{esc(t(lang, 'site.footer.trust'))}</p>
+  </div>
+  <div class="footer-grid">
     <nav aria-label="{esc(t(lang, 'site.footer.product'))}"><h2 class="footer-h">{esc(t(lang, 'site.footer.product'))}</h2>
-      <ul class="footer-nav">{product}</ul></nav>
+      <ul class="footer-nav footer-nav--cols">{product}</ul></nav>
     <nav aria-label="{esc(t(lang, 'site.footer.support'))}"><h2 class="footer-h">{esc(t(lang, 'site.footer.support'))}</h2>
       <ul class="footer-nav">{support}</ul></nav>
     <nav aria-label="{esc(t(lang, 'site.footer.legal'))}"><h2 class="footer-h">{esc(t(lang, 'site.footer.legal'))}</h2>
       <ul class="footer-nav">{legal}</ul></nav>
   </div>
   <p class="footer-langs" lang="">{langs}</p>
-  <p class="footer-version">{version_line}</p>
   <p class="disclaimer">{t(lang, 'site.footer.disclaimer')}</p>
+  <p class="footer-version">{version_line}</p>
 </div></footer>
 </body>
 </html>
@@ -613,26 +664,89 @@ def page(settings, lang: str, page_id: str, body: str, ctx: Ctx, title: str | No
         extra += ld_script(breadcrumb_ld(settings, lang, page_id, ctx.crumb))
     extra += ld_script(organization_ld(settings))
     version_line = f"{esc(t(lang, 'site.footer.server'))} {esc(SERVER_VERSION)}"
-    return (head(settings, lang, page_id, title, description, extra, ctx.robots, canonical, ctx.paths, ctx.og)
+    return (head(settings, lang, page_id, title, description, extra, ctx.robots, canonical, ctx.paths, ctx.og,
+                 ctx.body_class)
             + body + foot(settings, lang, page_id, version_line, ctx.paths))
 
 
 # --- Captures de l'application ------------------------------------------------------------------------
 
-def app_shot(name: str, alt: str, cls: str = "shot", eager: bool = False) -> str:
-    """Capture de l'interface (`/static/app-<name>.png`), dimensions réelles réservées. `eager` pour le héros."""
+SHOT_WIDTHS = (730, 1460)              # déclinaisons WebP produites par .tools/make_shots.py
+SHOT_SIZES = "(max-width: 900px) 94vw, 760px"
+DODO_SOURCES = ((160, "dodo-96.webp"), (10_000, "dodo-512.webp"))
+
+
+def app_shot(name: str, alt: str, cls: str = "shot", eager: bool = False, sizes: str = SHOT_SIZES) -> str:
+    """Capture de l'interface : WebP en deux largeurs dans `<source>`, le PNG d'origine en `src` (repli),
+    dimensions réelles réservées. `eager` pour la seule image du héros."""
     file = f"app-{name}.png"
-    w, h = png_size(STATIC_DIR / file) or (1280, 812)
+    w, h = png_size(STATIC_DIR / file) or (1460, 812)
     load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
-    return (f'<img class="{cls}" src="{static_url(file)}" width="{w}" height="{h}"'
-            f' {load} decoding="async" alt="{esc(alt)}">')
+    srcset = ", ".join(f"{static_url(f'app-{name}-{n}.webp')} {n}w" for n in SHOT_WIDTHS
+                       if (STATIC_DIR / f"app-{name}-{n}.webp").is_file())
+    source = f'<source type="image/webp" srcset="{srcset}" sizes="{esc(sizes)}">' if srcset else ""
+    return (f'<picture>{source}<img class="{cls}" src="{static_url(file)}" width="{w}" height="{h}"'
+            f' {load} decoding="async" alt="{esc(alt)}"></picture>')
 
 
-def app_figure(lang: str, name: str, alt: str, caption: str, cls: str = "shot", eager: bool = False) -> str:
-    """Capture + légende + lien d'agrandissement : réduite dans la page, elle reste consultable en entier."""
-    return (f'<figure class="shotfig">{app_shot(name, alt, cls, eager)}'
-            f'<figcaption>{caption} · <a href="{static_url(f"app-{name}.png")}" target="_blank" rel="noopener">'
-            f'{esc(t(lang, "site.common.open_shot"))}</a></figcaption></figure>')
+def window_frame(inner: str, tilt: str = "", caption: str = "") -> str:
+    """Cadre « fenêtre » autour d'une capture : barre de titre à trois pastilles (CSS), légère rotation
+    (`tilt` : "l" ou "r", nulle sur petit écran et sans animation), légende facultative hors du cadre."""
+    cls = "win" + (f" win--tilt-{tilt}" if tilt in ("l", "r") else "")
+    cap = f"<figcaption>{caption}</figcaption>" if caption else ""
+    return (f'<figure class="{cls}"><div class="win__frame"><span class="win__bar" aria-hidden="true"></span>'
+            f'{inner}</div>{cap}</figure>')
+
+
+def app_figure(lang: str, name: str, alt: str, caption: str, cls: str = "shot", eager: bool = False,
+               tilt: str = "", sizes: str = SHOT_SIZES) -> str:
+    """Capture dans son cadre fenêtre + légende + lien d'agrandissement : elle reste consultable en entier."""
+    link = (f'{caption} · <a href="{static_url(f"app-{name}.png")}" target="_blank" rel="noopener">'
+            f'{esc(t(lang, "site.common.open_shot"))}</a>')
+    return window_frame(app_shot(name, alt, cls, eager, sizes), tilt, link)
+
+
+def dodo_picture(lang: str, px: int, cls: str = "", lazy: bool = True, alt_key: str = "site.brand.dodo_alt") -> str:
+    """Le dodo du logo : WebP (96 ou 512 px selon la taille affichée), `logo.png` en repli."""
+    webp = next(name for limit, name in DODO_SOURCES if px <= limit)
+    source = f'<source type="image/webp" srcset="{static_url(webp)}">' if (STATIC_DIR / webp).is_file() else ""
+    cls_attr = f' class="{cls}"' if cls else ""
+    load = ' loading="lazy"' if lazy else ""
+    return (f'<picture>{source}<img{cls_attr} src="{static_url("logo.png")}" width="{px}" height="{px}"{load}'
+            f' decoding="async" alt="{esc(t(lang, alt_key))}"></picture>')
+
+
+def dodo(lang: str, px: int, cls: str = "") -> str:
+    """Dodo flottant : halo en dégradé conique flouté, tache douce derrière, animation `float` (CSS)."""
+    return (f'<span class="dodo {cls}"><span class="dodo__halo" aria-hidden="true"></span>'
+            f'<span class="dodo__blob" aria-hidden="true"></span>{dodo_picture(lang, px)}</span>')
+
+
+def decor(*names: str) -> str:
+    """Motifs décoratifs en CSS (masques SVG colorés par le thème) : jamais d'<img alt="">."""
+    return "".join(f'<span class="{name}" aria-hidden="true"></span>' for name in names)
+
+
+SKY = ("cloud cloud--a", "cloud cloud--b", "motif motif--a", "motif motif--b", "motif motif--c")
+
+
+def page_header(lang: str, eyebrow: str, h1: str, lead: str, actions: str = "", art: str = "",
+                back: str = "", cls: str = "") -> str:
+    """En-tête coloré des pages intérieures (`--t-*` du thème de la page) : nuages, motifs de la rubrique, vague
+    basse. `eyebrow`, `h1`, `lead`, `actions`, `art`, `back` : HTML déjà sûr. Sans `h1` (pages légales, dont le
+    titre est dans le document) : simple bandeau décoratif."""
+    parts = [back,
+             f'<p class="eyebrow">{eyebrow}</p>' if eyebrow else "",
+             f"<h1>{h1}</h1>" if h1 else "",
+             f'<p class="lead">{lead}</p>' if lead else "",
+             actions]
+    classes = "pagehead" + (" pagehead--art" if art else "") + (f" {cls}" if cls else "")
+    return f"""<section class="{classes}"><span class="sky" aria-hidden="true">{decor(*SKY)}</span>
+<div class="wrap pagehead__grid">
+  <div class="pagehead__txt">{"".join(x for x in parts if x)}</div>
+  {art}
+</div><span class="wave" aria-hidden="true"></span></section>
+"""
 
 
 # --- Routes ---------------------------------------------------------------------------------------------
@@ -687,6 +801,15 @@ def robots(request: Request):
     return PlainTextResponse(txt, headers={"Cache-Control": STATIC_SHORT})
 
 
+@router.get("/{name}.txt", include_in_schema=False)
+def indexnow_key_file(name: str, request: Request):
+    """`/<INDEXNOW_KEY>.txt` : preuve de propriété demandée par IndexNow (contenu = la clé). Rien sans clé."""
+    key = request.app.state.settings.indexnow_key
+    if not key or name != key:
+        raise StarletteHTTPException(status_code=404)
+    return PlainTextResponse(key, headers={"Cache-Control": STATIC_SHORT})
+
+
 def _content_lastmod(app) -> str:
     """Date de dernière modification des pages liées à la base : celle de la dernière publication."""
     try:
@@ -697,24 +820,54 @@ def _content_lastmod(app) -> str:
     return max(date, LAST_UPDATE_ISO) if date else LAST_UPDATE_ISO
 
 
-@router.get("/sitemap.xml", include_in_schema=False)
-def sitemap_index(request: Request):
-    base = request.app.state.settings.public_url
-    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
-           '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-           f"  <sitemap><loc>{esc(base)}/sitemap-pages.xml</loc><lastmod>{_content_lastmod(request.app)}</lastmod></sitemap>\n"
-           f"  <sitemap><loc>{esc(base)}/sitemap-songs.xml</loc></sitemap>\n"
-           f"  <sitemap><loc>{esc(base)}/sitemap-gallery.xml</loc></sitemap>\n"
-           "</sitemapindex>\n")
-    return Response(xml, media_type="application/xml", headers={"Cache-Control": STATIC_SHORT})
-
-
+XML_MEDIA_TYPE = "application/xml; charset=utf-8"
 SITEMAP_MAX_ITEMS = 5000            # × 8 langues : sous la limite de 50 000 URL par fichier
 SITEMAP_DB_CACHE = "public, max-age=3600"
 
 
+def _xml_response(xml: str, cache: str) -> Response:
+    return Response(xml, media_type=XML_MEDIA_TYPE, headers={"Cache-Control": cache})
+
+
+def _sitemap_children(settings) -> list[tuple[str, str]]:
+    """(nom, lastmod) des sitemaps de contenu qui ont au moins une URL : un sitemap vide listé dans l'index est
+    signalé en erreur par Google et Bing. `lastmod` : date du morceau / du dessin modifié le plus récemment."""
+    children = []
+    try:
+        conn = db.connect(settings)
+        try:
+            song = conn.execute("SELECT COUNT(*) AS n, MAX(COALESCE(updated_at, created_at)) AS last FROM songs "
+                                "WHERE status='approved' AND note_count >= ?",
+                                (settings.SONG_INDEX_MIN_NOTES,)).fetchone()
+            drawing = conn.execute("SELECT COUNT(*) AS n, MAX(COALESCE(reviewed_at, created_at)) AS last "
+                                   "FROM drawings WHERE status='approved'").fetchone()
+        finally:
+            conn.close()
+    except Exception:  # noqa - base indisponible : l'index garde au moins le sitemap des pages
+        log.exception("index du sitemap")
+        return children
+    for name, row in (("sitemap-songs.xml", song), ("sitemap-gallery.xml", drawing)):
+        if int(row["n"] or 0) > 0:
+            children.append((name, str(row["last"] or "")[:10] or LAST_UPDATE_ISO))
+    return children
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+def sitemap_index(request: Request):
+    settings = request.app.state.settings
+    base = settings.public_url
+    entries = [("sitemap-pages.xml", _content_lastmod(request.app)), *_sitemap_children(settings)]
+    items = "".join(f"  <sitemap><loc>{esc(base)}/{name}</loc><lastmod>{esc(lastmod)}</lastmod></sitemap>\n"
+                    for name, lastmod in entries)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+           f"{items}</sitemapindex>\n")
+    return _xml_response(xml, SITEMAP_DB_CACHE)
+
+
 def _urlset(base: str, entries: list[tuple[dict[str, str], str, str, str]]) -> Response:
-    """entries : ({lang: chemin}, lastmod, changefreq, priority) -> une <url> par langue avec ses alternates."""
+    """entries : ({lang: chemin}, lastmod, changefreq, priority) -> une <url> par langue avec ses alternates.
+    Sans entrée : un `urlset` vide, valide (l'index ne le liste pas, mais l'adresse répond toujours 200)."""
     urls = []
     for paths, lastmod, freq, prio in entries:
         links = "".join(f'<xhtml:link rel="alternate" hreflang="{code}" href="{esc(base + paths[code])}"/>'
@@ -728,7 +881,7 @@ def _urlset(base: str, entries: list[tuple[dict[str, str], str, str, str]]) -> R
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
            'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
            f"{''.join(urls)}</urlset>\n")
-    return Response(xml, media_type="application/xml", headers={"Cache-Control": SITEMAP_DB_CACHE})
+    return _xml_response(xml, SITEMAP_DB_CACHE)
 
 
 @router.get("/sitemap-songs.xml", include_in_schema=False)
@@ -781,7 +934,7 @@ def sitemap_pages(request: Request):
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
            'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
            f"{''.join(urls)}</urlset>\n")
-    return Response(xml, media_type="application/xml", headers={"Cache-Control": STATIC_SHORT})
+    return _xml_response(xml, STATIC_SHORT)
 
 
 @router.get("/favicon.ico", include_in_schema=False)

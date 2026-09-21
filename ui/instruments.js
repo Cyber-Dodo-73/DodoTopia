@@ -174,7 +174,7 @@ function instDetail(id, force){
     const val = (r && r.id) ? r : null;
     if(val) INST.detail.set(id, {key, val});
     return val;
-  }).catch(() => null);
+  }).catch(e => { console.error('fiche instrument (get_instrument_detail) :', e); return null; });
 }
 function instDetailCached(id){ const c = INST.detail.get(id); return c ? c.val : null; }
 function instForget(){ INST.detail.clear(); }

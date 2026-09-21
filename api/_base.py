@@ -26,6 +26,13 @@ from version import VERSION
 
 from ._common import IMAGE_MIME, UI_PATH, ICON_PATH, TERMS_GATED, log
 
+# ui_log : garde-fous du relais des erreurs de l'interface (etat au niveau du module : l'Api est un singleton)
+_UI_LOG_LEVELS = ("error", "warn", "info")
+_UI_LOG_MAX_CHARS = 500
+_UI_LOG_PER_MINUTE = 20
+_ui_log_times = deque()
+_ui_log_lock = threading.Lock()
+
 
 class BaseMixin:
     # ---------------------------------------------------------- conditions d'utilisation
@@ -40,9 +47,31 @@ class BaseMixin:
         """Texte des CGU pour l'ecran d'acceptation : {version, lang, summary, markdown, html}."""
         try:
             return terms.load(core.RES_DIR, lang)
-        except OSError as e:
-            self._log(f"CGU illisibles : {e}")
+        except Exception:  # noqa : tout est journalise, l'ecran des CGU affiche son message d'erreur
+            try:
+                legal = terms.legal_dir(core.RES_DIR)
+                found = sorted(os.listdir(legal)) if os.path.isdir(legal) else None
+            except OSError:
+                found = None
+            log.exception("CGU illisibles : chemin tenté %s ; RES_DIR = %s ; dossier legal %s",
+                          terms.path_for(core.RES_DIR, lang), core.RES_DIR,
+                          "absent" if found is None else f"présent, contenu : {found}")
             return None
+
+    def ui_log(self, level, msg):
+        """Relais des erreurs JavaScript vers dodotopia.log (la console du navigateur est invisible dans l'application
+        gelee). Niveau borne, message tronque a 500 caracteres, au plus 20 lignes par minute : le reste est ignore."""
+        level = level if level in _UI_LOG_LEVELS else "error"
+        text = " ".join(str(msg).split())[:_UI_LOG_MAX_CHARS]
+        now = time.monotonic()
+        with _ui_log_lock:
+            while _ui_log_times and now - _ui_log_times[0] >= 60.0:
+                _ui_log_times.popleft()
+            if len(_ui_log_times) >= _UI_LOG_PER_MINUTE:
+                return False
+            _ui_log_times.append(now)
+        log.warning("UI: [%s] %s", level, text)
+        return True
 
     def accept_terms(self, version, lang="fr"):
         """Acceptation des CGU depuis l'ecran bloquant : enregistree dans la configuration et le journal."""

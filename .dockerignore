@@ -21,3 +21,8 @@ downloads/
 online.log
 salon.log
 cuisine_*.png
+.tools/python/
+.tools/__pycache__/
+artifacts/
+webview/
+exports/

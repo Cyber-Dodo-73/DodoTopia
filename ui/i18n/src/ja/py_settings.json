@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "認識できないキー",
   "settings.error.hotkey_taken": "「{label}」ですでに使われています",
   "settings.error.unknown_type": "不明なタイプ",
-  "settings.error.unknown_section": "不明なセクション：{section}"
+  "settings.error.unknown_section": "不明なセクション：{section}",
+  "settings.error.key_is_note": "このキーは音符の演奏に使われます。ファンクションキー（F1〜F12）か、Ctrl や Alt との組み合わせを選んでください。",
+  "notify.hotkeys_fixed": "音符キーに設定されていたショートカットを既定に戻しました。演奏が勝手に止まる原因でした。"
 }

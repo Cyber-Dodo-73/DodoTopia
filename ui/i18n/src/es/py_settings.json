@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "tecla no reconocida",
   "settings.error.hotkey_taken": "ya usada para \"{label}\"",
   "settings.error.unknown_type": "tipo desconocido",
-  "settings.error.unknown_section": "sección desconocida: {section}"
+  "settings.error.unknown_section": "sección desconocida: {section}",
+  "settings.error.key_is_note": "Esta tecla sirve para tocar notas: elige una tecla de función (F1 a F12) o una combinación con Ctrl o Alt.",
+  "notify.hotkeys_fixed": "Un atajo puesto en una tecla de nota se ha restablecido: detenía la reproducción por sí solo."
 }

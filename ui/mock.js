@@ -166,10 +166,10 @@ function mockMain(){
       start_at_ms: null, max_players: null, seq: 0, clock: {}, net_offset_ms: 0, can_start: false,
       start_blocker: 'Pas de salon', me: {}, error: '', last_room: 'K7P2QD', min_version: '1.6.0'}};
   const MOCK_UPDATE = upd
-    ? {state: upd === 'ready' ? 'ready' : 'downloading', current: '2.0.0', latest: '2.0.1',
+    ? {state: upd === 'ready' ? 'ready' : 'downloading', current: '2.0.1', latest: '2.0.2',
        notes: 'Salons en ligne, bibliothèque partagée et mise à jour automatique.', mandatory: false, kind: 'setup',
        progress: 0.35, done_mb: 4.2, size_mb: 12.0, path: null, error: '', checked_at: NOW}
-    : {state: offline ? 'idle' : 'uptodate', current: '2.0.0', latest: '2.0.0', notes: '', mandatory: false, kind: 'setup',
+    : {state: offline ? 'idle' : 'uptodate', current: '2.0.1', latest: '2.0.1', notes: '', mandatory: false, kind: 'setup',
        progress: 0, done_mb: 0, size_mb: 0, path: null, error: '', checked_at: offline ? 0 : NOW};
   const MOCK_ONLINE = !wantOnline ? undefined : {
     server_url: 'https://dodotopia.cyber-dodo.fr', server_ok: !offline, server_version: '2.0.0', min_client: '1.6.0',
@@ -192,7 +192,7 @@ function mockMain(){
     room: MOCK_ROOM || MOCK_IDLE_ROOM, clock: (MOCK_ROOM || MOCK_IDLE_ROOM).room.clock};
   // fenêtre du jeu (get_state().game_window) et réponses simulées des appels de la phase 2 (core.js : window.MOCK_API)
   const gw = arg('gamewin');
-  const MOCK_GAME = {found: gw !== 'off', foreground: false, elevated: gw === 'admin', checked: gw !== 'none', process: 'Heartopia.exe'};
+  const MOCK_GAME = {found: gw !== 'off', foreground: false, elevated: gw === 'admin', checked: gw !== 'none', process: 'xdt.exe, Heartopia.exe'};
   const later = (v, ms) => new Promise(res => setTimeout(() => res(v), ms));
   window.MOCK_API = {
     song_tracks: () => later({ok: true, off: [4], tracks: [
@@ -279,7 +279,7 @@ ${LOREM[(p + a) % LOREM.length]}
     if(termsArg === 'en') TERMS.lang = 'en';
   }
 
-  render({version:'2.0.0', instruments: MOCK_INSTRUMENTS,
+  render({version:'2.0.1', instruments: MOCK_INSTRUMENTS,
     instrument: instIdx, instrument_id: instCur.id, instrument_ready: instCur.ready,
     instrument_blocked: instCur.ready ? '' : instCur.blocked_reason,
     instrument_favorites: ['piano', 'lyre'], instrument_wizard: null,
@@ -373,7 +373,7 @@ ${LOREM[(p + a) % LOREM.length]}
     if(location.search.includes('adv')) SET.advOpen = true;   // &adv : « Avancé » déplié
     openSettings({fields:F, sections:['general', 'lecture', 'hotkeys', 'multi', 'draw', 'grids', 'cook', 'online'],
       multi_devices:['Digital Audio (S/PDIF) (High Definition Audio Device)', 'Casque (2- CORSAIR VOID ELITE Wireless Gaming Headset)', 'VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)'],
-      songs_folder:'C:\\Users\\moi\\AppData\\Local\\DodoTopia\\songs', data_dir:'C:\\Users\\moi\\AppData\\Local\\DodoTopia', version:'2.0.0', install_kind:'setup',
+      songs_folder:'C:\\Users\\moi\\AppData\\Local\\DodoTopia\\songs', data_dir:'C:\\Users\\moi\\AppData\\Local\\DodoTopia', version:'2.0.1', install_kind:'setup',
       logs:{multi:true, dessin:true, cuisine:false, online:false}, online_ready:false}, ms[1] || null);
     const sq = /[?&]settingsq=([^&]+)/.exec(location.search);   // &settingsq=texte : recherche dans les réglages
     if(sq){ const inp = $('settingsSearch'); inp.value = decodeURIComponent(sq[1]); inp.oninput(); }

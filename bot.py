@@ -4,7 +4,7 @@ interruptible, deplacement « comme une main », clic, detection d'une souris ou
 import random
 import time
 
-from platform_io import cursor_pos, mouse_move, mouse_down, mouse_up, mouse_hint, foreground_process_name, virtual_screen
+from platform_io import cursor_pos, mouse_move, mouse_down, mouse_up, mouse_hint, game_in_front, virtual_screen
 
 
 def screen_fingerprint():
@@ -140,17 +140,8 @@ class MouseBot:
         return True
 
     def _game_in_front(self):
-        """None si aucune verification (reglage `game_process` vide ou plateforme muette), sinon vrai/faux."""
-        wanted = str(self.cfg.get("game_process") or "").strip().lower()
-        if not wanted:
-            return None
-        try:
-            name = foreground_process_name()
-        except Exception:  # noqa
-            return None
-        if name is None:
-            return None
-        return name.rsplit("\\", 1)[-1].rsplit("/", 1)[-1].lower() == wanted
+        """True / False / None : voir platform_io.game_in_front (None = aucune verification)."""
+        return game_in_front(self.cfg.get("game_process"))
 
     def _check_game_front(self):
         """Au plus toutes les 0,25 s : si le jeu a quitte le premier plan, on arrete avant le prochain clic

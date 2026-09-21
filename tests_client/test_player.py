@@ -275,10 +275,18 @@ def test_injection_refusee_arrete_proprement(player, clock, monkeypatch):
     assert player._held == []
 
 
-def test_jeu_absent_du_premier_plan_annule_la_lecture(player, clock, sent, monkeypatch):
+def _front(monkeypatch, proc, title, found=True):
+    """Fenetre au premier plan simulee, et jeu present (ou non) ailleurs sur le bureau."""
+    monkeypatch.setattr(platform_io, "foreground_window", lambda: (proc, title))
+    monkeypatch.setattr(platform_io, "game_window_info",
+                        lambda names, titles=(): {"found": found, "foreground": False, "elevated": False})
+    platform_io._found_cache.update(at=0.0, key=None, found=None)
+
+
+def test_autre_fenetre_devant_annule_la_lecture(player, clock, sent, monkeypatch):
     player.set_instrument("piano")
-    player.cfg["game_process"] = "Heartopia.exe"
-    monkeypatch.setattr(platform_io, "foreground_process_name", lambda: "discord.exe")
+    player.cfg["game_process"] = platform_io.DEFAULT_GAME_PROCESS
+    _front(monkeypatch, "Discord.exe", "#general - Discord", found=True)
     _song(player, "une.mid", [(0.0, 60, 0.5)])
     player.play("game")
     _run_to_end(player, clock)
@@ -286,15 +294,62 @@ def test_jeu_absent_du_premier_plan_annule_la_lecture(player, clock, sent, monke
     assert not [k for k, up, t in sent if not up], "des touches sont parties vers une autre application"
 
 
-def test_jeu_au_premier_plan_laisse_jouer(player, clock, sent, monkeypatch):
+def test_heartopia_tourne_sous_xdt_exe(player, clock, sent, monkeypatch):
+    """Le processus du jeu est xdt.exe : la 2.0.0 attendait Heartopia.exe et refusait de jouer chez tout le monde."""
     player.set_instrument("piano")
-    player.cfg["game_process"] = "Heartopia.exe"
-    monkeypatch.setattr(platform_io, "foreground_process_name", lambda: "C:\\Jeux\\Heartopia.exe")
+    player.cfg["game_process"] = platform_io.DEFAULT_GAME_PROCESS
+    _front(monkeypatch, "C:\\Jeux\\Heartopia\\xdt.exe", "Heartopia")
     _song(player, "une.mid", [(0.0, 60, 0.5)])
     player.play("game")
     _run_to_end(player, clock)
     assert player.last_stop_reason == ""
     assert [k for k, up, t in sent if not up]
+
+
+def test_fenetre_titree_heartopia_reconnue_meme_si_l_executable_change(player, clock, sent, monkeypatch):
+    player.set_instrument("piano")
+    player.cfg["game_process"] = "autre.exe"
+    _front(monkeypatch, "launcher_renomme.exe", "Heartopia", found=False)
+    _song(player, "une.mid", [(0.0, 60, 0.5)])
+    player.play("game")
+    _run_to_end(player, clock)
+    assert player.last_stop_reason == ""
+    assert [k for k, up, t in sent if not up]
+
+
+def test_jeu_introuvable_ne_bloque_pas(player, clock, sent, monkeypatch):
+    """Si aucune fenetre du jeu n'est reconnue (executable inconnu), on ne bloque pas tout le monde."""
+    player.set_instrument("piano")
+    player.cfg["game_process"] = platform_io.DEFAULT_GAME_PROCESS
+    _front(monkeypatch, "jeu_inconnu.exe", "Une fenêtre", found=False)
+    _song(player, "une.mid", [(0.0, 60, 0.5)])
+    player.play("game")
+    _run_to_end(player, clock)
+    assert player.last_stop_reason == ""
+    assert [k for k, up, t in sent if not up]
+
+
+def test_un_onglet_de_navigateur_nomme_heartopia_n_est_pas_le_jeu():
+    names = platform_io.game_names(platform_io.DEFAULT_GAME_PROCESS)
+    assert names == {"xdt.exe", "heartopia.exe"}
+    assert platform_io.is_game_window("zen.exe", "Heartopia wiki - Zen Browser", names) is False
+    assert platform_io.is_game_window("xdt.exe", "", names) is True
+    assert platform_io.is_game_window(None, " Heartopia ", names) is True
+    assert platform_io.game_names(' "C:\\x\\XDT.exe" ; autre.exe ') == {"xdt.exe", "autre.exe"}
+    assert platform_io.game_in_front("") is None
+
+
+def test_l_ancien_defaut_heartopia_exe_est_migre():
+    import json as _json
+    with open(core.CONFIG_PATH, "w", encoding="utf-8") as f:
+        _json.dump({"game_process": "Heartopia.exe"}, f)
+    assert core.load_config()["game_process"] == platform_io.DEFAULT_GAME_PROCESS
+    with open(core.CONFIG_PATH, "w", encoding="utf-8") as f:
+        _json.dump({"game_process": "mon_jeu.exe"}, f)
+    assert core.load_config()["game_process"] == "mon_jeu.exe", "un choix de l'utilisateur est conservé"
+    with open(core.CONFIG_PATH, "w", encoding="utf-8") as f:
+        _json.dump({"game_process": ""}, f)
+    assert core.load_config()["game_process"] == "", "vérification désactivée : on n'y touche pas"
 
 
 # ================================================================ 5. compteur des frappes attendues (verrou)

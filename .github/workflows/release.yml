@@ -91,7 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Image de construction (Ubuntu 22.04 + PyInstaller + test de fumée)
+      - name: Image de construction (Ubuntu 22.04 + PyInstaller + test de fumée + vérification sur Debian 13)
         run: docker build -f docker/Dockerfile.linux -t dodotopia-linux .
 
       - name: Extraire l'archive
@@ -99,6 +99,9 @@ jobs:
           mkdir -p release
           docker run --rm -v "$PWD/release:/out" dodotopia-linux
           test -f "release/DodoTopia-$VERSION-linux-x64.tar.gz"
+
+      - name: Contrôler l'archive (gzip simple, pas de Mesa ni de libstdc++ embarqués, CGU et droits)
+        run: bash .tools/check_linux_bundle.sh "release/DodoTopia-$VERSION-linux-x64.tar.gz"
 
       - uses: actions/upload-artifact@v7
         with:

@@ -10,6 +10,8 @@ import threading
 import time
 from collections import deque
 
+import webview
+
 import cook
 import core
 import draw

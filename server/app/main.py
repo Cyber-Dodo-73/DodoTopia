@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from contextlib import asynccontextmanager
 
@@ -17,7 +18,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.gzip import DEFAULT_EXCLUDED_CONTENT_TYPES, GZipMiddleware
 
 from . import auth, db, gallery, importer, library, og, releases, rooms, site
 from .config import SERVER_VERSION, Settings
@@ -74,6 +75,64 @@ class BodySizeLimitMiddleware:
         await send({"type": "http.response.body", "body": body})
 
 
+# Réponses qui servent un fichier : jamais de gzip. Compressé, un `.tar.gz` arrive avec `Content-Encoding: gzip`
+# et sans `Content-Length` : Firefox enregistre alors le flux brut (archive doublement compressée), et il n'y a plus
+# ni barre de progression ni reprise (`Range`).
+NO_GZIP_PATH = re.compile(r"^/(dl/|api/import/|api/songs/[^/]+/download$|api/drawings/.+\.png$|api/rooms/.+/song/)")
+NO_GZIP_CONTENT_TYPES = DEFAULT_EXCLUDED_CONTENT_TYPES + ("application/octet-stream", "application/x-tar",
+                                                          "image/x-icon")
+
+
+class SelectiveGZipMiddleware(GZipMiddleware):
+    """GZip pour le HTML, le JSON, le CSS… mais pas pour les fichiers : les chemins de `NO_GZIP_PATH` contournent
+    entièrement la compression (la réponse garde `Content-Length` et `Accept-Ranges`), et les types binaires de
+    `NO_GZIP_CONTENT_TYPES` ne sont jamais compressés, d'où qu'ils viennent."""
+
+    def __init__(self, app, minimum_size: int = 1024, **kwargs):
+        kwargs.setdefault("exclude_content_types", NO_GZIP_CONTENT_TYPES)
+        super().__init__(app, minimum_size=minimum_size, **kwargs)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and NO_GZIP_PATH.match(scope.get("path", "")):
+            return await self.app(scope, receive, send)
+        return await super().__call__(scope, receive, send)
+
+
+# HEAD : chemins qui gardent leur comportement propre (API JSON du client, OAuth, WebSocket, fichiers — /static et
+# /dl/ répondent déjà à HEAD sans lire le fichier — et le lien compteur de téléchargements, qui ne doit pas compter
+# une simple vérification de lien).
+HEAD_PASSTHROUGH_PREFIXES = ("/api/", "/auth/", "/dl/", "/ws", "/static/", "/telecharger/go/")
+HEAD_AS_GET_EXACT = ("/api/health",)
+
+
+class HeadAsGetMiddleware:
+    """Répond à HEAD comme à GET, sans le corps, sur tout le site public et `/api/health`.
+
+    Choix : un middleware plutôt que `api_route(methods=["GET", "HEAD"])` route par route — il couvre d'un coup la
+    route générique `/{lang}/{slug:path}`, les redirections, la page 404 et toute page ajoutée plus tard, et les
+    en-têtes (dont `Content-Length`, après gzip) sont exactement ceux du GET. Le `scope` d'origine n'est pas
+    modifié : le serveur HTTP sait toujours qu'il répond à un HEAD.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    @staticmethod
+    def applies(path: str) -> bool:
+        return path in HEAD_AS_GET_EXACT or not path.startswith(HEAD_PASSTHROUGH_PREFIXES)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope.get("method") != "HEAD" or not self.applies(scope.get("path", "")):
+            return await self.app(scope, receive, send)
+
+        async def send_without_body(message):
+            if message["type"] == "http.response.body":
+                message = {"type": "http.response.body", "body": b"", "more_body": message.get("more_body", False)}
+            await send(message)
+
+        return await self.app(dict(scope, method="GET"), receive, send_without_body)
+
+
 def cleanup_once(settings: Settings, limiter: RateLimiter) -> None:
     """Tickets/sessions périmés, morceaux éphémères trop vieux, seaux de limitation inactifs."""
     conn = db.connect(settings)
@@ -126,7 +185,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
     app.add_middleware(site.SecurityHeadersMiddleware, settings=settings)
-    app.add_middleware(GZipMiddleware, minimum_size=1024)      # le plus externe : compresse après les en-têtes
+    app.add_middleware(SelectiveGZipMiddleware, minimum_size=1024)   # compresse après les en-têtes, sauf fichiers
+    app.add_middleware(HeadAsGetMiddleware)                    # le plus externe : HEAD = GET sans corps
 
     app.include_router(site.static_router)   # /static/site.<hash>.css, avant le montage de /static
     app.mount("/static", StaticFiles(directory=site.STATIC_DIR), name="static")

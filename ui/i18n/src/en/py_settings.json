@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "unrecognized key",
   "settings.error.hotkey_taken": "already used for \"{label}\"",
   "settings.error.unknown_type": "unknown type",
-  "settings.error.unknown_section": "unknown section: {section}"
+  "settings.error.unknown_section": "unknown section: {section}",
+  "settings.error.key_is_note": "This key is used to play notes: choose a function key (F1 to F12) or a combination with Ctrl or Alt.",
+  "notify.hotkeys_fixed": "A shortcut set on a note key was reset to its default: it was stopping playback on its own."
 }

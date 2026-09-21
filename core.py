@@ -52,9 +52,10 @@ DEFAULT_CONFIG = {
     # pedale de sustain (CC64) : False = ignoree (duree ecrite), True = les notes tenues durent jusqu'au
     # relachement de la pedale (borne par max_hold)
     "sustain": False,
-    # nom du processus du jeu : la lecture dans le jeu, le dessin et la cuisine verifient qu'il est au premier
-    # plan ("" = aucune verification)
-    "game_process": "Heartopia.exe",
+    # executables du jeu, separes par des virgules (Heartopia tourne sous xdt.exe) : la lecture, le dessin et la
+    # cuisine verifient que le jeu est au premier plan ; sa fenetre est aussi reconnue a son titre
+    # ("" = aucune verification)
+    "game_process": platform_io.DEFAULT_GAME_PROCESS,
     "keyboard_layout": "auto", "instrument_favorites": [],
 }
 
@@ -121,6 +122,28 @@ def _read_config_file():
         return (cfg if isinstance(cfg, dict) else {}), True
 
 
+def is_note_key(combo):
+    """Vrai si `combo` est une touche seule qui sert aussi a jouer une note (lettre, chiffre, ponctuation des
+    dispositions d'instruments). Un raccourci global sur une telle touche se declenche quand DodoTopia
+    l'envoie au jeu : la lecture s'arretait « sans raison » avec Arreter = b."""
+    s = str(combo or "").strip().lower()
+    return bool(s) and "+" not in s and s in SCANCODES
+
+
+def sanitize_hotkeys(cfg):
+    """Remet a leur valeur par defaut les raccourcis poses sur une touche de note. Renvoie les noms corriges."""
+    fixed = []
+    hk = cfg.get("hotkeys")
+    if not isinstance(hk, dict):
+        return fixed
+    defaults = dict(DEFAULT_CONFIG["hotkeys"], draw_point="F3")
+    for name, combo in list(hk.items()):
+        if is_note_key(combo):
+            hk[name] = defaults.get(name, "")
+            fixed.append(name)
+    return fixed
+
+
 def load_config():
     if not os.path.exists(CONFIG_PATH) and os.path.exists(DEFAULT_CONFIG_PATH):
         shutil.copy2(DEFAULT_CONFIG_PATH, CONFIG_PATH)
@@ -135,6 +158,10 @@ def load_config():
         if str(hk.get("next_instrument", "")).upper() == "F12":
             hk["next_instrument"] = ""
         cfg["hotkeys_migrated_f12"] = True
+    cfg["_hotkeys_fixed"] = sanitize_hotkeys(cfg)
+    # 2.0.0 livrait « Heartopia.exe », qui n'est pas le nom du processus du jeu (xdt.exe) : F6 refusait de jouer.
+    if str(cfg.get("game_process") or "").strip().lower() == "heartopia.exe":
+        cfg["game_process"] = platform_io.DEFAULT_GAME_PROCESS
     # Les instruments ne viennent plus de config.default.json : le catalogue (assets/instruments) fait foi.
     # La migration convertit l'ancien format, conserve les personnalisations et complete les types manquants.
     changes = instruments.migrate_config(cfg)
@@ -1083,18 +1110,15 @@ class Player:
                 self._expected[key] = self._expected.get(key, 0) + 1
 
     def _game_in_front(self):
-        """None si aucune verification (reglage vide ou plateforme sans support), sinon vrai/faux selon que le
-        processus du jeu est au premier plan."""
-        wanted = str(self.cfg.get("game_process") or "").strip().lower()
-        if not wanted:
-            return None
-        try:
-            name = platform_io.foreground_process_name()
-        except Exception:  # noqa
-            return None
-        if name is None:
-            return None
-        return os.path.basename(name).lower() == wanted
+        """True / False / None : voir platform_io.game_in_front (None = aucune verification)."""
+        front = platform_io.game_in_front(self.cfg.get("game_process"))
+        if front is False:
+            try:
+                proc, title = platform_io.foreground_window()
+                self.log(f"fenêtre au premier plan : {proc or '?'} « {title or ''} »")
+            except Exception:  # noqa
+                pass
+        return front
 
     # ---- lecture
     def _start(self, target, deadline=None, prepared=None):

@@ -3,40 +3,38 @@ from __future__ import annotations
 
 from .. import site
 from ..i18n import t, t_items
-from ..site import EDITEUR_COURRIEL, esc, url_for
-from ._shared import disclaimer, faq_block
+from ..site import EDITEUR_COURRIEL, esc, page_header, url_for
+from ._shared import disclaimer, faq_block, section_head
 
 
 def render(settings, lang: str, ctx) -> str:
     faq = t_items(lang, "site.help.faq")
     trouble = t_items(lang, "site.help.trouble")
     ctx.head.append(site.ld_script(site.faq_ld(faq + trouble)))
-    return f"""<section class="section"><div class="wrap">
-  <h1>{t(lang, "site.help.h1")}</h1>
-  <p class="lead">{t(lang, "site.help.lead")}</p>
-  <nav class="family-nav" aria-label="{esc(t(lang, "site.help.sections_label"))}">
+    nav = f"""<nav class="family-nav" aria-label="{esc(t(lang, "site.help.sections_label"))}">
     <a href="#questions">{esc(t(lang, "site.help.faq_title"))}</a>
     <a href="#depannage">{esc(t(lang, "site.help.trouble_title"))}</a>
     <a href="#contact">{esc(t(lang, "site.help.contact_title"))}</a>
-  </nav>
-</div></section>
-
-<section class="section" id="questions"><div class="wrap">
-  <h2>{esc(t(lang, "site.help.faq_title"))}</h2>
+  </nav>"""
+    return f"""{page_header(lang, esc(t(lang, "site.help.eyebrow")), t(lang, "site.help.h1"), t(lang, "site.help.lead"), nav)}
+<section class="section section--first" id="questions"><div class="wrap wrap--narrow">
+  {section_head(esc(t(lang, "site.help.faq_title")))}
   {faq_block(faq)}
 </div></section>
 
-<section class="section" id="depannage"><div class="wrap">
-  <h2>{esc(t(lang, "site.help.trouble_title"))}</h2>
-  <p class="lead">{t(lang, "site.help.trouble_lead")}</p>
+<section class="section" id="depannage"><div class="wrap wrap--narrow">
+  {section_head(esc(t(lang, "site.help.trouble_title")), t(lang, "site.help.trouble_lead"))}
   {faq_block(trouble)}
 </div></section>
 
-<section class="section" id="contact"><div class="wrap">
-  <h2>{esc(t(lang, "site.help.contact_title"))}</h2>
-  <p>{t(lang, "site.help.contact_text", email=EDITEUR_COURRIEL)}</p>
-  <p>{t(lang, "site.help.logs_text")}</p>
-  <p><a href="{url_for(lang, "community")}">{esc(t(lang, "site.help.community_link"))}</a></p>
+<section class="section" id="contact"><div class="wrap wrap--narrow">
+  <div class="needbox needbox--tint theme-rooms reveal">
+    <span class="contactbox__ico" aria-hidden="true"></span>
+    <h2>{esc(t(lang, "site.help.contact_title"))}</h2>
+    <p>{t(lang, "site.help.contact_text", email=EDITEUR_COURRIEL)}</p>
+    <p>{t(lang, "site.help.logs_text")}</p>
+    <p class="more"><a href="{url_for(lang, "community")}">{esc(t(lang, "site.help.community_link"))}</a></p>
+  </div>
 </div></section>
 
 {disclaimer(lang)}"""

@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "无法识别的按键",
   "settings.error.hotkey_taken": "已用于“{label}”",
   "settings.error.unknown_type": "未知类型",
-  "settings.error.unknown_section": "未知分区：{section}"
+  "settings.error.unknown_section": "未知分区：{section}",
+  "settings.error.key_is_note": "这个按键用于演奏音符：请选择功能键（F1 到 F12）或与 Ctrl、Alt 的组合键。",
+  "notify.hotkeys_fixed": "设在音符按键上的快捷键已恢复为默认值：它会让演奏自行停止。"
 }

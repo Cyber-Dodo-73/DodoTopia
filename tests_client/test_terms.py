@@ -51,7 +51,7 @@ def test_acceptation_versionnee():
 def api_stub(monkeypatch):
     """Api minimale (sans fenetre ni fils) : seulement ce que la garde et get_terms utilisent."""
     import app
-    monkeypatch.setattr(core.platform_io, "foreground_process_name", lambda: None)
+    monkeypatch.setattr(core.platform_io, "foreground_window", lambda: (None, None))
     cfg = core.load_config()
     api = object.__new__(app.Api)
     api._cfg = cfg
@@ -100,6 +100,39 @@ def test_get_terms_renvoie_le_texte(api_stub):
     doc = api.get_terms("en")
     assert doc["lang"] == "en" and doc["version"] == terms.TERMS_VERSION and len(doc["summary"]) == 6
     assert api.get_terms("xx")["lang"] == "fr"
+
+
+def test_get_terms_sans_dossier_legal_renvoie_none_et_journalise_le_chemin(api_stub, tmp_path, monkeypatch, caplog):
+    """Bundle sans legal/ (panne de l'archive Linux 2.0.0) : pas d'exception, et le journal dit où le texte était attendu."""
+    import logging
+    api, _ = api_stub
+    monkeypatch.setattr(core, "RES_DIR", str(tmp_path))
+    with caplog.at_level(logging.ERROR, logger="app"):
+        assert api.get_terms("fr") is None
+    attendu = terms.path_for(str(tmp_path), "fr")
+    assert attendu in caplog.text, "le chemin tenté n'apparaît pas dans le journal"
+    assert "absent" in caplog.text
+    # dossier present mais vide : le contenu est journalise
+    caplog.clear()
+    os.mkdir(os.path.join(str(tmp_path), "legal"))
+    with caplog.at_level(logging.ERROR, logger="app"):
+        assert api.get_terms("en") is None
+    assert terms.path_for(str(tmp_path), "en") in caplog.text and "contenu : []" in caplog.text
+
+
+def test_ui_log_borne_le_niveau_la_longueur_et_le_debit(api_stub, monkeypatch, caplog):
+    import logging
+    import api._base as base
+    api, _ = api_stub
+    monkeypatch.setattr(base, "_ui_log_times", deque())
+    with caplog.at_level(logging.WARNING, logger="app"):
+        assert api.ui_log("n'importe quoi", "x" * 2000 + chr(10) + "ligne 2") is True
+        rec = caplog.records[-1]
+        assert rec.getMessage().startswith("UI: [error] ") and len(rec.getMessage()) <= 500 + len("UI: [error] ")
+        assert chr(10) not in rec.getMessage()
+        results = [api.ui_log("warn", f"m{i}") for i in range(40)]
+    assert results.count(True) == 19 and not any(results[19:]), "au plus 20 lignes par minute"
+    assert len([r for r in caplog.records if r.getMessage().startswith("UI: ")]) == 20
 
 
 def test_la_config_livree_n_accepte_pas_les_cgu_a_la_place_du_joueur():

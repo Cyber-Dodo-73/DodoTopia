@@ -258,11 +258,44 @@ Le backend (`server/`) tourne sur un VPS avec **Dokploy** en service *Compose* (
 
 DodoTopia fonctionne aussi sous Linux (session **X11 / Xorg** conseillée ; le jeu sous Steam/Proton est une fenêtre X, donc les touches et la souris l'atteignent aussi sous Wayland via XWayland, mais la lecture d'écran du dessin peut alors renvoyer une image noire). Pas besoin de root : les touches et la souris passent par l'extension XTEST, les raccourcis globaux par XRECORD.
 
-- **Archive** : `release/DodoTopia-x.y.z-linux-x64.tar.gz`. Décompresse, puis lance `DodoTopia/DodoTopia`. Réglages, musiques et journal dans `~/.config/DodoTopia`.
-- **Bibliothèques nécessaires** (Ubuntu/Debian) : `sudo apt install libxcb-cursor0 libxkbcommon-x11-0 libnss3 libasound2 libgl1 libegl1 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxi6 libfontconfig1 libpulse0 xdg-utils`. Pour l'écoute dans le logiciel (facultatif) : `sudo apt install fluidsynth fluid-soundfont-gm`.
+- **Archive** : `DodoTopia-x.y.z-linux-x64.tar.gz`. Extraction et lancement :
+  ```bash
+  tar -xzf DodoTopia-x.y.z-linux-x64.tar.gz
+  ./DodoTopia/DodoTopia.sh
+  ```
+  Réglages, musiques et journal (`dodotopia.log`) dans `~/.config/DodoTopia`. Si `tar` répond « not in gzip format » ou s'il faut décompresser deux fois, le téléchargement a été recompressé en route : `bash .tools/check_linux_bundle.sh <archive>` le dit.
+- **Installation pour tous les comptes** (facultatif) :
+  ```bash
+  sudo mkdir -p /opt/dodotopia
+  sudo tar -xzf DodoTopia-x.y.z-linux-x64.tar.gz -C /opt/dodotopia --strip-components=1
+  sudo ln -s /opt/dodotopia/DodoTopia.sh /usr/local/bin/dodotopia      # DodoTopia.sh suit les liens symboliques
+  dodotopia
+  ```
+- **Liens `dodotopia://`** : au premier lancement, `DodoTopia.sh` écrit `~/.local/share/applications/dodotopia.desktop`. Pour que le navigateur ouvre DodoTopia (une fois) : `xdg-mime default dodotopia.desktop x-scheme-handler/dodotopia`.
+- **Prérequis système** (Debian / Ubuntu) :
+  ```bash
+  sudo apt install libgl1 libegl1 libgl1-mesa-dri libgbm1 libdrm2 libx11-xcb1 libxcb-cursor0 libxkbcommon-x11-0 \
+    libnss3 libasound2 libglib2.0-0 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxi6 libxkbfile1 \
+    libfontconfig1 libdbus-1-3 libpulse0 xdg-utils
+  ```
+  Sur **Debian 13 / Ubuntu 24.04** et suivantes, deux paquets ont changé de nom : `libasound2t64` et `libglib2.0-0t64` (à la place de `libasound2` et `libglib2.0-0`). Pour l'écoute dans le logiciel (facultatif) : `sudo apt install fluidsynth fluid-soundfont-gm`.
+- **Pourquoi Mesa et libstdc++ ne sont plus dans l'archive** : le pilote graphique (Mesa : `libGL`, `libEGL`, `libgbm`, `libdrm`, `libglapi`, Vulkan, Wayland, et les `libxcb` liées à DRI) et la bibliothèque C++ (`libstdc++`, `libgcc_s`) forment un tout avec la machine qui exécute. L'archive 2.0.0 embarquait ceux d'Ubuntu 22.04 : sur une distribution récente, le pilote Mesa du système réclamait une `libstdc++` plus neuve que celle du bundle (`GLIBCXX_3.4.31`), plus de contexte OpenGL, QtWebEngine plantait ou la fenêtre restait vide. `build.sh` les retire donc après PyInstaller, et `.tools/check_linux_bundle.sh` refuse une archive qui en contient. Qt, ICU, NSS et `libxkbcommon` restent embarqués.
+- **Fenêtre vide, écran noir ou plantage au démarrage** : `DODO_SOFTWARE_RENDER=1 ./DodoTopia.sh` force le rendu logiciel (`QT_QUICK_BACKEND=software`, `QT_OPENGL=software`, `LIBGL_ALWAYS_SOFTWARE=1`, `--disable-gpu` pour Chromium). Les erreurs de l'interface sont relayées dans `~/.config/DodoTopia/dodotopia.log` (lignes `UI: …`).
 - **Depuis les sources** : `./DodoTopia.sh` (Python 3.10+, `python3-venv`). L'interface utilise GTK/WebKit2 si `python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1` sont installés, sinon Qt (installé automatiquement dans le venv).
-- **Construire l'archive depuis Windows** : `build-linux.bat` (Docker Desktop lancé). L'image `docker/Dockerfile.linux` (Ubuntu 22.04) compile avec PyInstaller, vérifie que le binaire démarre, et copie l'archive dans `release\`. Sur Linux ou WSL2 : `bash build.sh` (paquets : `python3-venv binutils libpython3.x`).
-- Le mode d'envoi « Position physique » suppose la disposition détectée par Wine/Proton ; si les notes sont fausses, passe en « Lettre affichée ». Si le pilote graphique fait planter l'interface : `QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu ./DodoTopia/DodoTopia`.
+- **Construire l'archive** — règle : toujours construire sur la distribution **la plus ancienne** prise en charge (Ubuntu 22.04, glibc 2.35), puis vérifier sur une récente. Un binaire construit sur une distribution récente ne démarre pas sur une ancienne ; l'inverse fonctionne.
+  - Windows (Docker Desktop lancé) : `build-linux.bat`. Équivalent à la main :
+    ```bash
+    docker build -f docker/Dockerfile.linux -t dodotopia-linux .
+    docker run --rm -v "%cd%\release:/out" dodotopia-linux
+    ```
+    L'image compile sous Ubuntu 22.04 avec PyInstaller, contrôle l'archive, vérifie que le binaire démarre, puis **rejoue le tout sur Debian 13** (étape `verify` : paquets d'exécution seulement, `ldd -r` des pilotes Mesa du système avec les bibliothèques du bundle, démarrage réel sans `--disable-gpu`, lien `/usr/local/bin/dodotopia`). Autre cible : `--build-arg VERIFY_IMAGE=ubuntu:24.04`.
+  - Linux ou WSL2 : `bash build.sh` (paquets : `python3-venv binutils libpython3.x`), qui termine par le contrôle de l'archive.
+  - Vérifier une archive, où qu'elle ait été construite ou téléchargée :
+    ```bash
+    bash .tools/check_linux_bundle.sh release/DodoTopia-x.y.z-linux-x64.tar.gz          # --list : affiche les .so embarqués
+    docker run --rm -v "%cd%:/w" -w /w debian:trixie-slim bash .tools/check_linux_bundle.sh release/DodoTopia-x.y.z-linux-x64.tar.gz
+    ```
+- Le mode d'envoi « Position physique » suppose la disposition détectée par Wine/Proton ; si les notes sont fausses, passe en « Lettre affichée ».
 
 ## Fichiers
 

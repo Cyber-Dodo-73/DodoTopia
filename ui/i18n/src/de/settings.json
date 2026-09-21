@@ -50,7 +50,7 @@
   "settings.sustain.label": "Haltepedal",
   "settings.sustain.help": "Verlängert die vom Pedal der Datei gehaltenen Noten (CC64), wie bei einem Klavier.",
   "settings.game_process.label": "Spielprogramm",
-  "settings.game_process.help": "Name der ausführbaren Datei, die im Vordergrund sein muss: Spielen, Zeichnen und Kochen stoppen, wenn sie es nicht mehr ist. Leer = keine Prüfung.",
+  "settings.game_process.help": "Programme des Spiels, durch Kommas getrennt (Heartopia läuft als xdt.exe). Das Fenster mit dem Titel „Heartopia“ wird ebenfalls erkannt. Wiedergabe, Zeichnen und Kochen stoppen, wenn ein anderes Fenster nach vorne kommt. Leer = keine Prüfung.",
   "settings.multi.device.label": "Abgehörte Audioausgabe",
   "settings.multi.device.help": "Die, über die das Spiel seinen Ton ausgibt; die Liste wird bei jedem Öffnen des Bereichs neu gelesen. Wurde das gewählte Gerät ausgesteckt, bleibt es gelistet, als „fehlt“ markiert.",
   "settings.multi.device.opt.default": "Standardausgabe (empfohlen)",

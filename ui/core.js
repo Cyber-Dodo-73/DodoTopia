@@ -54,6 +54,14 @@ function api(name, ...args){
     return r;
   }).catch(e => {
     console.error('api ' + name + ' :', e);
+    // la console est invisible dans l'application installee : l'erreur part aussi dans dodotopia.log.
+    // Jamais pour ui_log lui-meme (pas de boucle), et un echec du relais est ignore.
+    if(name !== 'ui_log'){
+      try{
+        const p = window.pywebview.api.ui_log('error', name + ': ' + ((e && (e.stack || e.message)) || e));
+        if(p && typeof p.catch === 'function') p.catch(() => {});
+      }catch(_){}
+    }
     if(!API_QUIET.has(name)) toast(t('common.action_failed'), 'danger', {id: 'apifail'});
     return null;
   });

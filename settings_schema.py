@@ -272,6 +272,10 @@ def validate(path, value, cfg=None):
             platform_io.parse_hotkey(s)
         except Exception:
             raise SettingError(i18n.t("settings.error.key_unknown"))
+        if core.is_note_key(s):
+            # les touches des instruments sont envoyees au jeu par DodoTopia lui-meme : un raccourci global
+            # pose sur l'une d'elles se declencherait tout seul pendant la lecture (arret « sans raison »)
+            raise SettingError(i18n.t("settings.error.key_is_note"))
         if cfg is not None:
             mine = path.split(".")[-1]
             for name, combo in cfg.get("hotkeys", {}).items():

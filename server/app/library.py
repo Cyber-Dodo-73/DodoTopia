@@ -12,10 +12,10 @@ from typing import NamedTuple
 from urllib.parse import quote
 
 import mido
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from . import db, social
+from . import db, indexnow, social
 from .auth import api_error, get_current_user, get_optional_user, is_admin, require_admin, settings_of
 from .config import Settings
 from .ratelimit import limit
@@ -626,15 +626,20 @@ def admin_songs(request: Request, status: str = "pending", page: int = 1, per_pa
 
 
 @router.post("/api/admin/songs/{song_id}/approve")
-def approve_song(song_id: int, request: Request, admin=Depends(require_admin),
-                 conn: db.Connection = Depends(db.get_db)):
+def approve_song(song_id: int, request: Request, background_tasks: BackgroundTasks,
+                 admin=Depends(require_admin), conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
-    fetch_song(conn, song_id)
+    before = fetch_song(conn, song_id)
     now = db.now_iso()
     conn.execute("UPDATE songs SET status='approved', reject_reason=NULL, reviewed_by=?, reviewed_at=?, updated_at=? "
                  "WHERE id=?", (admin["id"], now, now, song_id))
     conn.commit()
-    return song_public(fetch_song(conn, song_id), settings)
+    row = fetch_song(conn, song_id)
+    # IndexNow : la fiche devient publique. Seulement si elle est indexable (assez de notes, voir sitemap-songs).
+    if (settings.indexnow_key and before["status"] != "approved"
+            and int(row["note_count"] or 0) >= settings.SONG_INDEX_MIN_NOTES):
+        background_tasks.add_task(indexnow.submit, settings, indexnow.song_urls(settings, row["id"], row["title"]))
+    return song_public(row, settings)
 
 
 @router.post("/api/admin/songs/{song_id}/reject")

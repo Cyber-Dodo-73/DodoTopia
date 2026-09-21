@@ -50,7 +50,7 @@
   "settings.sustain.label": "Pédale de sustain",
   "settings.sustain.help": "Prolonge les notes tenues par la pédale (CC64) du fichier, comme au piano.",
   "settings.game_process.label": "Programme du jeu",
-  "settings.game_process.help": "Nom de l’exécutable à avoir au premier plan : la lecture, le dessin et la cuisine s’arrêtent s’il ne l’est plus. Vide = pas de vérification.",
+  "settings.game_process.help": "Programmes du jeu, séparés par des virgules (Heartopia tourne sous xdt.exe). La fenêtre titrée « Heartopia » est aussi reconnue. La lecture, le dessin et la cuisine s’arrêtent si une autre fenêtre passe devant. Vide = pas de vérification.",
   "settings.multi.device.label": "Sortie audio écoutée",
   "settings.multi.device.help": "Celle où le jeu joue le son ; la liste est relue à chaque ouverture. Si l’appareil choisi a été débranché, il reste proposé, marqué « absente ».",
   "settings.multi.device.opt.default": "Sortie par défaut (recommandé)",

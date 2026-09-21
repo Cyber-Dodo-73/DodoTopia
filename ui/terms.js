@@ -31,7 +31,7 @@ function fetchTerms(lang){
     const d = typeof src === 'function' ? src(lang) : src;
     return new Promise(res => setTimeout(() => res(d && d.html !== undefined ? d : null), 120));
   }
-  return api('get_terms', lang).then(r => (r && r.html !== undefined) ? r : null).catch(() => null);
+  return api('get_terms', lang).then(r => (r && r.html !== undefined) ? r : null).catch(e => { console.error('CGU (get_terms) :', e); return null; });
 }
 
 // ------------------------------------------------ libellés fixes de la modale (langue de l'interface ; rappelée par applyLanguage)

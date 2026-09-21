@@ -17,7 +17,7 @@ import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import db
+from . import db, indexnow
 from .auth import api_error, require_publish_token, settings_of
 from .config import Settings
 from .ratelimit import limit
@@ -192,10 +192,17 @@ def download_asset(version: str, filename: str, request: Request, via: str = "",
     path = release_dir(settings_of(request), version) / filename
     if not path.is_file():
         raise api_error(404, "not_found", "Fichier inconnu.")
-    if via != "site" and _counts_as_download(request.headers.get("Range")):
+    if request.method != "HEAD" and via != "site" and _counts_as_download(request.headers.get("Range")):
         count_download(conn, version, filename)
     return FileResponse(path, media_type="application/octet-stream", filename=filename,
                         headers={"Cache-Control": "public, max-age=3600"})
+
+
+@router.head("/dl/{version}/{filename}", include_in_schema=False, dependencies=[Depends(limit("dl_head", 30, 60))])
+def head_asset(version: str, filename: str, request: Request, conn: db.Connection = Depends(db.get_db)):
+    """HEAD d'un binaire (gestionnaires de téléchargement, vérificateurs de liens) : mêmes en-têtes que le GET
+    (`Content-Length`, `Accept-Ranges`), sans corps (FileResponse) et sans compter de téléchargement."""
+    return download_asset(version, filename, request, "", conn)
 
 
 def public_stats(app) -> dict:
@@ -379,6 +386,8 @@ def publish(version: str, body: PublishIn, request: Request, background_tasks: B
     request.app.state.stats_cache = None
     if settings.DISCORD_ANNOUNCE_WEBHOOK:
         background_tasks.add_task(announce_release, settings, version)
+    if settings.indexnow_key:
+        background_tasks.add_task(indexnow.submit, settings, indexnow.release_urls(settings))
     return manifest(conn, settings, version)
 
 

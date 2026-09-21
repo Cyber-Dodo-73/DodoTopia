@@ -23,7 +23,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from ..i18n import t
-from ..site import EDITEUR_COURRIEL, STATIC_DIR, esc, human_date, png_size, url_for
+from ..site import EDITEUR_COURRIEL, STATIC_DIR, esc, human_date, page_header, png_size, url_for
 
 log = logging.getLogger("dodo")
 
@@ -194,25 +194,39 @@ def inst_card(inst: dict, lang: str) -> str:
       </li>"""
 
 
+RAIL = ("piano", "violin", "lute", "harp", "recorder", "ocarina", "saxophone", "cello", "conga", "xylophone",
+        "lyre", "mbira")
+
+
 def teaser(lang: str) -> str:
-    """Section « Choisis ton instrument » de l'accueil : quelques vrais visuels et un lien vers la liste."""
+    """Section « Choisis ton instrument » de l'accueil : un rail défilant de douze vrais visuels (accrochage au
+    défilement, utilisable au clavier) et un lien vers la liste complète."""
+    from ._shared import section_head
     cat = instrument_catalogue()
     if not cat["types"]:
         return ""
     by_id = {x["id"]: x for x in cat["types"]}
-    sample = [by_id[i] for i in ("piano", "violin", "lute", "recorder", "conga", "ocarina") if i in by_id]
-    if not sample:
-        sample = cat["types"][:6]
-    icons = "".join(f'<li class="insttease__item">{inst_media(x, lang)}'
-                    f'<span class="insttease__name">{esc(labels(x, lang)[0])}</span></li>' for x in sample)
+    sample = [by_id[i] for i in RAIL if i in by_id]
+    sample += [x for x in cat["types"] if x not in sample][:max(0, len(RAIL) - len(sample))]
+
+    def card(x: dict) -> str:
+        family = t(lang, "site.instruments.family." + x["category"])
+        return (f'<li class="instrail__item">{inst_media(x, lang)}'
+                f'<span class="instrail__name">{esc(labels(x, lang)[0])}</span>'
+                f'<span class="instrail__fam">{esc(family)}</span></li>')
+
+    cards = "".join(card(x) for x in sample)
     c = cat["counts"]
-    return f"""<section class="section" id="choisir-instrument"><div class="wrap">
-  <h2>{esc(t(lang, "site.instruments.teaser_title"))}</h2>
-  <p class="lead">{t(lang, "site.instruments.teaser_lead", total=cat["total"])}</p>
-  <ul class="insttease">{icons}</ul>
-  <p>{t(lang, "site.instruments.teaser_counts", total=cat["total"], documented=c["documented"],
+    return f"""<section class="section tinted wavy" id="choisir-instrument"><div class="wrap">
+  {section_head(esc(t(lang, "site.instruments.teaser_title")), t(lang, "site.instruments.teaser_lead", total=cat["total"]))}
+</div>
+<div class="instrail reveal" tabindex="0" role="region" aria-label="{esc(t(lang, "site.instruments.rail_label"))}">
+  <ul class="instrail__list">{cards}</ul>
+</div>
+<div class="wrap">
+  <p class="dl-note center">{t(lang, "site.instruments.teaser_counts", total=cat["total"], documented=c["documented"],
         candidate=c["candidate"], unknown=c["unknown"])}</p>
-  <p><a class="btn btn--quiet" href="{url_for(lang, "instruments")}">{esc(t(lang, "site.instruments.teaser_link"))}</a></p>
+  <p class="center"><a class="btn btn--quiet" href="{url_for(lang, "instruments")}">{esc(t(lang, "site.instruments.teaser_link"))}</a></p>
 </div></section>
 """
 
@@ -222,8 +236,8 @@ def render(settings, lang: str, ctx) -> str:
     c = cat["counts"]
     total = cat["total"]
     if not cat["types"]:
-        return f"""<section class="section"><div class="wrap">
-  <h1>{t(lang, "site.instruments.h1")}</h1>
+        return f"""{page_header(lang, esc(t(lang, "site.instruments.eyebrow")), t(lang, "site.instruments.h1"), "")}
+<section class="section section--first"><div class="wrap">
   <div class="notice"><p>{t(lang, "site.instruments.unavailable")}</p></div>
 </div></section>
 """
@@ -267,14 +281,16 @@ def render(settings, lang: str, ctx) -> str:
         for x in cat["types"])
     retrieved = human_date(cat["retrieved_at"], lang) or cat["retrieved_at"]
 
-    return f"""<section class="section"><div class="wrap">
-  <h1>{t(lang, "site.instruments.h1")}</h1>
-  <p class="lead">{t(lang, "site.instruments.lead", total=total)}</p>
+    nav = (f'<nav class="family-nav" aria-label="{esc(t(lang, "site.instruments.families_label"))}">'
+           f'{family_nav}</nav>')
+    header = page_header(lang, esc(t(lang, "site.instruments.eyebrow")), t(lang, "site.instruments.h1"),
+                         t(lang, "site.instruments.lead", total=total), nav)
+    return f"""{header}
+<section class="section section--first"><div class="wrap">
   <div class="notice notice--soft">
     <p><strong>{t(lang, "site.instruments.notice_title")}</strong> {t(lang, "site.instruments.notice_text")}</p>
   </div>
   <ul class="states">{legend}</ul>
-  <nav class="family-nav" aria-label="{esc(t(lang, "site.instruments.families_label"))}">{family_nav}</nav>
 </div></section>
 
 <section class="section"><div class="wrap">

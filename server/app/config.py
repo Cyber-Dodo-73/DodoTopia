@@ -1,6 +1,7 @@
 """Réglages du serveur, lus depuis l'environnement (ou un fichier .env)."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -53,6 +54,9 @@ class Settings(BaseSettings):
     SITE_VERIFICATION_BING: str = ""                    # contenu de la balise msvalidate.01
     SITE_PAGE_TTL_S: float = 300                        # cache mémoire des pages HTML rendues
     SONG_INDEX_MIN_NOTES: int = 50                      # fiche publique d'un morceau plus courte : `noindex`
+    # Clé IndexNow (8 à 128 caractères parmi a-z, A-Z, 0-9 et -) : servie sur /<clé>.txt, et les URL nouvelles ou
+    # modifiées (version publiée, morceau ou dessin approuvé) sont signalées à Bing, Yandex… Vide = désactivé.
+    INDEXNOW_KEY: str = ""
     # --- Annonces ---
     DISCORD_ANNOUNCE_WEBHOOK: str = ""                  # webhook Discord (https) : annonce de chaque version publiée
     # --- Import par lien (Online Sequencer, BitMidi, URL .mid) ---
@@ -71,6 +75,12 @@ class Settings(BaseSettings):
     @property
     def public_url(self) -> str:
         return self.PUBLIC_URL.rstrip("/")
+
+    @property
+    def indexnow_key(self) -> str:
+        """Clé IndexNow si elle est bien formée, sinon "" (IndexNow désactivé)."""
+        key = self.INDEXNOW_KEY.strip()
+        return key if re.fullmatch(r"[A-Za-z0-9-]{8,128}", key) else ""
 
     @property
     def admin_ids(self) -> set[str]:

@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "touche non reconnue",
   "settings.error.hotkey_taken": "déjà utilisé pour « {label} »",
   "settings.error.unknown_type": "type inconnu",
-  "settings.error.unknown_section": "section inconnue : {section}"
+  "settings.error.unknown_section": "section inconnue : {section}",
+  "settings.error.key_is_note": "Cette touche sert à jouer des notes : choisis une touche de fonction (F1 à F12) ou une combinaison avec Ctrl ou Alt.",
+  "notify.hotkeys_fixed": "Un raccourci posé sur une touche de note a été remis par défaut : il arrêtait la lecture tout seul."
 }

@@ -19,10 +19,10 @@ import struct
 import warnings
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import db, social
+from . import db, indexnow, social
 from .auth import api_error, get_current_user, get_optional_user, is_admin, require_admin, settings_of
 from .config import Settings
 from .library import DELETED_UPLOADER_NAME, read_upload
@@ -410,13 +410,15 @@ def admin_drawings(request: Request, status: str = "pending", page: int = 1, per
 
 
 @router.post("/api/admin/drawings/{drawing_id}/approve")
-def approve_drawing(drawing_id: int, request: Request, admin=Depends(require_admin),
-                    conn: db.Connection = Depends(db.get_db)):
+def approve_drawing(drawing_id: int, request: Request, background_tasks: BackgroundTasks,
+                    admin=Depends(require_admin), conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
-    fetch_drawing(conn, drawing_id)
+    before = fetch_drawing(conn, drawing_id)
     conn.execute("UPDATE drawings SET status='approved', reject_reason=NULL, reviewed_by=?, reviewed_at=? WHERE id=?",
                  (admin["id"], db.now_iso(), drawing_id))
     conn.commit()
+    if settings.indexnow_key and before["status"] != "approved":        # IndexNow : la fiche devient publique
+        background_tasks.add_task(indexnow.submit, settings, indexnow.drawing_urls(settings, drawing_id))
     return drawing_public(fetch_drawing(conn, drawing_id), settings)
 
 

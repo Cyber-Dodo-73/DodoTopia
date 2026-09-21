@@ -104,6 +104,12 @@ class Ecran:
         self.menu_colle = False     # vrai jeu : un clic dans l'herbe ne ferme pas le menu Recettes
         self.gants_restent = 0.0    # durée d'affichage des gants après la récupération
         self.icone_cachee = False   # l'icône de la spatule n'est pas reconnaissable pendant l'anneau
+        self.vues = None            # vrai jeu : {index du poste: (dx, dy)} = glissement de TOUTES les bulles
+        self.cam = (0, 0)           # quand le personnage rejoint ce poste (la caméra le suit)
+
+    def ou(self, p):
+        """Position à l'écran de la bulle du poste `p` (décalée par la caméra)."""
+        return (p.pos[0] + self.cam[0], p.pos[1] + self.cam[1])
 
     # ---- temps
     def _tick(self):
@@ -129,11 +135,11 @@ class Ecran:
         for p in self.postes:
             icone = "ready" if now < p.gants_jusqua else PHASE_ICONE[p.phase]
             if p.phase == "anneau" and self.icone_cachee:
-                x, y = p.pos
+                x, y = self.ou(p)
                 d.ellipse((x - 40, y - 40, x + 40, y + 40), fill=GRIS)
                 d.ellipse((x - 48, y - 48, x + 48, y + 48), outline=VERT, width=6)
                 continue
-            _bulle(d, p.pos, icone, anneau=(p.phase == "anneau"))
+            _bulle(d, self.ou(p), icone, anneau=(p.phase == "anneau"))
         return im
 
     def grab(self, rect=None):
@@ -166,8 +172,11 @@ class Ecran:
                     self.menu = False          # clic ailleurs : le menu se referme
                 return
             for p in self.postes:
-                if (x - p.pos[0]) ** 2 + (y - p.pos[1]) ** 2 > 45 * 45:
+                px, py = self.ou(p)
+                if (x - px) ** 2 + (y - py) ** 2 > 45 * 45:
                     continue
+                if self.vues:
+                    self.cam = self.vues[p.index]      # le personnage rejoint ce poste : toutes les bulles glissent
                 if p.phase == "repos":
                     self.menu = True
                     self.attente = p
@@ -326,6 +335,59 @@ def test_anneau_prioritaire_meme_apres_un_lancement(jeu, souris_rapide):
     assert c.dishes == sum(b.dishes for b in c._burners)
 
 
+def test_la_camera_suit_le_personnage(jeu, souris_rapide):
+    """Relevé en jeu (2026-09-21) : cliquer la bulle d'une cuisinière y envoie le personnage, la caméra le suit
+    et les deux bulles glissent ensemble (ici la bulle 1 arrive à 25 px de l'ancienne place de la bulle 2).
+    Avant : la bulle 1 était prise pour la 2, la vraie 2 jetée, une seule cuisinière servie."""
+    ecran, c = jeu()
+    ecran.vues = {1: (250, 15), 2: (0, 0)}
+    tourne(c, ecran, duree=20.0, plats=4)
+    assert c.dishes >= 4, c.logs
+    assert all(p.plats >= 1 for p in ecran.postes), (ecran.events, c.logs)
+    assert ecran.rates == 0, ecran.events
+    assert any("la vue a glissé" in m for m in c.logs)
+
+
+def test_anneau_clique_en_son_centre_apres_le_glissement(jeu, souris_rapide):
+    """Relevé en jeu : l'anneau vert était cliqué à l'ANCIENNE place de la bulle (104 px à côté) quand l'icône
+    n'était pas reconnue juste après le déplacement de la caméra. On vise maintenant le centre de l'anneau."""
+    ecran, c = jeu()
+    ecran.vues = {1: (250, 15), 2: (0, 0)}
+    ecran.icone_cachee = True
+    tourne(c, ecran, duree=20.0, plats=4)
+    assert c.dishes >= 4, c.logs
+    assert ecran.rates == 0, (ecran.events, c.logs)
+    assert all(p.plats >= 1 for p in ecran.postes), ecran.events
+
+
+def test_une_seule_bulle_visible_apres_le_glissement(jeu):
+    """Après un lancement la bulle de la cuisinière servie disparaît un instant : il ne reste que celle de la
+    voisine, déplacée. L'état des cuissons départage : une bulle « cuisiner » ne peut pas être la cuisson lancée."""
+    ecran, c = jeu()
+    c._burners = []
+    c._assign([{"pos": (330, 300), "state": "cook", "scores": {}}, {"pos": (600, 300), "state": "cook", "scores": {}}])
+    b1, b2 = c._burners
+    b1.launched = time.perf_counter()
+    b1.state = "cooking"
+    c._assign([{"pos": (850, 315), "state": "cook", "scores": {}}])           # seule la bulle 2, glissée de 250 px
+    assert b2.pos == (850, 315) and b2.state == "cook"
+    assert b1.pos == (580, 315), "la cuisinière pas vue suit le glissement des autres"
+    c._assign([{"pos": (583, 312), "state": "cooking", "scores": {"vert": 0}},
+               {"pos": (850, 315), "state": "cook", "scores": {}}])
+    assert b1.pos == (583, 312) and b1.state == "cooking" and b2.pos == (850, 315)
+
+
+def test_perspective_tres_differente_garde_l_ordre(jeu):
+    """Deux bulles vues, deux cuisinières suivies, mais l'écart entre les bulles a trop changé pour la
+    tolérance : on garde l'ordre le long de l'axe où elles s'alignent."""
+    ecran, c = jeu()
+    c._burners = []
+    c._assign([{"pos": (330, 300), "state": "cook", "scores": {}}, {"pos": (600, 300), "state": "cook", "scores": {}}])
+    b1, b2 = c._burners
+    c._assign([{"pos": (450, 380), "state": "cook", "scores": {}}, {"pos": (860, 420), "state": "cook", "scores": {}}])
+    assert b1.pos == (450, 380) and b2.pos == (860, 420)
+
+
 def test_compteur_de_plats_agrege(jeu, souris_rapide):
     """Le compteur de plats additionne toutes les cuisinières (et chaque Burner garde le sien)."""
     ecran, c = jeu(phases=("cuisson", "cuisson"))
@@ -360,8 +422,9 @@ def test_journal_par_cuisiniere(jeu):
 
 # ---------------------------------------------------------------- garde de lancement (anneau non chronométré)
 def test_may_launch_prudent_par_defaut(jeu):
-    """Par défaut on ne lance pas de cuisson tant qu'une autre cuisinière peut demander un ajustement."""
-    ecran, c = jeu(phases=("cuisson", "repos"), launch_guard=cook.DEFAULT_COOK["launch_guard"])
+    """Avec une garde réglée, on ne lance pas de cuisson tant qu'une autre cuisinière peut demander un
+    ajustement (le défaut est 0 depuis les relevés en jeu : voir DEFAULT_COOK)."""
+    ecran, c = jeu(phases=("cuisson", "repos"), launch_guard=8.5)
     c._scan(wide=True)
     a, b = c._burners
     assert a.state == "cooking" and b.state == "cook"
@@ -377,8 +440,16 @@ def test_may_launch_prudent_par_defaut(jeu):
     assert c._may_launch(b, c._burners)
 
 
+def test_l_ancienne_garde_de_8_s_est_migree():
+    cfg = {"cook": {"launch_guard": 8.0}}
+    assert cook.ensure_defaults(cfg)["launch_guard"] == 0.0
+    cfg = {"cook": {"launch_guard": 5.0}}
+    assert cook.ensure_defaults(cfg)["launch_guard"] == 5.0, "un réglage choisi est conservé"
+    assert cook.ensure_defaults({})["launch_guard"] == 0.0
+
+
 def test_une_seule_cuisiniere_ne_bloque_jamais(jeu):
-    ecran, c = jeu(phases=("cuisson",), cookers=1, launch_guard=cook.DEFAULT_COOK["launch_guard"])
+    ecran, c = jeu(phases=("cuisson",), cookers=1, launch_guard=8.5)
     c._scan(wide=True)
     assert len(c._burners) == 1
     assert c._may_launch(c._burners[0], c._burners)

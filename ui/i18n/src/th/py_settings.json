@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "ไม่รู้จักปุ่มนี้",
   "settings.error.hotkey_taken": "ถูกใช้แล้วสำหรับ \"{label}\"",
   "settings.error.unknown_type": "ไม่รู้จักประเภท",
-  "settings.error.unknown_section": "ไม่รู้จักหมวด: {section}"
+  "settings.error.unknown_section": "ไม่รู้จักหมวด: {section}",
+  "settings.error.key_is_note": "ปุ่มนี้ใช้สำหรับเล่นโน้ต โปรดเลือกปุ่มฟังก์ชัน (F1 ถึง F12) หรือใช้ร่วมกับ Ctrl หรือ Alt",
+  "notify.hotkeys_fixed": "ปุ่มลัดที่ตั้งไว้บนปุ่มโน้ตถูกรีเซ็ตเป็นค่าเริ่มต้นแล้ว เพราะทำให้การเล่นหยุดเอง"
 }

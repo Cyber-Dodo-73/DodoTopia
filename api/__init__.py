@@ -106,6 +106,9 @@ class Api(BaseMixin, HotkeysMixin, StateMixin, CookMixin, DrawMixin, LibraryMixi
         self._last_reason = ""
         # --debug (DodoTopia (debug).bat) : l'interface reserve le diagnostic technique a ce mode
         self._debug = "--debug" in sys.argv
+        if self._cfg.get("_hotkeys_fixed"):
+            core.save_config(self._cfg)
+            self._notify(i18n.t("notify.hotkeys_fixed"), "warn", sticky=True)
         if self._cfg.get("_recovered"):
             self._notify(i18n.t("api.config_recovered"), "warn", sticky=True)
         logging_setup.on_crash(lambda msg: self._notify(i18n.t("api.internal_error", error=msg), "danger"))

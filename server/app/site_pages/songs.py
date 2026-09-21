@@ -8,7 +8,7 @@ import math
 from .. import db, library
 from ..i18n import LANGS, t
 from ..schemas import SONG_TAGS, clean_text
-from ..site import esc, human_date, ld_script, url_for
+from ..site import esc, human_date, ld_script, page_header, url_for
 from ._listing import app_buttons, duration, page_int, pager, plain, shorten, slugify
 from ._shared import cta_band
 
@@ -67,9 +67,34 @@ def _meta_line(lang: str, row) -> str:
         parts.append(esc(row["artist"]))
     parts.append(esc(duration(row["duration_s"])))
     parts.append(t(lang, "site.songs.notes_n", n=row["note_count"]))
-    parts.append(t(lang, "site.songs.likes_n", n=row["likes"] or 0))
-    parts.append(t(lang, "site.songs.downloads_n", n=row["downloads"] or 0))
+    # Pas de « 0 j'aime · 0 téléchargements » : un compteur nul n'apprend rien et dessert une jeune bibliothèque.
+    if row["likes"]:
+        parts.append(t(lang, "site.songs.likes_n", n=row["likes"]))
+    if row["downloads"]:
+        parts.append(t(lang, "site.songs.downloads_n", n=row["downloads"]))
     return " · ".join(parts)
+
+
+def song_card(lang: str, row, heading: str = "h2") -> str:
+    """Carte d'un morceau (liste publique et aperçu de l'accueil) : pastille note, titre, ligne d'infos, tags."""
+    return (f'<li class="songcard"><span class="songcard__ico" aria-hidden="true"></span>'
+            f'<div class="songcard__body"><{heading} class="songcard__title">'
+            f'<a href="{esc(song_url(lang, row["id"], row["title"]))}">{esc(row["title"])}</a></{heading}>'
+            f'<p class="songcard__meta">{_meta_line(lang, row)}</p>'
+            f'{tag_pills(lang, library.load_tags(row["tags"]))}</div></li>')
+
+
+def recent_cards(settings, lang: str, n: int = 6, minimum: int = 3) -> str:
+    """Les `n` derniers morceaux approuvés, en cartes (accueil). Chaîne vide sous `minimum` morceaux : une
+    bibliothèque presque vide ne se montre pas."""
+    conn = db.connect(settings)
+    try:
+        rows, _total = library.query_songs(conn, "", "", "", "recent", 1, n)
+    finally:
+        conn.close()
+    if len(rows) < minimum:
+        return ""
+    return f'<ul class="songgrid reveal">{"".join(song_card(lang, r, "h3") for r in rows)}</ul>'
 
 
 def _filters(lang: str, query: dict) -> str:
@@ -103,18 +128,14 @@ def render(settings, lang: str, ctx) -> str:
         conn.close()
     pages = max(1, math.ceil(total / PER_PAGE))
     if rows:
-        items = "".join(
-            f'<li class="songitem"><h2 class="songitem__title"><a href="{esc(song_url(lang, r["id"], r["title"]))}">'
-            f'{esc(r["title"])}</a></h2><p class="songitem__meta">{_meta_line(lang, r)}</p>'
-            f'{tag_pills(lang, library.load_tags(r["tags"]))}</li>' for r in rows)
+        items = "".join(song_card(lang, r) for r in rows)
         listing = (f'<p class="dl-note" role="status">{t(lang, "site.songs.results_n", n=total)}</p>'
-                   f'<ul class="songlist">{items}</ul>{pager(lang, "songs", query, page, pages)}')
+                   f'<ul class="songgrid">{items}</ul>{pager(lang, "songs", query, page, pages)}')
     else:
         key = "site.songs.no_match" if query else "site.songs.empty"
         listing = f'<div class="soon"><h2>{esc(t(lang, key + "_title"))}</h2><p>{t(lang, key + "_text")}</p></div>'
-    return f"""<section class="section"><div class="wrap">
-  <h1>{t(lang, "site.songs.h1")}</h1>
-  <p class="lead">{t(lang, "site.songs.lead")}</p>
+    return f"""{page_header(lang, esc(t(lang, "site.songs.eyebrow")), t(lang, "site.songs.h1"), t(lang, "site.songs.lead"))}
+<section class="section section--first"><div class="wrap">
   {_filters(lang, query)}
   {listing}
 </div></section>
@@ -160,9 +181,11 @@ def render_detail(settings, lang: str, ctx, row) -> str:
             (t(lang, "site.songs.added_on"),
              f'<time datetime="{esc((row["created_at"] or "")[:10])}">{esc(human_date(row["created_at"], lang))}</time>'),
             (t(lang, "site.songs.duration"), esc(duration(row["duration_s"]))),
-            (t(lang, "site.songs.notes"), esc(row["note_count"])),
-            (t(lang, "site.songs.downloads"), esc(row["downloads"] or 0)),
-            (t(lang, "site.songs.likes"), esc(row["likes"] or 0))]
+            (t(lang, "site.songs.notes"), esc(row["note_count"]))]
+    if row["downloads"]:                # pas de ligne « 0 » : un compteur nul n'apprend rien
+        rows.append((t(lang, "site.songs.downloads"), esc(row["downloads"])))
+    if row["likes"]:
+        rows.append((t(lang, "site.songs.likes"), esc(row["likes"])))
     if row["instrument"]:
         rows.append((t(lang, "site.songs.instrument"), esc(_instrument_label(row["instrument"], lang))))
     if tags:
@@ -175,13 +198,12 @@ def render_detail(settings, lang: str, ctx, row) -> str:
         rows.append((t(lang, "site.songs.source"), esc(row["source_name"])))
     rows.append((t(lang, "site.songs.license"), esc(t(lang, f"site.songs.license_{row['license'] or 'unknown'}"))))
     meta = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows)
-    artist = f'<p class="lead">{esc(row["artist"])}</p>' if row["artist"] else ""
-    return f"""<section class="section"><div class="wrap">
-  <p class="backlink"><a href="{url_for(lang, "songs")}">{esc(t(lang, "site.songs.back"))}</a></p>
+    back = f'<p class="backlink"><a href="{url_for(lang, "songs")}">{esc(t(lang, "site.songs.back"))}</a></p>'
+    header = page_header(lang, esc(t(lang, "site.songs.eyebrow")), esc(title), esc(row["artist"] or ""), back=back,
+                         cls="pagehead--detail")
+    return f"""{header}
+<section class="section section--first"><div class="wrap">
   <article class="detail">
-    <p class="eyebrow">{esc(t(lang, "site.songs.eyebrow"))}</p>
-    <h1>{esc(title)}</h1>
-    {artist}
     {app_buttons(lang, f"dodotopia://song/{sid}", "site.songs.open_app", ctx.latest)}
     <dl class="dlmeta detail__meta">{meta}</dl>
     <p class="dl-note">{t(lang, "site.songs.rights_note")}</p>
@@ -198,4 +220,5 @@ def _instrument_label(inst_id: str, lang: str) -> str:
     return inst_id
 
 
-__all__ = ["render", "render_detail", "normalize_query", "song_url", "song_slug", "fetch_public_song"]
+__all__ = ["render", "render_detail", "normalize_query", "song_url", "song_slug", "fetch_public_song",
+           "song_card", "recent_cards"]

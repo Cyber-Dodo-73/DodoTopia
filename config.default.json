@@ -366,7 +366,7 @@
     "green_px": 60,
     "click_delay": 0.3,
     "cookers": 1,
-    "launch_guard": 8.0,
+    "launch_guard": 0.0,
     "launch_anytime": false
   },
   "keyboard_layout": "auto",
@@ -374,6 +374,6 @@
   "min_press": 0.02,
   "min_gap": 0.012,
   "sustain": false,
-  "game_process": "Heartopia.exe",
+  "game_process": "xdt.exe, Heartopia.exe",
   "hotkeys_migrated_f12": true
 }

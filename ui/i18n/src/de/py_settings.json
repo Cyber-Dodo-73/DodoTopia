@@ -8,5 +8,7 @@
   "settings.error.key_unknown": "unbekannte Taste",
   "settings.error.hotkey_taken": "schon für \"{label}\" belegt",
   "settings.error.unknown_type": "unbekannter Typ",
-  "settings.error.unknown_section": "unbekannter Abschnitt: {section}"
+  "settings.error.unknown_section": "unbekannter Abschnitt: {section}",
+  "settings.error.key_is_note": "Diese Taste wird zum Spielen von Noten verwendet: Wähle eine Funktionstaste (F1 bis F12) oder eine Kombination mit Strg oder Alt.",
+  "notify.hotkeys_fixed": "Ein Tastenkürzel auf einer Notentaste wurde zurückgesetzt: Es hat die Wiedergabe von selbst gestoppt."
 }

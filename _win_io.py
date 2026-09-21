@@ -262,6 +262,8 @@ _user32.GetWindowThreadProcessId.restype = wt.DWORD
 _user32.GetKeyboardLayout.argtypes = (wt.DWORD,)
 _user32.GetKeyboardLayout.restype = wt.HKL
 _user32.IsWindowVisible.argtypes = (wt.HWND,)
+_user32.GetWindowTextLengthW.argtypes = (wt.HWND,)
+_user32.GetWindowTextW.argtypes = (wt.HWND, wt.LPWSTR, ctypes.c_int)
 _kernel32.OpenProcess.argtypes = (wt.DWORD, wt.BOOL, wt.DWORD)
 _kernel32.OpenProcess.restype = wt.HANDLE
 _kernel32.QueryFullProcessImageNameW.argtypes = (wt.HANDLE, wt.DWORD, wt.LPWSTR, ctypes.POINTER(wt.DWORD))
@@ -318,18 +320,36 @@ def _foreground_pid():
     return int(pid.value), int(tid)
 
 
-def foreground_process_name():
-    """Nom de l'executable de la fenetre active (« Heartopia.exe »), ou None si inconnu."""
+def _window_title(hwnd):
+    n = _user32.GetWindowTextLengthW(hwnd)
+    if n <= 0:
+        return ""
+    buf = ctypes.create_unicode_buffer(n + 1)
+    _user32.GetWindowTextW(hwnd, buf, n + 1)
+    return buf.value
+
+
+def foreground_window():
+    """(nom de l'executable, titre) de la fenetre active ; (None, None) si rien n'est lisible."""
     try:
-        pid, _ = _foreground_pid()
-        return _process_name(pid)
+        hwnd = _user32.GetForegroundWindow()
+        if not hwnd:
+            return None, None
+        pid = wt.DWORD(0)
+        _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        return _process_name(int(pid.value)), _window_title(hwnd)
     except Exception:
-        return None
+        return None, None
 
 
-def _find_process_windows(process_name):
-    """PID du processus `process_name` qui possede une fenetre visible, ou 0."""
-    wanted = process_name.lower()
+def foreground_process_name():
+    """Nom de l'executable de la fenetre active (xdt.exe pour Heartopia), ou None si inconnu."""
+    return foreground_window()[0]
+
+
+def _find_game_window(names, titles):
+    """PID de la premiere fenetre visible dont l'executable est dans `names` ou dont le titre exact est dans
+    `titles` (tout en minuscules), ou 0."""
     found = []
     seen = {}
 
@@ -339,11 +359,9 @@ def _find_process_windows(process_name):
         pid = wt.DWORD(0)
         _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         p = int(pid.value)
-        if p in seen:
-            return True
-        name = _process_name(p)
-        seen[p] = name
-        if name and name.lower() == wanted:
+        if p not in seen:
+            seen[p] = (_process_name(p) or "").lower()
+        if seen[p] in names or _window_title(hwnd).strip().lower() in titles:
             found.append(p)
             return False
         return True
@@ -352,20 +370,25 @@ def _find_process_windows(process_name):
     return found[0] if found else 0
 
 
-def game_window_info(process_name):
+def game_window_info(names, titles=()):
     """Etat du jeu pour l'interface : {found, foreground, elevated}. Chaque valeur peut etre None (inconnu).
-    `elevated` : le jeu tourne en administrateur (les touches seront refusees si DodoTopia ne l'est pas)."""
+    `names` : executables du jeu, `titles` : titres exacts de sa fenetre (minuscules). `elevated` : le jeu tourne
+    en administrateur (les touches seront refusees si DodoTopia ne l'est pas)."""
     info = {"found": None, "foreground": None, "elevated": None}
-    if not process_name:
+    if isinstance(names, str):
+        names = [n.strip().lower() for n in names.split(",") if n.strip()]
+    names = {str(n).lower() for n in (names or ())}
+    titles = {str(t).lower() for t in (titles or ())}
+    if not names and not titles:
         return info
     try:
         fg_pid, _ = _foreground_pid()
-        fg_name = _process_name(fg_pid)
-        if fg_name and fg_name.lower() == process_name.lower():
+        fg_name, fg_title = foreground_window()
+        if (fg_name or "").lower() in names or (fg_title or "").strip().lower() in titles:
             pid = fg_pid
             info["foreground"] = True
         else:
-            pid = _find_process_windows(process_name)
+            pid = _find_game_window(names, titles)
             info["foreground"] = False
         info["found"] = bool(pid)
         if pid:

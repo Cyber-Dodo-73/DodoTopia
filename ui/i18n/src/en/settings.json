@@ -50,7 +50,7 @@
   "settings.sustain.label": "Sustain pedal",
   "settings.sustain.help": "Extends the notes held by the file's pedal (CC64), like on a piano.",
   "settings.game_process.label": "Game program",
-  "settings.game_process.help": "Name of the executable that must be in the foreground: playing, drawing and cooking stop if it no longer is. Empty = no check.",
+  "settings.game_process.help": "Game programs, separated by commas (Heartopia runs as xdt.exe). The window titled “Heartopia” is recognised too. Playing, drawing and cooking stop if another window comes to the front. Empty = no check.",
   "settings.multi.device.label": "Audio output listened to",
   "settings.multi.device.help": "The one where the game plays its sound; the list is re-read each time the panel opens. If the chosen device was unplugged, it stays listed, marked “missing”.",
   "settings.multi.device.opt.default": "Default output (recommended)",

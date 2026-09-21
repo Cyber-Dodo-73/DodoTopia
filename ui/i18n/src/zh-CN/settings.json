@@ -50,7 +50,7 @@
   "settings.sustain.label": "延音踏板",
   "settings.sustain.help": "像钢琴一样，延长文件踏板（CC64）保持的音符。",
   "settings.game_process.label": "游戏程序",
-  "settings.game_process.help": "必须处于前台的可执行文件名称：如果它不再在前台，演奏、绘画和烹饪都会停止。留空 = 不检查。",
+  "settings.game_process.help": "游戏程序，用逗号分隔（Heartopia 以 xdt.exe 运行）。标题为“Heartopia”的窗口也会被识别。如果其他窗口切到前台，演奏、绘画和烹饪会立即停止。留空 = 不检查。",
   "settings.multi.device.label": "聆听的音频输出",
   "settings.multi.device.help": "游戏播放声音的输出设备；每次打开面板时都会重新读取列表。如果所选设备已拔出，它仍会列出，并标记为“缺失”。",
   "settings.multi.device.opt.default": "默认输出（推荐）",

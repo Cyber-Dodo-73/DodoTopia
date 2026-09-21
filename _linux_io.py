@@ -519,7 +519,12 @@ def foreground_process_name():
     return None
 
 
-def game_window_info(process_name):
+def foreground_window():
+    """(executable, titre) de la fenetre active ; non detecte sous Linux : (None, None)."""
+    return None, None
+
+
+def game_window_info(names, titles=()):
     """{found, foreground, elevated} pour l'interface ; sous Linux rien n'est detecte."""
     return {"found": None, "foreground": None, "elevated": None}
 

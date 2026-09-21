@@ -38,7 +38,10 @@ def isolate_data_dir(tmp_path, monkeypatch):
     # aucune fenetre de jeu pendant les tests : la verification « jeu au premier plan » est neutre
     import platform_io
     monkeypatch.setattr(platform_io, "foreground_process_name", lambda: None)
-    monkeypatch.setattr(platform_io, "game_window_info", lambda name: {"found": None, "foreground": None, "elevated": None})
+    monkeypatch.setattr(platform_io, "foreground_window", lambda: (None, None))
+    monkeypatch.setattr(platform_io, "game_window_info",
+                        lambda names, titles=(): {"found": None, "foreground": None, "elevated": None})
+    platform_io._found_cache.update(at=0.0, key=None, found=None)
     before = {n: _stamp(n) for n in _GUARDED}
     yield
     after = {n: _stamp(n) for n in _GUARDED}

@@ -34,6 +34,7 @@ update_open_folder
 deeplink_confirm deeplink_dismiss handle_deeplink protocol_status register_protocol
 online_like_song online_import_url gallery_list gallery_share gallery_open gallery_take gallery_like gallery_delete
 gallery_report room_exists open_external save_drawing_png
+ui_log
 """.split())
 
 
@@ -71,3 +72,35 @@ def test_les_mixins_ne_se_marchent_pas_dessus():
             if callable(v) and not n.startswith("__"):
                 assert n not in seen, f"{n} défini dans {seen[n].__name__} et {cls.__name__}"
                 seen[n] = cls
+
+
+def test_aucun_nom_global_indefini_dans_les_modules_de_l_api():
+    """Le découpage de app.py en mixins avait laissé `webview` sans import dans trois modules : les boîtes
+    « Importer » plantaient avec NameError chez les joueurs (2.0.0). Chaque nom global lu par une fonction
+    doit exister dans son module (ou dans les builtins)."""
+    import builtins
+    import dis
+    import importlib
+    import pkgutil
+    import types
+
+    import api
+
+    def code_objects(code):
+        yield code
+        for const in code.co_consts:
+            if isinstance(const, types.CodeType):
+                yield from code_objects(const)
+
+    missing = []
+    for info in pkgutil.iter_modules(api.__path__):
+        mod = importlib.import_module(f"api.{info.name}")
+        with open(mod.__file__, "r", encoding="utf-8") as f:
+            top = compile(f.read(), mod.__file__, "exec")
+        for code in code_objects(top):
+            for ins in dis.get_instructions(code):
+                if ins.opname in ("LOAD_GLOBAL", "LOAD_NAME") and isinstance(ins.argval, str):
+                    name = ins.argval
+                    if name not in vars(mod) and not hasattr(builtins, name) and name not in code.co_varnames:
+                        missing.append(f"{info.name}.{code.co_name} : {name}")
+    assert not missing, "noms globaux indéfinis : " + ", ".join(sorted(set(missing)))

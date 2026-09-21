@@ -7,8 +7,21 @@
 # ouvre DodoTopia sur un lien, rendre ce fichier gestionnaire par defaut (une fois) :
 #     xdg-mime default dodotopia.desktop x-scheme-handler/dodotopia
 # DODO_NO_DESKTOP=1 : ne pas ecrire le fichier .desktop.
-cd "$(dirname "$0")"
+# DODO_SOFTWARE_RENDER=1 : rendu logiciel (pilote graphique capricieux, fenetre vide ou plantage au demarrage).
+#
+# Le script suit les liens symboliques : sudo ln -s /opt/dodotopia/DodoTopia.sh /usr/local/bin/dodotopia fonctionne.
+SELF="$(readlink -f -- "$0" 2>/dev/null || true)"
+[ -n "$SELF" ] || SELF="$0"
+cd "$(dirname -- "$SELF")" || exit 1
 HERE="$(pwd)"
+
+if [ -n "${DODO_SOFTWARE_RENDER:-}" ]; then
+  export QT_QUICK_BACKEND=software QT_OPENGL=software LIBGL_ALWAYS_SOFTWARE=1
+  case " ${QTWEBENGINE_CHROMIUM_FLAGS:-} " in
+    *" --disable-gpu "*) ;;
+    *) export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:+$QTWEBENGINE_CHROMIUM_FLAGS }--disable-gpu" ;;
+  esac
+fi
 
 install_desktop() {   # $1 = commande absolue a lancer
   [ -n "${DODO_NO_DESKTOP:-}" ] && return 0

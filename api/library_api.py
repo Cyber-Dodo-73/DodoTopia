@@ -10,6 +10,8 @@ import threading
 import time
 from collections import deque
 
+import webview
+
 import cook
 import core
 import draw
@@ -164,7 +166,9 @@ class LibraryMixin:
         time.sleep(max(0.2, delay))
         front = p._game_in_front()
         if front is False:
-            name = self._cfg.get("game_process") or i18n.t("api.test_key.the_game")
+            proc, title = platform_io.foreground_window()
+            self._log(f"test d'une note : fenêtre au premier plan = {proc or '?'} « {title or ''} »")
+            name = "Heartopia"
             return {"ok": False, "reason": i18n.t("api.test_key.not_focused", name=name, delay=delay),
                     "state": self.get_state()}
         try:

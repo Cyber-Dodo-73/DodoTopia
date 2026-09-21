@@ -1,0 +1,2 @@
+# Les scripts shell partent tels quels dans le bundle Linux et dans Docker : toujours en LF, meme sous Windows.
+*.sh text eol=lf

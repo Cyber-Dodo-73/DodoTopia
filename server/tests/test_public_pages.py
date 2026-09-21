@@ -190,11 +190,16 @@ def test_gallery_drawing_without_cells_and_pending(client, user_token, admin_tok
 
 
 def test_sitemaps(client, user_token, admin_token):
+    # Index : un sitemap enfant vide n'est pas listé (Google et Bing le signalent en erreur), mais il répond 200.
     r = client.get("/sitemap.xml")
-    for name in ("sitemap-pages.xml", "sitemap-songs.xml", "sitemap-gallery.xml"):
-        assert f"<loc>http://testserver/{name}</loc>" in r.text
-    assert client.get("/sitemap-gallery.xml").text.count("<url>") == 0
+    assert "<loc>http://testserver/sitemap-pages.xml</loc>" in r.text
+    assert "sitemap-songs.xml" not in r.text and "sitemap-gallery.xml" not in r.text
+    empty = client.get("/sitemap-gallery.xml")
+    assert empty.status_code == 200 and "<urlset" in empty.text and empty.text.count("<url>") == 0
+    assert client.get("/sitemap-songs.xml").status_code == 200
     did = approved_drawing(client, user_token, admin_token)
+    index = client.get("/sitemap.xml").text
+    assert "<loc>http://testserver/sitemap-gallery.xml</loc>" in index and "sitemap-songs.xml" not in index
     xml = client.get("/sitemap-gallery.xml")
     assert xml.status_code == 200 and xml.headers["content-type"].startswith("application/xml")
     assert f"<loc>http://testserver/pt-BR/galeria/{did}</loc>" in xml.text and xml.text.count("<url>") == len(LANGS)

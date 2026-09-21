@@ -47,7 +47,9 @@ Prompt-Claude-Code-*.md
 !.tools/i18n_merge.py
 !.tools/post_social.py
 !.tools/make_og.py
+!.tools/make_shots.py
 !.tools/ux_check.py
+!.tools/check_linux_bundle.sh
 
 # Données locales de DodoTopia 2.0 lancé depuis les sources (DATA_DIR = dossier du projet)
 webview/
@@ -60,3 +62,4 @@ config.json.broken-*
 *.tmp-*
 # Captures de vérification de l'interface
 artifacts/
+config.json.bak-*

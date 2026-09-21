@@ -384,7 +384,8 @@ def test_no_external_resource_anywhere(client):
             for bad in ("fonts.googleapis.com", "fonts.gstatic.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com",
                         "unpkg.com", "<script src", 'rel="stylesheet" href="http'):
                 assert bad not in html, f"{bad} dans {page_id}/{lang}"
-            assert re.findall(r'<img[^>]+src="(?!/static/)', html) == [], page_id
+            # images locales seulement : /static, ou les vignettes de la galerie (aperçu de l'accueil compris)
+            assert re.findall(r'<img[^>]+src="(?!/static/|/api/drawings/)', html) == [], page_id
             assert "http" not in "".join(re.findall(r'<link rel="(?:stylesheet|preload|icon)"[^>]*>', head))
 
 

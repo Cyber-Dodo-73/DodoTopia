@@ -7,7 +7,12 @@ from .. import legal_md
 from ..i18n import has, t
 from ..site import (EDITEUR_ADRESSE, EDITEUR_COURRIEL, EDITEUR_MARQUE, EDITEUR_NOM, EDITEUR_SIRET, EDITEUR_TEL,
                     EDITEUR_TEL_INTL, HEBERGEUR_ADRESSE, HEBERGEUR_CONTACT, HEBERGEUR_NOM, LAST_UPDATE_ISO,
-                    SITE_HOST, esc, last_update, url_for)
+                    SITE_HOST, esc, last_update, page_header, url_for)
+
+
+def _band(lang: str) -> str:
+    """Bandeau décoratif sans titre : le <h1> est dans le document (celui des CGU vient du Markdown)."""
+    return page_header(lang, esc(t(lang, "site.footer.legal")), "", "", cls="pagehead--bare")
 
 
 def _updated(lang: str) -> str:
@@ -39,7 +44,7 @@ class _Mentions:
         params = _params(settings)
         params["terms_url"] = url_for(lang, "terms")
         params["privacy_url"] = url_for(lang, "privacy")
-        return f"""<section class="section"><div class="wrap"><article class="doc">
+        return f"""{_band(lang)}<section class="section section--first section--doc"><div class="wrap"><article class="doc">
   <h1>{t(lang, "site.legal.h1")}</h1>
   {_updated(lang)}
   {_sections(lang, "site.legal", params)}
@@ -55,7 +60,7 @@ class _Privacy:
         params["legal_url"] = url_for(lang, "legal")
         analytics_on = bool((settings.PLAUSIBLE_SCRIPT_URL or "").strip())
         params["audience_status"] = t(lang, "site.privacy.audience_on" if analytics_on else "site.privacy.audience_off")
-        return f"""<section class="section"><div class="wrap"><article class="doc">
+        return f"""{_band(lang)}<section class="section section--first section--doc"><div class="wrap"><article class="doc">
   <h1>{t(lang, "site.privacy.h1")}</h1>
   {_updated(lang)}
   <p>{t(lang, "site.privacy.intro", **params)}</p>
@@ -70,7 +75,7 @@ class _Terms:
         md_lang = "fr" if lang == "fr" else "en"
         doc = legal_md.load(md_lang) or legal_md.load("fr")
         if not doc:
-            return f"""<section class="section"><div class="wrap"><article class="doc">
+            return f"""{_band(lang)}<section class="section section--first section--doc"><div class="wrap"><article class="doc">
   <h1>{t(lang, "site.terms.h1")}</h1>
   <div class="notice"><p>{t(lang, "site.terms.unavailable", email=EDITEUR_COURRIEL)}</p></div>
 </article></div></section>
@@ -80,7 +85,7 @@ class _Terms:
             note = (f'<div class="notice notice--soft"><p><strong>{t(lang, "site.terms.prevails_title")}</strong> '
                     f'{t(lang, "site.terms.prevails_text")} <a href="{url_for("fr", "terms")}" hreflang="fr" lang="fr">'
                     f'{esc(t(lang, "site.terms.prevails_link"))}</a></p></div>')
-        return f"""<section class="section"><div class="wrap"><article class="doc doc--terms">
+        return f"""{_band(lang)}<section class="section section--first section--doc"><div class="wrap"><article class="doc doc--terms">
 {note}
 {doc["html"]}
 </article></div></section>

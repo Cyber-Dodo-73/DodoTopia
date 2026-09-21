@@ -25,6 +25,14 @@ for _c in "0123456789abcdefghijklmnopqrstuvwxyz":
     VKCODES[_c] = ord(_c.upper())
 
 
+# Heartopia tourne sous « xdt.exe » (XD Games), pas « Heartopia.exe » : la 2.0.0 comparait au mauvais nom et
+# refusait de jouer chez tout le monde. On reconnait donc le jeu par son executable OU par le titre exact de
+# sa fenetre, et on ne bloque que si le jeu existe mais qu'une autre fenetre est devant. Jeu introuvable
+# (executable renomme, autre plateforme) = aucune verification plutot qu'un blocage general.
+DEFAULT_GAME_PROCESS = "xdt.exe, Heartopia.exe"
+GAME_TITLES = ("heartopia", "\u5fc3\u52a8\u5c0f\u9547")
+
+
 class InjectionError(RuntimeError):
     """L'envoi des touches a ete refuse par le systeme (jeu lance en administrateur alors que DodoTopia ne
     l'est pas : UIPI bloque SendInput). Le code Windows est dans `code`."""
@@ -42,7 +50,7 @@ if IS_WINDOWS:
         is_admin, mouse_hint, MidiOut, open_text_file, open_folder, open_url,
         set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
-        foreground_process_name, game_window_info, foreground_keyboard_layout,
+        foreground_process_name, foreground_window, game_window_info, foreground_keyboard_layout,
     )
 else:
     from _linux_io import (  # noqa: E402,F401
@@ -51,5 +59,54 @@ else:
         is_admin, mouse_hint, MidiOut, open_text_file, open_folder, open_url,
         set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
-        foreground_process_name, game_window_info, foreground_keyboard_layout,
+        foreground_process_name, foreground_window, game_window_info, foreground_keyboard_layout,
     )
+
+
+# ---------------------------------------------------------------- le jeu est-il devant ?
+_found_cache = {"at": 0.0, "key": None, "found": None}
+
+
+def _basename(path):
+    return str(path or "").replace("\\", "/").rsplit("/", 1)[-1].lower()
+
+
+def game_names(value):
+    """Reglage `game_process` (liste separee par des virgules) -> ensemble d'executables en minuscules."""
+    out = set()
+    for part in str(value or "").replace(";", ",").split(","):
+        name = _basename(part.strip().strip('"'))
+        if name:
+            out.add(name)
+    return out
+
+
+def is_game_window(proc, title, names):
+    return _basename(proc) in names or str(title or "").strip().lower() in GAME_TITLES
+
+
+def game_in_front(game_process):
+    """True : le jeu est au premier plan ; False : le jeu existe mais une autre fenetre est devant (les
+    touches et les clics partiraient ailleurs) ; None : pas de verification possible ou voulue (reglage vide,
+    plateforme muette, jeu introuvable)."""
+    import time as _time
+    names = game_names(game_process)
+    if not names:
+        return None
+    try:
+        proc, title = foreground_window()
+    except Exception:  # noqa
+        return None
+    if proc is None and not title:
+        return None
+    if is_game_window(proc, title, names):
+        return True
+    now = _time.monotonic()
+    key = tuple(sorted(names))
+    if _found_cache["key"] != key or now - _found_cache["at"] > 2.0:
+        try:
+            found = game_window_info(names, GAME_TITLES).get("found")
+        except Exception:  # noqa
+            found = None
+        _found_cache.update(at=now, key=key, found=found)
+    return False if _found_cache["found"] else None

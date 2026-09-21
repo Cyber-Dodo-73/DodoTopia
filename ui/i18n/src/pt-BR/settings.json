@@ -50,7 +50,7 @@
   "settings.sustain.label": "Pedal de sustentação",
   "settings.sustain.help": "Prolonga as notas seguradas pelo pedal do arquivo (CC64), como em um piano.",
   "settings.game_process.label": "Programa do jogo",
-  "settings.game_process.help": "Nome do executável que deve estar em primeiro plano: tocar, desenhar e cozinhar param se ele não estiver mais. Vazio = sem verificação.",
+  "settings.game_process.help": "Programas do jogo, separados por vírgulas (o Heartopia roda como xdt.exe). A janela com o título “Heartopia” também é reconhecida. A reprodução, o desenho e a cozinha param se outra janela vier para a frente. Vazio = sem verificação.",
   "settings.multi.device.label": "Saída de áudio escutada",
   "settings.multi.device.help": "Aquela onde o jogo toca o som; a lista é relida sempre que o painel abre. Se o dispositivo escolhido foi desconectado, ele continua listado, marcado como “ausente”.",
   "settings.multi.device.opt.default": "Saída padrão (recomendado)",
