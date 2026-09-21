@@ -976,7 +976,10 @@ class Updater:
             return
         self.log(f"mise à jour disponible : {latest} (installée : {VERSION})"
                  + (" — obligatoire" if self.mandatory else ""))
-        if self._notified != latest or manual:
+        # installation automatique au demarrage : pas de toast « Installer » a cliquer, tout se fait seul
+        will_auto = (not manual and self.install_kind() == "setup" and bool(self.asset)
+                     and (self.auto or self.mandatory))
+        if (self._notified != latest or manual) and not will_auto:
             self._notified = latest
             msg = i18n.t("update.available", version=latest, mandatory=bool(self.mandatory))
             if self.on_available:
@@ -987,7 +990,7 @@ class Updater:
         # pour une installation par installeur, qui sait fermer l'app, s'installer en silence et la relancer.
         # En portable ou sous Linux il faudrait remplacer des fichiers en cours d'usage : on s'en tient au toast.
         # Une version obligatoire s'installe meme si l'installation automatique est desactivee.
-        if not manual and self.install_kind() == "setup" and self.asset and (self.auto or self.mandatory):
+        if will_auto:
             if self.mandatory and not self.auto:
                 self.notify(i18n.t("update.mandatory_install", version=latest), "warn")
             self._auto_install(latest)
@@ -1075,7 +1078,11 @@ class Updater:
                 flags = 0
                 if IS_WINDOWS:
                     flags = getattr(subprocess, "DETACHED_PROCESS", 0x8) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200)
-                subprocess.Popen([self.path, "/SILENT", "/CLOSEAPPLICATIONS", "/NORESTART", "/SP-"],
+                # /VERYSILENT : aucune fenetre d'installeur (ni assistant, ni barre de progression), comme
+                # Discord ; /SUPPRESSMSGBOXES : aucune question. L'installeur ferme l'app, remplace les fichiers et
+                # la relance avec --updated ([Run] ... skipifnotsilent dans installer.iss).
+                subprocess.Popen([self.path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/CLOSEAPPLICATIONS",
+                                  "/NORESTART", "/SP-"],
                                  creationflags=flags, close_fds=True)
             except OSError as e:
                 self.state, self.error = "error", str(e)

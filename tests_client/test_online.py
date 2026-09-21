@@ -405,6 +405,32 @@ def test_install_kind(monkeypatch, tmp_path):
     assert Updater.install_kind() == "targz" and Updater.platform_key() == "linux-x64"
 
 
+def test_mise_a_jour_silencieuse_au_demarrage(server, tmp_path, monkeypatch):
+    """Comme Discord : au démarrage, la version se télécharge et s'installe sans fenêtre d'installeur
+    (/VERYSILENT) et sans toast « Installer » à cliquer ; l'installeur relance l'application."""
+    lances, annonces, quits = [], [], []
+    monkeypatch.setattr(Updater, "install_kind", staticmethod(lambda: "setup"))
+    monkeypatch.setattr(Updater, "platform_key", staticmethod(lambda: "windows-setup"))
+    monkeypatch.setattr(online.subprocess, "Popen", lambda args, **kw: lances.append(list(args)))
+    u = Updater(OnlineClient(server), {}, notify=lambda m, k="info": None, request_quit=lambda: quits.append(1),
+                on_available=lambda msg, v: annonces.append(v), updates_dir=str(tmp_path / "updates"))
+    u.auto = True
+    u.install_pause_s = 0
+    u._check(manual=False)
+    assert u.state == "installing" and len(lances) == 1
+    args = lances[0]
+    assert args[0] == u.path and os.path.isfile(u.path)
+    assert "/VERYSILENT" in args and "/SUPPRESSMSGBOXES" in args and "/CLOSEAPPLICATIONS" in args
+    assert "/SILENT" not in args
+    assert annonces == [], "pas de toast « Installer » quand tout se fait seul"
+    # vérification manuelle : on annonce, on n'installe pas dans le dos de l'utilisateur
+    u2 = Updater(OnlineClient(server), {}, notify=lambda m, k="info": None,
+                 on_available=lambda msg, v: annonces.append(v), updates_dir=str(tmp_path / "updates2"))
+    u2.auto = True
+    u2._check(manual=True)
+    assert annonces == ["9.9.9"] and len(lances) == 1
+
+
 def test_updater_check_and_download(server, tmp_path, monkeypatch):
     notes = []
     c = OnlineClient(server)

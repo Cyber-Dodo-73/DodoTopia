@@ -5,6 +5,11 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.0.2
+- Cuisine à plusieurs cuisinières : l'anneau vert (« Ajuste le feu ») est maintenant cherché dans toute la zone et toujours cliqué, même quand l'icône de la spatule est animée ou que la bulle vient de bouger ; la deuxième cuisinière est reconnue même si ses bulles n'apparaissent qu'une à la fois.
+- Mises à jour silencieuses : au démarrage, la nouvelle version se télécharge, s'installe sans aucune fenêtre d'installeur ni bouton à cliquer, puis DodoTopia redémarre tout seul (désactivable dans Réglages › En ligne).
+- Cuisine plus rapide : « Cuisiner » est cliqué directement (le jeu présélectionne la dernière recette), le menu Recettes reste ouvert moins longtemps.
+
 ## 2.0.1
 - **F6 rejoue dans le jeu.** La 2.0.0 refusait de jouer avec « le jeu n'est pas au premier plan » : elle cherchait un programme nommé Heartopia.exe, alors que le jeu tourne sous xdt.exe. Le jeu est maintenant reconnu par son programme ou par le titre de sa fenêtre, et si DodoTopia ne le trouve pas du tout, il ne bloque plus rien.
 - **Cuisine à plusieurs cuisinières réparée.** Quand le personnage rejoint une cuisinière, la caméra le suit et toutes les bulles glissent à l'écran : DodoTopia les perdait ou les confondait (une seule cuisinière servie, plats prêts oubliés, anneau vert cliqué à côté). Les bulles sont maintenant suivies ensemble, l'anneau est cliqué en son centre, une bulle qui bouge encore n'est pas cliquée, et la deuxième cuisinière n'attend plus 8 secondes après chaque lancement et chaque feu ajusté.
