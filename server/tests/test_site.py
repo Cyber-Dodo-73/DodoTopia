@@ -468,14 +468,16 @@ def test_instruments_page_lists_one_card_per_type(client):
         assert f">{inst['label_fr']}</h3>" in html, inst["id"]
 
 
-def test_instruments_page_separates_catalogue_from_verification(client):
-    html = client.get("/fr/instruments").text
-    for bad in FORBIDDEN:
-        assert bad not in html, bad
-    assert "Présent au catalogue n'est pas lecture vérifiée." in html
-    for state in inst_page.STATE_ORDER:
-        assert inst_page.state_label("fr", state) in html, state
-    assert "La vérification se fait sur ton ordinateur" in html
+def test_instruments_page_shows_instruments_without_jargon(client):
+    """Demande du propriétaire (2026-09-21) : la page montre les instruments, sans l'état des profils de touches
+    (« documenté », « candidat », « à relever »). Elle ne promet toujours rien de faux."""
+    for path in ("/fr/instruments", "/fr/"):
+        html = client.get(path).text
+        for bad in FORBIDDEN:
+            assert bad not in html, bad
+        for state in inst_page.STATE_ORDER:
+            assert inst_page.state_label("fr", state) not in html, (path, state)
+        assert "profil de touches documenté" not in html and "pill--documented" not in html
 
 
 def test_instruments_states_match_the_catalogue_data(client):
@@ -488,9 +490,6 @@ def test_instruments_states_match_the_catalogue_data(client):
     for perc in ("conga", "cajon"):
         assert by_id[perc]["state"] == "candidate", perc
     assert by_id["piano"]["state"] == "documented"
-    html = client.get("/fr/instruments").text
-    for state, n in counts.items():
-        assert f"{n} type" in html, state
 
 
 def test_instruments_images_are_local_and_served(client):

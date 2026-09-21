@@ -360,6 +360,64 @@ def test_anneau_clique_en_son_centre_apres_le_glissement(jeu, souris_rapide):
     assert all(p.plats >= 1 for p in ecran.postes), ecran.events
 
 
+def test_find_rings_ne_garde_que_les_anneaux():
+    im = Image.new("RGB", (640, 600), HERBE)
+    d = ImageDraw.Draw(im)
+    d.ellipse((100 - 48, 120 - 48, 100 + 48, 120 + 48), outline=VERT, width=7)      # anneau 1
+    d.ellipse((420 - 48, 400 - 48, 420 + 48, 400 + 48), outline=VERT, width=7)      # anneau 2
+    d.rectangle((250, 60, 340, 150), fill=VERT)                                     # pavé plein : pas un anneau
+    d.rectangle((20, 500, 320, 520), fill=VERT)                                     # bande : pas un anneau
+    d.ellipse((560, 40, 580, 60), outline=VERT, width=3)                            # trop petit
+    rings = cook.find_rings(cook.green_mask(im), 60)
+    assert sorted((round(x, -1), round(y, -1)) for x, y, n in rings) == [(100, 120), (420, 400)], rings
+
+
+def test_anneau_clique_meme_si_le_suivi_est_perdu(jeu, souris_rapide):
+    """Retour en jeu : « il ne clique pas sur les spatules ». Pendant l'anneau l'icône n'est pas reconnue, et
+    l'anneau n'était cherché qu'autour de la position SUIVIE : suivi faux = anneau jamais vu. Il est maintenant
+    cherché dans toute la zone, et cliqué même sans cuisinière à qui le rattacher."""
+    ecran, c = jeu(phases=("anneau", "anneau"))
+    ecran.icone_cachee = True
+    for p in ecran.postes:
+        p.t = time.perf_counter() + 30                   # l'anneau reste affiché
+    a, b = cook.Burner(1, (450, 200)), cook.Burner(2, (760, 420))   # positions suivies fausses (loin des bulles)
+    a.launched = b.launched = time.perf_counter()
+    c._burners = [a, b]
+    dets = c._scan_wide()
+    assert sorted(d["state"] for d in dets) == ["spatula", "spatula"]
+    c._assign(dets)
+    assert {x.state for x in c._burners} == {"spatula"}
+    assert sorted(x.pos[0] // 10 for x in c._burners) == [33, 60]
+    # aucune cuisinière libre : l'anneau n'est pas jeté, la boucle le cliquera
+    c._burners = [a]
+    c.cfg["cook"]["cookers"] = 1
+    a.pos, a.state = (330, 300), "spatula"
+    c._assign(dets)
+    assert len(c._stray_rings) == 1 and abs(c._stray_rings[0][0] - 600) < 8
+
+
+def test_cuisiniere_manquante_plutot_qu_un_glissement(jeu):
+    """Une seule bulle vue au départ ; après son lancement, une bulle « cuisiner » apparaît loin : c'est la
+    2e cuisinière (la 1re vient d'être lancée, elle ne peut pas montrer « cuisiner »)."""
+    ecran, c = jeu()
+    c._burners = []
+    c._assign([{"pos": (330, 300), "state": "cook", "scores": {}}])
+    b1 = c._burners[0]
+    b1.launched = time.perf_counter()
+    b1.state = "cooking"
+    c._assign([{"pos": (600, 300), "state": "cook", "scores": {}}])
+    assert len(c._burners) == 2 and c._burners[1].pos == (600, 300)
+    assert b1.pos == (330, 300)
+
+
+def test_cuisiner_directement_sans_cliquer_la_tuile(jeu, souris_rapide):
+    """Le jeu présélectionne la dernière recette : « Cuisiner » suffit (moins de temps menu ouvert)."""
+    ecran, c = jeu()
+    tourne(c, ecran, duree=12.0, plats=2)
+    assert c.dishes >= 2
+    assert not [k for k in ecran.clics if abs(k[0] - TILE[0]) < 30 and abs(k[1] - TILE[1]) < 30], ecran.clics
+
+
 def test_une_seule_bulle_visible_apres_le_glissement(jeu):
     """Après un lancement la bulle de la cuisinière servie disparaît un instant : il ne reste que celle de la
     voisine, déplacée. L'état des cuissons départage : une bulle « cuisiner » ne peut pas être la cuisson lancée."""

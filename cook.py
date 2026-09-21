@@ -29,7 +29,9 @@ SEP = REF           # deux detections a moins de SEP px l'une de l'autre sont la
 ASSOC = 70          # tolerance (px) autour de la position ATTENDUE d'une bulle (apres le glissement commun)
 STILL = 6           # une bulle qui bouge de plus de STILL px entre deux lectures est « en mouvement »
 CAM_SETTLE = 3.0    # secondes de recherche large forcee apres un clic sur une autre cuisiniere (la camera bouge)
-WIDE_EVERY = 2.0    # secondes entre deux recherches larges quand toutes les bulles sont suivies
+WIDE_EVERY = 0.7    # secondes entre deux recherches larges quand toutes les bulles sont suivies
+RING_MIN, RING_MAX = 60, 150   # cote (px) plausible de la boite englobante d'un anneau vert en 1080p
+CELL = 8            # maille (px) de la grille qui regroupe les pixels verts en anneaux
 PEAKS_MAX = 12      # pics gardes par une recherche large avant l'affinage (garde-fou)
 
 DEFAULT_COOK = {
@@ -127,6 +129,50 @@ def green_mask(im, ring_color=None):
         m = ImageChops.darker(r.point(_lut(r0 - t, r0 + t)), g.point(_lut(g0 - t, g0 + t)))
         return ImageChops.darker(m, b.point(_lut(b0 - t, b0 + t)))
     return ImageChops.darker(ImageChops.darker(g.point(_lut(lo=175)), r.point(_lut(hi=150))), b.point(_lut(hi=130)))
+
+
+def find_rings(gm, need):
+    """Anneaux verts d'un masque (image « L » 0/255) : liste de (cx, cy, pixels). Les pixels verts sont
+    regroupes sur une grille de CELL px (composantes 8-connexes) ; on garde les groupes qui ont la taille et la
+    forme d'un anneau : boite a peu pres carree de RING_MIN a RING_MAX px, et creuse (peu remplie)."""
+    W, H = gm.size
+    gw, gh = max(1, W // CELL), max(1, H // CELL)
+    small = gm.resize((gw, gh), 4).point(lambda v: 255 if v >= 24 else 0)      # 4 = BOX (moyenne)
+    if not small.getbbox():
+        return []
+    px = small.load()
+    seen = set()
+    out = []
+    for y0 in range(gh):
+        for x0 in range(gw):
+            if not px[x0, y0] or (x0, y0) in seen:
+                continue
+            stack, cells = [(x0, y0)], []
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                cells.append((x, y))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < gw and 0 <= ny < gh and (nx, ny) not in seen and px[nx, ny]:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+            xs = [c[0] for c in cells]
+            ys = [c[1] for c in cells]
+            box = (min(xs) * CELL, min(ys) * CELL, min(W, (max(xs) + 1) * CELL), min(H, (max(ys) + 1) * CELL))
+            part = gm.crop(box)
+            bb = part.getbbox()
+            if not bb:
+                continue
+            w, h = bb[2] - bb[0], bb[3] - bb[1]
+            n = count(part)
+            if n < need or not (RING_MIN <= w <= RING_MAX and RING_MIN <= h <= RING_MAX):
+                continue
+            if not (0.7 <= w / float(h) <= 1.43) or n > 0.6 * w * h:
+                continue
+            out.append((box[0] + (bb[0] + bb[2]) // 2, box[1] + (bb[1] + bb[3]) // 2, n))
+    return out
 
 
 def dilate(mask):
@@ -283,6 +329,8 @@ class Cooker(MouseBot):
         self._stand = None           # cuisiniere devant laquelle se tient le personnage (derniere bulle cliquee)
         self._wide_until = 0.0       # recherche large forcee jusqu'a cet instant (camera en mouvement)
         self._stray_at = 0.0         # derniere ligne de journal « bulle non rattachee »
+        self._stray_rings = []       # anneaux verts vus sans cuisiniere a qui les rattacher (cliques quand meme)
+        self._stray_fired = 0.0
         ensure_defaults(cfg)
 
     @property
@@ -671,6 +719,7 @@ class Cooker(MouseBot):
         self._wide_at = 0.0
         self._wide_until = 0.0
         self._stand = None
+        self._stray_rings = []
         self._menu_for = None
         self._menu_tries = 0
         last_action = time.perf_counter()
@@ -711,6 +760,17 @@ class Cooker(MouseBot):
                 self.fires += 1
                 last_action = b.fired
                 self.log(f"bulle {b.index} : feu ajusté ({b.clicks})")
+                self.on_change()
+                continue
+            if self._stray_rings and now - self._stray_fired >= 0.8:
+                x, y = self._stray_rings.pop(0)
+                self.phase = "feu"
+                if not self._click(x, y, delay=0.5):
+                    return
+                self._stray_fired = last_action = time.perf_counter()
+                self._wide_at = 0.0
+                self.fires += 1
+                self.log(f"anneau vert sans cuisinière suivie en {x},{y} : feu ajusté")
                 self.on_change()
                 continue
             # (b) plat pret (pas deux fois de suite : la bulle « gants » reste affichee un instant apres le
@@ -784,12 +844,15 @@ class Cooker(MouseBot):
         if not self._wait_menu(True, 4.0):
             self.log(f"bulle {b.index} : le menu ne s'est pas ouvert après le clic sur la bulle")
             return not self._stop.is_set()
-        # le menu couvre l'ecran (aucun anneau visible) : on y reste le moins longtemps possible
-        if not self._click(*p["tile"], delay=0.25):
-            return False
-        if not self._menu_open():
-            self.log(f"bulle {b.index} : le menu a disparu avant Cuisiner (animation ?)")
-            return not self._stop.is_set()
+        # le menu couvre l'ecran (aucun anneau visible) : on y reste le moins longtemps possible. Le jeu
+        # preselectionne la derniere recette : « Cuisiner » suffit (confirme en jeu le 2026-09-21) ; la tuile
+        # n'est cliquee qu'apres un echec, au cas ou la selection aurait saute.
+        if b.fails:
+            if not self._click(*p["tile"], delay=0.25):
+                return False
+            if not self._menu_open():
+                self.log(f"bulle {b.index} : le menu a disparu avant Cuisiner (animation ?)")
+                return not self._stop.is_set()
         if not self._click(*p["cook_btn"], delay=0.15):
             return False
         if not self._wait_menu(False, 5.0):
@@ -824,8 +887,9 @@ class Cooker(MouseBot):
         col = sample_color(*p["cook_btn"], radius=4)
         who = f"bulle {b.index}" if b else "cuisinière inconnue"
         self.log(f"menu Recettes ouvert ({who}, couleur du bouton {col}) : lancement de la recette ({self._menu_tries})")
-        if not self._click(*p["tile"], delay=0.4):
-            return False
+        if self._menu_tries > 1:                  # « Cuisiner » seul n'a pas suffi : on reselectionne la recette
+            if not self._click(*p["tile"], delay=0.4):
+                return False
         if self._menu_open():
             if not self._click(*p["cook_btn"], delay=0.5):
                 return False
@@ -868,11 +932,12 @@ class Cooker(MouseBot):
                 if attempts >= 3:
                     raise RuntimeError("le menu Recettes reste ouvert : plus d'ingrédients pour cette recette ?")
                 attempts += 1
-                if not self._click(*p["tile"], delay=0.4):
-                    return False
-                if not self._menu_open():
-                    self.log("le menu a disparu avant Cuisiner (animation ?)")
-                    continue
+                if attempts > 1:                  # la derniere recette est preselectionnee : tuile en secours seulement
+                    if not self._click(*p["tile"], delay=0.4):
+                        return False
+                    if not self._menu_open():
+                        self.log("le menu a disparu avant Cuisiner (animation ?)")
+                        continue
                 if not self._click(*p["cook_btn"], delay=0.5):
                     return False
                 end = time.perf_counter() + 5.0
@@ -1203,6 +1268,16 @@ class Cooker(MouseBot):
             det = {"pos": pos, "state": "cooking" if name == "spatula" else name, "scores": scores}
             self._add_green(det, im, rect[0], rect[1])
             out.append(det)
+        # anneaux verts de TOUTE la zone : pendant « Ajuste le feu » l'icone est animee et souvent pas
+        # reconnue ; l'anneau, lui, se voit toujours. Il ne depend donc plus de la position suivie des bulles.
+        for cx, cy, n in find_rings(green_mask(im, c.get("ring_color")), int(c.get("green_px", 60))):
+            pos = (rect[0] + cx, rect[1] + cy)
+            near = next((d for d in out if (pos[0] - d["pos"][0]) ** 2 + (pos[1] - d["pos"][1]) ** 2 < SEP * SEP), None)
+            if near is not None:
+                near["state"] = "spatula"
+                near["scores"]["vert"] = max(n, near["scores"].get("vert", 0))
+            else:
+                out.append({"pos": pos, "state": "spatula", "scores": {"vert": n}})
         out.sort(key=lambda d: (d["pos"][0], d["pos"][1]))
         return out
 
@@ -1278,6 +1353,7 @@ class Cooker(MouseBot):
             self._wide_at = now
             self._assign(self._scan_wide())
             return self._burners
+        self._stray_rings = []
         for b in list(self._burners):
             det = self._scan_local(b)
             if det is None:
@@ -1351,6 +1427,14 @@ class Cooker(MouseBot):
         glissement de la camera a celles qui n'ont pas ete vues, cree les nouvelles tant qu'il en manque, et
         passe a « none » celles qui restent sans bulle."""
         pairs, t = self._match(dets) if self._burners and dets else ([], (0, 0))
+        if len(self._burners) < self.cookers and (t[0] * t[0] + t[1] * t[1]) > ASSOC * ASSOC:
+            # il reste une cuisiniere a decouvrir : une bulle lointaine ET incoherente avec la cuisson en cours
+            # (« cuisiner » alors que celle-ci vient d'etre lancee) est la cuisiniere manquante, pas un glissement
+            keep = [(b, d) for b, d in pairs if self._compatible(b, d["state"])]
+            if len(keep) < len(pairs):
+                pairs = keep
+                if not pairs:
+                    t = (0, 0)
         seen = {id(b) for b, _ in pairs}
         taken = {id(d) for _, d in pairs}
         free = [b for b in self._burners if id(b) not in seen]
@@ -1372,14 +1456,25 @@ class Cooker(MouseBot):
             free, news = [], []
         for b, det in pairs:
             self._apply(b, det)
+        self._stray_rings = []
         for det in news:
             if len(self._burners) >= self.cookers:
+                if det["state"] == "spatula":
+                    # un anneau vert ne se jette jamais : a la cuisiniere sans bulle la plus proche, sinon
+                    # il sera clique quand meme par la boucle (anneau « sans cuisiniere »)
+                    if free:
+                        b = min(free, key=lambda f: (f.pos[0] - det["pos"][0]) ** 2 + (f.pos[1] - det["pos"][1]) ** 2)
+                        free.remove(b)
+                        self._apply(b, det)
+                    else:
+                        self._stray_rings.append(det["pos"])
+                    continue
                 now = time.perf_counter()
                 if now - self._stray_at > 5.0:
                     self._stray_at = now
                     self.log(f"bulle « {det['state']} » en {det['pos'][0]},{det['pos'][1]} ignorée "
                              f"({self.cookers} cuisinières déjà suivies)")
-                break
+                continue
             b = Burner(len(self._burners) + 1, det["pos"])
             if det["state"] in ("cooking", "spatula"):
                 b.launched = time.perf_counter()   # cuisson deja en cours : elle a droit a sa fenetre de risque

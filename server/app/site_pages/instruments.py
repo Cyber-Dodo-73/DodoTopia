@@ -189,7 +189,6 @@ def inst_card(inst: dict, lang: str) -> str:
         {inst_media(inst, lang)}
         <h3>{esc(main)}</h3>
         <p class="inst__meta">{esc(t(lang, f"site.instruments.family.{inst['category']}"))}{other}</p>
-        {state_pill(lang, inst['state'])}
         <p class="inst__sum">{layout_summary(lang, inst['layout'])}</p>
       </li>"""
 
@@ -216,7 +215,6 @@ def teaser(lang: str) -> str:
                 f'<span class="instrail__fam">{esc(family)}</span></li>')
 
     cards = "".join(card(x) for x in sample)
-    c = cat["counts"]
     return f"""<section class="section tinted wavy" id="choisir-instrument"><div class="wrap">
   {section_head(esc(t(lang, "site.instruments.teaser_title")), t(lang, "site.instruments.teaser_lead", total=cat["total"]))}
 </div>
@@ -224,8 +222,6 @@ def teaser(lang: str) -> str:
   <ul class="instrail__list">{cards}</ul>
 </div>
 <div class="wrap">
-  <p class="dl-note center">{t(lang, "site.instruments.teaser_counts", total=cat["total"], documented=c["documented"],
-        candidate=c["candidate"], unknown=c["unknown"])}</p>
   <p class="center"><a class="btn btn--quiet" href="{url_for(lang, "instruments")}">{esc(t(lang, "site.instruments.teaser_link"))}</a></p>
 </div></section>
 """
@@ -241,12 +237,6 @@ def render(settings, lang: str, ctx) -> str:
   <div class="notice"><p>{t(lang, "site.instruments.unavailable")}</p></div>
 </div></section>
 """
-    legend = "".join(
-        f'<li class="statecard statecard--{state}">{state_pill(lang, state)}'
-        f'<p class="statecard__n">{esc(t(lang, "site.instruments.types_of", n=c[state], total=total))}</p>'
-        f'<p class="statecard__txt">{esc(state_text(lang, state))}</p></li>'
-        for state in STATE_ORDER)
-
     groups = []
     for cat_id in cat["categories"]:
         items = [x for x in cat["types"] if x["category"] == cat_id]
@@ -287,13 +277,6 @@ def render(settings, lang: str, ctx) -> str:
                          t(lang, "site.instruments.lead", total=total), nav)
     return f"""{header}
 <section class="section section--first"><div class="wrap">
-  <div class="notice notice--soft">
-    <p><strong>{t(lang, "site.instruments.notice_title")}</strong> {t(lang, "site.instruments.notice_text")}</p>
-  </div>
-  <ul class="states">{legend}</ul>
-</div></section>
-
-<section class="section"><div class="wrap">
   {"".join(groups)}
   <p class="dl-note">{t(lang, "site.instruments.one_card_note")}</p>
 </div></section>
@@ -322,11 +305,5 @@ def render(settings, lang: str, ctx) -> str:
       <ul class="prov">{per_type}</ul>
     </div>
   </details>
-</div></section>
-
-<section class="section section--tight"><div class="wrap">
-  <div class="notice">
-    <p><strong>{t(lang, "site.instruments.whatnot_title")}</strong> {t(lang, "site.instruments.whatnot_text")}</p>
-  </div>
 </div></section>
 """
