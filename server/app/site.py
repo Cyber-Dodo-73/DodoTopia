@@ -717,9 +717,9 @@ def dodo_picture(lang: str, px: int, cls: str = "", lazy: bool = True, alt_key: 
 
 
 def dodo(lang: str, px: int, cls: str = "") -> str:
-    """Dodo flottant : halo en dégradé conique flouté, tache douce derrière, animation `float` (CSS)."""
-    return (f'<span class="dodo {cls}"><span class="dodo__halo" aria-hidden="true"></span>'
-            f'<span class="dodo__blob" aria-hidden="true"></span>{dodo_picture(lang, px)}</span>')
+    """Dodo flottant (animation `float` en CSS). Pas de bulle ni de halo derrière : la tuile du logo a déjà son
+    contour, elle se suffit (demande du propriétaire, 2026-09-21)."""
+    return f'<span class="dodo {cls}">{dodo_picture(lang, px)}</span>'
 
 
 def decor(*names: str) -> str:

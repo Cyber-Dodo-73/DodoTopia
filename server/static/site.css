@@ -218,7 +218,7 @@ section[id],h2[id],[id].faq__body{scroll-margin-top:calc(var(--header-h) + 20px)
 
 /* décor : ciel, nuages, motifs, collines, vagues */
 .sky{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.cloud,.motif,.fx,.hills,.wave,.dodo__blob,.site-footer__hills,.finalcta__hills{display:block;position:absolute;pointer-events:none}
+.cloud,.motif,.fx,.hills,.wave,.site-footer__hills,.finalcta__hills{display:block;position:absolute;pointer-events:none}
 .cloud{top:13%;left:-2%;width:clamp(90px,13vw,190px);aspect-ratio:2;background:var(--cloud);opacity:.8;--i:url("art/cloud.svg?v=1")}
 .cloud--b{top:9%;left:auto;right:9%;width:clamp(70px,9vw,130px);opacity:.6}
 .cloud--c{top:80%;left:30%;width:clamp(60px,7vw,100px);opacity:.45}
@@ -245,7 +245,6 @@ section[id],h2[id],[id].faq__body{scroll-margin-top:calc(var(--header-h) + 20px)
 .dodo img{position:relative;display:block;width:100%;border-radius:24%;box-shadow:0 18px 30px -10px rgba(90,60,40,.4)}
 .dodo__halo{position:absolute;inset:-26%;z-index:-2;border-radius:50%;filter:blur(20px);
  background:conic-gradient(from 20deg,var(--glow-peach),var(--glow-pink),var(--glow-mint),var(--rooms-bg),var(--glow-peach))}
-.dodo__blob{inset:-16%;z-index:-1;background:var(--panel);opacity:.75;--i:url("art/blob-1.svg?v=1")}
 
 /* héros de l'accueil */
 .hero,.pagehead,.errorpage{position:relative;overflow:hidden;overflow:clip;margin-top:calc(-1*var(--header-h))}
@@ -369,7 +368,6 @@ details.news{margin-top:18px}
 .finalcta .fx{background:#ffe08a;top:14%;left:auto;right:34%}
 .finalcta .fx--s2{top:62%;left:52%}
 .dodo--cta{width:clamp(130px,17vw,220px);margin-right:clamp(0px,3vw,40px)}
-.dodo--cta span{opacity:.4}
 
 /* en-tête des pages intérieures, page d'erreur, salon */
 .pagehead{padding:calc(var(--header-h) + clamp(36px,6vw,84px)) 0 calc(var(--wave-h) + clamp(40px,6vw,84px))}

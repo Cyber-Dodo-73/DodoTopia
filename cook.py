@@ -28,6 +28,8 @@ MAX_COOKERS = 4     # nombre maximal de cuisinieres servies par la boucle (borne
 SEP = REF           # deux detections a moins de SEP px l'une de l'autre sont la meme bulle
 ASSOC = 70          # tolerance (px) autour de la position ATTENDUE d'une bulle (apres le glissement commun)
 STILL = 6           # une bulle qui bouge de plus de STILL px entre deux lectures est « en mouvement »
+CAM_WINDOW = 4.5    # la camera ne bouge que dans les secondes qui suivent un clic sur une bulle (le personnage
+                    # marche) : hors de cette fenetre, une bulle lointaine est une AUTRE cuisiniere, pas un glissement
 CAM_SETTLE = 3.0    # secondes de recherche large forcee apres un clic sur une autre cuisiniere (la camera bouge)
 WIDE_EVERY = 0.7    # secondes entre deux recherches larges quand toutes les bulles sont suivies
 RING_MIN, RING_MAX = 60, 150   # cote (px) plausible de la boite englobante d'un anneau vert en 1080p
@@ -329,6 +331,9 @@ class Cooker(MouseBot):
         self._stand = None           # cuisiniere devant laquelle se tient le personnage (derniere bulle cliquee)
         self._wide_until = 0.0       # recherche large forcee jusqu'a cet instant (camera en mouvement)
         self._stray_at = 0.0         # derniere ligne de journal « bulle non rattachee »
+        self._clicked_at = 0.0       # dernier clic sur une bulle (ou fin d'un lancement) : la camera peut bouger
+        self._debug_at = 0.0         # derniere image de diagnostic enregistree (cook.debug_frames)
+        self._debug_n = 0
         self._stray_rings = []       # anneaux verts vus sans cuisiniere a qui les rattacher (cliques quand meme)
         self._stray_fired = 0.0
         ensure_defaults(cfg)
@@ -718,6 +723,8 @@ class Cooker(MouseBot):
         self._burners = []
         self._wide_at = 0.0
         self._wide_until = 0.0
+        self._clicked_at = time.perf_counter()     # au depart on ne sait pas ou en est la camera
+        self._debug_n = 0
         self._stand = None
         self._stray_rings = []
         self._menu_for = None
@@ -865,6 +872,8 @@ class Cooker(MouseBot):
                                    f"plus d'ingrédients pour cette recette ?")
             return True
         b.launched = time.perf_counter()
+        self._clicked_at = b.launched
+        self._wide_until = b.launched + CAM_SETTLE
         b.clicks = 0
         b.fails = 0
         b.state, b.since = "cooking", b.launched
@@ -896,6 +905,8 @@ class Cooker(MouseBot):
         if not self._wait_menu(False, 5.0):
             return not self._stop.is_set()
         self._menu_tries = 0
+        self._clicked_at = time.perf_counter()
+        self._wide_until = self._clicked_at + CAM_SETTLE
         if b is not None:
             b.launched = time.perf_counter()
             b.clicks = 0
@@ -1279,7 +1290,38 @@ class Cooker(MouseBot):
             else:
                 out.append({"pos": pos, "state": "spatula", "scores": {"vert": n}})
         out.sort(key=lambda d: (d["pos"][0], d["pos"][1]))
+        self._debug_frame(im, rect, out)
         return out
+
+    def _debug_frame(self, im, rect, dets):
+        """cook.debug_frames (config.json, sans interface ; actif par defaut quand on tourne depuis les sources) : enregistre la zone de recherche et ce qui y a ete
+        reconnu, 2 fois par seconde, dans <donnees>/cuisine_debug/ (900 images au plus, vide a chaque demarrage).
+        Sert a comprendre un retour « il n'a pas clique » : le journal seul ne montre pas ce qui etait a l'ecran."""
+        import sys
+        if not self.cook_cfg.get("debug_frames", not getattr(sys, "frozen", False)) or self.state != "cooking":
+            return
+        now = time.perf_counter()
+        if now - self._debug_at < 0.45 or self._debug_n >= 900:
+            return
+        self._debug_at = now
+        try:
+            folder = os.path.join(self.data_dir, "cuisine_debug")
+            if self._debug_n == 0:
+                os.makedirs(folder, exist_ok=True)
+                for name in os.listdir(folder):
+                    if name.startswith("z_") or name == "detections.jsonl":
+                        os.remove(os.path.join(folder, name))
+            self._debug_n += 1
+            t = now - self._t0
+            im.convert("RGB").save(os.path.join(folder, f"z_{t:07.2f}.jpg"), quality=70)
+            import json
+            with open(os.path.join(folder, "detections.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps({"t": round(t, 2), "origin": rect[:2],
+                                    "dets": [[d["pos"][0], d["pos"][1], d["state"], d["scores"]] for d in dets],
+                                    "burners": [[b.index, b.pos[0], b.pos[1], b.state] for b in self._burners]},
+                                   ensure_ascii=False) + "\n")
+        except Exception:
+            pass
 
     def _scan_local(self, burner):
         """Suivi local d'une bulle connue : petite capture autour de sa derniere position (rapide).
@@ -1371,8 +1413,9 @@ class Cooker(MouseBot):
         cuisinieres (dans le decor) et le personnage rejoint celle qu'on clique : la camera le suit et TOUTES
         les bulles glissent a l'ecran (60 a 150 px releves en 1080p). Pendant ce mouvement le suivi local
         pourrait s'accrocher a la bulle de la voisine : on force la recherche large, qui rapparie l'ensemble."""
-        if self._stand is not b:
-            self._wide_until = time.perf_counter() + CAM_SETTLE
+        now = time.perf_counter()
+        self._wide_until = now + CAM_SETTLE
+        self._clicked_at = now
         self._stand = b
         self._menu_for = b
 
@@ -1399,6 +1442,9 @@ class Cooker(MouseBot):
         le plus petit. Renvoie (paires [(cuisiniere, detection)], glissement retenu)."""
         burners = self._burners
         hyps = [(0, 0)] + [(d["pos"][0] - b.pos[0], d["pos"][1] - b.pos[1]) for b in burners for d in dets]
+        if time.perf_counter() - self._clicked_at > CAM_WINDOW:
+            # personne n'a clique de bulle depuis un moment : le personnage ne marche pas, la camera est fixe
+            hyps = [t for t in hyps if t[0] * t[0] + t[1] * t[1] <= ASSOC * ASSOC]
         best_key, best = None, ([], (0, 0))
         for t in hyps:
             cand = []
@@ -1444,7 +1490,8 @@ class Cooker(MouseBot):
                 b.pos = (b.pos[0] + t[0], b.pos[1] + t[1])
             if t[0] * t[0] + t[1] * t[1] > ASSOC * ASSOC:
                 self.log(f"la vue a glissé de {t[0]:+d},{t[1]:+d} px : bulles rappariées")
-        if len(self._burners) >= self.cookers and free and len(free) == len(news):
+        if (len(self._burners) >= self.cookers and free and len(free) == len(news)
+                and time.perf_counter() - self._clicked_at <= CAM_WINDOW):
             # tout le monde est connu et il reste autant de bulles que de cuisinieres sans bulle : la
             # perspective a change plus que la tolerance -> meme ordre le long de l'axe ou elles s'alignent
             xs = [b.pos[0] for b in self._burners]

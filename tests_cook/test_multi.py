@@ -396,6 +396,24 @@ def test_anneau_clique_meme_si_le_suivi_est_perdu(jeu, souris_rapide):
     assert len(c._stray_rings) == 1 and abs(c._stray_rings[0][0] - 600) < 8
 
 
+def test_camera_fixe_hors_de_la_fenetre_de_clic(jeu):
+    """Relevé en jeu : 8 s après le dernier clic, un anneau apparu sur l'AUTRE cuisinière (150 px plus loin) était
+    pris pour un glissement de la vue, et la 2e cuisinière n'était jamais créée. La caméra ne bouge que juste
+    après un clic sur une bulle : hors de cette fenêtre, une bulle lointaine est une autre cuisinière."""
+    ecran, c = jeu()
+    c._burners = []
+    c._assign([{"pos": (600, 300), "state": "cooking", "scores": {}}])
+    b1 = c._burners[0]
+    b1.launched = time.perf_counter()
+    c._clicked_at = time.perf_counter() - 10
+    c._assign([{"pos": (330, 300), "state": "spatula", "scores": {"vert": 900}}])
+    assert len(c._burners) == 2 and b1.pos == (600, 300)
+    assert c._burners[1].pos == (330, 300) and c._burners[1].state == "spatula"
+    # cuisinières toutes connues, caméra fixe : pas d'appariement forcé d'une bulle lointaine
+    c._assign([{"pos": (860, 420), "state": "cook", "scores": {}}])
+    assert b1.pos == (600, 300) and c._burners[1].pos == (330, 300)
+
+
 def test_cuisiniere_manquante_plutot_qu_un_glissement(jeu):
     """Une seule bulle vue au départ ; après son lancement, une bulle « cuisiner » apparaît loin : c'est la
     2e cuisinière (la 1re vient d'être lancée, elle ne peut pas montrer « cuisiner »)."""
@@ -427,6 +445,7 @@ def test_une_seule_bulle_visible_apres_le_glissement(jeu):
     b1, b2 = c._burners
     b1.launched = time.perf_counter()
     b1.state = "cooking"
+    c._clicked_at = time.perf_counter()              # on vient de cliquer une bulle : la vue peut glisser
     c._assign([{"pos": (850, 315), "state": "cook", "scores": {}}])           # seule la bulle 2, glissée de 250 px
     assert b2.pos == (850, 315) and b2.state == "cook"
     assert b1.pos == (580, 315), "la cuisinière pas vue suit le glissement des autres"
@@ -442,6 +461,7 @@ def test_perspective_tres_differente_garde_l_ordre(jeu):
     c._burners = []
     c._assign([{"pos": (330, 300), "state": "cook", "scores": {}}, {"pos": (600, 300), "state": "cook", "scores": {}}])
     b1, b2 = c._burners
+    c._clicked_at = time.perf_counter()
     c._assign([{"pos": (450, 380), "state": "cook", "scores": {}}, {"pos": (860, 420), "state": "cook", "scores": {}}])
     assert b1.pos == (450, 380) and b2.pos == (860, 420)
 

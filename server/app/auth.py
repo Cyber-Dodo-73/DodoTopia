@@ -314,14 +314,37 @@ _DONE_MESSAGES = {
     "code": ("Code incorrect", "Trop de tentatives : ce lien n'est plus valable. Relance la connexion depuis DodoTopia."),
 }
 
-_PAGE_STYLE = """body{font-family:system-ui,sans-serif;background:#fff7ee;color:#3b2a20;display:flex;align-items:center;
-justify-content:center;min-height:100vh;margin:0;padding:16px}main{background:#fff;border-radius:16px;padding:32px;
-max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)}h1{margin:0 0 8px;font-size:22px}
-img{width:72px;height:72px;margin:0 0 12px}input.code{font:600 28px/1.2 ui-monospace,monospace;letter-spacing:.35em;
-text-transform:uppercase;text-align:center;width:9em;max-width:100%;padding:10px 0 10px .35em;margin:12px 0;
-border:2px solid #e8a531;border-radius:12px;color:#3b2a20}button{font:600 16px system-ui,sans-serif;background:#e8a531;
-color:#3b2a20;border:0;border-radius:12px;padding:12px 24px;cursor:pointer}p.err{color:#b3261e;font-weight:600}
-p.small{font-size:14px;color:#7a6a5e}"""
+_PAGE_STYLE = """@font-face{font-family:"Fredoka";font-weight:300 700;font-display:swap;
+src:url("/static/fonts/fredoka-latin.woff2") format("woff2")}
+@font-face{font-family:"Nunito";font-weight:200 1000;font-display:swap;
+src:url("/static/fonts/nunito-latin.woff2") format("woff2")}
+:root{--bg:#fff9ef;--card:#fff;--ink:#4a3b34;--ink2:#6a584d;--line:#f1dfc6;--teal:#187a73;--teal-d:#0f5b56;
+--amber:#e8a531;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#1d1715;--card:#2a211d;--ink:#efe4d8;--ink2:#d8c9bb;--line:#3a2e28;
+--teal:#2aa198;--teal-d:#1c7c75;--err:#ffb4ab}}
+*{box-sizing:border-box}
+body{font-family:"Nunito",system-ui,sans-serif;font-size:17px;line-height:1.55;color:var(--ink);margin:0;padding:16px;
+min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);
+background-image:radial-gradient(60% 50% at 12% 0%,rgba(255,196,214,.55),transparent 70%),
+radial-gradient(55% 45% at 95% 8%,rgba(255,214,160,.6),transparent 70%),
+radial-gradient(70% 50% at 50% 100%,rgba(190,236,226,.55),transparent 70%)}
+@media (prefers-color-scheme:dark){body{background-image:radial-gradient(60% 50% at 12% 0%,rgba(120,60,90,.35),transparent 70%),
+radial-gradient(70% 50% at 50% 100%,rgba(30,90,85,.4),transparent 70%)}}
+main{background:var(--card);border:1px solid var(--line);border-radius:32px;padding:40px 32px 32px;max-width:440px;
+width:100%;text-align:center;box-shadow:0 24px 50px -24px rgba(90,60,40,.35)}
+img{width:88px;height:88px;border-radius:24%;margin:0 0 16px;box-shadow:0 14px 24px -10px rgba(90,60,40,.4)}
+h1{font-family:"Fredoka",system-ui,sans-serif;font-weight:600;font-size:26px;line-height:1.2;margin:0 0 10px}
+p{margin:0 0 12px;color:var(--ink2)}
+input.code{font:700 28px/1.2 ui-monospace,Consolas,monospace;letter-spacing:.35em;text-transform:uppercase;
+text-align:center;width:9em;max-width:100%;padding:12px 0 12px .35em;margin:10px 0 16px;background:var(--bg);
+border:2px solid var(--amber);border-radius:18px;color:var(--ink)}
+input.code:focus{outline:3px solid rgba(232,165,49,.35);outline-offset:2px}
+button{font:600 17px "Fredoka",system-ui,sans-serif;background:var(--teal);color:#fff;border:0;border-radius:999px;
+padding:14px 28px;cursor:pointer;box-shadow:0 4px 0 var(--teal-d)}
+button:hover{transform:translateY(-1px)}button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--teal-d)}
+button:focus-visible{outline:3px solid rgba(24,122,115,.4);outline-offset:3px}
+p.err{color:var(--err);font-weight:700}
+p.small{font-size:14px;margin:20px 0 0}"""
 
 
 def _shell(title: str, inner: str, status: int) -> HTMLResponse:
