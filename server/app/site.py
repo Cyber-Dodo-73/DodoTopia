@@ -46,12 +46,17 @@ OG_DIR = STATIC_DIR / "og"
 mimetypes.add_type("font/woff2", ".woff2")
 mimetypes.add_type("image/webp", ".webp")
 mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("image/x-icon", ".ico")     # même type pour /favicon.ico et /static/favicon.ico
 
 NONCE = "__NONCE__"                     # marqueur dans le HTML en cache, remplacé à chaque envoi
 LAST_UPDATE_ISO = "2026-09-17"          # dernière mise à jour du contenu rédigé (légal, aide) ; sitemap lastmod
 LAST_UPDATE = {"fr": "17 septembre 2026", "en": "September 17, 2026"}
 STATIC_IMMUTABLE = "public, max-age=31536000, immutable"
 STATIC_SHORT = "public, max-age=86400"
+FAVICON_CACHE = "public, max-age=604800"
+# Robots : indexable, et aperçu d'image de grande taille autorisé dans les résultats (sans cette directive,
+# Google peut se limiter à une vignette minuscule de la capture d'écran). Les pages `noindex` la remplacent.
+ROBOTS_INDEX = "index, follow, max-image-preview:large"
 REDIRECT_CACHE = "public, max-age=3600"
 # Pages HTML : toujours revalidées (ETag -> 304, quelques octets). Avec « max-age=3600 », un navigateur gardait
 # une heure l'ancienne version d'une page déjà visitée : après la refonte, le propriétaire voyait encore l'ancien
@@ -87,6 +92,16 @@ HEBERGEUR_NOM = "OUIHEBERG SARL"
 HEBERGEUR_ADRESSE = "9 rue des Colonnes, 75002 Paris, France"
 HEBERGEUR_CONTACT = "RCS Paris 888 341 997 — ouiheberg.com"
 SITE_HOST = "dodotopia.cyber-dodo.fr"
+SITE_NAME = "DodoTopia"                  # nom du site (marque du produit) ; l'éditeur est EDITEUR_MARQUE
+
+# Icônes du site (générées par .tools/make_favicons.py depuis logo.png) : (chemin public, rel, type, sizes).
+# URL stables, sans empreinte `?v=` : Google et les navigateurs veulent une adresse de favicon qui ne change pas.
+ICONS = (
+    ("/favicon.ico", "icon", "image/x-icon", "16x16 32x32 48x48"),
+    ("/static/favicon-96.png", "icon", "image/png", "96x96"),
+    ("/static/favicon-192.png", "icon", "image/png", "192x192"),
+    ("/static/apple-touch-icon.png", "apple-touch-icon", "image/png", "180x180"),
+)
 
 # --------------------------------------------------------------------------------------------------
 # Registre des pages : identifiant -> slug par langue (ASCII ; traduit pour fr/en/es/de/pt-BR, anglais pour
@@ -344,7 +359,7 @@ class Ctx:
         self.lang = lang
         self.page_id = page_id
         self.head: list[str] = []
-        self.robots = "index, follow"
+        self.robots = ROBOTS_INDEX
         self.query = query or {}
         self.title: str | None = None
         self.description: str | None = None
@@ -454,11 +469,31 @@ def ld_script(data: dict, nonce: str = NONCE) -> str:
     return f'<script type="application/ld+json" nonce="{nonce}">{body}</script>\n'
 
 
+def organization_id(settings) -> str:
+    return f"{settings.public_url}/#organization"
+
+
 def organization_ld(settings) -> dict:
+    """L'éditeur (Cyber-Dodo), distinct de la marque du site : nœud identifié, référencé par `WebSite.publisher` et
+    `SoftwareApplication.author`. Sans `@context` : il vit dans le `@graph` de `site_ld`."""
     base = settings.public_url
-    return {"@context": "https://schema.org", "@type": "Organization", "name": "DodoTopia",
-            "alternateName": EDITEUR_MARQUE, "url": f"{base}/", "logo": f"{base}/static/logo.png",
-            "email": EDITEUR_COURRIEL, "founder": {"@type": "Person", "name": EDITEUR_NOM}}
+    return {"@type": "Organization", "@id": organization_id(settings), "name": EDITEUR_MARQUE, "url": f"{base}/",
+            "logo": f"{base}/static/logo.png", "email": EDITEUR_COURRIEL,
+            "founder": {"@type": "Person", "name": EDITEUR_NOM}}
+
+
+def website_ld(settings) -> dict:
+    """Nom du site pour les moteurs (Google : « site names », lu sur la page d'accueil du domaine ou du
+    sous-domaine). `url` est la racine du site, celle qui redirige vers une langue : le même nœud, identique, est
+    servi sur toutes les pages, donc sur chaque accueil traduit où la redirection peut mener le robot."""
+    base = settings.public_url
+    return {"@type": "WebSite", "@id": f"{base}/#website", "name": SITE_NAME, "url": f"{base}/",
+            "publisher": {"@id": organization_id(settings)}}
+
+
+def site_ld(settings) -> dict:
+    """Un seul script JSON-LD pour le site et son éditeur : jamais deux nœuds `WebSite` sur une page."""
+    return {"@context": "https://schema.org", "@graph": [website_ld(settings), organization_ld(settings)]}
 
 
 def breadcrumb_ld(settings, lang: str, page_id: str, crumb: tuple[str, str] | None = None) -> dict:
@@ -487,7 +522,8 @@ def software_ld(settings, lang: str, latest: dict | None) -> dict:
         "operatingSystem": "Windows 10, Windows 11, Linux",
         "inLanguage": lang,
         "isAccessibleForFree": True,
-        "author": {"@type": "Organization", "name": EDITEUR_MARQUE, "url": f"{base}/"},
+        "author": {"@type": "Organization", "@id": organization_id(settings), "name": EDITEUR_MARQUE,
+                   "url": f"{base}/"},
         "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR",
                    "availability": "https://schema.org/InStock"},
     }
@@ -528,8 +564,14 @@ def lang_switcher(lang: str, page_id: str, paths: dict[str, str] | None = None) 
             f'</summary><ul class="langs__menu">{items}</ul></details>')
 
 
+def icon_links() -> str:
+    """Balises d'icônes (`ICONS`) : chaque `sizes` correspond aux dimensions réelles du fichier."""
+    return "".join(f'<link rel="{rel}" type="{mime}" sizes="{sizes}" href="{href}">\n'
+                   for href, rel, mime, sizes in ICONS)
+
+
 def head(settings, lang: str, page_id: str, title: str, description: str, extra: str = "",
-         robots: str = "index, follow", canonical: bool = True, paths: dict[str, str] | None = None,
+         robots: str = ROBOTS_INDEX, canonical: bool = True, paths: dict[str, str] | None = None,
          og: tuple | None = None, body_class: str | None = None) -> str:
     base = settings.public_url
     paths = paths or {code: url_for(code, page_id) for code in LANGS}
@@ -596,9 +638,7 @@ def head(settings, lang: str, page_id: str, title: str, description: str, extra:
 <meta name="twitter:title" content="{esc(title)}">
 <meta name="twitter:description" content="{esc(description)}">
 <meta name="twitter:image" content="{esc(image)}">
-<link rel="icon" href="/static/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="{static_url('logo.png')}">
-<link rel="preload" href="/static/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
+{icon_links()}<link rel="preload" href="/static/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{css_href()}">
 {plausible}{extra}</head>
 <body class="{esc(body_class)}">
@@ -666,7 +706,7 @@ def page(settings, lang: str, page_id: str, body: str, ctx: Ctx, title: str | No
     extra = "".join(ctx.head)
     if page_id != "home" and canonical:
         extra += ld_script(breadcrumb_ld(settings, lang, page_id, ctx.crumb))
-    extra += ld_script(organization_ld(settings))
+    extra += ld_script(site_ld(settings))
     version_line = f"{esc(t(lang, 'site.footer.server'))} {esc(SERVER_VERSION)}"
     return (head(settings, lang, page_id, title, description, extra, ctx.robots, canonical, ctx.paths, ctx.og,
                  ctx.body_class)
@@ -944,7 +984,7 @@ def sitemap_pages(request: Request):
 @router.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon",
-                        headers={"Cache-Control": "public, max-age=604800"})
+                        headers={"Cache-Control": FAVICON_CACHE})
 
 
 def lang_of_request(request: Request) -> str:

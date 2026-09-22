@@ -639,3 +639,110 @@ def test_plausible_new_style_script_is_initialised_with_the_csp_nonce(tmp_path):
     assert f'<script nonce="{nonce}">window.plausible=' in head and "plausible.init()" in head
     assert "data-domain" not in head
     assert csp.count("https://plausible.example.org") == 2
+
+
+# --- Présentation dans les moteurs : nom du site, favicon, aperçus ------------------------------
+
+def _ld_nodes(html: str) -> list[dict]:
+    """Tous les nœuds JSON-LD de la page, `@graph` aplati."""
+    nodes = []
+    for raw in re.findall(r'<script type="application/ld\+json"[^>]*>(.*?)</script>', html, re.S):
+        data = json.loads(raw)
+        nodes.extend(data.get("@graph", [data]))
+    return nodes
+
+
+def test_site_name_structured_data_on_every_page(client):
+    """Un nœud `WebSite` (nom DodoTopia, url = racine du site) sur chaque page de chaque langue, identique partout :
+    la racine redirige selon la langue, le robot peut donc tenir n'importe quel accueil traduit pour la page
+    d'accueil. L'éditeur (Organization) s'appelle Cyber-Dodo, jamais DodoTopia : pas deux noms pour le site."""
+    seen = []
+    for page_id in ("home", "download", "help"):
+        for lang in LANGS:
+            html = client.get(site.url_for(lang, page_id)).text
+            nodes = _ld_nodes(html)
+            websites = [n for n in nodes if n.get("@type") == "WebSite"]
+            assert len(websites) == 1, (page_id, lang)
+            assert websites[0]["name"] == "DodoTopia" and websites[0]["url"] == "http://testserver/", (page_id, lang)
+            assert websites[0]["publisher"] == {"@id": "http://testserver/#organization"}
+            orgs = [n for n in nodes if n.get("@type") == "Organization" and "@context" not in n]
+            assert len(orgs) == 1 and orgs[0]["name"] == "Cyber-Dodo" and orgs[0]["@id"] == "http://testserver/#organization"
+            assert not [n for n in nodes if n.get("@type") == "Organization" and n.get("name") == "DodoTopia"]
+            assert html.count('"@type": "WebSite"') == 1, (page_id, lang)
+            assert '<meta property="og:site_name" content="DodoTopia">' in html
+            assert '<span class="brand__name">DodoTopia</span>' in html
+            seen.append(json.dumps(websites[0], sort_keys=True))
+    assert len(set(seen)) == 1, "nœud WebSite différent selon la page ou la langue"
+    # l'auteur de l'application renvoie au même éditeur
+    home = _ld_nodes(client.get("/fr/").text)
+    app_node = next(n for n in home if n.get("@type") == "SoftwareApplication")
+    assert app_node["author"]["@id"] == "http://testserver/#organization"
+    assert app_node["author"]["name"] == "Cyber-Dodo" and app_node["name"] == "DodoTopia"
+
+
+def test_home_meta_is_localized_and_within_limits(client):
+    """Titre et description de l'accueil rédigés par langue (pas une copie de l'anglais), dans les limites
+    d'affichage des moteurs, avec le nom du jeu local en chinois."""
+    descriptions, titles = set(), set()
+    for lang in LANGS:
+        html = client.get(site.url_for(lang, "home")).text
+        title = re.search(r"<title>([^<]*)</title>", html).group(1)
+        desc = re.search(r'<meta name="description" content="([^"]*)">', html).group(1)
+        assert title.startswith("DodoTopia — ") and len(title) <= 60, (lang, title)
+        assert 50 <= len(desc) <= 160 and "Heartopia" in desc, (lang, desc)
+        assert f'<meta property="og:title" content="{title}">' in html
+        titles.add(title)
+        descriptions.add(desc)
+    assert len(titles) == len(LANGS) and len(descriptions) == len(LANGS)
+    assert "Musique et dessin pour Heartopia" in client.get("/fr/").text
+    assert "心动小镇" in client.get("/zh-CN/").text
+
+
+def _ico_sizes(data: bytes) -> list[tuple[int, int]]:
+    """Tailles des images d'un fichier ICO (en-tête ICONDIR + entrées de 16 octets ; 0 = 256)."""
+    assert data[:4] == b"\x00\x00\x01\x00", "pas un ICO"
+    count = struct.unpack("<H", data[4:6])[0]
+    sizes = []
+    for i in range(count):
+        w, h = data[6 + 16 * i], data[7 + 16 * i]
+        sizes.append((w or 256, h or 256))
+    return sorted(sizes)
+
+
+def test_favicons_are_declared_served_square_and_sized_as_announced(client):
+    """Icônes : URL stables (sans `?v=`), fichiers carrés dont les dimensions réelles sont celles des attributs
+    `sizes`, dont une PNG de 96 px (multiple de 48 : exigence de Google pour la favicon des résultats), servies en
+    200 avec un type image et un cache. Aucune n'est bloquée par robots.txt."""
+    html = client.get("/fr/").text
+    head = html.split("</head>", 1)[0]
+    links = re.findall(r'<link rel="(icon|apple-touch-icon)" type="([^"]+)" sizes="([^"]+)" href="([^"]+)">', head)
+    assert [(rel, href) for rel, _, _, href in links] == [
+        ("icon", "/favicon.ico"), ("icon", "/static/favicon-96.png"), ("icon", "/static/favicon-192.png"),
+        ("apple-touch-icon", "/static/apple-touch-icon.png")]
+    robots = client.get("/robots.txt").text
+    for rel, mime, sizes, href in links:
+        assert "?" not in href
+        r = client.get(href)
+        assert r.status_code == 200 and r.headers["content-type"] == mime, href
+        assert "max-age" in r.headers["cache-control"], href
+        assert not any(href.startswith(line.split(":", 1)[1].strip()) for line in robots.splitlines()
+                       if line.startswith("Disallow:") and line.split(":", 1)[1].strip())
+        if mime == "image/png":
+            (w, h) = _png_size(site.STATIC_DIR / href.removeprefix("/static/"))
+            assert w == h and sizes == f"{w}x{h}", (href, w, h, sizes)
+        else:
+            real = _ico_sizes(r.content)
+            assert sizes.split() == [f"{w}x{h}" for w, h in real], (real, sizes)
+            assert all(w == h for w, h in real)
+    assert client.get("/static/favicon.ico").headers["content-type"] == "image/x-icon"
+    assert client.get("/favicon.ico").headers["content-type"] == "image/x-icon"
+    # la page de connexion Discord partage les mêmes icônes
+    assert site.icon_links() in html
+
+
+def test_indexable_pages_allow_large_image_previews(client):
+    for path in ("/fr/", "/en/", "/ja/musique", "/de/herunterladen"):
+        html = client.get(path, follow_redirects=True).text
+        assert '<meta name="robots" content="index, follow, max-image-preview:large">' in html, path
+    r = client.get("/fr/inexistante")
+    assert '<meta name="robots" content="noindex, nofollow">' in r.text

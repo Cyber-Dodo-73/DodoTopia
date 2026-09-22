@@ -47,6 +47,7 @@ Prompt-Claude-Code-*.md
 !.tools/i18n_merge.py
 !.tools/post_social.py
 !.tools/make_og.py
+!.tools/make_favicons.py
 !.tools/make_shots.py
 !.tools/ux_check.py
 !.tools/check_linux_bundle.sh

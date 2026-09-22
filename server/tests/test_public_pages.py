@@ -37,7 +37,12 @@ def approved_drawing(client, token, admin_token, title="Chat roux", cells=True):
 
 
 def ld_types(html):
-    return [json.loads(b).get("@type") for b in re.findall(r'<script type="application/ld\+json"[^>]*>(.*?)</script>', html, re.S)]
+    """Types des nœuds JSON-LD de la page (`@graph` aplati : le site et son éditeur partagent un script)."""
+    types = []
+    for raw in re.findall(r'<script type="application/ld\+json"[^>]*>(.*?)</script>', html, re.S):
+        data = json.loads(raw)
+        types.extend(node.get("@type") for node in data.get("@graph", [data]))
+    return types
 
 
 # --- Morceaux -----------------------------------------------------------------------------------------------------
@@ -45,7 +50,7 @@ def ld_types(html):
 def test_songs_list_empty_then_filled(client, user_token, admin_token):
     for lang in LANGS:
         r = client.get(site.url_for(lang, "songs"))
-        assert r.status_code == 200 and '<meta name="robots" content="index, follow">' in r.text
+        assert r.status_code == 200 and '<meta name="robots" content="index, follow, max-image-preview:large">' in r.text
         assert "[site." not in r.text and r.text.count("<h1") == 1
     assert i18n.t("fr", "site.songs.empty_title") in client.get("/fr/morceaux").text
     sid = approved_song(client, user_token, admin_token, tags="piano,classique")
@@ -74,7 +79,7 @@ def test_songs_list_filters_are_noindex(client, user_token, admin_token):
     # paramètres inconnus ou invalides : page de base
     r = client.get("/fr/morceaux?tag=<script>&sort=drop&page=-3&utm_source=x")
     assert r.status_code == 200 and "<script>" not in r.text.split("<main", 1)[1]
-    assert '<meta name="robots" content="index, follow">' in r.text
+    assert '<meta name="robots" content="index, follow, max-image-preview:large">' in r.text
 
 
 def test_song_detail_page(client, user_token, admin_token):
@@ -86,7 +91,7 @@ def test_song_detail_page(client, user_token, admin_token):
     html = r.text
     assert "<h1>Für Élise</h1>" in html and f'href="dodotopia://song/{sid}"' in html
     assert 'href="/fr/telecharger"' in html and "Ouvrir dans DodoTopia" in html
-    assert '<meta name="robots" content="index, follow">' in html
+    assert '<meta name="robots" content="index, follow, max-image-preview:large">' in html
     assert f'<link rel="canonical" href="http://testserver{path}">' in html
     assert f'<link rel="alternate" hreflang="en" href="http://testserver/en/songs/{sid}-fur-elise">' in html
     assert f'<link rel="alternate" hreflang="x-default" href="http://testserver/en/songs/{sid}-fur-elise">' in html
