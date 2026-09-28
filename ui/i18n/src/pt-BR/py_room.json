@@ -58,5 +58,11 @@
   "room.file.no_sha": "o servidor não anuncia checksum para esta música",
   "room.file.unavailable": "Arquivo da sala indisponível: {error}",
   "room.file.unreadable": "Arquivo ilegível: {error}",
-  "room.song.choose_failed": "Não foi possível escolher a música: {error}"
+  "room.song.choose_failed": "Não foi possível escolher a música: {error}",
+  "room.rejoin.unavailable": "Não foi possível voltar à reprodução: a música acabou, ainda não chegou ou o relógio da sala não está pronto",
+  "room.parts.track_n": "Faixa {n}",
+  "room.host_only.parts": "Só o anfitrião da sala divide as faixas.",
+  "room.parts.no_tracks": "Esta música não tem faixas para dividir.",
+  "room.parts.server_old": "O servidor ainda não suporta a Orquestra: todos tocam a música inteira.",
+  "room.state.switch_to_game": "Clique no Heartopia antes da largada (instrumento aberto)"
 }

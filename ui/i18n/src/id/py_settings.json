@@ -1,0 +1,14 @@
+{
+  "settings.error.unknown_path": "pengaturan tidak dikenal: {path}",
+  "settings.error.number_expected": "harus berupa angka",
+  "settings.error.range": "antara {lo} dan {hi} {unit}",
+  "settings.error.unknown_value": "nilai tidak dikenal",
+  "settings.error.too_long": "maksimal {max} karakter",
+  "settings.error.key_required": "pilih tombol",
+  "settings.error.key_unknown": "tombol tidak dikenali",
+  "settings.error.hotkey_taken": "sudah dipakai untuk \"{label}\"",
+  "settings.error.unknown_type": "jenis tidak dikenal",
+  "settings.error.unknown_section": "bagian tidak dikenal: {section}",
+  "settings.error.key_is_note": "Tombol ini dipakai untuk memainkan not: pilih tombol fungsi (F1 sampai F12) atau kombinasi dengan Ctrl atau Alt.",
+  "notify.hotkeys_fixed": "Pintasan yang dipasang di tombol not dikembalikan ke bawaannya: pintasan itu menghentikan permainan dengan sendirinya."
+}

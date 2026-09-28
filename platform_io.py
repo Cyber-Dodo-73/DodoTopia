@@ -51,6 +51,7 @@ if IS_WINDOWS:
         set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
         foreground_process_name, foreground_window, game_window_info, foreground_keyboard_layout,
+        OVERLAY_OK, window_handle, overlay_prepare, overlay_show, overlay_hide, foreground_rect,
     )
 else:
     from _linux_io import (  # noqa: E402,F401
@@ -60,6 +61,7 @@ else:
         set_app_id, set_dpi_aware, set_window_icon, webview_start_kwargs,
         add_hotkey, remove_hotkey, hook, unhook, parse_hotkey,
         foreground_process_name, foreground_window, game_window_info, foreground_keyboard_layout,
+        OVERLAY_OK, window_handle, overlay_prepare, overlay_show, overlay_hide, foreground_rect,
     )
 
 

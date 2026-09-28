@@ -55,6 +55,9 @@ Prompt-Claude-Code-*.md
 webview/
 exports/
 nowplaying.txt
+lecture_reprise.json
+dessin_reprise.json
+rapports/
 instance.json
 instance.key
 dodotopia.log.*

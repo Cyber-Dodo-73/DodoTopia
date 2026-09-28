@@ -566,3 +566,98 @@ def unhook(handle):
 def parse_hotkey(combo):
     import keyboard
     return keyboard.parse_hotkey(combo)
+
+
+# ---------------------------------------------------------------- overlay (fenetre au-dessus du jeu)
+# Fenetre qui ne prend jamais le focus (le jeu reste au premier plan : les touches et les clics y vont), que les
+# clics traversent (un clic sur l'overlay arreterait la lecture, et le dessin clique sous lui) et qu'aucune
+# capture d'ecran ne voit (le dessin et la cuisine lisent l'ecran). Verifie sur Windows 11 avec WebView2.
+OVERLAY_OK = True
+_GWL_EXSTYLE = -20
+_WS_EX_TOPMOST, _WS_EX_TRANSPARENT, _WS_EX_TOOLWINDOW = 0x8, 0x20, 0x80
+_WS_EX_LAYERED, _WS_EX_NOACTIVATE, _WS_EX_APPWINDOW = 0x80000, 0x8000000, 0x40000
+_WDA_EXCLUDEFROMCAPTURE = 0x11
+_HWND_TOPMOST = wt.HWND(-1)
+_SWP_NOSIZE, _SWP_NOMOVE, _SWP_NOACTIVATE, _SWP_SHOWWINDOW = 0x1, 0x2, 0x10, 0x40
+_ov_user32 = ctypes.WinDLL("user32", use_last_error=True)
+_ov_user32.GetWindowLongW.argtypes = (wt.HWND, ctypes.c_int)
+_ov_user32.GetWindowLongW.restype = ctypes.c_long
+_ov_user32.SetWindowLongW.argtypes = (wt.HWND, ctypes.c_int, ctypes.c_long)
+_ov_user32.SetLayeredWindowAttributes.argtypes = (wt.HWND, wt.COLORREF, ctypes.c_ubyte, wt.DWORD)
+_ov_user32.SetWindowPos.argtypes = (wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                     ctypes.c_uint)
+_ov_user32.ShowWindow.argtypes = (wt.HWND, ctypes.c_int)
+_ov_user32.GetForegroundWindow.restype = wt.HWND
+_ov_user32.GetWindowRect.argtypes = (wt.HWND, ctypes.POINTER(wt.RECT))
+_ov_user32.MonitorFromWindow.argtypes = (wt.HWND, wt.DWORD)
+_ov_user32.MonitorFromWindow.restype = wt.HANDLE
+try:
+    _ov_user32.SetWindowDisplayAffinity.argtypes = (wt.HWND, wt.DWORD)
+    _ov_user32.GetDpiForWindow.argtypes = (wt.HWND,)
+    _ov_user32.GetDpiForWindow.restype = wt.UINT
+except AttributeError:  # Windows trop ancien : pas d'exclusion des captures, echelle 1
+    pass
+
+
+def window_handle(window):
+    """HWND de la fenetre pywebview (WinForms), ou None."""
+    try:
+        return int(window.native.Handle.ToInt64())
+    except Exception:  # noqa
+        return None
+
+
+def overlay_prepare(hwnd, alpha=250):
+    """Styles de l'overlay. Renvoie True si les clics traversent et que le focus ne peut pas etre pris."""
+    h = wt.HWND(hwnd)
+    ex = _ov_user32.GetWindowLongW(h, _GWL_EXSTYLE)
+    ex = (ex | _WS_EX_LAYERED | _WS_EX_TRANSPARENT | _WS_EX_NOACTIVATE | _WS_EX_TOPMOST | _WS_EX_TOOLWINDOW) \
+        & ~_WS_EX_APPWINDOW
+    _ov_user32.SetWindowLongW(h, _GWL_EXSTYLE, ex)
+    ok = bool(_ov_user32.SetLayeredWindowAttributes(h, 0, int(alpha), 0x2))
+    try:
+        _ov_user32.SetWindowDisplayAffinity(h, _WDA_EXCLUDEFROMCAPTURE)
+    except Exception:  # noqa - avant Windows 10 2004 : l'overlay apparaitrait dans les captures
+        pass
+    return ok
+
+
+_ov_region = {}      # hwnd -> (w, h) de la derniere decoupe arrondie
+_gdi32.CreateRoundRectRgn.argtypes = (ctypes.c_int,) * 6
+_gdi32.CreateRoundRectRgn.restype = wt.HRGN
+
+
+
+def overlay_show(hwnd, x, y, w, h):
+    """Affiche (sans activer) et place au premier plan de l'ordre d'affichage, en pixels physiques. La fenetre
+    est decoupee en rectangle arrondi (meme rayon que le panneau d'ui/overlay.html : 22 px pour 104 de haut)."""
+    hh = wt.HWND(hwnd)
+    _ov_user32.ShowWindow(hh, 4)          # SW_SHOWNOACTIVATE
+    _ov_user32.SetWindowPos(hh, _HWND_TOPMOST, int(x), int(y), int(w), int(h), _SWP_NOACTIVATE | _SWP_SHOWWINDOW)
+    if _ov_region.get(hwnd) != (int(w), int(h)):
+        d = max(8, int(round(h * 44 / 104)))          # diametre de l'arrondi
+        rgn = _gdi32.CreateRoundRectRgn(0, 0, int(w) + 1, int(h) + 1, d, d)
+        if rgn and _ov_user32.SetWindowRgn(hh, rgn, True):   # la region appartient ensuite a la fenetre
+            _ov_region[hwnd] = (int(w), int(h))
+
+
+def overlay_hide(hwnd):
+    _ov_user32.ShowWindow(wt.HWND(hwnd), 0)
+
+
+def foreground_rect():
+    """((x1, y1, x2, y2), echelle) de la fenetre active, en pixels physiques ; None si illisible."""
+    try:
+        hwnd = _ov_user32.GetForegroundWindow()
+        if not hwnd:
+            return None
+        r = wt.RECT()
+        if not _ov_user32.GetWindowRect(hwnd, ctypes.byref(r)):
+            return None
+        try:
+            scale = max(1.0, _ov_user32.GetDpiForWindow(hwnd) / 96.0)
+        except Exception:  # noqa
+            scale = 1.0
+        return (r.left, r.top, r.right, r.bottom), scale
+    except Exception:  # noqa
+        return None

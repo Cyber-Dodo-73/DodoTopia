@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "Image trop lourde pour la galerie (512 Ko au plus).",
   "api.gallery.png_invalid": "Image du dessin illisible : relance la conversion.",
   "api.gallery.deleted": "Dessin retiré de la galerie",
-  "api.gallery.reported": "Signalement envoyé : merci, un modérateur va regarder."
+  "api.gallery.reported": "Signalement envoyé : merci, un modérateur va regarder.",
+  "api.draw.nothing_to_resume": "Aucun dessin interrompu à reprendre",
+  "api.music.nothing_to_resume": "Aucun morceau interrompu à reprendre",
+  "api.music.resume_solo_only": "La reprise d’un morceau se fait en solo : quitte d’abord le salon ou la session à plusieurs",
+  "support.save_failed": "Impossible d'enregistrer le rapport : {error}",
+  "support.send_failed": "Envoi impossible ({error}) : enregistre le zip et envoie-le sur Discord."
 }

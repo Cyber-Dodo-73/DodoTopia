@@ -57,6 +57,10 @@ DEFAULT_CONFIG = {
     # ("" = aucune verification)
     "game_process": platform_io.DEFAULT_GAME_PROCESS,
     "keyboard_layout": "auto", "instrument_favorites": [],
+    # arrangeur (arrange.py) : "auto" = instruments non chromatiques, "on", "off" ; surchargeable par morceau
+    "arrange": "auto",
+    # overlay au-dessus de Heartopia (api/overlay.py) : seulement jeu au premier plan + musique ou dessin en cours
+    "overlay": {"enabled": True, "corner": "top-right"},
 }
 
 
@@ -228,8 +232,15 @@ def _open_midi(path):
             raise MidiRefused(i18n.t("midi.not_midi"))
     try:
         mid = mido.MidiFile(path)
-    except Exception as e:  # noqa : mido leve un peu de tout
-        raise MidiRefused(i18n.t("midi.corrupt", error=type(e).__name__)) from None
+    except Exception:  # noqa : mido leve un peu de tout
+        # certains exporteurs (BandLab...) ecrivent des octets de donnees > 127 (program change 255,
+        # pitch bend mal forme) : on les ramene a 127 plutot que de refuser tout le fichier
+        try:
+            mid = mido.MidiFile(path, clip=True)
+        except Exception as e:  # noqa
+            raise MidiRefused(i18n.t("midi.corrupt", error=type(e).__name__)) from None
+        logging.getLogger("midi").warning("MIDI avec octets hors plage, lu en mode tolerant : %s",
+                                          os.path.basename(path))
     if mid.type not in (0, 1):
         raise MidiRefused(i18n.t("midi.type_unsupported", type=mid.type))
     return mid
@@ -280,10 +291,12 @@ def _merged_messages(mid, skip_tracks):
     return iter(copy)
 
 
-def parse_midi(path, cfg, stats=None, skip_tracks=None):
+def parse_midi(path, cfg, stats=None, skip_tracks=None, drums_only=False):
     """Liste triee [(t, [(note, duree, velocite), ...])], accords regroupes.
 
     `skip_tracks` : index de pistes dont les notes sont ignorees (choix de l'utilisateur par morceau).
+    `drums_only` : seulement la batterie (canal 10, notes General MIDI de percussion) pour les instruments a
+    frappes (conga) ; sinon la batterie est ignoree ou gardee selon cfg["ignore_drums"].
     Pedale de sustain (CC64) : avec cfg["sustain"], une note relachee pedale enfoncee dure jusqu'au
     relachement de la pedale (comme au piano) ; sinon la duree ecrite est gardee.
 
@@ -311,7 +324,10 @@ def parse_midi(path, cfg, stats=None, skip_tracks=None):
         if msg.type in ("note_on", "note_off"):
             channels.add(msg.channel)
         if msg.type == "note_on" and msg.velocity > 0:
-            if cfg.get("ignore_drums", True) and msg.channel == 9:
+            if drums_only:
+                if msg.channel != 9:
+                    continue
+            elif cfg.get("ignore_drums", True) and msg.channel == 9:
                 drums += 1
                 continue
             key = (msg.channel, msg.note)
@@ -453,6 +469,30 @@ def fit_notes(grouped, inst, cfg, extra_fixed=None, shift=None):
             "out_of_range": out_of_range, "missing_accidental": snapped, "exact": exact,
             "coverage": round(100 * exact / len(all_notes)) if all_notes else 0}
     return result, info
+
+
+ARRANGE_MODES = ("auto", "on", "off")
+
+
+def fit_song(grouped, inst, cfg, extra_fixed=None, mode=None, octave=0):
+    """fit_notes precede de l'arrangeur quand il s'applique (mode : 'auto' | 'on' | 'off', defaut cfg).
+    info["arranged"] porte les chiffres de l'arrangement (None sans arrangement). `octave` : octaves ajoutees
+    a la transposition choisie (partie de l'Orchestre reglee par le chef)."""
+    import arrange
+    mode = mode if mode in ARRANGE_MODES else cfg.get("arrange", "auto")
+    octave = int(octave or 0)
+    if not arrange.applies(inst, mode):
+        if octave:
+            notes = [n for _, ns in grouped for n, _, _ in ns]
+            events, info = fit_notes(grouped, inst, cfg, shift=choose_shift(notes, inst, cfg, extra_fixed) + 12 * octave)
+        else:
+            events, info = fit_notes(grouped, inst, cfg, extra_fixed)
+        info["arranged"] = None
+        return events, info
+    arranged, shift, stats = arrange.arrange(grouped, inst, cfg, extra_fixed, octave)
+    events, info = fit_notes(arranged, inst, cfg, shift=shift)
+    info["arranged"] = stats
+    return events, info
 
 
 def coverage_at(grouped, inst, cfg, shift):
@@ -696,6 +736,17 @@ class Library:
             self.save()
             return off
 
+    def set_arrange(self, song_id, mode):
+        """Arrangement propre a ce morceau ('auto' | 'on' | 'off'), None = suivre le reglage general."""
+        with self._lock:
+            m = self.meta(song_id)
+            if mode in ARRANGE_MODES:
+                m["arrange"] = mode
+            else:
+                m.pop("arrange", None)
+            self.save()
+            return m.get("arrange")
+
     def meta(self, song_id):
         m = self.data.get(song_id)
         if m is None:
@@ -832,6 +883,11 @@ class Player:
         self._exp_lock = threading.Lock()   # partage entre le fil de lecture et le crochet clavier
         self._hook = None
         self.library = Library(os.path.join(DATA_DIR, "library.json"))
+        # reprise d'un morceau interrompu dans le jeu (solo) : {song, mtime, pos, duration, reason}
+        self._cur = None                # (chemin, cible, joue en solo) de la lecture en cours
+        self._completed = False         # la lecture en cours est allee jusqu'au bout
+        self._resume_path = os.path.join(DATA_DIR, "lecture_reprise.json")
+        self._resume = self._load_resume()
         self.refresh_songs()
 
     # ---- bibliotheque
@@ -883,6 +939,81 @@ class Player:
 
     def current(self):
         return self.songs[self.index] if self.songs else None
+
+    # ---- reprise d'un morceau interrompu (solo, dans le jeu)
+    RESUME_MIN_POS = 3.0            # en dessous, recommencer au debut revient au meme
+
+    def _load_resume(self):
+        try:
+            with open(self._resume_path, encoding="utf-8") as f:
+                r = json.load(f)
+            return r if isinstance(r, dict) and r.get("song") and float(r.get("pos", 0)) > 0 else None
+        except (OSError, ValueError, TypeError):
+            return None
+
+    def _set_resume(self, r):
+        self._resume = r
+        try:
+            if r is None:
+                if os.path.exists(self._resume_path):
+                    os.remove(self._resume_path)
+            else:
+                write_json_atomic(self._resume_path, r)
+        except OSError as e:
+            self.log(f"reprise du morceau non enregistrée : {e}")
+
+    def resume_info(self):
+        """Morceau interrompu qu'on peut reprendre : {song, name, index, pos, duration, reason}, ou None
+        (fichier supprime ou modifie depuis : la position ne voudrait plus rien dire)."""
+        r = self._resume
+        if not r:
+            return None
+        path = os.path.join(self.songs_folder, r["song"])
+        try:
+            if path not in self.songs or os.path.getmtime(path) != r.get("mtime"):
+                return None
+        except OSError:
+            return None
+        return {"song": r["song"], "name": os.path.splitext(r["song"])[0], "index": self.songs.index(path),
+                "pos": float(r["pos"]), "duration": float(r.get("duration") or 0.0), "reason": r.get("reason") or ""}
+
+    def forget_resume(self):
+        self._set_resume(None)
+
+    def resume(self):
+        """Reprend le morceau interrompu dans le jeu, a l'endroit ou il s'est arrete. False si rien a reprendre."""
+        info = self.resume_info()
+        if not info:
+            return False
+        if self.state != "stopped":
+            self.stop(join=True)
+        self.index = info["index"]
+        with self._lock:
+            self._start("game", offset=info["pos"])
+        return True
+
+    def _record_stop(self, pos):
+        """Fin d'une lecture solo dans le jeu : arretee avant la fin -> on retient ou ; allee au bout -> oubli."""
+        if not self._cur:
+            return
+        path, target, solo = self._cur
+        if target != "game" or not solo:
+            return
+        song = os.path.basename(path)
+        dur = float(self.duration or 0.0)
+        if self._completed or (dur and pos >= dur - 1.0):
+            if self._resume and self._resume.get("song") == song:
+                self._set_resume(None)
+            return
+        if pos < self.RESUME_MIN_POS:
+            return
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            return
+        self._set_resume({"song": song, "mtime": mtime, "pos": round(pos, 3), "duration": dur,
+                          "reason": self.last_stop_reason or ""})
+        self.log(f"reprise possible : {song} à {pos:.1f} s")
 
     def select(self, index):
         if 0 <= index < len(self.songs) and index != self.index:
@@ -1121,7 +1252,8 @@ class Player:
         return front
 
     # ---- lecture
-    def _start(self, target, deadline=None, prepared=None):
+    def _start(self, target, deadline=None, prepared=None, offset=0.0):
+        """offset : position (s) dans le morceau au depart (reprise ; salon rejoint en cours de lecture)."""
         inst = self.instrument
         if not inst.ready:
             # un profil inconnu mene a la configuration, jamais au mapping du piano
@@ -1148,9 +1280,12 @@ class Player:
         self._start_time = None
         with self._clock_lock:
             self._clock = None
-        self.library.record_play(os.path.basename(song))
-        self._thread = threading.Thread(target=self._run, args=(song, self.instrument, target, deadline, prepared),
-                                        daemon=True)
+        if not offset:
+            self.library.record_play(os.path.basename(song))
+        self._cur = (song, target, deadline is None)
+        self._completed = False
+        self._thread = threading.Thread(target=self._run, args=(song, self.instrument, target, deadline, prepared,
+                                                                max(0.0, float(offset or 0.0))), daemon=True)
         self._thread.start()
 
     def _abandon_start(self):
@@ -1162,28 +1297,46 @@ class Player:
         self.lock_speed = False
         self._silence()
 
-    def play_at(self, deadline, prepared, target="game"):
-        """Mode Multi : demarre la lecture (deja preparee par prepare()) a l'instant perf_counter `deadline`."""
+    def play_at(self, deadline, prepared, target="game", offset=0.0):
+        """Mode Multi : demarre la lecture (deja preparee par prepare()) a l'instant perf_counter `deadline`,
+        a la position `offset` du morceau (salon rejoint en cours de lecture)."""
         with self._lock:
-            self._start(target, deadline, prepared)
+            self._start(target, deadline, prepared, offset)
 
-    def prepare(self, song, inst, target, common_key=False, extra=None):
+    def prepare(self, song, inst, target, common_key=False, extra=None, skip_tracks=None, octave=0):
         """Analyse le fichier et construit la chronologie sans jouer. common_key : tonalite commune a tous
         les joueurs (mode Multi audio, calculee ici), vitesse ignoree. extra : decalage de tonalite impose tel
-        quel (salon en ligne : fixe par le chef et envoye a tous)."""
-        grouped = parse_midi(song, self.cfg, skip_tracks=self.song_skip_tracks(song))
+        quel (salon en ligne : fixe par le chef et envoye a tous). skip_tracks : pistes ignorees a la place du
+        choix du morceau (partie de l'Orchestre) ; octave : octaves ajoutees a la transposition choisie."""
+        if skip_tracks is None:
+            skip_tracks = self.song_skip_tracks(song)
+        grouped = parse_midi(song, self.cfg, skip_tracks=skip_tracks)
         if extra is not None:
             extra = int(extra)
         elif common_key:
             from sync import choose_common_extra
             extra = choose_common_extra([n for _, ns in grouped for n, _, _ in ns])
-        events, info = fit_notes(grouped, inst, self.cfg, extra)
+        if getattr(inst, "percussive", False) and inst.ready:
+            # instrument a frappes (conga) : la batterie du fichier, ramenee sur les pads, sans transposition
+            import percussion
+            drums = parse_midi(song, self.cfg, skip_tracks=skip_tracks, drums_only=True)
+            events, info = percussion.fit(drums, grouped, inst)
+        else:
+            events, info = fit_song(grouped, inst, self.cfg, extra, self.song_arrange(song), octave)
         timeline = build_timeline(events, target, float(self.cfg.get("hold_time", 0.04)),
                                   self.cfg.get("hold_mode", "note"), float(self.cfg.get("max_hold", 4.0)),
                                   float(self.cfg.get("min_press", MIN_PRESS_DEFAULT)),
                                   float(self.cfg.get("min_gap", MIN_GAP_DEFAULT)))
         return {"song": song, "events": events, "info": info, "timeline": timeline,
                 "duration": events[-1][0] if events else 0.0}
+
+    def song_arrange(self, song):
+        """Arrangement choisi pour ce morceau ('auto' | 'on' | 'off'), ou None = reglage general."""
+        try:
+            v = self.library.meta(os.path.basename(song)).get("arrange")
+        except (TypeError, AttributeError):
+            return None
+        return v if v in ARRANGE_MODES else None
 
     def song_skip_tracks(self, song):
         """Pistes ignorees pour ce morceau (choix de l'utilisateur, dans library.json)."""
@@ -1223,19 +1376,19 @@ class Player:
             except Exception as e:  # noqa
                 self.log(f"arrêt des notes impossible : {e!r}")
 
-    def _run(self, song, inst, target, deadline=None, prepared=None):
+    def _run(self, song, inst, target, deadline=None, prepared=None, offset=0.0):
         """Fil de lecture. TOUT le corps est protege : une erreur d'injection ou de calcul ne doit jamais
         laisser une touche enfoncee dans le jeu ni le lecteur bloque en « playing » (le finally appelle
         _finish, qui relache les touches et remet l'etat a l'arret)."""
         try:
-            self._run_body(song, inst, target, deadline, prepared)
+            self._run_body(song, inst, target, deadline, prepared, offset)
         except Exception as e:  # noqa - panne silencieuse dans un build fenetre : on journalise
             self.log(f"erreur pendant la lecture : {e!r}")
             self.last_stop_reason = self.last_stop_reason or "error"
         finally:
             self._finish()
 
-    def _run_body(self, song, inst, target, deadline=None, prepared=None):
+    def _run_body(self, song, inst, target, deadline=None, prepared=None, offset=0.0):
         try:
             if prepared is None:
                 prepared = self.prepare(song, inst, target)
@@ -1259,7 +1412,7 @@ class Player:
             self._midi.program(inst.gm_program)
             self._midi.volume(int(self.cfg.get("preview_volume", 100)) * 127 // 100)
         self.log(f"{'ecoute' if target == 'preview' else 'jeu'} : {os.path.basename(song)} sur {inst.name} "
-                 f"(transposition {info['shift']:+d})")
+                 f"(transposition {info['shift']:+d})" + (f", reprise à {offset:.1f} s" if offset else ""))
         if deadline is None:
             delay = float(self.cfg.get("start_delay", 1.0)) if target == "game" else 0.15
             self._start_time = time.perf_counter() + delay
@@ -1279,9 +1432,12 @@ class Player:
             self.stop(reason="game_not_focused")
             return
 
-        # horloge : position 0 a l'instant de depart ; relue a chaque iteration (set_speed la recale)
-        self._set_clock(0.0, self._start_time)
+        # horloge : position `offset` (0 sauf reprise) a l'instant de depart ; relue a chaque iteration
+        # (set_speed la recale). En reprise, les evenements d'avant la position sont sautes.
+        self._set_clock(offset, self._start_time)
         i = 0
+        while offset and i < len(timeline) and timeline[i][0] < offset:
+            i += 1
         mouse_check = 0.0
         front_check = time.perf_counter()
         while i < len(timeline) and not self._stop.is_set():
@@ -1342,6 +1498,8 @@ class Player:
                 else:
                     self._midi.note_off(note)
             i += 1
+        if i >= len(timeline) and not self._stop.is_set():
+            self._completed = True
 
     def _wait(self, seconds):
         end = time.perf_counter() + seconds
@@ -1365,6 +1523,11 @@ class Player:
             time.sleep(min(rem, 0.01))
 
     def _finish(self):
+        try:
+            self._record_stop(self.position())
+        except Exception as e:  # noqa - la reprise est un confort : elle ne doit jamais bloquer l'arret
+            self.log(f"reprise du morceau : {e!r}")
+        self._cur = None
         self._silence()
         with self._lock:
             self.state = "stopped"

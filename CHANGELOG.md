@@ -5,6 +5,17 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.1.0
+- **Jouer ensemble, plus simple.** Le salon n'est plus un « mode » à activer puis à désactiver : on est en salon tant qu'on y est, et le quitter ramène au jeu en solo. Une barre en haut de la Musique montre le salon (code, joueurs, morceau) et son action principale (« Je suis prêt » / « Lancer la session ») depuis la bibliothèque comme depuis « Découvrir ». Le bouton du lecteur et F6 font l'action du salon au lieu de disparaître.
+- **Choisir le morceau du salon sans quitter le salon** : un sélecteur réunit ta bibliothèque et les morceaux partagés ; « Jouer dans le salon » dans le menu de chaque morceau, et « Proposer au salon » dans le lecteur pour le chef.
+- « Jouer ensemble » propose directement deux cartes : créer ou rejoindre un salon, ou activer la synchro par le son.
+- **L'Orchestre** : le chef répartit les pistes du fichier MIDI entre les joueurs (la mélodie au piano, la basse à la basse en bois…), automatiquement d'après l'instrument de chacun ou à la main, avec l'octave de chaque partie. Chacun ne joue que sa partie, dans la tonalité commune. Les joueurs d'une version plus ancienne jouent tout le morceau, comme avant.
+- **Arrangement automatique** pour les instruments à 15 notes : la mélodie est toujours gardée et déplacée par phrase entière (plus de sauts d'octave au milieu d'une phrase), les accords sont allégés et les notes sans touche juste sont omises au lieu de sonner faux. Réglable pour tous les morceaux (Réglages › Musique et audio) ou morceau par morceau (« Version jouée » : Original / Arrangé, avec la comparaison des deux).
+- **Instruments par famille** : chaque instrument joue comme le piano (harpe) ou comme le luth (flûte à bec, xiao, saxophone, violon, violoncelle, ocarina, concertina, lyre, tambour à langues métalliques), avec ses vraies touches du jeu. Plus de test, de calibrage ni de statut « à vérifier » : les instruments de ces familles sont jouables directement.
+- **Envoyer un rapport** (Aide, Réglages › À propos, messages d'erreur) : DodoTopia rassemble ses journaux, montre la liste avant l'envoi, et donne un code à coller sur Discord. Les captures de la cuisine et le dernier enregistrement audio ne partent que si tu coches leur case. Jamais envoyés : le jeton de connexion, la bibliothèque, le pseudo ; le dossier personnel est masqué. Le zip peut aussi être enregistré sans connexion.
+- **Deux nouvelles langues : indonésien et philippin** (bêta), dans l'application et sur le site. Les traductions existantes sont complétées partout, y compris les mentions légales et la politique de confidentialité du site dans toutes les langues.
+- Les conditions d'utilisation sont maintenant traduites dans les 10 langues (la version française fait toujours foi) ; leur article sur les données mentionne le rapport de diagnostic. Pas de nouvelle acceptation à donner.
+
 ## 2.0.2
 - Cuisine à plusieurs cuisinières : l'anneau vert (« Ajuste le feu ») est maintenant cherché dans toute la zone et toujours cliqué, même quand l'icône de la spatule est animée ou que la bulle vient de bouger ; la deuxième cuisinière est reconnue même si ses bulles n'apparaissent qu'une à la fois.
 - Mises à jour silencieuses : au démarrage, la nouvelle version se télécharge, s'installe sans aucune fenêtre d'installeur ni bouton à cliquer, puis DodoTopia redémarre tout seul (désactivable dans Réglages › En ligne).

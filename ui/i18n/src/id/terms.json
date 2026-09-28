@@ -1,0 +1,22 @@
+{
+  "terms.title": "Ketentuan Penggunaan DodoTopia",
+  "terms.sub": "Versi {v} · Versi bahasa Prancis yang berlaku.",
+  "terms.gist": "Intinya dalam 6 poin",
+  "terms.full": "Teks lengkap ketentuan",
+  "terms.lang_en": "Baca dalam bahasa Inggris",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "Aku sudah membaca dan menyetujui ketentuan penggunaan",
+  "terms.accept": "Setuju dan lanjut",
+  "terms.refuse": "Tolak dan keluar",
+  "terms.why_scroll": "Gulir teksnya sampai akhir",
+  "terms.why_check": "Centang kotak untuk menyetujui",
+  "terms.ready": "Beres, kamu bisa lanjut.",
+  "terms.loading": "Memuat ketentuan…",
+  "terms.error": "Ketentuan penggunaan tidak bisa dimuat.",
+  "terms.confirm": "Keluar dari DodoTopia tanpa menyetujui?",
+  "terms.yes": "Ya, keluar",
+  "terms.no": "Kembali",
+  "terms.pos": "{p}% dibaca",
+  "terms.pos_done": "Sudah dibaca sampai akhir",
+  "terms.accept_failed": "Persetujuanmu tidak bisa disimpan. Coba lagi ya."
+}

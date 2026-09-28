@@ -56,9 +56,7 @@
   "shell.discover.col_action": "操作",
   "shell.discover.prev_page": "前のページ",
   "shell.discover.next_page": "次のページ",
-  "shell.together.back_solo": "ソロ演奏に戻る",
   "shell.together.intro": "同じ曲を同時に始める 2 つの方法です。楽器は各自のものを使います。",
-  "shell.together.method_aria": "方法",
   "shell.together.room": "オンラインルーム",
   "shell.together.recommended": "おすすめ",
   "shell.together.room_sub": "6 文字のコードでプレイヤーが集まり、ホストがサーバー経由で開始の合図を出します。",
@@ -191,5 +189,6 @@
   "shell.gallery.sort.recent": "新着",
   "shell.gallery.sort.popular": "いいねが多い順",
   "shell.gallery.refresh": "ギャラリーを再読み込み",
-  "shell.gallery.intro": "プレイヤーが共有した絵です。「再現する」でマスのグリッドがお絵かきに読み込まれ、Heartopia で描けます。"
+  "shell.gallery.intro": "プレイヤーが共有した絵です。「再現する」でマスのグリッドがお絵かきに読み込まれ、Heartopia で描けます。",
+  "shell.together.audio_on": "音で同期をオンにする"
 }

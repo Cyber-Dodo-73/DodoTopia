@@ -386,3 +386,85 @@ def test_room_song_too_large(tmp_path, midi_bytes):
             code = create(wa, a)[0]["room_code"]
             r = client.post(f"/api/rooms/{code}/song", headers=bearer(a), files={"file": ("m.mid", midi_bytes)})
             assert r.status_code == 413
+
+
+# ---------------------------------------------------------------- Orchestre : parties par siège
+SONG_TRACKS = dict(SONG, tracks=[
+    {"index": 1, "name": "Mélodie", "notes": 120, "low": 67, "high": 88, "mean": 76.5},
+    {"index": 2, "name": "Basse", "notes": 60, "low": 36, "high": 52, "mean": 43.0},
+    {"index": 9, "name": "Batterie", "notes": 200, "drums": True}])
+
+
+def test_orchestre_parties_par_siege(client, tokens):
+    a, b, _ = tokens
+    with client.websocket_connect("/ws") as wa, client.websocket_connect("/ws") as wb:
+        code = create(wa, a)[0]["room_code"]
+        _, st = join(wb, b, code)
+        assert player(st, 2)["version"] == V
+        until(wa, "state")
+
+        # pas de parties sans morceau
+        wa.send_json({"type": "set_parts", "enabled": True, "parts": {"1": {"tracks": [1]}}})
+        assert wa.receive_json()["code"] == "bad_state"
+
+        wa.send_json(SONG_TRACKS)
+        st = until(wa, "state")
+        assert [t["index"] for t in st["song"]["tracks"]] == [1, 2, 9] and st["parts"] is None
+        until(wb, "state")
+
+        # l'invité ne répartit pas
+        wb.send_json({"type": "set_parts", "enabled": True, "parts": {}})
+        assert wb.receive_json()["code"] == "not_host"
+
+        wb.send_json({"type": "ready", "ready": True})
+        until(wa, "state")
+        until(wb, "state")
+
+        # le chef répartit : siège inconnu ignoré, piste inconnue refusée
+        wa.send_json({"type": "set_parts", "enabled": True, "parts": {"1": {"tracks": [1], "octave": None},
+                                                                      "2": {"tracks": [2], "octave": -1},
+                                                                      "7": {"tracks": [1]}}})
+        st = until(wa, "state")
+        assert st["parts"] == {"enabled": True, "parts": {"1": {"tracks": [1], "octave": None},
+                                                          "2": {"tracks": [2], "octave": -1}}}
+        assert player(st, 2)["ready"] is False, "sa partie a changé : il doit se remettre prêt"
+        until(wb, "state", parts=st["parts"])
+        wa.send_json({"type": "set_parts", "enabled": True, "parts": {"1": {"tracks": [5]}}})
+        assert wa.receive_json()["code"] == "bad_message"
+
+        # le départ transporte les parties
+        wa.send_json({"type": "song_status", "sha256": SHA, "have": True})
+        wb.send_json({"type": "song_status", "sha256": SHA, "have": True})
+        until(wa, "state")
+        until(wa, "state")
+        wa.send_json({"type": "start", "countdown_s": 4})
+        sa = until(wa, "start")
+        assert sa["parts"]["parts"]["2"] == {"tracks": [2], "octave": -1}
+        wa.send_json({"type": "cancel"})
+        until(wa, "cancelled")
+
+        # un nouveau morceau efface la répartition ; un siège qui part est retiré
+        wa.send_json(SONG_TRACKS)
+        st = until(wa, "state", parts=None)
+        wa.send_json({"type": "set_parts", "enabled": True, "parts": {"1": {"tracks": [1]}, "2": {"tracks": [2]}}})
+        until(wa, "state", parts={"enabled": True, "parts": {"1": {"tracks": [1], "octave": None},
+                                                            "2": {"tracks": [2], "octave": None}}})
+        wb.send_json({"type": "leave"})
+        st = until(wa, "state", parts={"enabled": True, "parts": {"1": {"tracks": [1], "octave": None}}})
+
+
+def test_orchestre_messages_invalides(client, tokens):
+    a, _, _ = tokens
+    with client.websocket_connect("/ws") as wa:
+        create(wa, a)
+        wa.send_json(SONG_TRACKS)
+        until(wa, "state")
+        for bad in ({"type": "set_parts", "parts": {"1": {"tracks": [1], "octave": 5}}},
+                    {"type": "set_parts", "parts": {"abc": {"tracks": [1]}}},
+                    {"type": "set_parts", "parts": {"1": {"tracks": [300]}}}):
+            wa.send_json(bad)
+            err = wa.receive_json()
+            assert err["type"] == "error" and err["fatal"] is False, (bad, err)
+        # le salon marche toujours
+        wa.send_json({"type": "ping", "t0": 1.0})
+        assert until(wa, "pong")["t0"] == 1.0

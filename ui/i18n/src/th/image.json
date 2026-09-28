@@ -131,5 +131,11 @@
   "image.gallery.loaded": "“{title}” พร้อมวาดแล้ว",
   "image.gallery.grid_sub": "กริดจากแกลเลอรี · {format} · {w} × {h} ช่อง",
   "image.gallery.grid_note": "กริดจากแกลเลอรีที่แปลงแล้ว ปรับการจัดกรอบและสีไม่ได้ ({format})",
-  "image.gallery.grid_mismatch": "คำเตือน: ภาพวาดนี้มี {w} × {h} ช่อง แต่พื้นที่ {format} ของคุณตั้งไว้ที่ {gw} × {gh} ปรับกริดใน การตั้งค่า › วาดภาพ ก่อนวาด"
+  "image.gallery.grid_mismatch": "คำเตือน: ภาพวาดนี้มี {w} × {h} ช่อง แต่พื้นที่ {format} ของคุณตั้งไว้ที่ {gw} × {gh} ปรับกริดใน การตั้งค่า › วาดภาพ ก่อนวาด",
+  "image.run.resume_role": "การวาดถูกขัดจังหวะ",
+  "image.run.resume_text_named": "“{name}” ({format}): วาดต่อจากจุดที่หยุดได้",
+  "image.run.resume_text": "ภาพวาด {format}: วาดต่อจากจุดที่หยุดได้",
+  "image.run.resume_meta": "ระบายแล้ว {done} / {total} ช่อง · จะระบายเฉพาะช่องที่ขาด เปิดภาพวาดค้างไว้ใน Heartopia",
+  "image.run.resume_btn": "วาดต่อ",
+  "image.run.resume_forget": "ลบทิ้ง"
 }

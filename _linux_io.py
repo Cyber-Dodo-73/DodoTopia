@@ -532,3 +532,29 @@ def game_window_info(names, titles=()):
 def foreground_keyboard_layout():
     """Disposition clavier de la fenetre active ('azerty' | 'qwerty' | None)."""
     return None
+
+
+# ---------------------------------------------------------------- overlay (fenetre au-dessus du jeu)
+# Pas encore sous Linux : une fenetre que les clics traversent et que les captures ignorent demande des
+# extensions X11 (shape, compositeur) non testees. L'overlay est simplement absent.
+OVERLAY_OK = False
+
+
+def window_handle(window):
+    return None
+
+
+def overlay_prepare(hwnd, alpha=250):
+    return False
+
+
+def overlay_show(hwnd, x, y, w, h):
+    pass
+
+
+def overlay_hide(hwnd):
+    pass
+
+
+def foreground_rect():
+    return None

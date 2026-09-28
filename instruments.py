@@ -66,6 +66,8 @@ def status_labels():
     return {st: status_label(st) for st in STATUSES}
 # Statuts qui autorisent la lecture (un instrument percussif au statut « documented » reste candidat :
 # une source communautaire donne une correspondance MIDI, cela ne prouve pas ce que produit chaque frappe).
+# disposition relevee dans le jeu par le proprietaire (familles piano / luth, pads de la conga)
+OWNER_CONFIRMED = "owner-confirmed-in-game"
 PLAYABLE_STATUSES = (STATUS_DOCUMENTED, STATUS_CUSTOM, STATUS_QUICK, STATUS_CONFIRMED)
 
 # Noms de notes, convention d'affichage du dossier : Do4 / C4 = MIDI 60.
@@ -585,6 +587,29 @@ def migrate_config(cfg, catalogue=None):
                 log.append(f"{new_id} : deux anciens profils fusionnés")
         migrated[new_id] = prof
 
+    # familles (2.1) : chaque type a une disposition fixee par le proprietaire (piano, « comme le luth »...). Un
+    # profil reste sur une disposition que son type ne propose plus : il suit la disposition du type. Des touches
+    # personnalisees identiques a cette disposition redeviennent simplement la disposition.
+    for t in cat.types:
+        prof = migrated.get(t.id)
+        if prof is None or not t.default_layout_id:
+            continue
+        lay = cat.layouts.get(t.default_layout_id)
+        custom = _int_bindings(prof.get("bindings"))
+        # memes touches dans le meme ordre (a une octave pres) : c'est la famille, pas un reglage personnel
+        same_keys = bool(custom) and lay is not None and \
+            [custom[m] for m in sorted(custom)] == [k for _, k in sorted(lay.bindings().items())]
+        if same_keys:
+            prof.pop("bindings", None)
+            custom = {}
+            prof["layoutId"] = t.default_layout_id
+            prof["verificationStatus"] = STATUS_DOCUMENTED
+            log.append(f"{t.id} : touches identiques à « {t.default_layout_id} », profil de la famille")
+        elif not custom and prof.get("layoutId") not in t.supported_layout_ids:
+            prof["layoutId"] = t.default_layout_id
+            prof["verificationStatus"] = STATUS_DOCUMENTED
+            log.append(f"{t.id} : disposition de la famille « {t.default_layout_id} »")
+
     for t in cat.types:
         if t.id not in migrated:
             migrated[t.id] = default_profile(t)
@@ -697,7 +722,7 @@ class Instrument:
             return False, "unconfigured"
         if self.status not in PLAYABLE_STATUSES:
             return False, "unconfigured"
-        if self.percussive and self.status == STATUS_DOCUMENTED:
+        if self.percussive and self.status == STATUS_DOCUMENTED and self.type.mapping_status != OWNER_CONFIRMED:
             return False, "percussion_candidate"
         return True, ""
 

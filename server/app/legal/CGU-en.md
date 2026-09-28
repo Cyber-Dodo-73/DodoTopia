@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Last updated: 16 September 2026 — effective: 1 October 2026
+Last updated: 28 September 2026 — effective: 1 October 2026
 
 **The French version prevails.** This English translation is provided for convenience only. In the event of any discrepancy or dispute, the French text of the *Conditions générales d'utilisation* is the only authoritative version.
 
@@ -172,9 +172,10 @@ This summary is here to help you; in case of doubt, the articles below apply.
 - if the User **enables activity display in Discord (Rich Presence)**, where this feature is offered: activity information (for example the current title) is sent locally, from their computer, to the Discord application installed on that same computer, without going through the Publisher's server;
 - on **import from a URL**: the address given is sent to the server so that it can download the file;
 - on the **website**: possible audience measurement without cookies or individual identifiers (number of visits per page), which does not identify the User;
+- if the User **sends a diagnostic report** from the Application: the message they write, the end of the Application's logs, their settings (without their nickname or their online settings), a technical sheet (version, system, instrument, game state) and, only if they tick the corresponding options, screenshots of the Cooking activity and the last audio recording; the report is linked to their account if they are signed in and deleted after thirty (30) days;
 - for network operation: the IP address, in technical logs and for rate limiting.
 
-11.3. No data is sold, rented, transferred to third parties or used for advertising or profiling purposes. Screen content and keystrokes are analysed locally and never transmitted. The User has the rights of access, rectification, erasure, restriction, objection and portability, exercisable by writing to contact@cyber-dodo.fr, and the right to lodge a complaint with the French data protection authority, the CNIL (www.cnil.fr).
+11.3. No data is sold, rented, transferred to third parties or used for advertising or profiling purposes. Screen content and keystrokes are analysed locally and never transmitted, with the sole exception of the screenshots that the User chooses to attach to a diagnostic report. The User has the rights of access, rectification, erasure, restriction, objection and portability, exercisable by writing to contact@cyber-dodo.fr, and the right to lodge a complaint with the French data protection authority, the CNIL (www.cnil.fr).
 
 ## Article 12 — Intellectual property
 

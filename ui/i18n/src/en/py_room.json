@@ -58,5 +58,11 @@
   "room.file.no_sha": "the server announces no checksum for this song",
   "room.file.unavailable": "Room file unavailable: {error}",
   "room.file.unreadable": "Unreadable file: {error}",
-  "room.song.choose_failed": "Could not choose the song: {error}"
+  "room.song.choose_failed": "Could not choose the song: {error}",
+  "room.rejoin.unavailable": "Can’t rejoin the playback: the song is over, not received yet, or the room clock isn’t ready",
+  "room.parts.track_n": "Track {n}",
+  "room.host_only.parts": "Only the room host splits the tracks.",
+  "room.parts.no_tracks": "This song has no tracks to split.",
+  "room.parts.server_old": "The server doesn't support the Orchestra yet: everyone plays the whole song.",
+  "room.state.switch_to_game": "Click on Heartopia before the start (instrument open)"
 }

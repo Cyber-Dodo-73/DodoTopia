@@ -22,7 +22,8 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import db, indexnow, social
+from . import db, indexnow, notify, social, stats
+from .admin import audit
 from .auth import api_error, get_current_user, get_optional_user, is_admin, require_admin, settings_of
 from .config import Settings
 from .library import DELETED_UPLOADER_NAME, read_upload
@@ -331,6 +332,10 @@ async def upload_drawing(request: Request, png: UploadFile = File(...), title: s
         for path in (png_file, thumb_file):
             path.unlink(missing_ok=True)
         raise
+    stats.hit(request.app, "upload", "drawing")
+    notify.emit(request.app, "drawing_pending", f"Dessin à valider : {title}", f"Déposé par **{user['username']}**",
+                fields=[("Taille", f"{w} × {h}"), ("Grille", "oui" if cells_blob else "non")],
+                url=notify.admin_url(settings, "moderation"))
     return drawing_public(fetch_drawing(conn, new_id), settings)
 
 
@@ -342,6 +347,8 @@ def _like_drawing(drawing_id: int, request: Request, user, conn: db.Connection, 
     if row["status"] != "approved":
         raise api_error(409, "not_approved", "Seul un dessin publié peut être aimé.")
     likes = social.set_like(conn, "drawing", drawing_id, user["id"], liked)
+    if liked:
+        stats.hit(request.app, "like", "drawing")
     return {"ok": True, "id": drawing_id, "liked": liked, "likes": likes}
 
 
@@ -390,6 +397,8 @@ def report_drawing(drawing_id: int, body: ReportIn, request: Request, user=Depen
     except db.IntegrityError:
         conn.rollback()
         raise api_error(409, "already_reported", "Tu as déjà signalé ce dessin.")
+    notify.emit(request.app, "report", f"Signalement : {row['title']}", body.reason,
+                fields=[("Type", "dessin"), ("Par", user["username"])], url=notify.admin_url(settings, "reports"))
     return {"id": report_id, "drawing_id": drawing_id, "target_type": "drawing", "target_id": drawing_id}
 
 
@@ -416,6 +425,7 @@ def approve_drawing(drawing_id: int, request: Request, background_tasks: Backgro
     before = fetch_drawing(conn, drawing_id)
     conn.execute("UPDATE drawings SET status='approved', reject_reason=NULL, reviewed_by=?, reviewed_at=? WHERE id=?",
                  (admin["id"], db.now_iso(), drawing_id))
+    audit(request, conn, admin, "drawing_approve", f"{before['title']} (#{drawing_id})")
     conn.commit()
     if settings.indexnow_key and before["status"] != "approved":        # IndexNow : la fiche devient publique
         background_tasks.add_task(indexnow.submit, settings, indexnow.drawing_urls(settings, drawing_id))
@@ -426,8 +436,9 @@ def approve_drawing(drawing_id: int, request: Request, background_tasks: Backgro
 def reject_drawing(drawing_id: int, body: RejectIn, request: Request, admin=Depends(require_admin),
                    conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
-    fetch_drawing(conn, drawing_id)
+    before = fetch_drawing(conn, drawing_id)
     conn.execute("UPDATE drawings SET status='rejected', reject_reason=?, reviewed_by=?, reviewed_at=? WHERE id=?",
                  (body.reason or None, admin["id"], db.now_iso(), drawing_id))
+    audit(request, conn, admin, "drawing_reject", f"{before['title']} (#{drawing_id})", body.reason or "")
     conn.commit()
     return drawing_public(fetch_drawing(conn, drawing_id), settings)

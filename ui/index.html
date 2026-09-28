@@ -117,6 +117,8 @@
       <button type="button" role="tab" aria-selected="false" aria-controls="viewDiscover" data-view="discover" tabindex="-1" data-i18n="shell.music.discover">Découvrir</button>
       <button type="button" role="tab" aria-selected="false" aria-controls="viewTogether" data-view="together" tabindex="-1" data-i18n="shell.music.together">Jouer ensemble</button>
     </nav>
+    <!-- barre de groupe (lobby.js) : le salon ou la synchro par le son reste visible depuis toute la Musique -->
+    <div class="groupbar" id="groupBar" hidden></div>
 
     <div class="musicviews">
       <!-- ---------------------------------------------------------- Ma bibliothèque + espace du morceau -->
@@ -178,8 +180,6 @@
           <!-- préparation et lancement dans le jeu -->
           <div class="card__section game" id="gameBlock">
             <h4 data-i18n="action.play_in_game">Jouer dans Heartopia</h4>
-            <!-- rappel discret quand une session à plusieurs est active (music.js) -->
-            <button class="moderecall" type="button" id="modeRecall" hidden></button>
             <div class="notice notice--warn" id="gameAdminNotice" hidden><span class="notice__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg></span><div class="notice__text"><span data-i18n="game.notice.admin">Heartopia tourne en administrateur : DodoTopia doit l'être aussi pour que les touches arrivent au jeu.</span><div class="notice__actions"><button class="btn btn--secondary btn--sm" type="button" id="gameAdminHow" data-i18n="game.notice.how">Comment faire</button></div></div></div>
 <div class="line line--full" id="instRow">
           <span class="label" id="instLabel" data-i18n="shell.music.instrument">Instrument</span>
@@ -207,10 +207,12 @@
 
             <div class="gamebtn" id="gameCta">
               <button class="btn btn--cta btn--lg" type="button" id="btnGame"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg><span id="gameLabel" data-i18n="action.play_in_game">Jouer dans Heartopia</span> <kbd id="gameKey">F6</kbd></button>
+              <!-- chef d'un salon : le morceau choisi ici n'est pas celui du salon -->
+              <button class="btn btn--secondary" type="button" id="btnRoomPropose" hidden><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><span data-i18n="music.room.propose" data-plain>Proposer au salon</span></button>
             </div>
             <div class="hint" id="gameHelp"></div>
             <div class="notice notice--info" id="musicNotice" hidden><span class="notice__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg></span><div class="notice__text" id="musicNoticeText"></div></div>
-            <div class="notice notice--danger" id="musicError" hidden><span class="notice__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-danger"/></svg></span><div class="notice__text"><span id="musicErrorText"></span><div id="musicErrorAdmin" hidden data-i18n="shell.music.admin_hint">Le jeu ne reçoit pas les touches ? Relance DodoTopia en administrateur.</div></div></div>
+            <div class="notice notice--danger" id="musicError" hidden><span class="notice__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-danger"/></svg></span><div class="notice__text"><span id="musicErrorText"></span><div id="musicErrorAdmin" hidden data-i18n="shell.music.admin_hint">Le jeu ne reçoit pas les touches ? Relance DodoTopia en administrateur.</div><div class="notice__actions"><button class="btn btn--ghost btn--sm" type="button" id="musicErrorReport" data-i18n="support.report_btn">Envoyer un rapport</button></div></div></div>
             <div class="card--session" id="musicSession" hidden></div>
           </div>
 
@@ -226,6 +228,15 @@
               <button class="stepper__btn" type="button" id="trUp" aria-label="Transposition +" data-i18n-attr="aria-label:shell.music.transpose_up"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
             </div>
             <span class="hint" data-i18n="shell.music.transpose_hint">Décale les notes vers le grave ou l'aigu, en demi-tons, en plus de la transposition automatique.</span>
+          </div>
+          <div class="arrangeblock" id="arrangeBlock">
+            <span class="label label--wide" id="arrLabel" data-i18n="music.arrange.title">Version jouée</span>
+            <div class="seg" id="arrSeg" role="radiogroup" aria-labelledby="arrLabel">
+              <button type="button" role="radio" data-v="" data-i18n="music.arrange.opt.default">Réglage général</button>
+              <button type="button" role="radio" data-v="off" data-i18n="music.arrange.opt.off">Original</button>
+              <button type="button" role="radio" data-v="on" data-i18n="music.arrange.opt.on">Arrangé</button>
+            </div>
+            <span class="hint" id="arrInfo"></span>
           </div>
           <div class="tracksblock" id="tracksBlock">
             <span class="label label--wide" data-i18n="music.tracks.title">Pistes du fichier</span>
@@ -278,25 +289,33 @@
           <div class="card__head">
             <h2 data-i18n="shell.music.together">Jouer ensemble</h2>
             <div class="spacer"></div>
-            <button class="btn btn--ghost btn--sm" type="button" id="togetherSolo" hidden data-i18n="shell.together.back_solo">Revenir au jeu en solo</button>
+            <!-- quitter le salon ou désactiver la synchro par le son : le texte suit la session (music.js) -->
+            <button class="btn btn--ghost btn--sm" type="button" id="togetherLeave" hidden></button>
           </div>
-          <div class="card__section">
+          <!-- hors session : deux cartes d'action directes (plus de choix de méthode puis de panneau) -->
+          <div class="card__section" id="togetherStart">
             <p class="hint left" data-i18n="shell.together.intro">Deux façons de démarrer le même morceau au même instant. Chacun garde son instrument.</p>
-            <div class="methods" id="togetherMethods" role="radiogroup" aria-label="Méthode" data-i18n-attr="aria-label:shell.together.method_aria">
-              <button type="button" role="radio" aria-checked="false" data-mode="room" class="method" id="methodRoom">
-                <span class="method__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg></span>
-                <span class="method__txt"><span class="method__nm"><span data-i18n="shell.together.room">Salon en ligne</span> <span class="method__tag" data-i18n="shell.together.recommended">recommandé</span></span>
-                  <span class="method__sub" data-i18n="shell.together.room_sub">Un code à six caractères réunit les joueurs ; le chef donne le départ par le serveur.</span></span>
-              </button>
-              <button type="button" role="radio" aria-checked="false" data-mode="audio" class="method">
-                <span class="method__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
-                <span class="method__txt"><span class="method__nm" data-i18n="shell.together.audio">Par le son</span>
-                  <span class="method__sub" data-i18n="shell.together.audio_sub">Sans réseau. Le premier joue une note repère dans le jeu, les autres la détectent et partent avec lui.</span></span>
-              </button>
+            <div class="tcards">
+              <article class="tcard tcard--main" id="tcardRoom">
+                <div class="tcard__head">
+                  <span class="method__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg></span>
+                  <div><h3><span data-i18n="shell.together.room">Salon en ligne</span> <span class="method__tag" data-i18n="shell.together.recommended">recommandé</span></h3>
+                    <p class="hint left" data-i18n="shell.together.room_sub">Un code à six caractères réunit les joueurs ; le chef donne le départ par le serveur.</p></div>
+                </div>
+                <div id="roomJoinBox"></div>
+              </article>
+              <article class="tcard" id="tcardAudio">
+                <div class="tcard__head">
+                  <span class="method__ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
+                  <div><h3 data-i18n="shell.together.audio">Par le son</h3>
+                    <p class="hint left" data-i18n="shell.together.audio_sub">Sans réseau. Le premier joue une note repère dans le jeu, les autres la détectent et partent avec lui.</p></div>
+                </div>
+                <div class="btnrow"><button class="btn btn--secondary btn--sm" type="button" id="btnAudioOn"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span data-i18n="shell.together.audio_on" data-plain>Activer la synchro par le son</span></button></div>
+              </article>
             </div>
             <details class="disclosure disclosure--inline" id="togetherHow">
               <summary data-i18n="shell.together.how">Comment ça marche ?</summary>
-              <div class="disclosure__body"><p class="hint left" id="togetherHelp"></p></div>
+              <div class="disclosure__body"><p class="hint left" id="togetherHelpRoom"></p><p class="hint left" id="togetherHelp"></p></div>
             </details>
           </div>
           <div class="card__section" id="togetherPanel">
@@ -804,6 +823,7 @@
 <script src="settings.js"></script>
 <script src="terms.js"></script>
 <script src="onboarding.js"></script>
+<script src="support.js"></script>
 <script>
 boot();
 // apercu sans backend : index.html?mock (scripts classiques, pas de module : bloque en file://)

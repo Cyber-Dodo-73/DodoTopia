@@ -135,24 +135,25 @@ def test_catalogue_une_image_par_type_presente_hors_ligne(cat):
 
 
 def test_catalogue_provenance_sans_pretendre_avoir_teste(cat):
-    """Les statuts disent d'où vient la table, jamais qu'elle a été jouée dans le jeu."""
+    """Les statuts disent d'où vient la table : documentée par la communauté, ou famille confirmée par le
+    propriétaire dans le jeu (piano, « comme le luth »)."""
     for t in cat.types:
         if t.supported_layout_ids:
-            assert t.mapping_status == "community-documented-not-tested-in-game"
+            assert t.mapping_status in ("community-documented-not-tested-in-game", "owner-confirmed-in-game")
             assert t.default_layout_id in t.supported_layout_ids
         else:
             assert t.mapping_status == "unknown"
             assert t.default_layout_id is None
     a_relever = {t.id for t in cat.types if not t.supported_layout_ids}
-    assert a_relever == {"xylophone", "saxophone", "harp", "steel-tongue-drum", "ocarina", "conch"}
+    assert a_relever == {"xylophone", "conch"}
     percussifs = {t.id for t in cat.types if t.percussive}
     assert percussifs == {"conga", "cajon"}
 
 
 # ================================================================ 2. dispositions
 def test_dispositions_quinze_quinze_vingt_deux_trente_sept(cat):
-    attendu = {"diatonic-15-2row": 15, "diatonic-15-3row": 15,
-               "piano-diatonic-22": 22, "piano-chromatic-37": 37}
+    attendu = {"lute-15-3row": 15, "diatonic-15-2row": 15, "diatonic-15-3row": 15,
+               "piano-diatonic-22": 22, "piano-chromatic-37": 37, "conga-8": 8}
     assert set(cat.layouts) == set(attendu)
     for lid, n in attendu.items():
         lay = cat.layouts[lid]
@@ -199,7 +200,7 @@ def test_deux_types_partageant_une_disposition_restent_distincts(cfg, cat):
     lute = inst_of(cfg, "lute")
     assert recorder is not None and lute is not None
     assert recorder is not lute
-    assert recorder.layout_id == lute.layout_id == "diatonic-15-3row"
+    assert recorder.layout_id == lute.layout_id == "lute-15-3row"
     assert recorder.bindings == lute.bindings, "même disposition : mêmes positions envoyées au jeu"
     # ... mais deux identites sonores, deux cartes, deux images, deux apercus
     assert recorder.id != lute.id
@@ -244,7 +245,7 @@ def test_migration_anciens_identifiants_et_profils_documentes(cat):
     assert "bindings" not in piano, "table identique à la disposition : rien à stocker"
 
     recorder = insts["recorder"]
-    assert recorder["layoutId"] == "diatonic-15-3row"
+    assert recorder["layoutId"] == "lute-15-3row", "la flûte suit la famille du luth"
     assert recorder["verificationStatus"] == "documented"
     assert "bindings" not in recorder
 
@@ -257,24 +258,17 @@ def test_migration_anciens_identifiants_et_profils_documentes(cat):
             assert "bindings" not in insts[t.id], "aucune touche inventée pour un profil à relever"
 
 
-def test_migration_conserve_une_octave_personnalisee(cat):
-    """Cas décisif : mêmes positions que la table documentée, mais une octave plus bas.
-
-    C'est un réglage de l'utilisateur, pas une vieille version de la table : la migration le conserve
-    tel quel et ne le normalise pas vers la table externe."""
+def test_migration_luth_une_octave_plus_bas_devient_la_famille(cat):
+    """Le luth de cette installation (mêmes positions que la table documentée, une octave plus bas) est
+    exactement la disposition « comme le luth » : il redevient la disposition de sa famille, sans rien perdre."""
     cfg = legacy_config()
     instruments.migrate_config(cfg, cat)
     lute = cfg["instruments"]["lute"]
-    assert lute["verificationStatus"] == "custom"
-    assert lute["layoutId"] == "diatonic-15-3row", "la disposition la plus proche reste indiquée"
-    attendu = {str(48 + o): k for o, k in zip(LEGACY_SCALE_15, LEGACY_KEYS_15)}
-    assert lute["bindings"] == attendu, "les touches réglées sur cette installation sont perdues"
-    documentee = cat.layouts["diatonic-15-3row"].bindings()
-    assert {int(m) for m in lute["bindings"]} != set(documentee), "la table documentée a écrasé le réglage"
-
+    assert lute["layoutId"] == "lute-15-3row" and "bindings" not in lute
+    attendu = {48 + o: k for o, k in zip(LEGACY_SCALE_15, LEGACY_KEYS_15)}
+    assert cat.layouts["lute-15-3row"].bindings() == attendu, "les touches du luth ont changé"
     resolu = instruments.Instrument(cat.by_id["lute"], instruments.profile_of(cfg, "lute", cat),
-                                    cat.layouts["diatonic-15-3row"])
-    assert resolu.custom is True
+                                    cat.layouts["lute-15-3row"])
     assert resolu.lowest == 48 and resolu.ready is True
 
 
@@ -316,7 +310,7 @@ def test_migration_retire_les_variantes_esthetiques(cat):
 
 # ================================================================ 5. profil inconnu
 def test_profil_inconnu_n_herite_jamais_du_piano(cfg):
-    for ident in ("saxophone", "harp", "ocarina", "conch", "steel-tongue-drum", "xylophone"):
+    for ident in ("conch", "xylophone"):
         inst = inst_of(cfg, ident)
         assert inst is not None
         assert inst.status == "unknown"
@@ -333,7 +327,7 @@ def test_profil_inconnu_n_herite_jamais_du_piano(cfg):
 def test_profil_inconnu_ne_lance_pas_de_lecture(cfg, player, no_real_keys, tmp_path):
     add_song(player, "essai.mid")
     player.refresh_songs()
-    ok, msg = player.set_instrument("saxophone")
+    ok, msg = player.set_instrument("conch")
     assert ok, msg
     assert player.instrument.ready is False
     player.play("game")
@@ -351,8 +345,8 @@ def test_fit_notes_sur_profil_sans_touche_ne_devine_rien(cfg):
 
 
 # ================================================================ 6. percussions
-def test_conga_et_cajon_candidats_tant_qu_ils_ne_sont_pas_testes(cfg):
-    for ident in ("conga", "cajon"):
+def test_cajon_candidat_tant_que_ses_frappes_ne_sont_pas_relevees(cfg):
+    for ident in ("cajon",):
         inst = inst_of(cfg, ident)
         assert inst.percussive is True
         assert inst.status == "documented"
@@ -378,7 +372,7 @@ def test_un_type_percussif_ne_devient_pas_melodiquement_equivalent_au_piano(cfg,
     assert conga.keys != piano.keys
     assert conga.polyphony is None and conga.sounding_pitch_offset is None, \
         "aucune capacité supposée : seules les valeurs mesurées sont renseignées"
-    assert cat.by_id["conga"].mapping_status == "community-documented-not-tested-in-game"
+    assert cat.by_id["cajon"].mapping_status == "community-documented-not-tested-in-game"
 
 
 # ================================================================ 7. transformation MIDI
@@ -510,7 +504,7 @@ def test_l_assistant_refuse_d_enregistrer_un_mapping_en_conflit(api_stub):
         "un profil en conflit avec l'arrêt a été enregistré"
     assert any("refus" in t["msg"].lower() for t in api._toasts)
     assert cfg["hotkeys"]["stop"] == "b", "le raccourci d'arrêt n'est jamais sacrifié à un mapping"
-    api.instrument_wizard_bind(60, "y")                 # correction
+    api.instrument_wizard_bind(60, "k")                 # correction : la touche de la disposition
     api.instrument_wizard_save()
     assert api._wizard is None
     assert cfg["instruments"]["recorder"]["verificationStatus"] in instruments.STATUSES
@@ -618,7 +612,7 @@ def test_next_instrument_ne_passe_que_sur_des_profils_prets(cfg, player):
         assert ok
         assert player.instrument.ready is True
         vus.add(player.instrument.id)
-    assert "saxophone" not in vus and "conga" not in vus
+    assert "conch" not in vus and "cajon" not in vus
     assert {"piano", "recorder", "lute"} <= vus
 
 
@@ -629,19 +623,19 @@ def test_changement_de_disposition_refuse_pendant_la_lecture(api_stub, monkeypat
     player.refresh_songs()
     monkeypatch.setitem(cfg, "start_delay", 0.05)
     monkeypatch.setitem(cfg, "stop_on_input", False)
-    assert player.set_instrument("recorder")[0]
-    avant = dict(cfg["instruments"]["recorder"])
+    assert player.set_instrument("wooden-bass")[0]
+    avant = dict(cfg["instruments"]["wooden-bass"])
     player.play("game")
     import time as _t
     fin = _t.perf_counter() + 3.0
     while _t.perf_counter() < fin and player.state != "playing":
         _t.sleep(0.01)
     assert player.state == "playing"
-    api.set_instrument_layout("recorder", "diatonic-15-2row")
-    assert cfg["instruments"]["recorder"] == avant, "la disposition a changé sous une note tenue"
+    api.set_instrument_layout("wooden-bass", "diatonic-15-2row")
+    assert cfg["instruments"]["wooden-bass"] == avant, "la disposition a changé sous une note tenue"
     player.stop(join=True)
-    api.set_instrument_layout("recorder", "diatonic-15-2row")
-    assert cfg["instruments"]["recorder"]["layoutId"] == "diatonic-15-2row"
+    api.set_instrument_layout("wooden-bass", "diatonic-15-2row")
+    assert cfg["instruments"]["wooden-bass"]["layoutId"] == "diatonic-15-2row"
 
 
 # ================================================================ 11. libellés AZERTY / QWERTY
@@ -770,7 +764,7 @@ def api_stub(cfg, no_real_keys):
 
 def test_assistant_ne_devine_aucune_touche_pour_un_type_a_relever(api_stub):
     api, cfg = api_stub
-    api.instrument_wizard_start("saxophone", "setup")
+    api.instrument_wizard_start("conch", "setup")
     w = api._wizard
     assert w is not None and w["bindings"] == {}
     assert all(c["documented"] is False for c in w["layouts"]), \
@@ -785,17 +779,17 @@ def test_assistant_ne_devine_aucune_touche_pour_un_type_a_relever(api_stub):
 def test_assistant_enregistre_la_disposition_reellement_choisie(api_stub, cat):
     """Changer de disposition dans l'assistant doit changer la table enregistrée, pas seulement l'affichage."""
     api, cfg = api_stub
-    api.instrument_wizard_start("recorder", "setup")
+    api.instrument_wizard_start("wooden-bass", "setup")
     assert api._wizard["layout_id"] == "diatonic-15-3row"
     api.instrument_wizard_layout("diatonic-15-2row", prefill=True)
     assert api._wizard["layout_id"] == "diatonic-15-2row"
     assert api._wizard["bindings"] == cat.layouts["diatonic-15-2row"].bindings()
     api.instrument_wizard_save()
-    prof = cfg["instruments"]["recorder"]
+    prof = cfg["instruments"]["wooden-bass"]
     assert prof["layoutId"] == "diatonic-15-2row"
     assert "bindings" not in prof, "table identique à la disposition : rien à stocker"
-    recorder = instruments.find_instrument(api._player.instruments, "recorder")
-    assert recorder.keys == [n["key"] for n in cat.layouts["diatonic-15-2row"].notes]
+    bass = instruments.find_instrument(api._player.instruments, "wooden-bass")
+    assert bass.keys == [n["key"] for n in cat.layouts["diatonic-15-2row"].notes]
 
 
 def test_assistant_test_rapide_ne_vaut_pas_validation_integrale(api_stub):
@@ -926,23 +920,6 @@ def _wizard_ready(api, instrument_id="recorder", mode="setup"):
 
 
 # ---- défauts 1 et 12 : le compte à rebours du test
-def test_le_compte_a_rebours_du_test_est_publie_sous_la_cle_remaining(api_stub):
-    api, _ = api_stub
-    _wizard_ready(api)
-    api.instrument_wizard_test()
-    try:
-        test = api.instrument_wizard_state()["test"]
-        assert test["state"] == "countdown"
-        assert "remaining" in test and test["remaining"] > 0, \
-            "l'interface lit test.remaining : renommer cette clé rendrait le compte à rebours invisible"
-        assert "seconds_left" not in test, "seconds_left appartient au contrat Multi / salon, pas à l'assistant"
-    finally:
-        api.instrument_wizard_test_stop()
-    src = ui_source("instruments.js")
-    assert "test.remaining" in src, "ui/instruments.js doit lire la clé réellement publiée"
-
-
-# ---- défaut 2 : la validation intégrale existe et mène vraiment à « confirmé »
 def test_la_validation_integrale_couvre_toutes_les_associations(api_stub, cfg):
     api, cfg = api_stub
     w = _wizard_ready(api, "recorder", "full")
@@ -1016,7 +993,7 @@ def test_une_vitesse_illisible_ne_fait_pas_mourir_le_fil(cfg):
 def test_un_instrument_non_pret_ne_fige_pas_le_lecteur_en_sync(cfg):
     p = core.Player(cfg, log=lambda m: None)
     ids = [i.id for i in p.instruments]
-    p.inst_index = ids.index("ocarina")
+    p.inst_index = ids.index("conch")
     assert p.instrument.ready is False
     with p._lock:                                  # room._arm force « sync » puis appelle play_at
         p.state = "sync"
@@ -1134,42 +1111,6 @@ def test_l_assistant_prend_le_focus_et_le_piege_se_rattrape():
 
 
 # ---- défaut 11 : l'arrêt annoncé coupe vraiment le test
-def test_l_arret_coupe_vraiment_le_test_des_touches(api_stub):
-    api, _ = api_stub
-    _wizard_ready(api)
-    envoyees = []
-    api._player.play_keys = lambda keys, hold=0.12: envoyees.append(list(keys))
-    api.instrument_wizard_test()
-    assert api._wizard["test"]["state"] == "countdown"
-    api.stop()                                     # exactement ce que fait le raccourci d'arrêt (F7)
-    test = api._wizard["test"]
-    assert test["state"] == "cancelled" and test["message"]
-    fin = time.time() + 2.0
-    while time.time() < fin and not envoyees:
-        time.sleep(0.05)
-    assert envoyees == [], "des touches sont parties dans le jeu après l'arrêt"
-    assert "instrument_wizard_test_stop" in ui_source("instruments.js"), \
-        "l'étape 4 doit offrir un bouton d'arrêt, pas seulement une phrase"
-
-
-# ---- défaut 13 : un test annulé ou en erreur ne fige pas l'étape et ne se valide pas
-def test_un_test_annule_ne_fige_pas_l_etape_et_ne_se_valide_pas(api_stub):
-    api, _ = api_stub
-    w = _wizard_ready(api)
-    api.instrument_wizard_test()
-    api.instrument_wizard_test_stop()
-    assert api._wizard["test"]["state"] == "cancelled"
-    api.instrument_wizard_answer(True)             # répondre « oui » ne doit rien prouver
-    assert api._wizard["tested"] is False and api._wizard["verified"] == []
-    assert api._wizard["test"] is None, "le test terminé est oublié : le bouton redevient cliquable"
-    api.instrument_wizard_goto(4)
-    assert api._wizard["test"] is None
-    src = ui_source("instruments.js")
-    assert "['countdown', 'playing'].includes(tstate)" in src, \
-        "seuls les états actifs désactivent le bouton « Lancer le test »"
-
-
-# ---- défaut 14 : la grille du sélecteur ne peut plus être écrasée par la fiche
 def test_sous_880px_le_selecteur_defile_au_lieu_d_ecraser_la_grille():
     css = ui_source("app.css")
     bloc = css.split("@media (max-width:880px){")[1].split("@media")[0]

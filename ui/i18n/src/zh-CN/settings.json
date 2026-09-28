@@ -174,5 +174,21 @@
   "settings.protocol.state.other": "已关联到另一个 DodoTopia",
   "settings.protocol.state.none": "未关联",
   "settings.protocol.register": "关联到 DodoTopia",
-  "settings.protocol.register_again": "重新关联"
+  "settings.protocol.register_again": "重新关联",
+  "settings.arrange.label": "自动改编",
+  "settings.arrange.help": "让乐曲适应按键较少的乐器：始终保留旋律并按整句移动八度，精简和弦，没有准确按键的音会被省略而不是弹错。自动：仅用于缺少部分升降号的乐器。每首曲子可在“乐曲设置”中选择版本。",
+  "settings.arrange.opt.auto": "自动",
+  "settings.arrange.opt.on": "总是",
+  "settings.arrange.opt.off": "从不",
+  "settings.overlay.enabled.label": "Heartopia 内悬浮窗",
+  "settings.overlay.enabled.help": "游戏角落里的小窗口，显示正在进行的乐曲或绘画。只有当 Heartopia 在前台且有乐曲或绘画正在进行时才会出现；点击会穿透它，截图中也不会出现。",
+  "settings.overlay.corner.label": "悬浮窗位置",
+  "settings.overlay.corner.help": "显示在游戏窗口的哪个角。",
+  "settings.overlay.corner.opt.top-right": "右上角",
+  "settings.overlay.corner.opt.top-left": "左上角",
+  "settings.overlay.corner.opt.top-center": "顶部居中",
+  "settings.overlay.corner.opt.bottom-left": "左下角",
+  "settings.overlay.corner.opt.bottom-right": "右下角",
+  "settings.multi.room_minimize.label": "房间开始时最小化 DodoTopia",
+  "settings.multi.room_minimize.help": "关闭：开始时 DodoTopia 保持打开；倒计时期间点击 Heartopia（这次点击不会取消开始）。"
 }

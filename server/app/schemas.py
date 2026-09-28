@@ -229,6 +229,21 @@ class WsPing(Lenient):
     t0: float
 
 
+def _clean60(v: str | None) -> str:
+    return clean_text(v, 60)
+
+
+class WsTrack(Lenient):
+    """Résumé d'une piste du fichier MIDI (Orchestre : le chef répartit les pistes entre les sièges)."""
+    index: int = Field(ge=0, le=255)
+    name: Annotated[str, Field("", max_length=200), AfterValidator(_clean60)] = ""
+    notes: int = Field(0, ge=0, le=1_000_000)
+    low: int | None = Field(None, ge=0, le=127)
+    high: int | None = Field(None, ge=0, le=127)
+    mean: float | None = Field(None, ge=0, le=127)
+    drums: bool = False
+
+
 class WsSetSong(Lenient):
     sha256: str = Field(pattern=SHA256_RE)
     name: Annotated[str, Field("", max_length=400), AfterValidator(_clean200)] = ""
@@ -236,6 +251,18 @@ class WsSetSong(Lenient):
     key_shift: int = Field(0, ge=-36, le=36)
     source: Literal["library", "room"]
     online_id: int | None = None
+    tracks: list[WsTrack] = Field(default_factory=list, max_length=64)
+
+
+class WsPart(Lenient):
+    tracks: list[Annotated[int, Field(ge=0, le=255)]] = Field(default_factory=list, max_length=64)
+    octave: int | None = Field(None, ge=-2, le=2)     # None = octave choisie par le client pour son instrument
+
+
+class WsSetParts(Lenient):
+    """Orchestre : `parts` {id de siège (texte) : partie} ; enabled=False = tout le monde joue tout."""
+    enabled: bool = False
+    parts: dict[Annotated[str, Field(max_length=8)], WsPart] = Field(default_factory=dict, max_length=32)
 
 
 class WsSongStatus(Lenient):
@@ -284,4 +311,5 @@ WS_MODELS: dict[str, type[Lenient]] = {
     "stop": WsEmpty,
     "player_state": WsPlayerState,
     "kick": WsKick,
+    "set_parts": WsSetParts,
 }

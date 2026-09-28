@@ -131,5 +131,11 @@
   "image.gallery.loaded": "„{title}“ ist bereit zum Zeichnen.",
   "image.gallery.grid_sub": "Galerie-Raster · {format} · {w} × {h} Kästchen",
   "image.gallery.grid_note": "Raster aus der Galerie, bereits umgewandelt: Zuschnitt und Farben lassen sich nicht einstellen ({format}).",
-  "image.gallery.grid_mismatch": "Achtung: diese Zeichnung hat {w} × {h} Kästchen, dein {format}-Bereich ist auf {gw} × {gh} eingestellt. Passe das Raster unter Einstellungen › Zeichnen an, bevor du zeichnest."
+  "image.gallery.grid_mismatch": "Achtung: diese Zeichnung hat {w} × {h} Kästchen, dein {format}-Bereich ist auf {gw} × {gh} eingestellt. Passe das Raster unter Einstellungen › Zeichnen an, bevor du zeichnest.",
+  "image.run.resume_role": "Zeichnung unterbrochen",
+  "image.run.resume_text_named": "„{name}“ ({format}): Du kannst dort weitermachen, wo sie angehalten hat.",
+  "image.run.resume_text": "Zeichnung {format}: Du kannst dort weitermachen, wo sie angehalten hat.",
+  "image.run.resume_meta": "{done} / {total} Felder bereits gemalt · nur die fehlenden Felder werden gemalt, lass die Zeichnung in Heartopia offen",
+  "image.run.resume_btn": "Fortsetzen",
+  "image.run.resume_forget": "Verwerfen"
 }

@@ -25,9 +25,17 @@ function FIELDS(){ return [
   // ---- Apparence : langue de l'interface (liste = get_i18n().available)
   {path: 'general.lang', section: 'general', control: 'select', wide: true, label: t('settings.general.lang.label'), help: t('settings.general.lang.help'),
    options: () => [['auto', t('settings.general.lang.auto')], ...LANGS_AVAILABLE.map(a => [a.tag, a.beta ? t('settings.general.lang.opt_beta', {name: a.name}) : a.name])]},
+  // ---- Apparence : overlay au-dessus de Heartopia (api/overlay.py)
+  {path: 'overlay.enabled', section: 'general', control: 'switch', label: t('settings.overlay.enabled.label'), help: t('settings.overlay.enabled.help')},
+  {path: 'overlay.corner', section: 'general', control: 'select', label: t('settings.overlay.corner.label'), help: t('settings.overlay.corner.help'),
+   options: () => [['top-right', t('settings.overlay.corner.opt.top-right')], ['top-left', t('settings.overlay.corner.opt.top-left')],
+                   ['top-center', t('settings.overlay.corner.opt.top-center')], ['bottom-left', t('settings.overlay.corner.opt.bottom-left')],
+                   ['bottom-right', t('settings.overlay.corner.opt.bottom-right')]]},
   // ---- Musique et audio : lecture dans le jeu (groupe « lecture »)
   {path: 'stop_on_input', section: 'audio', group: 'lecture', control: 'switch', label: t('settings.stop_on_input.label'), help: t('settings.stop_on_input.help')},
   {path: 'start_delay', section: 'audio', group: 'lecture', control: 'slider', label: t('settings.start_delay.label'), help: t('settings.start_delay.help')},
+  {path: 'multi.room_minimize', section: 'audio', group: 'lecture', control: 'switch', label: t('settings.multi.room_minimize.label'), help: t('settings.multi.room_minimize.help')},
+  {path: 'arrange', section: 'audio', group: 'lecture', control: 'seg', label: t('settings.arrange.label'), options: [['auto', t('settings.arrange.opt.auto')], ['on', t('settings.arrange.opt.on')], ['off', t('settings.arrange.opt.off')]], help: t('settings.arrange.help')},
   {path: 'hold_mode', section: 'audio', group: 'lecture', control: 'seg', advanced: true, label: t('settings.hold_mode.label'), options: [['note', t('settings.hold_mode.opt.note')], ['tap', t('settings.hold_mode.opt.tap')]], help: t('settings.hold_mode.help')},
   {path: 'hold_time', section: 'audio', group: 'lecture', control: 'number', advanced: true, label: t('settings.hold_time.label'), help: t('settings.hold_time.help')},
   {path: 'input_mode', section: 'audio', group: 'lecture', control: 'seg', advanced: true, label: t('settings.input_mode.label'), options: [['scancode', t('settings.input_mode.opt.scancode')], ['vk', t('settings.input_mode.opt.vk')]], help: t('settings.input_mode.help')},
@@ -415,6 +423,7 @@ function renderAbout(){
   return upd + `<dl class="about">
       <dt>${esc(t('settings.about.version'))}</dt><dd><b>${esc(t('settings.about.version_value', {version: sch.version || ''}))}</b><span class="chip chip--badge">${esc(kind)}</span></dd>
       <dt>${esc(t('settings.about.logs'))}</dt><dd>${logBtn('multi', t('settings.about.log_multi'))}${logBtn('dessin', t('shell.tab.image'))}${logBtn('cuisine', t('shell.tab.cook'))}</dd>
+      <dt>${esc(t('support.title'))}</dt><dd><button type="button" class="btn btn--secondary btn--sm" id="sReport">${esc(t('support.report_btn'))}</button><span class="hint">${esc(t('support.about_hint'))}</span></dd>
       <dt>${esc(t('settings.about.data'))}</dt><dd><span class="path">${esc(sch.data_dir || '')}</span><button type="button" class="btn btn--ghost btn--sm" id="sOpenData2">${esc(t('common.open'))}</button></dd>
       <dt>${esc(t('settings.about.site'))}</dt><dd><button type="button" class="btn btn--ghost btn--sm" data-site="site">dodotopia.cyber-dodo.fr</button></dd>
       <dt>${esc(t('settings.about.legal'))}</dt><dd><button type="button" class="btn btn--ghost btn--sm" data-site="mentions">${esc(t('settings.about.legal_notice'))}</button><button type="button" class="btn btn--ghost btn--sm" data-site="confidentialite">${esc(t('settings.about.privacy'))}</button><button type="button" class="btn btn--ghost btn--sm" data-site="conditions">${esc(t('settings.about.terms'))}</button></dd>
@@ -582,6 +591,8 @@ function bindPane(pane){
   const cs = pane.querySelector('#sCopySongs'); if(cs) cs.onclick = () => copyText((SET.sch || {}).songs_folder || '', t('settings.storage.path_copied'));
   const cd = pane.querySelector('#sCopyData'); if(cd) cd.onclick = () => copyText((SET.sch || {}).data_dir || '', t('settings.storage.path_copied'));
   pane.querySelectorAll('#sOpenData,#sOpenData2').forEach(b => b.onclick = () => api('open_data_folder'));
+  const rep = pane.querySelector('#sReport');
+  if(rep) rep.onclick = () => { closeSettings(); openDiagReport($('btnSettings')); };
   pane.querySelectorAll('[data-log]').forEach(b => b.onclick = () => api('open_log', b.dataset.log));
   pane.querySelectorAll('[data-site]').forEach(b => b.onclick = () => api('open_site', b.dataset.site));
   pane.querySelectorAll('[data-reset-sec]').forEach(b => b.onclick = () => resetSection(b.dataset.resetSec, b.dataset.resetLabel));

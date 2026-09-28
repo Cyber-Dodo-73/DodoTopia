@@ -1,0 +1,20 @@
+{
+  "overlay.role.music": "音乐",
+  "overlay.role.paused": "已暂停",
+  "overlay.role.sync": "多人会话",
+  "overlay.role.room": "房间 {code}",
+  "overlay.role.room_without_you": "房间正在没有你的情况下演奏",
+  "overlay.role.draw": "绘画",
+  "overlay.role.measure": "自动测量",
+  "overlay.seconds": "{n} s",
+  "overlay.players": "{n, plural, other {# 名玩家}}",
+  "overlay.draw.starting": "即将开始绘画…",
+  "overlay.draw.cells": "{done} / {total} 格",
+  "overlay.hint.music": "{play} 暂停 · {stop} 停止",
+  "overlay.hint.sync": "{stop} 取消",
+  "overlay.hint.room_start": "请停留在 Heartopia 并打开乐器",
+  "overlay.hint.room_host": "{stop} 停止整个房间",
+  "overlay.hint.room_guest": "{stop} 只停止你（其他人继续）",
+  "overlay.hint.rejoin": "{play}：与大家一起继续",
+  "overlay.hint.draw": "{stop} 停止 · 请勿触碰鼠标"
+}

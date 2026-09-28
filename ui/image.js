@@ -269,7 +269,7 @@ function pushJob(){
   clearTimeout(jobTimer);
   jobTimer = setTimeout(() => {
     if(!PIX) return;
-    api('set_draw_job', {format: PIX.format, w: PIX.w, h: PIX.h, cells: Array.from(PIX.cells)});
+    api('set_draw_job', {format: PIX.format, w: PIX.w, h: PIX.h, cells: Array.from(PIX.cells), name: IMG.name || ''});
   }, 250);
 }
 
@@ -431,6 +431,15 @@ function renderDraw(st){
   } else if(auto){
     spec = {live: true, role: t('image.run.role_measure'), text: d.progress_msg || t('image.run.measure_text'), meta: t('image.run.measure_meta', {key: stopKey}),
             actions: [{label: LABELS.stop, icon: 'stop', kbd: stopKey, api: 'draw_stop'}]};
+  } else if(!calib && d.resume && d.resume.total){
+    // dessin interrompu (arret, souris, erreur, application fermee) : on le reprend la ou il en etait
+    const r = d.resume, pct = r.done / r.total * 100;
+    spec = {role: t('image.run.resume_role'),
+            text: r.name ? t('image.run.resume_text_named', {name: r.name, format: r.format}) : t('image.run.resume_text', {format: r.format}),
+            meta: t('image.run.resume_meta', {done: r.done, total: r.total}),
+            progress: {pct, left: t('image.settings.percent', {n: Math.round(pct)}), right: ''},
+            actions: [{label: t('image.run.resume_btn'), icon: 'play', api: 'draw_resume', cls: 'btn--cta'},
+                      {label: t('image.run.resume_forget'), api: 'draw_forget_resume', cls: 'btn--ghost'}]};
   }
   renderSession($('drawSession'), spec);
 

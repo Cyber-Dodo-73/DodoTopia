@@ -13,7 +13,9 @@ Les branches acceptent des messages complets (imbrication : `one {{name} a # mus
 fermante simple ferme toujours la branche en cours : pour un `}` littéral, sortir de la branche.
 
 Règles de pluriel codées en dur (catégorie parmi zero/one/two/few/many/other) :
-    fr → 0 et 1 sont « one » ; en, de, es, pt-BR, it → 1 est « one » ; zh-CN, ja, th → « other » seulement.
+    fr → 0 et 1 sont « one » ; en, de, es, pt-BR, it, fil → 1 est « one » ; zh-CN, ja, th, id → « other » seulement.
+    (fil : la règle CLDR range aussi 0, 2, 3, 5… dans « one » pour l'usage de « mga » ; on s'en tient à 1,
+    plus lisible pour les traducteurs et sans effet sur un nom philippin, qui ne s'accorde pas.)
 
 Clé absente : valeur du catalogue de repli (fr) si elle existe, sinon `[clé]` (un avertissement par clé).
 
@@ -30,23 +32,26 @@ import sys
 from decimal import Decimal, ROUND_HALF_UP
 from typing import NamedTuple
 
-LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th")
+LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th", "id", "fil")
 FALLBACK_LANG = "fr"
 CATEGORIES = ("zero", "one", "two", "few", "many", "other")
 # Nom de règle → catégories que la règle peut produire (« other » toujours incluse).
 PLURAL_RULES = {
     "fr": ("one", "other"), "en": ("one", "other"), "de": ("one", "other"), "es": ("one", "other"),
     "pt-BR": ("one", "other"), "it": ("one", "other"), "zh-CN": ("other",), "ja": ("other",), "th": ("other",),
+    "id": ("other",), "fil": ("one", "other"),
 }
 # LANGID primaire Windows (LCID & 0x3FF) → langue ; les sous-langues (0x080C fr-BE, 0x2C0A es-AR…) suivent.
-_LCID_PRIMARY = {0x0C: "fr", 0x09: "en", 0x0A: "es", 0x07: "de", 0x16: "pt-BR", 0x04: "zh-CN", 0x11: "ja", 0x1E: "th"}
-# Sous-étiquette primaire BCP 47 → langue (pt → pt-BR, zh → zh-CN).
-_PRIMARY_TAG = {"fr": "fr", "en": "en", "es": "es", "de": "de", "pt": "pt-BR", "zh": "zh-CN", "ja": "ja", "th": "th"}
+_LCID_PRIMARY = {0x0C: "fr", 0x09: "en", 0x0A: "es", 0x07: "de", 0x16: "pt-BR", 0x04: "zh-CN", 0x11: "ja", 0x1E: "th",
+                 0x21: "id", 0x64: "fil"}
+# Sous-étiquette primaire BCP 47 → langue (pt → pt-BR, zh → zh-CN ; anciens codes in → id, tl → fil).
+_PRIMARY_TAG = {"fr": "fr", "en": "en", "es": "es", "de": "de", "pt": "pt-BR", "zh": "zh-CN", "ja": "ja", "th": "th", "id": "id", "in": "id",
+                "fil": "fil", "tl": "fil"}
 # Séparateur de milliers, séparateur décimal, nombre minimal de groupes avant de grouper (es : 1234 mais 12.345),
 # calqué sur Intl.NumberFormat du navigateur.
 _NUMBER_STYLE = {
     "fr": (" ", ",", 1), "en": (",", ".", 1), "es": (".", ",", 2), "de": (".", ",", 1), "pt-BR": (".", ",", 1),
-    "zh-CN": (",", ".", 1), "ja": (",", ".", 1), "th": (",", ".", 1),
+    "zh-CN": (",", ".", 1), "ja": (",", ".", 1), "th": (",", ".", 1), "id": (".", ",", 1), "fil": (",", ".", 1),
 }
 _NOTE_NAMES = {
     "letters": ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"),

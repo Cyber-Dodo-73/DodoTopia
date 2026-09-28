@@ -15,7 +15,8 @@ import mido
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from . import db, indexnow, social
+from . import db, indexnow, notify, social, stats
+from .admin import audit
 from .auth import api_error, get_current_user, get_optional_user, is_admin, require_admin, settings_of
 from .config import Settings
 from .ratelimit import limit
@@ -438,6 +439,8 @@ def _like_song(song_id: int, request: Request, user, conn: db.Connection, liked:
     if row["status"] != "approved":
         raise api_error(409, "not_approved", "Seul un morceau publié peut être aimé.")
     likes = social.set_like(conn, "song", song_id, user["id"], liked)
+    if liked:
+        stats.hit(request.app, "like", "song")
     return {"ok": True, "id": song_id, "liked": liked, "likes": likes}
 
 
@@ -466,6 +469,7 @@ def download_song(song_id: int, request: Request, user=Depends(get_optional_user
     if row["status"] == "approved":
         conn.execute("UPDATE songs SET downloads = downloads + 1 WHERE id=?", (song_id,))
         conn.commit()
+        stats.hit(request.app, "dl_song", str(song_id))
     # `filename=` de FileResponse n'est pas utilisé : l'en-tête est construit ici, sur liste blanche.
     return FileResponse(path, media_type="audio/midi",
                         headers={"ETag": f'"{row["sha256"]}"', "X-Sha256": row["sha256"],
@@ -523,6 +527,12 @@ async def upload_song(request: Request, file: UploadFile = File(...), title: str
         conn.rollback()
         path.unlink(missing_ok=True)   # aucun fichier orphelin si l'insertion échoue
         raise
+    stats.hit(request.app, "upload", "song")
+    notify.emit(request.app, "song_pending", f"Morceau à valider : {title}",
+                f"Déposé par **{user['username']}**" + (f" · {artist}" if artist else ""),
+                fields=[("Durée", f"{int(info['duration_s']) // 60} min {int(info['duration_s']) % 60:02d}"),
+                        ("Notes", str(info["note_count"])), ("Fichier", original)],
+                url=notify.admin_url(settings, "moderation"))
     return song_public(fetch_song(conn, new_id), settings)
 
 
@@ -606,6 +616,8 @@ def report_song(song_id: int, body: ReportIn, request: Request, user=Depends(get
     except db.IntegrityError:
         conn.rollback()
         raise api_error(409, "already_reported", "Tu as déjà signalé ce morceau.")
+    notify.emit(request.app, "report", f"Signalement : {row['title']}", body.reason,
+                fields=[("Type", "morceau"), ("Par", user["username"])], url=notify.admin_url(settings, "reports"))
     return {"id": report_id, "song_id": song_id, "target_type": "song", "target_id": song_id}
 
 
@@ -633,6 +645,7 @@ def approve_song(song_id: int, request: Request, background_tasks: BackgroundTas
     now = db.now_iso()
     conn.execute("UPDATE songs SET status='approved', reject_reason=NULL, reviewed_by=?, reviewed_at=?, updated_at=? "
                  "WHERE id=?", (admin["id"], now, now, song_id))
+    audit(request, conn, admin, "song_approve", f"{before['title']} (#{song_id})")
     conn.commit()
     row = fetch_song(conn, song_id)
     # IndexNow : la fiche devient publique. Seulement si elle est indexable (assez de notes, voir sitemap-songs).
@@ -646,9 +659,10 @@ def approve_song(song_id: int, request: Request, background_tasks: BackgroundTas
 def reject_song(song_id: int, body: RejectIn, request: Request, admin=Depends(require_admin),
                 conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
-    fetch_song(conn, song_id)
+    before = fetch_song(conn, song_id)
     conn.execute("UPDATE songs SET status='rejected', reject_reason=?, reviewed_by=?, reviewed_at=? WHERE id=?",
                  (body.reason or None, admin["id"], db.now_iso(), song_id))
+    audit(request, conn, admin, "song_reject", f"{before['title']} (#{song_id})", body.reason or "")
     conn.commit()
     return song_public(fetch_song(conn, song_id), settings)
 
@@ -702,11 +716,15 @@ def resolve_report(report_id: int, body: ResolveIn, request: Request, admin=Depe
             if row is not None:
                 delete_song(conn, settings, row)
         removed = row is not None
+        audit(request, conn, admin, "report_resolve", f"signalement #{report_id} ({rep['target_type']})",
+              f"{body.action} — cible supprimée" if removed else body.action)
+        conn.commit()
         return {"id": report_id, "resolution": body.action, "resolved_at": now, "target_type": rep["target_type"],
                 "song_removed": removed and not is_drawing, "drawing_removed": removed and is_drawing,
                 "target_removed": removed}
     conn.execute("UPDATE reports SET resolved_at=?, resolved_by=?, resolution=? WHERE id=?",
                  (now, admin["id"], body.action, report_id))
+    audit(request, conn, admin, "report_resolve", f"signalement #{report_id} ({rep['target_type']})", body.action)
     conn.commit()
     return {"id": report_id, "resolution": body.action, "resolved_at": now, "target_type": rep["target_type"],
             "song_removed": False, "drawing_removed": False, "target_removed": False}
@@ -727,5 +745,6 @@ def ban_user(user_id: int, request: Request, admin=Depends(require_admin),
                  "WHERE uploader_id=? AND status='pending'", (admin["id"], db.now_iso(), user_id))
     conn.execute("UPDATE drawings SET status='rejected', reject_reason='ban', reviewed_by=?, reviewed_at=? "
                  "WHERE uploader_id=? AND status='pending'", (admin["id"], db.now_iso(), user_id))
+    audit(request, conn, admin, "user_ban", f"{target['username']} (#{user_id})")
     conn.commit()
     return {"ok": True, "user_id": user_id}

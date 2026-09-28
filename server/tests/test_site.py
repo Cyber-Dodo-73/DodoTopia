@@ -359,10 +359,10 @@ def test_privacy_describes_the_real_data(client):
 
 def test_terms_fr_and_en_come_from_the_markdown(client):
     """/fr/conditions depuis app/legal/CGU-fr.md (copie exacte de legal/CGU-fr.md) ; /en/terms depuis CGU-en.md
-    avec « la version française fait foi » ; les autres langues reçoivent l'anglais."""
+    avec « la version française fait foi » ; les autres langues reçoivent leur traduction."""
     import os
     here = os.path.dirname(os.path.abspath(__file__))
-    for lang in ("fr", "en"):
+    for lang in i18n.LANGS:
         server_copy = os.path.join(here, "..", "app", "legal", f"CGU-{lang}.md")
         root_copy = os.path.join(here, "..", "..", "legal", f"CGU-{lang}.md")
         with open(server_copy, encoding="utf-8") as f:
@@ -380,8 +380,12 @@ def test_terms_fr_and_en_come_from_the_markdown(client):
     assert legal_md.load("en")["html"] in en
     assert i18n.t("en", "site.terms.prevails_title") in en
     assert 'href="/fr/conditions"' in en
-    th = client.get("/th/terms").text
-    assert legal_md.load("en")["html"] in th
+    for lang in i18n.LANGS:          # chaque langue du site a sa traduction, avec le bandeau « le français fait foi »
+        if lang == "fr":
+            continue
+        page = client.get(site.url_for(lang, "terms")).text
+        assert legal_md.load(lang)["html"] in page, lang
+        assert i18n.t(lang, "site.terms.prevails_title") in page, lang
 
 
 def test_no_external_resource_anywhere(client):
@@ -494,7 +498,7 @@ def test_instruments_states_match_the_catalogue_data(client):
     counts = cat["counts"]
     assert sum(counts.values()) == cat["total"]
     by_id = {t["id"]: t for t in cat["types"]}
-    for missing in ("xylophone", "saxophone", "harp", "steel-tongue-drum", "ocarina", "conch"):
+    for missing in ("xylophone", "conch"):
         assert by_id[missing]["state"] == "unknown", missing
     for perc in ("conga", "cajon"):
         assert by_id[perc]["state"] == "candidate", perc
@@ -568,10 +572,10 @@ def test_unreadable_catalogue_does_not_break_the_site(client, monkeypatch):
 def test_instrument_layouts_are_described_from_the_data(client):
     cat = catalogue()
     html = client.get("/fr/instruments").text
-    assert [lay["count"] for lay in cat["layouts"]] == [15, 15, 22, 37]
+    assert [lay["count"] for lay in cat["layouts"]] == [15, 15, 15, 22, 37, 8]
     for lay in cat["layouts"]:
         assert lay["id"] in html, lay["id"]
-    assert "les deux dispositions à 15 notes ne diffèrent pas seulement par leur" in html
+    assert "les trois dispositions à 15 notes ne diffèrent pas seulement par leur" in html
 
 
 def test_instruments_page_keeps_the_visual_credits(client):

@@ -7,7 +7,6 @@
   "help.topic.cook": "烹饪",
   "help.topic.keys": "快捷键",
   "help.topic.fix": "故障排除",
-
   "help.start.intro": "DodoTopia 在这里准备好你的内容，然后替你在 Heartopia 中完成：它会代你按键和点击。开始时游戏必须处于打开状态。",
   "help.start.activities.title": "三项活动",
   "help.start.activities.music": "<b>音乐</b>：用游戏中的某件乐器演奏 MIDI 文件。",
@@ -15,7 +14,6 @@
   "help.start.activities.cook": "<b>烹饪</b>：循环烹饪最近的食谱。",
   "help.start.activities.note": "音乐功能安装后即可使用。绘画和烹饪需要进行一次设置。",
   "help.start.glossary": "DodoTopia 术语表",
-
   "help.gloss.midi.term": "MIDI 文件（.mid）",
   "help.gloss.midi.def": "一份乐谱：音符及其时值的列表，不包含录制的声音。DodoTopia 在游戏乐器的按键上重放它。",
   "help.gloss.listen.term": "试听",
@@ -34,7 +32,6 @@
   "help.gloss.dither.def": "逐格交替使用两种相近的颜色，模拟调色板中没有的色调。",
   "help.gloss.outline.term": "轮廓 + 油漆桶",
   "help.gloss.outline.def": "用铅笔描出区域边缘，然后用油漆桶点击一次填充，而不是逐格涂色。",
-
   "help.music.import.title": "导入曲目",
   "help.music.import.s1": "音乐 › 我的曲库 › <b>导入</b>，或将 <code>.mid</code> 文件拖放到窗口上。",
   "help.music.import.s2": "文件会被复制到你的曲目文件夹；原文件保持不变。",
@@ -54,7 +51,6 @@
   "help.music.together.s2": "<b>通过声音</b>：无需网络，第一位玩家弹奏提示音，其他人检测到它。",
   "help.music.together.s3": "<b>在线房间</b>：一个六位代码，由房主开始演奏。",
   "help.music.together.note": "同步精度取决于你的电脑和网络：开始时间会尽量对齐，但无法做到完美。",
-
   "help.draw.prepare.title": "准备图片",
   "help.draw.prepare.s1": "绘画 › <b>导入图片</b>（.png、.jpg、.gif、.bmp、.webp）。",
   "help.draw.prepare.s2": "预览会使用游戏调色板的颜色逐格显示效果。",
@@ -69,7 +65,6 @@
   "help.draw.run.s1": "打开一张格式正确的空白画布，选中铅笔工具，不要缩放。",
   "help.draw.run.s2": "<b>在 Heartopia 中绘画</b>按钮或 <kbd class=\"kbd\">{f6}</kbd>，然后不要触碰鼠标。",
   "help.draw.run.note": "中断的绘画会从停止处继续：在同一画布上重新开始，只会涂缺失的格子。",
-
   "help.cook.setup.title": "设置烹饪",
   "help.cook.setup.s1": "在游戏中站到灶台前，气泡可见。",
   "help.cook.setup.s2": "烹饪 › <b>设置烹饪</b>，然后按步骤逐一进行。",
@@ -80,10 +75,8 @@
   "help.cook.run.s2": "选择<b>固定数量</b>或<b>无限</b>，以及灶台数量。",
   "help.cook.run.s3": "站在灶台前，然后按 <kbd class=\"kbd\">{f6}</kbd>。",
   "help.cook.run.note": "循环期间，<kbd class=\"kbd\">{f7}</kbd>、任意按键或移动鼠标都会停止一切。",
-
   "help.keys.title": "全局快捷键",
   "help.keys.intro": "即使 Heartopia 在前台也有效。可在 设置 › 快捷键 中修改。",
-
   "help.fix.keys.q": "游戏收不到按键",
   "help.fix.keys.a": "Heartopia 必须是活动窗口。如果仍然无效，请以管理员身份重新启动 DodoTopia。",
   "help.fix.notes.q": "音符不对",
@@ -94,5 +87,27 @@
   "help.fix.cook.a": "在灶台前运行“测试检测”，然后重新截取气泡图标。",
   "help.fix.stop.q": "立即停止一切",
   "help.fix.stop.a": "<kbd class=\"kbd\">{f7}</kbd>、任意按键或鼠标左键单击都会停止正在进行的自动操作。",
-  "help.fix.open_logs": "打开日志"
+  "help.fix.open_logs": "打开日志",
+  "support.title": "发送报告",
+  "support.report_btn": "发送报告",
+  "support.intro": "遇到问题了？DodoTopia 会把日志和截图打包成一份报告。你会得到一个代码，粘贴到 DodoTopia 的 Discord 即可，我们无需再向你索要文件。",
+  "support.note_label": "发生了什么？",
+  "support.note_ph": "例如：第二个灶台一直没人管，鲁特琴跟不上钢琴……",
+  "support.audio": "附上最近一次声音同步的录音",
+  "support.files": "报告内容：{n} 个文件，{size}",
+  "support.system_desc": "版本、系统、乐器、游戏状态",
+  "support.privacy": "绝不会发送：你的登录令牌、曲库和昵称。日志中的个人文件夹会被隐藏。报告会在 30 天后从服务器删除。",
+  "support.send": "发送",
+  "support.save": "保存 zip",
+  "support.saved": "报告已保存：{name}",
+  "support.offline": "无法连接服务器：请保存 zip 并通过 Discord 发送。",
+  "support.sent": "报告已发送。你的代码是：",
+  "support.sent_hint": "把这个代码粘贴到 DodoTopia 的 Discord，并描述问题。",
+  "support.copy": "复制代码",
+  "support.copied": "代码已复制",
+  "support.size_kb": "{n} KB",
+  "support.size_mb": "{n} MB",
+  "support.help_hint": "获取帮助最快的方式：报告会收集理解问题所需的一切。",
+  "support.about_hint": "日志和截图，附 Discord 用代码",
+  "support.images": "附上烹饪截图（识别到的气泡和最近一次错误的图片）"
 }

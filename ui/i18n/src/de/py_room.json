@@ -58,5 +58,11 @@
   "room.file.no_sha": "der Server nennt keine Prüfsumme für dieses Lied",
   "room.file.unavailable": "Raumdatei nicht verfügbar: {error}",
   "room.file.unreadable": "Unlesbare Datei: {error}",
-  "room.song.choose_failed": "Lied konnte nicht gewählt werden: {error}"
+  "room.song.choose_failed": "Lied konnte nicht gewählt werden: {error}",
+  "room.rejoin.unavailable": "Wiedereinstieg nicht möglich: Das Stück ist vorbei, noch nicht empfangen oder die Raumuhr ist nicht bereit",
+  "room.parts.track_n": "Spur {n}",
+  "room.host_only.parts": "Nur der Leiter des Raums teilt die Spuren auf.",
+  "room.parts.no_tracks": "Dieses Stück hat keine Spuren zum Aufteilen.",
+  "room.parts.server_old": "Der Server kennt das Orchester noch nicht: Alle spielen das ganze Stück.",
+  "room.state.switch_to_game": "Klicke vor dem Start auf Heartopia (Instrument geöffnet)"
 }

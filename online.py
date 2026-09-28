@@ -166,8 +166,8 @@ ERROR_DOMAINS = {
 
 # ---- adresses publiques du site. Table recopiee de server/app/site.py (ROUTES["songs"], ROUTES["gallery"],
 # ROOM_SLUGS) et de site_pages/songs.py (song_url : /{lang}/<slug>/{id}-{slugify(titre)}) : a tenir a jour
-# ensemble. Langues sans slug traduit (zh-CN, ja, th) : slug anglais, comme le serveur.
-SITE_LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th")
+# ensemble. Langues sans slug traduit (zh-CN, ja, th, id, fil) : slug anglais, comme le serveur.
+SITE_LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th", "id", "fil")
 PUBLIC_SLUGS = {
     "songs": {"fr": "morceaux", "en": "songs", "es": "canciones", "de": "lieder", "pt-BR": "musicas"},
     "gallery": {"fr": "galerie", "en": "gallery", "es": "galeria", "de": "galerie", "pt-BR": "galeria"},

@@ -25,7 +25,12 @@ const INST_STATUS = {
   'quick-tested': {key: 'inst.status.quick_tested', chip: 'chip--warn'},
   confirmed:      {key: 'inst.status.confirmed',    chip: 'chip--ok'},
 };
-function instStatus(s){ const e = INST_STATUS[s] || INST_STATUS.unknown; return {label: t(e.key), chip: e.chip}; }
+// Les instruments sont regles par famille (piano, « comme le luth »...) : plus de statut de verification a
+// afficher. Seul un instrument pas encore disponible porte une pastille.
+function instStatus(s){
+  if(s && s !== 'unknown') return {label: '', chip: 'is-hidden'};
+  return {label: t(INST_STATUS.unknown.key), chip: INST_STATUS.unknown.chip};
+}
 // nom affiche d'un instrument : `name` (francais) ou `label_en` hors francais (le catalogue moteur porte les deux)
 function instName(inst){
   if(!inst) return '';
@@ -411,7 +416,6 @@ function instDetailDraw(){
     <div class="instdet__acts">
       ${main}
       <button class="btn btn--secondary btn--sm" type="button" data-act="keys">${esc(t('inst.picker.keys'))}</button>
-      ${i.ready ? `<button class="btn btn--ghost btn--sm" type="button" data-act="setup">${esc(t('inst.picker.reconfigure'))}</button>` : ''}
     </div>
     ${layouts.length > 1 ? `<details class="disclosure"><summary>${esc(t('inst.picker.layouts_summary', {n: layouts.length}))}</summary>
       <div class="disclosure__body"><p class="hint left">${esc(t('inst.picker.layouts_hint'))}</p>
@@ -421,13 +425,10 @@ function instDetailDraw(){
     <details class="disclosure"><summary>${esc(t('inst.picker.tech_summary'))}</summary>
       <div class="disclosure__body">
         ${missTxt}
-        ${i.ready ? `<div class="btnrow"><button class="btn btn--ghost btn--sm" type="button" data-act="full"
-          title="${esc(t('inst.picker.full_title'))}">${esc(t('inst.picker.full'))}</button></div>` : ''}
         <dl class="instdet__facts instdet__facts--tech">
           <dt>${esc(t('inst.picker.dt_id'))}</dt><dd>${esc(id)}</dd>
           <dt>${esc(t('inst.picker.dt_layout'))}</dt><dd>${esc(i.layout_id || '—')}</dd>
           <dt>${esc(t('inst.picker.dt_variants'))}</dt><dd>${esc(t('inst.picker.variants_note', {n: i.variant_count != null ? String(i.variant_count) : '—'}))}</dd>
-          <dt>${esc(t('inst.picker.dt_provenance'))}</dt><dd>${esc(instProvenance(i))}</dd>
         </dl>
         ${srcs.length ? `<p class="hint left">${esc(t('inst.picker.sources'))}</p><ul class="instsrc">${srcs.map(u => `<li><code>${esc(u)}</code></li>`).join('')}</ul>
           <button class="btn btn--ghost btn--sm" type="button" data-act="copysrc">${esc(t('inst.picker.copy_sources'))}</button>` : ''}
@@ -452,13 +453,6 @@ function instDetailDraw(){
   box.querySelectorAll('[data-lay]').forEach(b => b.onclick = () => instSetLayout(id, b.dataset.lay));
 
   if(!d) instDetail(id).then(r => { if(r && INST.sel === id) instDetailDraw(); });
-}
-function instProvenance(i){
-  if(i.status === 'confirmed') return t('inst.status.provenance_confirmed');
-  if(i.status === 'quick-tested') return t('inst.status.provenance_quick_tested');
-  if(i.status === 'custom') return t('inst.status.provenance_custom');
-  if(i.status === 'documented') return t('inst.status.provenance_documented');
-  return t('inst.status.provenance_unknown');
 }
 // Export / import d'un profil : les deux methodes existent cote Python (schema valide, rien n'est
 // execute). Sans point d'entree ici, la documentation promettrait une fonction inatteignable.
@@ -584,11 +578,8 @@ function instKeysHtml(st, d, i){
         <th scope="col">${esc(t('inst.keys.th_key', {kbl: KBL}))}</th><th scope="col">${esc(t('inst.keys.th_assign'))}</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="btnrow">
-      <button class="btn btn--secondary btn--sm" type="button" data-act="setup">${esc(t('inst.keys.edit'))}</button>
-      <button class="btn btn--ghost btn--sm" type="button" data-act="full">${esc(t('inst.picker.full'))}</button>
       <button class="btn btn--ghost btn--sm" type="button" data-act="copy">${esc(t('inst.keys.copy'))}</button>
     </div>
-    <p class="hint left">${t('inst.keys.full_hint_html')}</p>
     <details class="disclosure"><summary>${esc(t('inst.keys.adv_summary'))}</summary>
       <div class="disclosure__body">
         <p class="hint left">${t('inst.keys.adv_convention_html')}</p>
@@ -639,17 +630,13 @@ function openKeysPanel(id){
 }
 
 // ------------------------------------------------ assistant de configuration (5 etapes)
-const WIZ_STEPS = ['open', 'layout', 'bind', 'test', 'save'];
+const WIZ_STEPS = ['open', 'layout', 'bind', 'save'];
 // titres d'etape et frappes : des cles, resolues par t() a chaque rendu (wizDraw / wizStepHtml)
 // (declarees pour i18n_check) : t('inst.wizard.title_open') t('inst.wizard.title_layout') t('inst.wizard.title_bind')
 // t('inst.wizard.title_test') t('inst.wizard.title_save') t('inst.wizard.title_default')
 const WIZ_TITLE_KEYS = {open: 'inst.wizard.title_open', layout: 'inst.wizard.title_layout',
   bind: 'inst.wizard.title_bind', test: 'inst.wizard.title_test', save: 'inst.wizard.title_save'};
 function wizTitle(step){ return t(WIZ_TITLE_KEYS[step] || 'inst.wizard.title_default'); }
-// frappes proposees pour une percussion : on demande CE QUI A SONNE, pas un Do/Re arbitraire
-// (declarees pour i18n_check) : t('inst.wizard.strike_low') t('inst.wizard.strike_open') t('inst.wizard.strike_slap') t('inst.wizard.strike_none')
-const WIZ_STRIKE_KEYS = [['low', 'inst.wizard.strike_low'], ['open', 'inst.wizard.strike_open'],
-  ['slap', 'inst.wizard.strike_slap'], ['none', 'inst.wizard.strike_none']];
 const WIZ = {
   id: null, mode: 'setup', step: 'open', layoutId: null, bindings: {}, order: [],
   capture: null, msg: '', msgKind: 'warn', detail: null, tested: null, testing: false, dirty: false,
@@ -820,58 +807,6 @@ function wizStepHtml(){
           <th scope="col">${esc(t('inst.keys.th_key', {kbl: KBL}))}</th><th scope="col">${esc(t('inst.wizard.th_conflicts'))}</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`;
   }
-  if(WIZ.step === 'test'){
-    const wz = (S && S.instrument_wizard) || null;
-    const test = (wz && wz.test) || null;
-    const tstate = (test && test.state) || '';
-    const sample = wizTestSample();
-    // seuls « countdown » et « playing » sont des etats ACTIFS : un test annule ou en erreur doit laisser
-    // le bouton relancable, sinon l'etape reste figee sur « Test en cours… » sans aucun moyen de repartir.
-    const running = ['countdown', 'playing'].includes(tstate) || WIZ.testing;
-    // cle du contrat cote Python : test.remaining (seconds_left accepte par tolerance)
-    const left = test ? (test.remaining != null ? test.remaining : test.seconds_left) : null;
-    const answered = WIZ.tested;
-    const full = WIZ.mode === 'full';
-    const bound = WIZ.order.filter(m => WIZ.bindings[m]).length;
-    const done = ((wz && wz.verified) || []).length;
-    const stopKey = (S && S.hotkeys && S.hotkeys.stop) || 'F7';
-    const failed = ['cancelled', 'error'].includes(tstate);
-    // liste des touches envoyees : fragments <b> composes avec esc(), puis inseres dans le message
-    const sentList = sample.map(m => `<b>${esc(instKeyLabel(WIZ.bindings[m], kbl))}</b> (${esc(noteFr(m))})`).join(' · ') || '—';
-    const expected = ((test && test.solfege && I18N.lang === 'fr') ? test.solfege : sample.map(noteFr)).join(', ') || '—';
-    return `<p>${t('inst.wizard.test_intro_html', {key: esc(stopKey)})}</p>
-      <div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('info')}</span><div class="notice__text">${esc(t('inst.wizard.test_notice', {name: instName(wizInst())}))}</div></div>
-      ${full ? `<div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('check')}</span><div class="notice__text">${t('inst.wizard.full_progress_html', {done, bound})}</div></div>` : ''}
-      <div class="wizbar">
-        <span class="hint left">${t('inst.wizard.sent_keys_html', {list: sentList})}</span>
-        <div class="spacer"></div>
-        ${running ? `<button class="btn btn--secondary btn--sm" type="button" data-act="teststop">${esc(t('inst.wizard.test_stop'))}</button>` : ''}
-        <button class="btn btn--cta btn--sm" type="button" data-act="test" ${running || !sample.length ? 'disabled' : ''}>
-          ${esc(running ? t('inst.wizard.test_running') : (done ? t('inst.wizard.test_next') : t('inst.wizard.test_start')))}</button>
-      </div>
-      ${running && left != null ? `<p class="hint left">${esc(t('inst.wizard.switching', {n: Math.max(0, Math.ceil(left))}))}</p>` : ''}
-      ${running && tstate === 'playing' ? `<p class="hint left">${esc(t('inst.wizard.sending'))}</p>` : ''}
-      ${failed ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(t('inst.wizard.test_failed', {message: test.message || t('inst.wizard.test_failed_default')}))}</div></div>` : ''}
-      ${tstate === 'answer'
-        ? (wizPercussive()
-          ? `<fieldset class="wizask"><legend>${esc(t('inst.wizard.heard'))}</legend>
-              <p class="hint left">${esc(t('inst.wizard.heard_percussion_hint'))}</p>
-              ${WIZ_STRIKE_KEYS.map(([v, key]) => `<button type="button" class="btn btn--secondary btn--sm" data-strike="${esc(v)}">${esc(t(key))}</button>`).join(' ')}
-            </fieldset>`
-          : `<fieldset class="wizask"><legend>${esc(t('inst.wizard.heard'))}</legend>
-              <p class="hint left">${esc(t('inst.wizard.expected', {notes: expected}))}</p>
-              <button type="button" class="btn btn--secondary btn--sm" data-ans="1">${esc(t('inst.wizard.ans_yes'))}</button>
-              <button type="button" class="btn btn--secondary btn--sm" data-ans="0">${esc(t('inst.wizard.ans_no'))}</button>
-            </fieldset>`)
-        : `<p class="hint left">${esc(t('inst.wizard.heard_hint'))}</p>`}
-      ${answered ? `<div class="notice notice--${answered.ok ? 'ok' : 'warn'}"><span class="notice__ic" aria-hidden="true">${icon(answered.ok ? 'check' : 'warn')}</span>
-        <div class="notice__text">${esc(answered.ok
-          ? (full
-            ? t('inst.wizard.group_ok', {done, bound, all: (bound && done >= bound) ? 'yes' : 'no'})
-            : t('inst.wizard.quick_ok', {n: WIZ.order.length}))
-          : t('inst.wizard.answer_no'))}</div></div>` : ''}
-      <p class="hint left">${esc(t('inst.wizard.skip_hint'))}</p>`;
-  }
   // save
   const conf = wizConflicts();
   const hard = wizBlocking(conf);
@@ -910,21 +845,12 @@ function wizDraw(){
   });
   const rst = body.querySelector('[data-act="reset"]');
   if(rst) rst.onclick = () => { if(WIZ.layoutId) wizLoadLayout(WIZ.layoutId); wizDraw(); };
-  const tb = body.querySelector('[data-act="test"]');
-  if(tb) tb.onclick = () => wizRunTest();
-  const ts = body.querySelector('[data-act="teststop"]');
-  if(ts) ts.onclick = () => wizStopTest();
-  body.querySelectorAll('[data-ans]').forEach(b => b.onclick = () => wizAnswer(b.dataset.ans === '1', null));
-  body.querySelectorAll('[data-strike]').forEach(b => b.onclick = () => wizAnswer(b.dataset.strike !== 'none', b.dataset.strike));
 
   $('wizBack').disabled = idx === 0;
   const next = $('wizNext');
   if(WIZ.step === 'save'){
     next.textContent = t('inst.wizard.btn_save');
     next.disabled = wizBlocking(wizConflicts()).length > 0 || !wizBound();
-  } else if(WIZ.step === 'test'){
-    next.textContent = WIZ.tested ? t('inst.wizard.btn_continue') : t('inst.wizard.btn_skip_test');
-    next.disabled = false;
   } else {
     next.textContent = t('inst.wizard.btn_continue');
     next.disabled = (WIZ.step === 'layout' && !WIZ.layoutId) || (WIZ.step === 'bind' && !wizBound());
@@ -934,40 +860,6 @@ function wizDraw(){
     const el = body.querySelector(`[data-cap="${WIZ.capture}"]`);
     if(el && document.activeElement !== el) el.focus();
   }
-}
-// Echantillon envoye au jeu. En validation integrale, on avance dans les associations NON ENCORE
-// verifiees : sans cela les passages successifs retesteraient toujours les trois memes notes et le statut
-// « Confirmé sur cet ordinateur » resterait inatteignable. En assistant court, on garde un echantillon
-// reparti grave / milieu / aigu, plus parlant que trois voisines (meme regle que le repli cote Python).
-function wizTestSample(){
-  const bound = WIZ.order.filter(m => WIZ.bindings[m]);
-  if(!bound.length) return [];
-  if(WIZ.mode === 'full'){
-    const wz = (S && S.instrument_wizard) || null;
-    const seen = {};
-    ((wz && wz.verified) || []).forEach(m => { seen[Number(m)] = true; });
-    const rest = bound.filter(m => !seen[Number(m)]);
-    return (rest.length ? rest : bound).slice(0, 3);
-  }
-  const idx = [0, Math.floor(bound.length / 2), bound.length - 1]
-    .filter((v, k, a) => a.indexOf(v) === k).sort((a, b) => a - b);
-  return idx.map(k => bound[k]);
-}
-function wizStopTest(){
-  WIZ.testing = false;
-  api('instrument_wizard_test_stop').then(() => wizDraw());
-}
-function wizRunTest(){
-  const sample = wizTestSample();
-  if(!sample.length) return;
-  if(S && S.state !== 'stopped'){ WIZ.msg = t('inst.wizard.stop_before_test'); WIZ.msgKind = 'warn'; wizDraw(); return; }
-  WIZ.testing = true; WIZ.msg = ''; wizDraw();
-  api('instrument_wizard_test', sample).finally(() => { WIZ.testing = false; wizDraw(); });
-}
-function wizAnswer(ok, strike){
-  WIZ.tested = {ok: !!ok, strike: strike || null};
-  api('instrument_wizard_answer', !!ok, strike || null);
-  wizDraw();
 }
 function wizGoto(step){
   wizCaptureEnd();

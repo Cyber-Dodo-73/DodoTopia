@@ -7,7 +7,6 @@
   "help.topic.cook": "Cuisine",
   "help.topic.keys": "Raccourcis",
   "help.topic.fix": "Dépannage",
-
   "help.start.intro": "DodoTopia prépare ton travail ici, puis le réalise dans Heartopia à ta place : il appuie sur les touches et clique pour toi. Le jeu doit être ouvert au moment du lancement.",
   "help.start.activities.title": "Les trois activités",
   "help.start.activities.music": "<b>Musique</b> : jouer un fichier MIDI sur un instrument du jeu.",
@@ -15,7 +14,6 @@
   "help.start.activities.cook": "<b>Cuisine</b> : refaire la dernière recette en boucle.",
   "help.start.activities.note": "La musique fonctionne dès l’installation. Le dessin et la cuisine demandent une configuration, une seule fois.",
   "help.start.glossary": "Les mots de DodoTopia",
-
   "help.gloss.midi.term": "Fichier MIDI (.mid)",
   "help.gloss.midi.def": "Une partition : la liste des notes et de leur durée, sans son enregistré. DodoTopia la rejoue sur les touches de l’instrument du jeu.",
   "help.gloss.listen.term": "Préécouter",
@@ -34,7 +32,6 @@
   "help.gloss.dither.def": "Alterner deux couleurs voisines case par case pour imiter une teinte absente de la palette.",
   "help.gloss.outline.term": "Contours + pot de peinture",
   "help.gloss.outline.def": "Tracer le bord d’une zone au crayon puis la remplir d’un seul clic au pot, au lieu de peindre chaque case.",
-
   "help.music.import.title": "Importer un morceau",
   "help.music.import.s1": "Musique › Ma bibliothèque › <b>Importer</b>, ou glisse un fichier <code>.mid</code> dans la fenêtre.",
   "help.music.import.s2": "Les fichiers sont copiés dans ton dossier de musiques ; l’original n’est pas touché.",
@@ -54,7 +51,6 @@
   "help.music.together.s2": "<b>Par le son</b> : sans réseau, le premier joue une note repère que les autres détectent.",
   "help.music.together.s3": "<b>Salon en ligne</b> : un code à six caractères, un chef qui lance la session.",
   "help.music.together.note": "Le calage dépend de ta machine et de ta connexion : les départs sont ajustés au mieux, pas parfaits.",
-
   "help.draw.prepare.title": "Préparer une image",
   "help.draw.prepare.s1": "Dessin › <b>Importer une image</b> (.png, .jpg, .gif, .bmp, .webp).",
   "help.draw.prepare.s2": "L’aperçu montre le rendu case par case sur les couleurs de la palette du jeu.",
@@ -69,7 +65,6 @@
   "help.draw.run.s1": "Ouvre une toile vide au bon format, outil crayon sélectionné, sans zoom.",
   "help.draw.run.s2": "Bouton <b>Dessiner dans Heartopia</b> ou <kbd class=\"kbd\">{f6}</kbd>, puis ne touche plus à la souris.",
   "help.draw.run.note": "Un dessin interrompu reprend là où il s’est arrêté : relance-le sur la même toile, seules les cases manquantes sont peintes.",
-
   "help.cook.setup.title": "Configurer la cuisine",
   "help.cook.setup.s1": "Dans le jeu, place-toi devant la cuisinière, bulle visible.",
   "help.cook.setup.s2": "Cuisine › <b>Configurer la cuisine</b>, puis suis les étapes une par une.",
@@ -80,10 +75,8 @@
   "help.cook.run.s2": "Choisis <b>Quantité définie</b> ou <b>En continu</b>, et le nombre de cuisinières.",
   "help.cook.run.s3": "Place-toi devant la cuisinière, puis <kbd class=\"kbd\">{f6}</kbd>.",
   "help.cook.run.note": "Pendant la boucle, <kbd class=\"kbd\">{f7}</kbd>, n’importe quelle touche ou un mouvement de souris arrêtent tout.",
-
   "help.keys.title": "Raccourcis globaux",
   "help.keys.intro": "Actifs même quand Heartopia est au premier plan. Modifiables dans Réglages › Raccourcis.",
-
   "help.fix.keys.q": "Le jeu ne reçoit pas les touches",
   "help.fix.keys.a": "Heartopia doit être la fenêtre active. Si rien ne passe, relance DodoTopia en administrateur.",
   "help.fix.notes.q": "Les notes sont fausses",
@@ -94,5 +87,27 @@
   "help.fix.cook.a": "Lance « Tester la détection » devant la cuisinière, puis recapture les icônes de la bulle.",
   "help.fix.stop.q": "Tout arrêter tout de suite",
   "help.fix.stop.a": "<kbd class=\"kbd\">{f7}</kbd>, n’importe quelle touche ou un clic gauche arrêtent l’automatisation en cours.",
-  "help.fix.open_logs": "Ouvrir les journaux"
+  "help.fix.open_logs": "Ouvrir les journaux",
+  "support.title": "Envoyer un rapport",
+  "support.report_btn": "Envoyer un rapport",
+  "support.intro": "Quelque chose ne marche pas ? DodoTopia rassemble ses journaux et captures dans un rapport. Tu reçois un code à coller sur le Discord DodoTopia : on retrouve tout sans te demander de fichiers.",
+  "support.note_label": "Que s'est-il passé ?",
+  "support.note_ph": "Par exemple : la 2e cuisinière n'est jamais servie, le luth ne suit pas le piano…",
+  "support.audio": "Joindre le dernier enregistrement audio de la synchro par le son",
+  "support.files": "Contenu du rapport : {n} fichiers, {size}",
+  "support.system_desc": "version, système, instrument, état du jeu",
+  "support.privacy": "Jamais envoyés : ton jeton de connexion, ta bibliothèque de morceaux, ton pseudo. Ton dossier personnel est masqué dans les journaux. Le rapport est effacé du serveur au bout de 30 jours.",
+  "support.send": "Envoyer",
+  "support.save": "Enregistrer le zip",
+  "support.saved": "Rapport enregistré : {name}",
+  "support.offline": "Serveur injoignable : enregistre le zip et envoie-le sur Discord.",
+  "support.sent": "Rapport envoyé. Voici ton code :",
+  "support.sent_hint": "Colle ce code sur le Discord DodoTopia en décrivant le problème.",
+  "support.copy": "Copier le code",
+  "support.copied": "Code copié",
+  "support.size_kb": "{n} Ko",
+  "support.size_mb": "{n} Mo",
+  "support.help_hint": "Le plus rapide pour obtenir de l'aide : un rapport rassemble tout ce qu'il faut pour comprendre le problème.",
+  "support.about_hint": "journaux et captures, avec un code pour Discord",
+  "support.images": "Joindre les captures de la cuisine (images de la bulle reconnue et de la dernière erreur)"
 }

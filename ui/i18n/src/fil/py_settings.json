@@ -1,0 +1,14 @@
+{
+  "settings.error.unknown_path": "hindi kilalang setting: {path}",
+  "settings.error.number_expected": "numero ang kailangan",
+  "settings.error.range": "mula {lo} hanggang {hi} {unit}",
+  "settings.error.unknown_value": "hindi kilalang value",
+  "settings.error.too_long": "hanggang {max} character lang",
+  "settings.error.key_required": "pumili ng key",
+  "settings.error.key_unknown": "hindi kilalang key",
+  "settings.error.hotkey_taken": "gamit na para sa \"{label}\"",
+  "settings.error.unknown_type": "hindi kilalang uri",
+  "settings.error.unknown_section": "hindi kilalang seksyon: {section}",
+  "settings.error.key_is_note": "Ginagamit ang key na ito para tumugtog ng nota: pumili ng function key (F1 hanggang F12) o kombinasyon na may Ctrl o Alt.",
+  "notify.hotkeys_fixed": "Ibinalik sa default ang isang shortcut na naka-set sa key ng nota: kusa nitong itinitigil ang pagtugtog."
+}

@@ -58,5 +58,11 @@
   "room.file.no_sha": "le serveur n'annonce pas d'empreinte pour ce morceau",
   "room.file.unavailable": "Fichier du salon indisponible : {error}",
   "room.file.unreadable": "Fichier illisible : {error}",
-  "room.song.choose_failed": "Musique impossible à choisir : {error}"
+  "room.song.choose_failed": "Musique impossible à choisir : {error}",
+  "room.rejoin.unavailable": "Impossible de rejoindre la lecture : le morceau est fini, pas encore reçu, ou l’horloge du salon n’est pas prête",
+  "room.parts.track_n": "Piste {n}",
+  "room.host_only.parts": "Seul le chef du salon répartit les pistes.",
+  "room.parts.no_tracks": "Ce morceau n'a pas de pistes à répartir.",
+  "room.parts.server_old": "Le serveur ne connaît pas encore l'Orchestre : tout le monde joue tout le morceau.",
+  "room.state.switch_to_game": "Clique sur Heartopia avant le départ (instrument ouvert)"
 }

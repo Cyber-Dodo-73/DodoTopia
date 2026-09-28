@@ -17,7 +17,8 @@ import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse, JSONResponse
 
-from . import db, indexnow
+from . import db, indexnow, notify
+from .stats import hit as stat_hit
 from .auth import api_error, require_publish_token, settings_of
 from .config import Settings
 from .ratelimit import limit
@@ -171,11 +172,18 @@ def _counts_as_download(range_header: str | None) -> bool:
     return re.sub(r"\s", "", range_header).lower() == "bytes=0-"
 
 
-def count_download(conn: db.Connection, version: str, filename: str) -> None:
-    """Un téléchargement de plus pour cet asset (compteur `release_assets.downloads`, publié par /api/stats)."""
+def count_download(conn: db.Connection, version: str, filename: str, app=None, via: str = "direct") -> None:
+    """Un téléchargement de plus pour cet asset (compteur `release_assets.downloads`, publié par /api/stats) ;
+    avec `app`, aussi dans les statistiques du jour (plateforme, version, origine)."""
     conn.execute("UPDATE release_assets SET downloads = downloads + 1 WHERE version=? AND filename=?",
                  (version, filename))
     conn.commit()
+    if app is not None:
+        row = conn.execute("SELECT platform FROM release_assets WHERE version=? AND filename=?",
+                           (version, filename)).fetchone()
+        stat_hit(app, "dl_app", row["platform"] if row else "?")
+        stat_hit(app, "dl_app_version", version)
+        stat_hit(app, "dl_app_via", via)
 
 
 @router.get("/dl/{version}/{filename}", dependencies=[Depends(limit("dl", 10, 60))])
@@ -193,7 +201,8 @@ def download_asset(version: str, filename: str, request: Request, via: str = "",
     if not path.is_file():
         raise api_error(404, "not_found", "Fichier inconnu.")
     if request.method != "HEAD" and via != "site" and _counts_as_download(request.headers.get("Range")):
-        count_download(conn, version, filename)
+        ua = request.headers.get("user-agent", "")
+        count_download(conn, version, filename, request.app, "app" if ua.startswith("DodoTopia/") else "direct")
     return FileResponse(path, media_type="application/octet-stream", filename=filename,
                         headers={"Cache-Control": "public, max-age=3600"})
 
@@ -386,6 +395,9 @@ def publish(version: str, body: PublishIn, request: Request, background_tasks: B
     request.app.state.stats_cache = None
     if settings.DISCORD_ANNOUNCE_WEBHOOK:
         background_tasks.add_task(announce_release, settings, version)
+    notify.emit(request.app, "release", f"DodoTopia {version} publiée",
+                truncate_notes(body.notes or "", 800), url=f"{settings.public_url}/fr/telecharger",
+                fields=[("Fichiers", ", ".join(sorted(m["assets"]))), ("Obligatoire", "oui" if body.mandatory else "non")])
     if settings.indexnow_key:
         background_tasks.add_task(indexnow.submit, settings, indexnow.release_urls(settings))
     return manifest(conn, settings, version)

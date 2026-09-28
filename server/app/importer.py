@@ -28,6 +28,7 @@ import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
+from . import stats
 from .auth import api_error, get_current_user, settings_of
 from .config import SERVER_VERSION, Settings
 from .library import MidiError, clean_title, content_disposition, safe_ascii_filename, validate_midi
@@ -305,6 +306,7 @@ def import_by_link(body: ImportIn, request: Request, user=Depends(get_current_us
     except ImportFailure as e:
         raise api_error(e.status, e.code, e.message)
     sha = hashlib.sha256(data).hexdigest()
+    stats.hit(request.app, "import", meta.get("source_name") or "?")
     tokens = _tokens(request)
     if len(tokens) >= MAX_TOKENS:
         tokens.pop(next(iter(tokens)))

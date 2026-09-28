@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "Bild zu groß für die Galerie (höchstens 512 KB).",
   "api.gallery.png_invalid": "Zeichnungsbild nicht lesbar: wandle es erneut um.",
   "api.gallery.deleted": "Zeichnung aus der Galerie entfernt",
-  "api.gallery.reported": "Meldung gesendet: danke, ein Moderator sieht es sich an."
+  "api.gallery.reported": "Meldung gesendet: danke, ein Moderator sieht es sich an.",
+  "api.draw.nothing_to_resume": "Keine unterbrochene Zeichnung zum Fortsetzen",
+  "api.music.nothing_to_resume": "Kein unterbrochenes Stück zum Fortsetzen",
+  "api.music.resume_solo_only": "Fortsetzen geht nur solo: verlasse zuerst den Raum oder die Gruppensitzung",
+  "support.save_failed": "Bericht konnte nicht gespeichert werden: {error}",
+  "support.send_failed": "Senden nicht möglich ({error}): Speichere das Zip und sende es über Discord."
 }

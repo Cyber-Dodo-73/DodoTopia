@@ -85,6 +85,14 @@ class BaseMixin:
             self._notify(i18n.t("api.terms.outdated"), "warn")
         return self.get_state()
 
+    def _play_mode(self):
+        """Mode de jeu EFFECTIF : « room » tant qu'on est dans un salon (quitter ramene au solo sans autre
+        geste), sinon « audio » si la synchro par le son est activee, sinon « solo ». Le salon n'est plus un
+        reglage memorise : c'etait lui qui detournait F6 apres un salon quitte."""
+        if self._room.active():
+            return "room"
+        return "audio" if (self._cfg.get("multi") or {}).get("mode") == "audio" else "solo"
+
     def _music_toggle(self):
         """F6 / bouton Jouer : routeur selon le mode de jeu. room : salon en ligne (lobby : chef = top depart,
         autres = Pret ; compte a rebours : annuler ; lecture : stop) ; audio : top depart par note repere ;
@@ -92,7 +100,7 @@ class BaseMixin:
         if self._terms_blocked():
             return
         p = self._player
-        mode = self._cfg.get("multi", {}).get("mode", "solo")
+        mode = self._play_mode()
         if mode == "room":
             self._room.on_f6()
         elif self._sync.active():
@@ -102,17 +110,19 @@ class BaseMixin:
         else:
             p.play_pause("game")
 
-    def _draw_toggle(self, from_ui=False):
+    def _draw_toggle(self, from_ui=False, job=None):
+        """job : travail impose (reprise) ; sinon l'image de l'onglet, ou a defaut le dessin interrompu."""
         d = self._drawer
+        job = job or self._draw_job or d.resume_job()
         if d.state in ("drawing", "autocal"):
             d.stop("stop")
         elif d.state == "calibrating":
             d.capture_point()
-        elif self._draw_job:
+        elif job:
             if self._player.state != "stopped":
                 self._player.stop(join=True)
             # depuis le bouton : 3 s pour passer sur le jeu, et la fenetre se reduit pour ne pas gener
-            if d.start(self._draw_job, delay=3.0 if from_ui else 1.0) and from_ui and self._window:
+            if d.start(job, delay=3.0 if from_ui else 1.0) and from_ui and self._window:
                 try:
                     self._window.minimize()
                     self._minimized = True

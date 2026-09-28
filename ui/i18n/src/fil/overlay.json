@@ -1,0 +1,20 @@
+{
+  "overlay.role.music": "Musika",
+  "overlay.role.paused": "Naka-pause",
+  "overlay.role.sync": "Group session",
+  "overlay.role.room": "Room {code}",
+  "overlay.role.room_without_you": "Tumutugtog ang room nang wala ka",
+  "overlay.role.draw": "Drawing",
+  "overlay.role.measure": "Awtomatikong pagsukat",
+  "overlay.seconds": "{n} s",
+  "overlay.players": "{n, plural, one {# player} other {# players}}",
+  "overlay.draw.starting": "Magsisimula na ang drawing…",
+  "overlay.draw.cells": "{done} / {total} kahon",
+  "overlay.hint.music": "{play} pause · {stop} stop",
+  "overlay.hint.sync": "{stop} para kanselahin",
+  "overlay.hint.room_start": "Manatili sa Heartopia, bukas ang instrumento",
+  "overlay.hint.room_host": "{stop} para ihinto ang buong room",
+  "overlay.hint.room_guest": "{stop} para ihinto ka (tuloy ang iba)",
+  "overlay.hint.rejoin": "{play}: sumabay ulit sa iba",
+  "overlay.hint.draw": "{stop} para huminto · huwag galawin ang mouse"
+}

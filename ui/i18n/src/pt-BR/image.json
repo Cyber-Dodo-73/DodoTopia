@@ -131,5 +131,11 @@
   "image.gallery.loaded": "“{title}” está pronto para desenhar.",
   "image.gallery.grid_sub": "Grade da galeria · {format} · {w} × {h} casas",
   "image.gallery.grid_note": "Grade tirada da galeria, já convertida: enquadramento e cores não são ajustáveis ({format}).",
-  "image.gallery.grid_mismatch": "Atenção: este desenho tem {w} × {h} casas e sua área {format} está configurada em {gw} × {gh}. Ajuste a grade em Configurações › Desenho antes de desenhar."
+  "image.gallery.grid_mismatch": "Atenção: este desenho tem {w} × {h} casas e sua área {format} está configurada em {gw} × {gh}. Ajuste a grade em Configurações › Desenho antes de desenhar.",
+  "image.run.resume_role": "Desenho interrompido",
+  "image.run.resume_text_named": "“{name}” ({format}): você pode retomar de onde parou.",
+  "image.run.resume_text": "Desenho {format}: você pode retomar de onde parou.",
+  "image.run.resume_meta": "{done} / {total} casas já pintadas · só as casas que faltam serão pintadas, mantenha o desenho aberto no Heartopia",
+  "image.run.resume_btn": "Retomar",
+  "image.run.resume_forget": "Esquecer"
 }

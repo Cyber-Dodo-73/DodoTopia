@@ -131,5 +131,11 @@
   "image.gallery.loaded": "« {title} » est prêt à dessiner.",
   "image.gallery.grid_sub": "Grille de la galerie · {format} · {w} × {h} cases",
   "image.gallery.grid_note": "Grille reprise de la galerie, déjà convertie : le cadrage et les couleurs ne se règlent pas ({format}).",
-  "image.gallery.grid_mismatch": "Attention : ce dessin fait {w} × {h} cases, ta zone {format} est configurée en {gw} × {gh}. Règle la grille dans Réglages › Dessin avant de dessiner."
+  "image.gallery.grid_mismatch": "Attention : ce dessin fait {w} × {h} cases, ta zone {format} est configurée en {gw} × {gh}. Règle la grille dans Réglages › Dessin avant de dessiner.",
+  "image.run.resume_role": "Dessin interrompu",
+  "image.run.resume_text_named": "« {name} » ({format}) : tu peux le reprendre là où il s’est arrêté.",
+  "image.run.resume_text": "Dessin {format} : tu peux le reprendre là où il s’est arrêté.",
+  "image.run.resume_meta": "{done} / {total} cases déjà peintes · seules les cases qui manquent seront peintes, garde le dessin ouvert dans Heartopia",
+  "image.run.resume_btn": "Reprendre",
+  "image.run.resume_forget": "Oublier"
 }

@@ -6,10 +6,12 @@
 //   [&nocompat (aucun diagnostic de morceau)]
 //   En ligne / Salon : [&online (connecte + catalogue)][&online=out (deconnecte)][&online=off (serveur injoignable)]
 //   [&online=wait (connexion Discord en attente)][&admin (file de moderation)][&lobby (salon en attente, 3 joueurs)]
-//   [&lobby=count (compte a rebours du salon)][&update (mise a jour disponible : carte + toast persistant)]
+//   [&lobby=count (compte a rebours du salon)][&lobby=parts (Orchestre : pistes reparties)][&lobby=solo1 (seul dans
+//   le salon)][&lobby=guest (invite)][&picker (selecteur de morceau du salon ouvert)]
+//   [&update (mise a jour disponible : carte + toast persistant)]
 //   Conditions d'utilisation : [&terms (modale bloquante, texte lorem fr)][&terms=en (ouverte en anglais)][&terms=fail (echec du chargement)]
 //   [&terms=short (texte plus court que la zone : compte comme lu)]
-//   Langue : [&lang=en|es|de|pt-BR|zh-CN|ja|th (catalogue ui/i18n/<lang>.json charge par fetch : http seulement)]
+//   Langue : [&lang=en|es|de|pt-BR|zh-CN|ja|th|id|fil (catalogue ui/i18n/<lang>.json charge par fetch : http seulement)]
 //   Thème : [&theme=dark|light (data-theme force sur <html>)]
 //   Phase 2 : [&onboarding (découverte ouverte)][&deeplink (lien dodotopia:// à confirmer : salon K7P2QD)]
 //   [&gamewin=off|admin|none (fenêtre du jeu : non lancé, en administrateur alors que DodoTopia non, non vérifié ;
@@ -23,7 +25,7 @@ if(location.search.includes('mock')){
   if(themeArg) document.documentElement.dataset.theme = themeArg;
   // ---- faux get_i18n : meme forme que le backend {lang, available, catalogue, fallback, meta}, catalogues assembles
   // (py .tools/i18n_merge.py) lus par fetch ; la liste des langues vient des _meta de chaque catalogue.
-  const MOCK_LANGS = ['fr', 'en', 'es', 'de', 'pt-BR', 'zh-CN', 'ja', 'th'];
+  const MOCK_LANGS = ['fr', 'en', 'es', 'de', 'pt-BR', 'zh-CN', 'ja', 'th', 'id', 'fil'];
   const catCache = {};
   const fetchCat = tag => catCache[tag] || (catCache[tag] = fetch('i18n/' + tag + '.json').then(r => r.ok ? r.json() : null).catch(() => null));
   window.MOCK_I18N = lang => {
@@ -143,23 +145,32 @@ function mockMain(){
     {id: 5, song_id: 12, song_title: 'Wish You Were Here', reporter_name: 'Lila', reason: 'fichier tronqué, la moitié manque',
      created_at: new Date(Date.now() - 86400e3 * 3).toISOString()}];
   // instruments volontairement melanges : id du catalogue, deux anciens ids (flute, luth) et un id inconnu
-  const MOCK_PLAYERS = [
-    {id: 1, name: 'Dodo', avatar: '', instrument: 'lute', host: true, connected: true, have_song: true, ready: true, status: 'lobby'},
-    {id: 2, name: 'Lila', avatar: '', instrument: 'flute', host: false, connected: true, have_song: true, ready: true, status: 'lobby'},
+  const MOCK_PLAYERS_ALL = [
+    {id: 1, name: 'Dodo', avatar: '', instrument: 'lute', host: true, connected: true, have_song: true, ready: true, status: 'lobby', version: '2.1.0'},
+    {id: 2, name: 'Lila', avatar: '', instrument: 'flute', host: false, connected: true, have_song: true, ready: true, status: 'lobby', version: '2.1.0'},
     {id: 3, name: 'Marin-au-pseudo-vraiment-long', avatar: '', instrument: 'luth', host: false, connected: false,
      have_song: lob === 'count', ready: lob === 'count', status: 'lobby'},
     {id: 4, name: 'Nino', avatar: '', instrument: 'theorbe-de-poche', host: false, connected: true,
-     have_song: true, ready: false, status: 'lobby'}];
+     have_song: true, ready: false, status: 'lobby', version: '2.0.2'}];
+  const MOCK_PLAYERS = lob === 'solo1' ? MOCK_PLAYERS_ALL.slice(0, 1) : MOCK_PLAYERS_ALL;
+  const MOCK_TRACKS = [{index: 1, name: 'Piano droit', notes: 812, low: 60, high: 91, mean: 74.2},
+    {index: 2, name: 'Basse', notes: 344, low: 31, high: 55, mean: 41.0}, {index: 3, name: '', notes: 176, low: 55, high: 72, mean: 63.5},
+    {index: 4, name: 'Batterie', notes: 96, drums: true}];
+  const MOCK_PARTS = lob === 'parts' || lob === 'guest' ? {enabled: true, parts: {'1': {tracks: [3], octave: null}, '2': {tracks: [1], octave: null},
+    '3': {tracks: [2], octave: -1}, '4': {tracks: [1], octave: null}}} : null;
+  const guest = lob === 'guest';
   const MOCK_ROOM = !lob ? null : {
-    enabled: true, state: lob === 'count' ? 'armed' : 'lobby', mode: 'room', role: 'host',
+    enabled: true, state: lob === 'count' ? 'armed' : 'lobby', mode: 'room', role: guest ? 'guest' : 'host',
     seconds_left: lob === 'count' ? 4.2 : null, message: lob === 'count' ? 'Top départ : reste sur Heartopia.' : '',
     player_id: 1, leader_id: 1, players: [1, 2, 3, 4],
     room: {code: 'K7P2QD', connected: true, state: lob === 'count' ? 'countdown' : 'lobby', host_id: 1,
-      song: {sha256: 'a1', name: 'AriaMath', duration_ms: 318000, key_shift: 5, source: 'library', online_id: 11},
+      song: lob === 'solo1' ? null : {sha256: 'a1', name: 'AriaMath', duration_ms: 318000, key_shift: 5, source: 'library', online_id: 11, tracks: MOCK_TRACKS},
+      parts: MOCK_PARTS, my_part: MOCK_PARTS ? (guest ? 'Piano droit' : 'Piste 4') : '',
       players: MOCK_PLAYERS, countdown_s: 5, start_at_ms: 0, max_players: 8, seq: 12,
       clock: {offset_ms: 12.3, rtt_ms: 38, err_ms: lob === 'count' ? 19 : 64, age_s: 2, samples: 12, valid: true},
       net_offset_ms: -40, can_start: lob === 'count', start_blocker: lob === 'count' ? '' : 'Fichier pas encore reçu : Marin-au-pseudo-vraiment-long',
-      me: {id: 1, ready: true, has_file: true, host: true, name: 'Dodo'}, error: '', last_room: 'K7P2QD', min_version: '1.6.0'}};
+      me: guest ? {id: 2, ready: false, has_file: true, host: false, name: 'Lila'} : {id: 1, ready: true, has_file: true, host: true, name: 'Dodo'},
+      error: '', last_room: 'K7P2QD', min_version: '1.6.0'}};
   const MOCK_IDLE_ROOM = {enabled: mode === 'room', state: 'idle', mode: 'room', role: '', seconds_left: null, message: '',
     player_id: null, leader_id: null, players: [],
     room: {code: null, connected: false, state: 'lobby', host_id: null, song: null, players: [], countdown_s: null,
@@ -209,6 +220,11 @@ function mockMain(){
     save_drawing_png: (u, name) => later({ok: true, name: name + '.png', path: 'exports/' + name + '.png'}, 300),
     gallery_share: () => later({ok: true, error: null}, 600),
     open_external: () => later({ok: true, error: null}, 50),
+    diag_preview: () => later({ok: true, audio: true, files: [{name: 'dodotopia.log', size: 48213, kind: 'log'},
+      {name: 'cuisine.log', size: 1048576, kind: 'log'}, {name: 'cuisine_echec.png', size: 91820, kind: 'image'},
+      {name: 'config.json', size: 8603, kind: 'config'}, {name: 'multi_ecoute.wav', size: 2400000, kind: 'audio'}]}, 100),
+    diag_send: () => later({ok: true, code: 'K7P2QDMN', files: 5}, 700),
+    diag_save: () => later({ok: true, name: 'rapport-dodotopia-20260928-193000.zip'}, 300),
   };
   const MOCK_TOASTS = [];
   if(location.search.includes('toast')) MOCK_TOASTS.push({id: 1, t: 0, msg: '2 musiques importées', kind: 'ok', sticky: false},
@@ -326,6 +342,8 @@ ${LOREM[(p + a) % LOREM.length]}
   if(mv) showMusicView(mv[1]);
   if(adm) setTimeout(adminPanel, 0);              // espace d'administration ouvert
   if(has('help')) setTimeout(() => helpPanel(S), 0);        // panneau Aide
+  if(has('picker')) setTimeout(() => openSongPicker(), 0);   // sélecteur de morceau du salon
+  if(has('report')) setTimeout(() => openDiagReport(), 0);    // « Envoyer un rapport »
   if(has('tracks')){ $('songSet').open = true; render(S); setTimeout(() => $('songSet').scrollIntoView({block: 'start'}), 400); }  // réglages du morceau ouverts : pistes MIDI
   if(has('account')) setTimeout(accountPanel, 0);           // panneau Mon compte
   if(has('image') || has('drawing') || has('autocal')) loadImageData({name: 'logo', data: '../assets/logo.png'});
@@ -369,7 +387,7 @@ ${LOREM[(p + a) % LOREM.length]}
     int('cook.green_px', 'cook', 60, 10, 2000, 'px'); num('cook.click_delay', 'cook', 300, 0, 1000, 'ms', 10);
     str('online.server_url', 'online', 'https://dodotopia.cyber-dodo.fr'); bool('online.check_updates', 'online', true);
     bool('online.auto_update', 'online', false); bool('online.rich_presence', 'online', true); bool('online.now_playing_file', 'online', false);
-    choice('general.lang', 'general', 'auto', ['auto', 'fr', 'en', 'es', 'de', 'pt-BR', 'zh-CN', 'ja', 'th']);
+    choice('general.lang', 'general', 'auto', ['auto', 'fr', 'en', 'es', 'de', 'pt-BR', 'zh-CN', 'ja', 'th', 'id', 'fil']);
     if(location.search.includes('adv')) SET.advOpen = true;   // &adv : « Avancé » déplié
     openSettings({fields:F, sections:['general', 'lecture', 'hotkeys', 'multi', 'draw', 'grids', 'cook', 'online'],
       multi_devices:['Digital Audio (S/PDIF) (High Definition Audio Device)', 'Casque (2- CORSAIR VOID ELITE Wireless Gaming Headset)', 'VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)'],

@@ -16,7 +16,7 @@ from pathlib import Path
 
 LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 
-LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th")
+LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th", "id", "fil")
 SOURCE_LANG = "fr"          # langue de référence : toutes les clés y existent
 DEFAULT_LANG = "en"         # langue servie quand rien ne correspond
 FALLBACK = ("en", "fr")
@@ -31,6 +31,8 @@ LANG_INFO = {
     "zh-CN": {"og": "zh_CN", "name": "简体中文"},
     "ja": {"og": "ja_JP", "name": "日本語"},
     "th": {"og": "th_TH", "name": "ไทย"},
+    "id": {"og": "id_ID", "name": "Bahasa Indonesia"},
+    "fil": {"og": "tl_PH", "name": "Filipino"},
 }
 
 _PARAM = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
@@ -133,6 +135,7 @@ _LANG_BY_LOWER = {code.lower(): code for code in LANGS}
 _LANG_BY_BASE = {}
 for _code in LANGS:
     _LANG_BY_BASE.setdefault(_code.split("-")[0].lower(), _code)
+_LANG_BY_BASE.update({"in": "id", "tl": "fil"})     # anciens codes : in (indonésien), tl (tagalog)
 
 
 def negotiate(accept_language: str | None) -> str:

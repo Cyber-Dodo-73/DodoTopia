@@ -1,6 +1,6 @@
 """Pages légales : mentions légales et politique de confidentialité (catalogues fr/en, autres langues en
-anglais), conditions d'utilisation rendues depuis `app/legal/CGU-<lang>.md` (fr et en ; la version française
-fait foi)."""
+anglais), conditions d'utilisation rendues depuis `app/legal/CGU-<lang>.md` (une traduction par langue du site, repli
+sur l'anglais ; la version française fait foi)."""
 from __future__ import annotations
 
 from .. import legal_md
@@ -72,8 +72,7 @@ class _Privacy:
 class _Terms:
     @staticmethod
     def render(settings, lang: str, ctx) -> str:
-        md_lang = "fr" if lang == "fr" else "en"
-        doc = legal_md.load(md_lang) or legal_md.load("fr")
+        doc = legal_md.load(lang) or legal_md.load("en") or legal_md.load("fr")
         if not doc:
             return f"""{_band(lang)}<section class="section section--first section--doc"><div class="wrap"><article class="doc">
   <h1>{t(lang, "site.terms.h1")}</h1>

@@ -145,6 +145,37 @@ Tout utilisateur connecté peut déposer un `.mid` (≤ 2 Mo, type 0/1, 1 s à 3
 
 Le token de session d'un admin se trouve dans `account.json` du dossier de données de DodoTopia.
 
+### Espace admin du site (`/admin`)
+
+**https://dodotopia.cyber-dodo.fr/admin** : connexion par Discord directement dans le navigateur (bouton « Se
+connecter avec Discord »), réservée aux comptes de `ADMIN_DISCORD_IDS`. Même application Discord et même URL de
+redirection (`/auth/discord/callback`) que l'app : rien à changer dans le portail développeur Discord. Session web
+dans un cookie `HttpOnly` (`__Host-dodo_admin` en HTTPS, `SameSite=Lax`, 7 jours glissants, `ADMIN_SESSION_DAYS`) ;
+toute écriture exige en plus l'en-tête `X-Dodo-Admin: 1` (pas de CSRF). Les routes `/api/admin/*` acceptent aussi le
+Bearer d'un admin (app).
+
+Sections : tableau de bord ; audience du site (visiteurs, pages vues, pages, référents, langues, appareils,
+navigateurs, systèmes, robots, carte heure × jour) ; app et téléchargements (installations actives par jour et par
+version/système, téléchargements par plateforme, version et origine) ; communauté (comptes, dépôts, likes, tops,
+contributeurs, instruments, étiquettes, licences, durées, délais et taux de modération) ; salons et serveur en direct
+(salons, joueurs, courbe des 24 h, temps de réponse p50/p95/p99, erreurs 5xx, stockage, sessions) ; modération des
+morceaux et dessins ; signalements ; comptes (recherche, fiche, bannir/débannir, déconnecter partout) ; versions ;
+journal des actions admin ; réglages du webhook. Export CSV : `GET /api/admin/stats.csv?days=90`.
+
+**Statistiques** (`app/stats.py`) : collectées en mémoire par un middleware et par le code métier, écrites en base
+chaque minute (`stat_daily`, une ligne par jour × clé × dimension), jamais de cookie côté visiteur. Visiteur unique =
+sha256(sel aléatoire du jour + IP + User-Agent), le sel et les empreintes sont effacés le lendemain (seul le compte
+reste) : aucune donnée personnelle conservée, cohérent avec l'article des CGU sur la mesure d'audience. Le client
+DodoTopia est reconnu à son User-Agent `DodoTopia/<version> (<système>)`. Les stats démarrent au déploiement : il n'y
+a pas d'historique avant (sauf ce qui se déduit des tables : comptes, dépôts, likes, signalements).
+
+**Notifications Discord** (`app/notify.py`) : webhook réglé depuis `/admin` → Réglages (ou `DISCORD_ADMIN_WEBHOOK`
+par défaut) ; évènements au choix : nouveau compte, morceau/dessin à valider, signalement, version publiée, erreur 5xx
+(une alerte par chemin toutes les 10 min), résumé quotidien à 9 h (heure de Paris), partie lancée, action d'un admin,
+connexion à l'espace admin ; mention facultative d'un rôle sur ce qui demande une action. Envoi par un thread dédié
+(respect des 429 de Discord), jamais bloquant pour une requête. Distinct de `DISCORD_ANNOUNCE_WEBHOOK` (annonces
+publiques des versions).
+
 Suppression d'un compte par son titulaire : `DELETE /api/me` (sessions, tickets et signalements effacés ; morceaux
 en attente ou refusés supprimés avec leurs fichiers ; morceaux approuvés conservés mais anonymisés, `uploader_id`
 NULL et « Compte supprimé » comme déposant ; mêmes règles pour les dessins ; « J'aime » du compte retirés et

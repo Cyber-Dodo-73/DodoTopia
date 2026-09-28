@@ -200,7 +200,7 @@ def test_demande_de_confirmation_puis_salon(api):
     api.deeplink_confirm(req["id"] + 1)                   # mauvaise demande : rien
     assert api.joined == [] and api.get_state()["deeplink"] == req
     st = api.deeplink_confirm(req["id"])
-    assert api.joined == ["K7P2QD"] and api.modes == ["room"] and st["deeplink"] is None
+    assert api.joined == ["K7P2QD"] and api.modes == [] and st["deeplink"] is None, "le salon se déduit du salon rejoint"
     # deja dans ce salon : pas de nouvelle connexion
     req2 = api.handle_deeplink("dodotopia://room/K7P2QD")["deeplink"]
     api.deeplink_confirm(req2["id"])

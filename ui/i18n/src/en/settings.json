@@ -174,5 +174,21 @@
   "settings.protocol.state.other": "Linked to another DodoTopia",
   "settings.protocol.state.none": "Not linked",
   "settings.protocol.register": "Link to DodoTopia",
-  "settings.protocol.register_again": "Link again"
+  "settings.protocol.register_again": "Link again",
+  "settings.arrange.label": "Automatic arrangement",
+  "settings.arrange.help": "Adapts the song to instruments with few keys: the melody is always kept and moved by whole phrases, chords are thinned out, and notes without a matching key are left out instead of sounding wrong. Auto: only for instruments without every sharp and flat. Each song can pick its version in “Song settings”.",
+  "settings.arrange.opt.auto": "Auto",
+  "settings.arrange.opt.on": "Always",
+  "settings.arrange.opt.off": "Never",
+  "settings.overlay.enabled.label": "Overlay in Heartopia",
+  "settings.overlay.enabled.help": "Small window in a corner of the game showing the song or drawing in progress. It only appears when Heartopia is in front and a song or drawing is running; clicks go through it and it doesn’t show up in screenshots.",
+  "settings.overlay.corner.label": "Overlay position",
+  "settings.overlay.corner.help": "Corner of the game window where it appears.",
+  "settings.overlay.corner.opt.top-right": "Top right",
+  "settings.overlay.corner.opt.top-left": "Top left",
+  "settings.overlay.corner.opt.top-center": "Top center",
+  "settings.overlay.corner.opt.bottom-left": "Bottom left",
+  "settings.overlay.corner.opt.bottom-right": "Bottom right",
+  "settings.multi.room_minimize.label": "Minimize DodoTopia when a room starts",
+  "settings.multi.room_minimize.help": "Off: DodoTopia stays open at the start; click on Heartopia during the countdown (that click doesn’t cancel the start)."
 }

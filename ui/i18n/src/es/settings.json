@@ -174,5 +174,21 @@
   "settings.protocol.state.other": "Asociados a otro DodoTopia",
   "settings.protocol.state.none": "Sin asociar",
   "settings.protocol.register": "Asociar a DodoTopia",
-  "settings.protocol.register_again": "Volver a asociar"
+  "settings.protocol.register_again": "Volver a asociar",
+  "settings.arrange.label": "Arreglo automático",
+  "settings.arrange.help": "Adapta la pieza a instrumentos con pocas teclas: la melodía siempre se conserva y se desplaza por frases enteras, los acordes se aligeran y las notas sin tecla exacta se omiten en lugar de desafinar. Auto: solo para instrumentos sin todas las alteraciones. Cada pieza puede elegir su versión en «Ajustes de la pieza».",
+  "settings.arrange.opt.auto": "Auto",
+  "settings.arrange.opt.on": "Siempre",
+  "settings.arrange.opt.off": "Nunca",
+  "settings.overlay.enabled.label": "Superposición en Heartopia",
+  "settings.overlay.enabled.help": "Pequeña ventana en una esquina del juego que muestra la canción o el dibujo en curso. Solo aparece cuando Heartopia está en primer plano y hay una canción o un dibujo en marcha; los clics la atraviesan y no sale en las capturas.",
+  "settings.overlay.corner.label": "Posición de la superposición",
+  "settings.overlay.corner.help": "Esquina de la ventana del juego donde aparece.",
+  "settings.overlay.corner.opt.top-right": "Arriba a la derecha",
+  "settings.overlay.corner.opt.top-left": "Arriba a la izquierda",
+  "settings.overlay.corner.opt.top-center": "Arriba en el centro",
+  "settings.overlay.corner.opt.bottom-left": "Abajo a la izquierda",
+  "settings.overlay.corner.opt.bottom-right": "Abajo a la derecha",
+  "settings.multi.room_minimize.label": "Minimizar DodoTopia al empezar una sala",
+  "settings.multi.room_minimize.help": "Desactivado: DodoTopia se queda abierto; haz clic en Heartopia durante la cuenta atrás (ese clic no cancela la salida)."
 }

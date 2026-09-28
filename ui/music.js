@@ -407,7 +407,11 @@ function renderSongs(st){
     el.querySelector('.more').onclick = e => {
       e.stopPropagation();
       const name = `<b>${esc(s.name)}</b>`;
+      const rd = S && S.online && S.online.room && S.online.room.room;
+      const host = !!(rd && rd.code && rd.me && rd.me.host && rd.state === 'lobby');
       menu(el.querySelector('.more'), [
+        ...(host ? [{label: t('music.room.play_in_room'), icon: 'globe',
+                     fn: () => { api('room_set_song', s.id); toast(t('online.discover.proposed_to_room'), 'ok'); }}] : []),
         {label: t('music.library.menu.rename'), icon: 'log', fn: () => startRename(el, s)},
         {label: s.online_id ? t('music.library.menu.share_again') : t('music.library.menu.share'),
          help: shareOn ? '' : t('music.library.menu.share_help'), disabled: !shareOn, icon: 'cloud-up',
@@ -525,7 +529,8 @@ function viewMain(st){
   const mode = playMode(st);
   const room = roomStatus(st);
   const syncing = mode !== 'room' && (st.state === 'sync' || (mu.state && mu.state !== 'idle' && mu.state !== 'playing'));
-  const roomBusy = !!(room && ['countdown', 'armed', 'playing', 'downloading'].includes(room.state));
+  const roomBusy = !!(room && (['countdown', 'armed', 'playing', 'downloading'].includes(room.state)
+    || (room.room && room.room.rejoin_pos != null)));
   const isTest = syncing && mu.state === 'test';
   const session = (syncing && !isTest) || inGame || roomBusy;
 
@@ -565,15 +570,26 @@ function viewMain(st){
   if(inGame && st.state === 'playing') glabel = t('music.player.pause');
   else if(inGame && st.state === 'paused') glabel = t('music.player.resume');
   else if(mode === 'audio') glabel = t('music.together.start_session');
-  else if(mode === 'room') glabel = t('music.together.start_session');
+  else if(mode === 'room') glabel = roomCtaLabel(room);
   else glabel = t('action.play_in_game');
   if(gb.className !== gcls) gb.className = gcls;
   // lancement bloque tant que l'instrument n'est pas pret : pas de touches inventees envoyees au jeu.
   // Action indisponible : la raison est ecrite sous le bouton (setAction), pas seulement en infobulle.
-  const gDisabled = (!cur && mode !== 'room') || !ready;
+  // En salon, F6 et ce bouton font l'action du salon (chef : lancer pour tous ; invite : pret / plus pret).
+  const roomBlock = mode === 'room' ? roomCtaBlocker(room) : '';
+  const gDisabled = (!cur && mode !== 'room') || !ready || !!roomBlock;
   setAction(gb, {label: glabel, disabled: gDisabled,
     reason: !ready ? t('music.player.blocked_instrument', {name: instrumentOrThis(ins), status: instrumentStatusText(ins).toLowerCase()})
-          : gDisabled ? t('music.player.choose_first') : ''});
+          : roomBlock || (gDisabled ? t('music.player.choose_first') : '')});
+  // chef d'un salon : proposer le morceau selectionne sans quitter la bibliotheque
+  const rd = room && room.room;
+  const canPropose = mode === 'room' && !!(rd && rd.me && rd.me.host && rd.state === 'lobby') && !!cur
+    && !(rd.song && cur.sha256 && rd.song.sha256 === cur.sha256);
+  $('btnRoomPropose').hidden = !canPropose;
+  if(canPropose){
+    const sp = $('btnRoomPropose').querySelector('span'), lbl = rd.song ? t('music.room.propose') : t('music.room.propose_first');
+    if(sp.textContent !== lbl) sp.textContent = lbl;
+  }
   txt('gameHelp', mode === 'audio' ? t('music.player.help.audio', {key: playKey, seconds: cd})
     : mode === 'room' ? t('music.player.help.room')
     : t('music.player.help.solo', {key: playKey}));
@@ -581,11 +597,12 @@ function viewMain(st){
   // bandeau de session (compte a rebours, ecoute, lecture dans le jeu) ou panneau du mode
   // en salon, le bouton principal est dans le panneau (Prêt / Top départ) : on n'affiche pas deux fois la même action
   const inRoom = mode === 'room' && !!(room && room.state !== 'idle' && room.room && room.room.code);
-  $('gameCta').hidden = session || inRoom; $('gameHelp').hidden = session || inRoom;
+  $('gameCta').hidden = session; $('gameHelp').hidden = session;
   $('instRow').hidden = session; $('speedRow').hidden = session;
   // « Tester une note » : seulement a l'arret, avec un instrument pret
   const tb = $('btnTestNote');
-  if(tb){
+  if(tb) tb.hidden = true;          // plus de test d'instrument : les dispositions sont fixees par famille
+  if(tb && !tb.hidden){
     const tDis = !ready || st.state !== 'stopped';
     if(tb.disabled !== tDis && !tb.classList.contains('is-loading')) tb.disabled = tDis;
   }
@@ -595,7 +612,7 @@ function viewMain(st){
   if($('gameAdminNotice').hidden !== (!adminBlock || session)) $('gameAdminNotice').hidden = !adminBlock || session;
   if($('instSum')) $('instSum').hidden = session;      // resume du profil (instruments.js)
   $('listenBlock').classList.toggle('is-dim', session);
-  $('songSet').hidden = session || inRoom;
+  $('songSet').hidden = session;
   $('gameBlock').classList.toggle('is-room', mode === 'room' && !session);
   // en salon, la préécoute se replie en une ligne : la session collective a besoin de la place
   $('listenBlock').classList.toggle('is-compact', inRoom);
@@ -633,6 +650,14 @@ function viewMain(st){
     // le même bandeau sert dans le lecteur et dans « Jouer ensemble » : l'arrêt reste trouvable des deux côtés
     renderSession($('musicSession'), spec);
     renderSession($('togetherSession'), spec);
+  } else if(st.resume && mode !== 'room' && !syncing){
+    const r = st.resume, dur = r.duration || 0;
+    renderSession($('musicSession'), {role: t('music.resume.role'), text: r.name,
+      meta: t('music.resume.meta', {pos: fmt(r.pos)}),
+      progress: {pct: dur ? r.pos / dur * 100 : 0, left: fmt(r.pos), right: fmt(dur)},
+      actions: [{label: t('music.resume.btn', {pos: fmt(r.pos)}), icon: 'play', api: 'resume_song', cls: 'btn--cta'},
+                {label: t('music.resume.forget'), api: 'forget_song_resume', cls: 'btn--ghost'}]});
+    renderSession($('togetherSession'), null);
   } else {
     renderSession($('musicSession'), null);
     renderSession($('togetherSession'), null);
@@ -695,48 +720,50 @@ function viewMain(st){
 view('main', {draw: viewMain});
 
 // ------------------------------------------------ destination « Jouer ensemble »
-// Le mode de jeu (cfg.multi.mode) ne change QUE par un choix explicite ici : ni la navigation, ni
-// l'ouverture d'un autre écran ne doivent faire quitter un salon.
-// Le detail derriere « Comment ca marche ? » : le deroulement, pas la redite du sous-titre de la carte.
-function modeHelp(mode){
-  if(mode === 'audio') return t('music.together.help.audio');
-  if(mode === 'room') return t('music.together.help.room');
-  return t('music.together.help.solo');
-}
+// Le mode de jeu est deduit cote Python (_play_mode) : « room » tant qu'un salon est rejoint, « audio » si la
+// synchro par le son est activee ici, sinon solo. Ni la navigation ni un autre ecran ne quittent un salon.
 function renderTogether(st, mode, session, room){
-  const box = $('togetherMethods');
-  if(!box) return;
-  const roomBtn = $('methodRoom');
-  roomBtn.disabled = !st.online;
-  roomBtn.title = st.online ? '' : t('music.together.room_unavailable');
-  segMark(box, b => b.dataset.mode === mode);
-  box.querySelectorAll('button').forEach(b => { if(b.dataset.mode !== 'room') b.disabled = session; });
-  // le detail vit sous « Comment ca marche ? » : tant qu'aucune methode n'est choisie, les deux
-  // cartes se decrivent elles-memes et il n'y a rien de plus a dire.
-  txt('togetherHelp', modeHelp(mode));
-  $('togetherHow').hidden = mode === 'solo';
-  $('togetherSolo').hidden = mode === 'solo' || session;
-  $('audioPanel').hidden = mode !== 'audio' || session;
-  $('roomBox').hidden = mode !== 'room' || session;
-  $('togetherPanel').hidden = mode === 'solo' || session;
-  if(mode === 'audio' && !session) audioPanel(st);
-  if(mode === 'room' && !session && typeof roomPanel === 'function') roomPanel(st);
-
-  // rappel dans le lecteur : une session à plusieurs est armée, on dit laquelle et on y mène
-  const recall = $('modeRecall');
-  const code = room && room.room && room.room.code;
-  if(mode === 'solo' || session){ recall.hidden = true; }
-  else {
-    recall.hidden = false;
-    const what = mode === 'room' ? (code ? t('music.together.recall.room_code', {code}) : t('music.together.room.label')) : t('music.together.audio.label');
-    recall.innerHTML = icon(mode === 'room' ? 'globe' : 'users')
-      + `<span>${esc(what)}</span>`
-      + `<span class="moderecall__go">${esc(t('music.together.recall.open'))}${icon('chevron-right')}</span>`;
-  }
+  // Hors session : deux cartes d'action (créer / rejoindre un salon, activer la synchro par le son).
+  // Dans un salon : la page du salon (lobby.js). Synchro par le son activée : son panneau.
+  // Quitter le salon ou désactiver la synchro ramène au solo : le mode n'est plus un réglage caché.
+  const inRoom = mode === 'room';
+  const audio = mode === 'audio';
+  $('togetherStart').hidden = inRoom || audio;
+  $('tcardRoom').classList.toggle('is-off', !st.online);
+  txt('togetherHelpRoom', t('music.together.help.room'));
+  txt('togetherHelp', t('music.together.help.audio'));
+  $('btnAudioOn').disabled = session;
+  $('audioPanel').hidden = !audio || session;
+  $('roomBox').hidden = !inRoom || session;
+  $('togetherPanel').hidden = !(inRoom || audio) || session;
+  const leave = $('togetherLeave');
+  // en salon, « Quitter le salon » est dans l'en-tete du salon (lobby.js) : ici seulement la synchro par le son
+  leave.hidden = !audio || session;
+  if(!leave.hidden) leave.textContent = t('music.together.audio_off');
+  if(audio && !session) audioPanel(st);
+  if(typeof roomPanel === 'function') roomPanel(st);
+  if(typeof groupBar === 'function') groupBar(st, mode, session);
 }
-document.querySelectorAll('#togetherMethods > button').forEach(b => b.onclick = () => setPlayMode(b.dataset.mode));
-$('togetherSolo').onclick = () => setPlayMode('solo');
-$('modeRecall').onclick = () => showMusicView('together');
+$('btnAudioOn').onclick = () => setPlayMode('audio');
+$('btnRoomPropose').onclick = () => {
+  const cur = S && S.songs && S.songs[S.current];
+  if(cur){ api('room_set_song', cur.id); toast(t('online.discover.proposed_to_room'), 'ok'); }
+};
+// action du salon portee par le bouton du lecteur (et F6) : meme regle que RoomSession.on_f6
+function roomCtaLabel(R){
+  const D = R && R.room;
+  if(!D || !D.code) return t('music.together.start_session');
+  if(D.me && D.me.host) return t('music.together.start_session');
+  return D.me && D.me.ready ? t('lobby.room.ready_cancel') : t('lobby.room.ready');
+}
+function roomCtaBlocker(R){
+  const D = R && R.room;
+  if(!R || R.state === 'idle' || !D || !D.code) return t('music.player.room_not_joined');
+  if(R.state === 'connecting' || R.state === 'downloading') return R.message || t('lobby.join.connecting');
+  if(D.me && D.me.host && !D.can_start) return D.start_blocker || t('music.player.room_waiting');
+  return '';
+}
+$('togetherLeave').onclick = () => { if(playMode(S || {}) === 'room') api('room_leave'); else setPlayMode('solo'); };
 
 // ------------------------------------------------ boutons
 function setPlayMode(mode){
@@ -772,6 +799,7 @@ try{ $('songSet').open = localStorage.getItem('songSetOpen') === '1'; }catch(e){
 $('songSet').ontoggle = () => { try{ localStorage.setItem('songSetOpen', $('songSet').open ? '1' : '0'); }catch(e){} if(S) render(S); };
 $('btnTestNote').onclick = () => { if(typeof testNote === 'function') testNote($('btnTestNote')); };
 $('gameAdminHow').onclick = () => { if(typeof gameAdminHelp === 'function') gameAdminHelp(); };
+$('musicErrorReport').onclick = () => openDiagReport($('musicErrorReport'));
 
 // ------------------------------------------------ pistes MIDI du morceau (« Réglages du morceau »)
 // song_tracks(id) -> {ok, tracks:[{index, name, notes, channels, drums}], off:[index…]} ; set_song_tracks(id, off)
@@ -814,13 +842,70 @@ function tracksDraw(){
 }
 view('tracks', {sig: st => {
   const cur = st.songs && st.songs[st.current];
-  return ($('songSet').open && !$('songSet').hidden ? 'o' : 'c') + '|' + (cur ? cur.id : '') + '|' + I18N.lang;
+  const rd = st.online && st.online.room && st.online.room.room;
+  return ($('songSet').open && !$('songSet').hidden ? 'o' : 'c') + '|' + (cur ? cur.id : '') + '|' + I18N.lang
+    + '|' + (playMode(st) === 'room' && rd ? rd.my_part || '' : '');
 }, draw: st => {
   const cur = st.songs && st.songs[st.current];
   $('tracksBlock').hidden = !cur;
   if(!cur || !$('songSet').open || $('songSet').hidden) return;
+  // salon avec l'Orchestre : c'est la partie donnee par le chef qui choisit les pistes jouees
+  const rd = playMode(st) === 'room' && st.online && st.online.room && st.online.room.room;
+  if(rd && rd.my_part){
+    TRK.id = null;
+    html('tracksList', `<p class="hint left">${esc(t('music.tracks.orchestra', {part: rd.my_part}))}</p>`);
+    return;
+  }
   if(TRK.id !== cur.id || (!TRK.data && !TRK.error)) tracksLoad(cur.id);
   else tracksDraw();
 }});
+
+// ------------------------------------------------ original ou arrange (« Réglages du morceau »)
+// song_arrange_info(id) -> {ok, mode (null = reglage general), general, applies, original, arranged} ;
+// chaque version : {notes, played, exact, exact_pct}. Recalcule a chaque changement de morceau, d'instrument,
+// de pistes ou de choix.
+const ARR = {key: '', data: null, seq: 0};
+function arrangeText(d){
+  if(!d || !d.original || !d.arranged) return '';
+  const o = d.original, a = d.arranged;
+  const which = d.applies ? t('music.arrange.opt.on') : t('music.arrange.opt.off');
+  const general = d.mode == null ? t('music.arrange.general_is', {value: ({on: t('settings.arrange.opt.on'), off: t('settings.arrange.opt.off')}[d.general] || t('settings.arrange.opt.auto'))}) + ' · ' : '';
+  return general + t('music.arrange.now', {version: which}) + ' · '
+    + t('music.arrange.compare', {o_played: o.played, o_exact: o.exact_pct, a_played: a.played, a_exact: a.exact_pct});
+}
+function arrangeDraw(st){
+  const d = ARR.data;
+  const cur = st.songs && st.songs[st.current];
+  const mode = cur ? (cur.arrange || '') : '';
+  segMark($('arrSeg'), b => (b.dataset.v || '') === mode);
+  txt('arrInfo', arrangeText(d));
+}
+view('arrange', {sig: st => {
+  const cur = st.songs && st.songs[st.current];
+  return [$('songSet').open && !$('songSet').hidden ? 'o' : 'c', cur ? cur.id : '', cur ? (cur.arrange || '') : '',
+    cur ? (cur.tracks_off || []).join(',') : '', st.instrument_id || '', (st.settings || {}).arrange || '', I18N.lang].join('|');
+}, draw: st => {
+  const cur = st.songs && st.songs[st.current];
+  $('arrangeBlock').hidden = !cur;
+  if(!cur || !$('songSet').open || $('songSet').hidden) return;
+  const key = [cur.id, cur.arrange || '', (cur.tracks_off || []).join(','), st.instrument_id || '', (st.settings || {}).arrange || ''].join('|');
+  if(key !== ARR.key){
+    ARR.key = key; ARR.data = null;
+    const seq = ++ARR.seq;
+    txt('arrInfo', t('music.arrange.computing'));
+    apiOpt('song_arrange_info', cur.id).then(r => {
+      if(seq !== ARR.seq) return;
+      ARR.data = r && r.ok ? r : null;
+      if(S) arrangeDraw(S);
+    });
+  }
+  arrangeDraw(st);
+}});
+document.querySelectorAll('#arrSeg > button').forEach(b => b.onclick = () => {
+  const cur = S && S.songs && S.songs[S.current];
+  if(!cur) return;
+  segMark($('arrSeg'), x => x === b);
+  api('set_song_arrange', cur.id, b.dataset.v || null);
+});
 try{ $('audioAdv').open = localStorage.getItem('audioAdvOpen') === '1'; }catch(e){}
 $('audioAdv').ontoggle = () => { try{ localStorage.setItem('audioAdvOpen', $('audioAdv').open ? '1' : '0'); }catch(e){} };

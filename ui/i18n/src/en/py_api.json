@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "Image too large for the gallery (512 KB max).",
   "api.gallery.png_invalid": "Unreadable drawing image: convert it again.",
   "api.gallery.deleted": "Drawing removed from the gallery",
-  "api.gallery.reported": "Report sent: thanks, a moderator will take a look."
+  "api.gallery.reported": "Report sent: thanks, a moderator will take a look.",
+  "api.draw.nothing_to_resume": "No interrupted drawing to resume",
+  "api.music.nothing_to_resume": "No interrupted song to resume",
+  "api.music.resume_solo_only": "Resuming a song works in solo: leave the room or group session first",
+  "support.save_failed": "Couldn't save the report: {error}",
+  "support.send_failed": "Couldn't send ({error}): save the zip and send it on Discord."
 }

@@ -378,7 +378,10 @@ function viewOnlineLib(st){
       b.onclick = () => {
         if(b.dataset.act === 'dl'){ ONL.awaited = b.dataset.id; api('online_download', b.dataset.id); }
         else if(b.dataset.act === 'open') openLocal(b.dataset.sid);
-        else if(b.dataset.act === 'room'){ api('room_set_song', b.dataset.id); toast(t('online.discover.proposed_to_room'), 'ok'); }
+        else if(b.dataset.act === 'room'){
+          // proposé au salon : retour direct à la page du salon (le téléchargement s'y affiche)
+          api('room_set_song', Number(b.dataset.id)); toast(t('online.discover.proposed_to_room'), 'ok'); showMusicView('together');
+        }
         else if(b.dataset.act === 'like') toggleLike(o, 'online_like_song', b.dataset.id, items);
         else if(b.dataset.act === 'share'){
           const it = items.find(x => String(x.id) === b.dataset.id);

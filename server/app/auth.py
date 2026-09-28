@@ -9,6 +9,12 @@ tiers de faire connecter quelqu'un d'autre sur SON ticket en lui envoyant l'URL)
   app  POST /api/auth/poll {login_id, verifier}  -> pending | ok {token, user} (session créée ici, une seule fois) | error
 
 Le ticket ne porte jamais de jeton de session : la session naît au `poll`, après vérification du `verifier`.
+
+Espace admin du site (navigateur seul, pas d'app) : `POST /admin/login` crée un `web_logins(state)` et pose le même
+`state` dans un cookie, puis renvoie vers Discord ; le callback partagé reconnaît ce `state`, vérifie le cookie (pas de
+connexion imposée par un tiers), et n'ouvre une session `kind='web'` (cookie HttpOnly, SameSite=Lax, 7 jours
+glissants) que pour un administrateur. Le cookie n'est accepté que sur les lectures (GET/HEAD) ou avec l'en-tête
+`X-Dodo-Admin: 1`, qu'une page tierce ne peut pas ajouter sans pré-vol CORS (refusé) : pas de CSRF.
 """
 from __future__ import annotations
 
@@ -23,7 +29,7 @@ import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from . import db
+from . import db, notify, stats
 from .config import Settings
 from .ratelimit import limit
 from .schemas import AuthPoll, AuthStart, clean_text
@@ -99,9 +105,11 @@ def user_public(user: db.Row, settings: Settings) -> dict:
 
 
 def upsert_user(conn: db.Connection, settings: Settings, du: dict) -> db.Row:
-    """Crée ou met à jour l'utilisateur depuis le profil Discord ; is_admin recalculé à chaque login."""
+    """Crée ou met à jour l'utilisateur depuis le profil Discord ; is_admin recalculé à chaque login.
+    La ligne renvoyée porte `just_created` (True si le compte vient d'être créé)."""
     now = db.now_iso()
     discord_id = str(du["id"])
+    existed = conn.execute("SELECT 1 FROM users WHERE discord_id=?", (discord_id,)).fetchone() is not None
     # Le pseudo Discord est affiché (uploader_name, joueurs d'un salon) : nettoyé comme tout texte
     # d'utilisateur, sans quoi un pseudo à surcharge bidi déguise le nom du déposant d'un morceau.
     username = clean_text(du.get("global_name") or du.get("username"), 64) or "?"
@@ -113,15 +121,22 @@ def upsert_user(conn: db.Connection, settings: Settings, du: dict) -> db.Row:
                is_admin=excluded.is_admin, last_seen_at=excluded.last_seen_at""",
         (discord_id, username, avatar_url(du), is_admin, now, now),
     )
-    return conn.execute("SELECT * FROM users WHERE discord_id=?", (discord_id,)).fetchone()
+    row = conn.execute("SELECT * FROM users WHERE discord_id=?", (discord_id,)).fetchone()
+    row["just_created"] = not existed
+    return row
 
 
-def create_session(conn: db.Connection, settings: Settings, user_id: int) -> str:
+def session_days(settings: Settings, kind: str) -> int:
+    return settings.ADMIN_SESSION_DAYS if kind == "web" else settings.SESSION_DAYS
+
+
+def create_session(conn: db.Connection, settings: Settings, user_id: int, kind: str = "app") -> str:
     token = secrets.token_urlsafe(32)
     now = db.now_iso()
     conn.execute(
-        "INSERT INTO sessions (token_hash, user_id, created_at, expires_at, last_used_at) VALUES (?, ?, ?, ?, ?)",
-        (sha256_hex(token), user_id, now, db.iso_in(settings.SESSION_DAYS * 86400), now),
+        "INSERT INTO sessions (token_hash, user_id, created_at, expires_at, last_used_at, kind) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (sha256_hex(token), user_id, now, db.iso_in(session_days(settings, kind) * 86400), now, kind),
     )
     return token
 
@@ -136,7 +151,7 @@ def user_from_token(conn: db.Connection, settings: Settings, token: str | None) 
         return None
     h = sha256_hex(token)
     row = conn.execute(
-        """SELECT u.*, s.expires_at, s.last_used_at FROM sessions s JOIN users u ON u.id = s.user_id
+        """SELECT u.*, s.expires_at, s.last_used_at, s.kind AS session_kind FROM sessions s JOIN users u ON u.id = s.user_id
            WHERE s.token_hash=? AND s.expires_at > ?""",
         (h, db.now_iso()),
     ).fetchone()
@@ -145,7 +160,7 @@ def user_from_token(conn: db.Connection, settings: Settings, token: str | None) 
     if row["last_used_at"] < db.iso_in(-settings.SESSION_TOUCH_S):
         now = db.now_iso()
         conn.execute("UPDATE sessions SET last_used_at=?, expires_at=? WHERE token_hash=?",
-                     (now, db.iso_in(settings.SESSION_DAYS * 86400), h))
+                     (now, db.iso_in(session_days(settings, row["session_kind"]) * 86400), h))
         conn.execute("UPDATE users SET last_seen_at=? WHERE id=?", (now, row["id"]))
         conn.commit()
     return row
@@ -158,12 +173,26 @@ def bearer_token(request: Request) -> str | None:
     return None
 
 
+ADMIN_HEADER = "x-dodo-admin"
+
+
+def session_token(request: Request) -> str | None:
+    """Jeton Bearer (app), sinon cookie de l'espace admin : en lecture, ou en écriture avec l'en-tête X-Dodo-Admin."""
+    token = bearer_token(request)
+    if token:
+        return token
+    cookie = request.cookies.get(settings_of(request).admin_cookie)
+    if cookie and (request.method in ("GET", "HEAD") or request.headers.get(ADMIN_HEADER) == "1"):
+        return cookie
+    return None
+
+
 def get_optional_user(request: Request, conn: db.Connection = Depends(db.get_db)) -> db.Row | None:
-    return user_from_token(conn, settings_of(request), bearer_token(request))
+    return user_from_token(conn, settings_of(request), session_token(request))
 
 
 def get_current_user(request: Request, conn: db.Connection = Depends(db.get_db)) -> db.Row:
-    user = user_from_token(conn, settings_of(request), bearer_token(request))
+    user = user_from_token(conn, settings_of(request), session_token(request))
     if user is None:
         raise api_error(401, "unauthorized", "Connexion Discord requise.")
     return user
@@ -279,6 +308,9 @@ def discord_confirm(request: Request, login_id: str = Form(""), code: str = Form
 def discord_callback(request: Request, state: str = "", code: str = "", error: str = "",
                      conn: db.Connection = Depends(db.get_db)):
     settings = settings_of(request)
+    if state and conn.execute("SELECT 1 FROM web_logins WHERE state=?", (state,)).fetchone() is not None:
+        from .admin import web_callback  # import tardif : admin dépend de ce module
+        return web_callback(request, conn, state, code, error)
     t = conn.execute("SELECT * FROM login_tickets WHERE state=?", (state,)).fetchone() if state else None
     # Seul un ticket dont le code a été confirmé a vu son `state` sortir du serveur.
     if t is None or t["status"] != "confirmed" or _live_ticket(conn, settings, t["id"]) is None:
@@ -299,6 +331,8 @@ def discord_callback(request: Request, state: str = "", code: str = "", error: s
     user = upsert_user(conn, settings, du)
     if user["banned"]:
         return fail("banned")
+    if user["just_created"]:
+        announce_new_user(request, user)
     # Aucune session ici : le ticket ne porte que l'identité ; le jeton naît au poll, contre le vérifieur.
     conn.execute("UPDATE login_tickets SET status='ok', user_id=? WHERE id=?", (user["id"], t["id"]))
     conn.commit()
@@ -412,7 +446,15 @@ def auth_poll(body: AuthPoll, request: Request, conn: db.Connection = Depends(db
         return {"status": "error", "error": "banned" if user is not None else "session"}
     token = create_session(conn, settings, user["id"])
     conn.commit()
+    stats.hit(request.app, "login", "app")
     return {"status": "ok", "token": token, "user": user_public(user, settings)}
+
+
+def announce_new_user(request: Request, user: db.Row) -> None:
+    stats.hit(request.app, "signup")
+    notify.emit(request.app, "new_user", f"Nouveau compte : {user['username']}",
+                fields=[("ID Discord", user["discord_id"]), ("N°", str(user["id"]))],
+                thumbnail=user["avatar_url"], url=notify.admin_url(settings_of(request), f"user/{user['id']}"))
 
 
 @router.get("/api/me")
@@ -480,4 +522,5 @@ def cleanup(conn: db.Connection, settings: Settings) -> None:
     """Tickets périmés et sessions expirées (tâche de fond)."""
     conn.execute("DELETE FROM login_tickets WHERE created_at < ?", (db.iso_in(-settings.LOGIN_TICKET_S),))
     conn.execute("DELETE FROM sessions WHERE expires_at < ?", (db.now_iso(),))
+    conn.execute("DELETE FROM web_logins WHERE created_at < ?", (db.iso_in(-settings.LOGIN_TICKET_S),))
     conn.commit()

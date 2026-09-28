@@ -86,13 +86,14 @@ class FakePlayer:
     def song_duration(self, path):
         return core.midi_duration(path)
 
-    def prepare(self, song, inst, target, common_key=False, extra=None):
+    def prepare(self, song, inst, target, common_key=False, extra=None, skip_tracks=None, octave=0):
         return {"song": song, "inst": inst.id, "extra": extra, "events": [], "timeline": [],
-                "duration": self.song_duration(song)}
+                "duration": self.song_duration(song), "skip_tracks": skip_tracks, "octave": octave}
 
-    def play_at(self, deadline, prepared, target="game"):
+    def play_at(self, deadline, prepared, target="game", offset=0.0):
         with self._lock:
             self.started_at = deadline
+            self.offset = offset
             self.play_calls.append((deadline, prepared, target, time.perf_counter()))
             self.state = "playing"
             self.target = target
@@ -226,6 +227,7 @@ class Room:
         self.state = "lobby"
         self.seats = {}
         self.song = None
+        self.parts = None
         self.countdown_s = None
         self.start_at_ms = None
         self.seq = 0
@@ -285,7 +287,7 @@ class FakeServer:
         return {"type": "state", "seq": room.seq, "room_code": room.code, "state": room.state,
                 "host_id": room.host_id, "countdown_s": room.countdown_s, "start_at_ms": room.start_at_ms,
                 "max_players": room.max_players, "server_now_ms": self.srv_ms(), "song": room.song,
-                "players": [s.to_dict(room.host_id) for s in room.seats.values()]}
+                "players": [s.to_dict(room.host_id) for s in room.seats.values()], "parts": room.parts}
 
     def _broadcast(self, room, msg):
         for s in list(room.seats.values()):
@@ -401,10 +403,20 @@ class FakeServer:
         if room.state != "lobby":
             self._error(conn, "bad_state", "pas au lobby")
             return
-        room.song = {k: m.get(k) for k in ("sha256", "name", "duration_ms", "key_shift", "source", "online_id")}
+        room.song = {k: m.get(k) for k in ("sha256", "name", "duration_ms", "key_shift", "source", "online_id",
+                                           "tracks")}
+        room.parts = None
         for s in room.seats.values():
             s.have_song = False
             s.status = "idle"
+        self._broadcast(room, self._state_msg(room))
+
+    def m_set_parts(self, conn, m):
+        room = conn.room
+        if conn.seat.id != room.host_id:
+            self._error(conn, "not_host", "Seul le chef")
+            return
+        room.parts = {"enabled": bool(m.get("enabled")), "parts": dict(m.get("parts") or {})}
         self._broadcast(room, self._state_msg(room))
 
     def m_song_status(self, conn, m):

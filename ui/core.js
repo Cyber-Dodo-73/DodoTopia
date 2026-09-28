@@ -383,7 +383,9 @@ function helpBody(st, topic){
         <dt>${esc(t('help.fix.cook.q'))}</dt><dd>${esc(t('help.fix.cook.a'))}</dd>
         <dt>${esc(t('help.fix.stop.q'))}</dt><dd>${t('help.fix.stop.a', k)}</dd>
       </dl>
-      <div class="btnrow"><button type="button" class="btn btn--secondary btn--sm" data-act="logs">${esc(t('help.fix.open_logs'))}</button></div>`;
+      <div class="btnrow"><button type="button" class="btn btn--secondary btn--sm" data-act="logs">${esc(t('help.fix.open_logs'))}</button>
+        <button type="button" class="btn btn--cta btn--sm" data-act="report">${esc(t('support.report_btn'))}</button></div>
+      <p class="hint left">${esc(t('support.help_hint'))}</p>`;
   }
   // Commencer
   return `<p>${t('help.start.intro')}</p>
@@ -414,6 +416,8 @@ function helpPanel(st, topic){
   const wireLogs = box => {
     const b = box.querySelector('[data-act="logs"]');
     if(b) b.onclick = () => { closePanel(); openSettings(null, 'about'); };
+    const rp = box.querySelector('[data-act="report"]');
+    if(rp) rp.onclick = () => { closePanel(); if(typeof openDiagReport === 'function') openDiagReport($('btnHelp')); };
     const o = box.querySelector('[data-act="onboarding"]');
     if(o) o.onclick = () => { closePanel(); if(typeof openOnboarding === 'function') openOnboarding(); };
   };

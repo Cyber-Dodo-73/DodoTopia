@@ -7,7 +7,6 @@
   "help.topic.cook": "Cozinha",
   "help.topic.keys": "Atalhos",
   "help.topic.fix": "Solução de problemas",
-
   "help.start.intro": "O DodoTopia prepara seu trabalho aqui e depois o executa no Heartopia por você: ele pressiona as teclas e clica no seu lugar. O jogo precisa estar aberto quando você começar.",
   "help.start.activities.title": "As três atividades",
   "help.start.activities.music": "<b>Música</b>: tocar um arquivo MIDI em um dos instrumentos do jogo.",
@@ -15,7 +14,6 @@
   "help.start.activities.cook": "<b>Cozinha</b>: preparar a última receita em loop.",
   "help.start.activities.note": "A música funciona logo após a instalação. Desenho e cozinha precisam de uma configuração única.",
   "help.start.glossary": "O vocabulário do DodoTopia",
-
   "help.gloss.midi.term": "Arquivo MIDI (.mid)",
   "help.gloss.midi.def": "Uma partitura: a lista de notas e suas durações, sem som gravado. O DodoTopia a reproduz nas teclas do instrumento do jogo.",
   "help.gloss.listen.term": "Pré-escuta",
@@ -34,7 +32,6 @@
   "help.gloss.dither.def": "Alternar duas cores vizinhas célula por célula para imitar um tom que falta na paleta.",
   "help.gloss.outline.term": "Contornos + balde de tinta",
   "help.gloss.outline.def": "Traçar a borda de uma área com o lápis e depois preenchê-la com um único clique do balde, em vez de pintar cada célula.",
-
   "help.music.import.title": "Importar uma música",
   "help.music.import.s1": "Música › Minha biblioteca › <b>Importar</b>, ou solte um arquivo <code>.mid</code> na janela.",
   "help.music.import.s2": "Os arquivos são copiados para a sua pasta de músicas; o original não é alterado.",
@@ -54,7 +51,6 @@
   "help.music.together.s2": "<b>Pelo som</b>: sem rede, o primeiro jogador toca uma nota de referência que os outros detectam.",
   "help.music.together.s3": "<b>Sala online</b>: um código de seis caracteres e um anfitrião que inicia a sessão.",
   "help.music.together.note": "A sincronia depende do seu computador e da sua conexão: os inícios são ajustados da melhor forma possível, não perfeitamente.",
-
   "help.draw.prepare.title": "Preparar uma imagem",
   "help.draw.prepare.s1": "Desenho › <b>Importar uma imagem</b> (.png, .jpg, .gif, .bmp, .webp).",
   "help.draw.prepare.s2": "A prévia mostra o resultado célula por célula com as cores da paleta do jogo.",
@@ -69,7 +65,6 @@
   "help.draw.run.s1": "Abra uma tela vazia no formato certo, com a ferramenta lápis selecionada e sem zoom.",
   "help.draw.run.s2": "Botão <b>Desenhar no Heartopia</b> ou <kbd class=\"kbd\">{f6}</kbd>, e não toque mais no mouse.",
   "help.draw.run.note": "Um desenho interrompido continua de onde parou: inicie de novo na mesma tela, e só as células que faltam serão pintadas.",
-
   "help.cook.setup.title": "Configurar a cozinha",
   "help.cook.setup.s1": "No jogo, fique em frente ao fogão, com a bolha visível.",
   "help.cook.setup.s2": "Cozinha › <b>Configurar a cozinha</b>, depois siga as etapas uma a uma.",
@@ -80,10 +75,8 @@
   "help.cook.run.s2": "Escolha <b>Quantidade definida</b> ou <b>Sem fim</b>, e o número de fogões.",
   "help.cook.run.s3": "Fique em frente ao fogão e pressione <kbd class=\"kbd\">{f6}</kbd>.",
   "help.cook.run.note": "Durante o loop, <kbd class=\"kbd\">{f7}</kbd>, qualquer tecla ou um movimento do mouse para tudo.",
-
   "help.keys.title": "Atalhos globais",
   "help.keys.intro": "Ativos mesmo com o Heartopia em primeiro plano. Editáveis em Configurações › Atalhos.",
-
   "help.fix.keys.q": "O jogo não recebe as teclas",
   "help.fix.keys.a": "O Heartopia precisa ser a janela ativa. Se nada passar, reinicie o DodoTopia como administrador.",
   "help.fix.notes.q": "As notas estão erradas",
@@ -94,5 +87,27 @@
   "help.fix.cook.a": "Execute “Testar a detecção” em frente ao fogão e depois capture de novo os ícones da bolha.",
   "help.fix.stop.q": "Parar tudo agora",
   "help.fix.stop.a": "<kbd class=\"kbd\">{f7}</kbd>, qualquer tecla ou um clique esquerdo para a automação em andamento.",
-  "help.fix.open_logs": "Abrir os registros"
+  "help.fix.open_logs": "Abrir os registros",
+  "support.title": "Enviar um relatório",
+  "support.report_btn": "Enviar um relatório",
+  "support.intro": "Algo não funciona? O DodoTopia reúne seus registros e capturas em um relatório. Você recebe um código para colar no Discord do DodoTopia: encontramos tudo sem pedir arquivos.",
+  "support.note_label": "O que aconteceu?",
+  "support.note_ph": "Por exemplo: o 2º fogão nunca é atendido, o alaúde não acompanha o piano…",
+  "support.audio": "Anexar a última gravação de áudio da sincronização pelo som",
+  "support.files": "Conteúdo do relatório: {n} arquivos, {size}",
+  "support.system_desc": "versão, sistema, instrumento, estado do jogo",
+  "support.privacy": "Nunca enviados: seu token de login, sua biblioteca de músicas, seu apelido. Sua pasta pessoal é ocultada nos registros. O relatório é apagado do servidor após 30 dias.",
+  "support.send": "Enviar",
+  "support.save": "Salvar o zip",
+  "support.saved": "Relatório salvo: {name}",
+  "support.offline": "Servidor inacessível: salve o zip e envie pelo Discord.",
+  "support.sent": "Relatório enviado. Aqui está seu código:",
+  "support.sent_hint": "Cole este código no Discord do DodoTopia e descreva o problema.",
+  "support.copy": "Copiar o código",
+  "support.copied": "Código copiado",
+  "support.size_kb": "{n} KB",
+  "support.size_mb": "{n} MB",
+  "support.help_hint": "O jeito mais rápido de conseguir ajuda: um relatório reúne tudo o que é preciso para entender o problema.",
+  "support.about_hint": "registros e capturas, com um código para o Discord",
+  "support.images": "Anexar as capturas da cozinha (imagens do balão reconhecido e do último erro)"
 }

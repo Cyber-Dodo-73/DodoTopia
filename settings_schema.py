@@ -79,6 +79,8 @@ SCHEMA = {
     "start_delay": Num(0.0, 10.0, "s", step=0.5),
     "stop_on_input": Bool(),
     "hold_mode": Choice("note", "tap"),
+    # arrangeur des instruments à peu de touches (arrange.py) : auto = instruments non chromatiques
+    "arrange": Choice("auto", "on", "off"),
     "hold_time": Num(0.01, 0.5, "ms", scale=1000, step=5),
     # planchers d'appui et d'écart entre deux frappes de la même touche (une image à 60 i/s = 16,7 ms)
     "min_press": Num(0.005, 0.06, "ms", scale=1000, step=1),
@@ -105,6 +107,10 @@ SCHEMA = {
     "multi.mode": Choice("solo", "audio", "room", section="multi", after="_on_play_mode"),
     "multi.name": Str(24, section="multi"),
     "multi.net_offset_ms": Int(-300, 300, "ms", section="multi"),
+    "multi.room_minimize": Bool(section="multi"),
+    # ---- overlay au-dessus du jeu
+    "overlay.enabled": Bool(section="general"),
+    "overlay.corner": Choice("top-right", "top-left", "top-center", "bottom-left", "bottom-right", section="general"),
     # ---- dessin
     "draw.step_delay": Num(0.0, 0.5, "ms", scale=1000, step=5, section="draw"),
     "draw.click_delay": Num(0.0, 1.0, "ms", scale=1000, step=10, section="draw"),
@@ -145,7 +151,7 @@ SECTIONS = ("general", "lecture", "hotkeys", "multi", "draw", "grids", "cook", "
 def defaults():
     """Dict plat chemin → valeur par défaut (seulement les chemins décrits dans SCHEMA)."""
     out = {"general.lang": "auto"}
-    for k in ("start_delay", "stop_on_input", "hold_mode", "hold_time", "min_press", "min_gap", "sustain",
+    for k in ("start_delay", "stop_on_input", "arrange", "hold_mode", "hold_time", "min_press", "min_gap", "sustain",
               "input_mode", "game_process", "transpose_semitones", "preview_volume", "keyboard_layout"):
         out[k] = core.DEFAULT_CONFIG[k]
     for k, v in core.DEFAULT_CONFIG["hotkeys"].items():
@@ -156,6 +162,9 @@ def defaults():
     out["multi.mode"] = sync.DEFAULT_MULTI.get("mode", "solo")
     out["multi.name"] = sync.DEFAULT_MULTI.get("name", "")
     out["multi.net_offset_ms"] = sync.DEFAULT_MULTI.get("net_offset_ms", 0)
+    out["multi.room_minimize"] = sync.DEFAULT_MULTI.get("room_minimize", False)
+    out["overlay.enabled"] = core.DEFAULT_CONFIG["overlay"]["enabled"]
+    out["overlay.corner"] = core.DEFAULT_CONFIG["overlay"]["corner"]
     for k in ("step_delay", "click_delay", "glide_speed", "fill_background", "skip_white", "verify",
               "dense", "refine", "outline", "mouse_glide"):
         out["draw." + k] = draw.DEFAULT_DRAW[k]

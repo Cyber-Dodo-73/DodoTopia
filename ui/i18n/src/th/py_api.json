@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "รูปใหญ่เกินไปสำหรับแกลเลอรี (สูงสุด 512 KB)",
   "api.gallery.png_invalid": "อ่านรูปภาพวาดไม่ได้ ลองแปลงใหม่อีกครั้ง",
   "api.gallery.deleted": "นำภาพวาดออกจากแกลเลอรีแล้ว",
-  "api.gallery.reported": "ส่งรายงานแล้ว ขอบคุณ ผู้ดูแลจะตรวจสอบ"
+  "api.gallery.reported": "ส่งรายงานแล้ว ขอบคุณ ผู้ดูแลจะตรวจสอบ",
+  "api.draw.nothing_to_resume": "ไม่มีภาพวาดที่ถูกขัดจังหวะให้วาดต่อ",
+  "api.music.nothing_to_resume": "ไม่มีเพลงที่ถูกขัดจังหวะให้เล่นต่อ",
+  "api.music.resume_solo_only": "เล่นเพลงต่อได้เฉพาะโหมดเดี่ยว: ออกจากห้องหรือเซสชันกลุ่มก่อน",
+  "support.save_failed": "บันทึกรายงานไม่ได้: {error}",
+  "support.send_failed": "ส่งไม่ได้ ({error}): บันทึกไฟล์ zip แล้วส่งทาง Discord"
 }

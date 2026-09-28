@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """DodoTopia : interface graphique (fenetre WebView2 + moteur core.py)."""
 import base64
+import hashlib
 import json
 import logging
 import os
@@ -29,6 +30,45 @@ from version import VERSION
 from api import Api, TERMS_GATED, UI_PATH, ICON_PATH, IMAGE_MIME  # noqa: F401 (re-exportes : app.Api)
 
 log = logging.getLogger("app")
+
+# caches HTTP de WebView2 (dans le profil persistant) a vider quand l'interface change
+WEBVIEW_CACHES = ("Cache", "Code Cache", "GPUCache")
+
+
+def refresh_ui_cache(storage, ui_dir):
+    """Vide le cache HTTP de WebView2 si un fichier de l'interface a change depuis le dernier lancement.
+
+    Le profil est persistant (localStorage), cache HTTP compris : apres une mise a jour, WebView2 pouvait
+    resservir l'ancienne index.html avec les nouveaux scripts (boutons sans effet). Signature = nom, taille et
+    date de chaque fichier de ui/ ; le stockage local (preferences) n'est jamais touche. Renvoie True si vide."""
+    parts = []
+    for root, _, files in os.walk(ui_dir):
+        for f in sorted(files):
+            p = os.path.join(root, f)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            parts.append(f"{os.path.relpath(p, ui_dir)}:{st.st_size}:{int(st.st_mtime)}")
+    sig = hashlib.sha256("|".join(sorted(parts)).encode("utf-8")).hexdigest()[:16] + ":" + VERSION   # hash() varie a chaque lancement
+    marker = os.path.join(storage, "ui.sig")
+    try:
+        with open(marker, encoding="utf-8") as f:
+            if f.read().strip() == sig:
+                return False
+    except OSError:
+        pass
+    for name in WEBVIEW_CACHES:
+        shutil.rmtree(os.path.join(storage, "EBWebView", "Default", name), ignore_errors=True)
+    try:
+        os.makedirs(storage, exist_ok=True)
+        with open(marker, "w", encoding="utf-8") as f:
+            f.write(sig)
+    except OSError:
+        pass
+    log.info("interface modifiée : cache de WebView2 vidé")
+    return True
+
 
 def _fatal(msg):
     """Erreur avant l'ouverture de la fenetre : sans console en version fenetree, une boite Windows est le
@@ -72,6 +112,24 @@ def main():
         width=1040, height=720, min_size=(960, 660),
         background_color="#f4ead8")
     api._window = window
+    if platform_io.OVERLAY_OK:
+        # overlay au-dessus du jeu (api/overlay.py) : cree cache, ne s'affiche que jeu devant + musique/dessin
+        overlay = webview.create_window(
+            "DodoTopia overlay", os.path.join(os.path.dirname(UI_PATH), "overlay.html"),
+            width=340, height=104, frameless=True, on_top=True, focus=False, shadow=False, hidden=True,
+            resizable=False, background_color="#fffaf1")
+        api._overlay_attach(overlay)
+
+        def close_overlay():
+            # pywebview ne rend la main que quand TOUTES les fenetres sont fermees : sans cela, l'overlay cachee
+            # gardait DodoTopia en vie apres la fermeture (processus fantome qui garde le verrou d'instance
+            # et les raccourcis ; le lancement suivant lui etait transmis et rien ne s'affichait)
+            api._overlay_close()
+            try:
+                overlay.destroy()
+            except Exception:  # noqa
+                pass
+        window.events.closed += close_overlay
     instance.set_handler(api._on_forwarded_argv)     # lancements suivants : liens relayes, fenetre au premier plan
     api._online.start_background()      # sante du serveur, /api/me, mise a jour, empreintes (thread daemon)
 
@@ -103,10 +161,13 @@ def main():
     window.events.loaded += on_loaded
     # Stockage persistant : sans lui (private_mode par defaut), localStorage est vide a chaque lancement et le
     # theme, la decouverte deja faite et les preferences d'affichage seraient oublies.
+    storage = os.path.join(core.DATA_DIR, "webview")
+    refresh_ui_cache(storage, os.path.dirname(UI_PATH))
     webview.start(debug="--debug" in sys.argv, private_mode=False,
-                  storage_path=os.path.join(core.DATA_DIR, "webview"),
+                  storage_path=storage,
                   **platform_io.webview_start_kwargs(core.RES_DIR))
     instance.close()
+    api._overlay_close()
     api._integrations_close()
     api._drawer.stop("fermeture")
     api._cook.stop("fermeture")

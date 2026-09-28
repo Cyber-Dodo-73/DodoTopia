@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DodoTopia overlay</title>
+<!-- Overlay au-dessus de Heartopia (api/overlay.py) : rempli par render(contenu), textes deja traduits.
+     La fenetre ne recoit ni clics ni focus : rien d'interactif ici. Style de Heartopia (et de l'app) : panneau
+     creme, texte brun, coins tres arrondis (la fenetre est decoupee au meme rayon par platform_io.overlay_show),
+     police arrondie Fredoka. Toujours clair, comme l'interface du jeu. -->
+<style>
+  @font-face{font-family:"Fredoka";font-weight:300 700;src:url("fonts/fredoka-latin.woff2") format("woff2")}
+  @font-face{font-family:"Nunito";font-weight:200 1000;src:url("fonts/nunito-latin.woff2") format("woff2")}
+  :root{
+    --cream: #fffaf1; --cream2: #f8ead3; --line: #e4d4ba; --ink: #4a3527; --ink2: #7d6a5f;
+    --accent: #e8a531; --accent2: #f3c25c; --accent-ink: #8a5f0f; --track: #efe3cf;
+  }
+  .card.room{ --accent: #46cbc4; --accent2: #7fd6d0; --accent-ink: #125e59; }
+  .card.draw{ --accent: #9fb356; --accent2: #c3d38a; --accent-ink: #4f5e1c; }
+  *{ box-sizing: border-box; }
+  /* fond = couleur de la bordure : la decoupe de la fenetre (pixels francs, sans lissage) tombe sur la bordure et
+     la frange lissee de l'arrondi CSS ne laisse plus de liseré creme dans les coins */
+  html, body{ margin: 0; height: 100%; overflow: hidden; background: var(--line); color: var(--ink);
+    font: 600 13px/1.25 "Nunito", "Segoe UI", system-ui, sans-serif; user-select: none; cursor: default; }
+  .card{ height: 100%; padding: 9px 14px 9px 12px; display: grid; grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto 1fr auto; column-gap: 10px; border-radius: 22px;
+    border: 3px solid var(--line); background: linear-gradient(180deg, var(--cream), var(--cream2)); }
+  .ic{ grid-column: 1; grid-row: 1 / span 2; align-self: center; width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--accent); color: #fff;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,.12); }
+  .ic svg{ width: 18px; height: 18px; }
+  .role{ grid-column: 2; grid-row: 1; align-self: end; font-size: 11px; color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .title{ grid-column: 2; grid-row: 2; font: 600 15px/1.2 "Fredoka", "Nunito", sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .count{ grid-row: 1 / span 2; grid-column: 3; align-self: center; min-width: 38px; padding: 3px 10px;
+    border-radius: 999px; background: var(--accent); color: #fff; text-align: center;
+    font: 600 14px/1.2 "Fredoka", sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,.14); }
+  .count:empty{ display: none; }
+  .progress{ grid-column: 1 / span 3; grid-row: 3; align-self: center; display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .progress .bar{ flex: 1; height: 8px; border-radius: 999px; background: var(--track); overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(74,53,39,.15); }
+  .progress .fill{ height: 100%; width: 0; border-radius: 999px; transition: width .25s linear;
+    background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  .meta{ grid-column: 1 / span 3; grid-row: 4; align-self: end; font-size: 11px; color: var(--ink2); white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  [hidden]{ display: none !important; }
+  /* apparition (appear(), appele par api/overlay.py a chaque affichage) : le panneau glisse et rebondit, la
+     pastille tourne un peu, la barre se remplit depuis la gauche */
+  @keyframes ov-in{ 0%{ opacity: 0; transform: translateY(-10px) scale(.96); } 70%{ opacity: 1; transform: translateY(1px) scale(1.01); }
+    100%{ opacity: 1; transform: none; } }
+  @keyframes ov-ic{ 0%{ transform: scale(.6) rotate(-25deg); } 70%{ transform: scale(1.12) rotate(6deg); } 100%{ transform: none; } }
+  @keyframes ov-bar{ from{ transform: scaleX(0); } to{ transform: scaleX(1); } }
+  .card.appear{ animation: ov-in .34s cubic-bezier(.2,.7,.3,1); }
+  .card.appear .ic{ animation: ov-ic .45s cubic-bezier(.2,.7,.3,1); }
+  .card.appear .bar{ transform-origin: left; animation: ov-bar .4s .1s cubic-bezier(.2,.7,.3,1) both; }
+  .count{ transition: transform .15s; }
+  .count.tick{ animation: ov-ic .3s cubic-bezier(.2,.7,.3,1); }
+  @media (prefers-reduced-motion: reduce){ *{ animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="ic" id="ic" aria-hidden="true"></div>
+  <div class="role" id="role"></div>
+  <div class="count" id="count"></div>
+  <div class="title" id="title"></div>
+  <div class="progress" id="progress" hidden><span id="pl"></span><div class="bar"><div class="fill" id="fill"></div></div><span id="pr"></span></div>
+  <div class="meta" id="meta"></div>
+</div>
+<script>
+  // pictogrammes (memes traces que le sprite de l'app) : note, salon (globe), pinceau
+  const ICONS = {
+    music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    room: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    draw: '<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L9 17.8 5 19l1.2-4z"/><path d="M5 19c-1 1-2 2-3 2 0-1 1-2 2-3"/>'};
+  // contenu : {kind: music|room|draw, role, title, count, progress: {pct, left, right} | null, meta}
+  function render(c){
+    const $ = id => document.getElementById(id);
+    const kind = ICONS[c.kind] ? c.kind : 'music';
+    $('card').className = 'card ' + kind;
+    $('ic').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[kind] + '</svg>';
+    $('role').textContent = c.role || '';
+    $('title').textContent = c.title || '';
+    if($('count').textContent !== (c.count || '')){
+      $('count').textContent = c.count || '';
+      // compte a rebours : chaque seconde qui tombe « saute » un peu
+      $('count').classList.remove('tick'); void $('count').offsetWidth; $('count').classList.add('tick');
+    }
+    $('meta').textContent = c.meta || '';
+    const p = c.progress;
+    $('progress').hidden = !p;
+    if(p){
+      $('fill').style.width = Math.max(0, Math.min(100, p.pct || 0)).toFixed(1) + '%';
+      $('pl').textContent = p.left || '';
+      $('pr').textContent = p.right || '';
+    }
+  }
+  function appear(){
+    const card = document.getElementById('card');
+    card.classList.remove('appear'); void card.offsetWidth; card.classList.add('appear');
+  }
+  window.render = render;
+  window.appear = appear;
+</script>
+</body>
+</html>

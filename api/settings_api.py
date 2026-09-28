@@ -99,8 +99,8 @@ class SettingsMixin:
         m["enabled"] = (mode == "audio")
         if mode != "audio" and self._sync.active():
             self._sync.abort("mode " + mode)
-        if mode != "room" and self._room.active():
-            self._log("salon : changement de mode, on quitte")
+        if mode == "audio" and self._room.active():
+            self._log("salon : synchro par le son activee, on quitte le salon")
             self._room.leave()
 
     def _on_cookers(self):

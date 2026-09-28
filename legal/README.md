@@ -6,12 +6,13 @@ Ce dossier contient le texte des CGU de DodoTopia et les fichiers dérivés que 
 |---|---|
 | `CGU-fr.md` | **Source qui fait foi.** Texte français des CGU, en Markdown. C'est le seul fichier à rédiger. |
 | `CGU-en.md` | Traduction anglaise, à tenir à jour après chaque changement du français. |
-| `CGU-fr.rtf`, `CGU-en.rtf` | Générés par `.tools/make_legal.py`. Ne pas les modifier à la main. Inno Setup n'accepte que `.txt` ou `.rtf` pour `LicenseFile`. |
+| `CGU-es.md`, `CGU-de.md`, `CGU-pt-BR.md`, `CGU-zh-CN.md`, `CGU-ja.md`, `CGU-th.md`, `CGU-id.md`, `CGU-fil.md` | Traductions (une par langue de l'application et du site, `terms.LANGS`), même structure que l'anglais et même avertissement « la version française fait foi ». Non relues par un juriste. À tenir à jour comme l'anglais. |
+| `CGU-<lang>.rtf` | Générés par `.tools/make_legal.py`. Ne pas les modifier à la main. Inno Setup n'accepte que `.txt` ou `.rtf` pour `LicenseFile` ; seuls `fr` et `en` servent à l'installeur. |
 | `README.md` | Ce mode d'emploi. |
 
 ## Modifier les CGU
 
-1. Modifie `CGU-fr.md` d'abord, puis reporte le changement dans `CGU-en.md` (garde l'avertissement « The French version prevails » en tête de l'anglais).
+1. Modifie `CGU-fr.md` d'abord, puis reporte le changement dans `CGU-en.md` et dans chaque traduction (garde l'avertissement « The French version prevails » en tête de l'anglais).
 2. Si le changement est de fond (pas une coquille), **change la version** : voir ci-dessous.
 3. Régénère les RTF (voir ci-dessous) et vérifie-les.
 4. Fais relire par un juriste avant toute mise en production : le commentaire HTML en fin de fichier est là pour le rappeler ; enlève-le une fois la relecture faite.

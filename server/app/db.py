@@ -276,6 +276,64 @@ MIGRATIONS = [
     ALTER TABLE reports_new RENAME TO reports;
     """,
     },
+    # v4 (espace admin du site) : compteurs journaliers (`stat_daily`, une ligne par jour × clé × dimension),
+    # visiteurs uniques du jour (`stat_uniques`, empreintes salées du jour, agrégées puis effacées le lendemain),
+    # réglages modifiables depuis le site (`admin_settings`), journal des actions d'administration (`admin_log`),
+    # connexions web (`web_logins`) et type de session (`sessions.kind` : app | web).
+    """
+    CREATE TABLE stat_daily (
+        day  TEXT NOT NULL,
+        key  TEXT NOT NULL,
+        dim  TEXT NOT NULL DEFAULT '',
+        n    INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, key, dim)
+    );
+    CREATE INDEX stat_daily_key_day ON stat_daily(key, day);
+    CREATE TABLE stat_uniques (
+        day  TEXT NOT NULL,
+        key  TEXT NOT NULL,
+        dim  TEXT NOT NULL DEFAULT '',
+        h    TEXT NOT NULL,
+        PRIMARY KEY (day, key, dim, h)
+    );
+    CREATE TABLE admin_settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    CREATE TABLE admin_log (
+        id         {ID},
+        admin_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        admin_name TEXT,
+        action     TEXT NOT NULL,
+        target     TEXT,
+        detail     TEXT,
+        created_at TEXT NOT NULL
+    );
+    CREATE INDEX admin_log_created ON admin_log(created_at);
+    CREATE TABLE web_logins (
+        state      TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL
+    );
+    ALTER TABLE sessions ADD COLUMN kind TEXT NOT NULL DEFAULT 'app';
+    CREATE INDEX users_created ON users(created_at);
+    CREATE INDEX users_last_seen ON users(last_seen_at);
+    """,
+    # v5 : rapports de diagnostic envoyés depuis l'app (diag_reports.py). `reports` = signalements, autre chose.
+    """
+    CREATE TABLE diag_reports (
+        id         {ID},
+        code       TEXT NOT NULL UNIQUE,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        username   TEXT,
+        note       TEXT,
+        version    TEXT,
+        os         TEXT,
+        size       INTEGER NOT NULL,
+        files      INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE INDEX diag_reports_created ON diag_reports(created_at);
+    """,
 ]
 
 # Postgres seulement, hors numérotation : recherche par trigrammes (`LIKE '%mot%'` sur titre/artiste). L'extension
@@ -287,7 +345,7 @@ POSTGRES_OPTIONAL = [
     "CREATE INDEX IF NOT EXISTS songs_artist_trgm ON songs USING GIN (LOWER(artist) gin_trgm_ops)",
 ]
 
-TABLES = ("release_assets", "releases", "song_likes", "drawing_likes", "reports", "drawings", "songs", "login_tickets",
+TABLES = ("diag_reports", "stat_daily", "stat_uniques", "admin_settings", "admin_log", "web_logins", "release_assets", "releases", "song_likes", "drawing_likes", "reports", "drawings", "songs", "login_tickets",
           "sessions", "users", "schema_version")
 
 _DDL_TYPES = {

@@ -49,7 +49,9 @@ from collections import deque
 
 import core
 import i18n
+import orchestra
 import online          # SHA256_RE / SONG_MAX_BYTES (online n'importe room qu'à l'appel)
+import platform_io
 from platform_io import mouse_button_down
 from sync import _Aborted, choose_common_extra, ensure_defaults
 from version import VERSION
@@ -239,6 +241,7 @@ class RoomSession:
         self.host_id = None
         self.players = []
         self.song = None
+        self.parts = None               # Orchestre : {"enabled", "parts": {"<id siège>": {tracks, octave}}} | None
         self.countdown_s = None
         self.start_at_ms = None
         self.max_players = None
@@ -340,6 +343,60 @@ class RoomSession:
         threading.Thread(target=self._set_song_run, args=(spec,), name="room-song", daemon=True).start()
         return True
 
+    # ---- Orchestre (parties par siège)
+    def my_part(self):
+        """Ma partie {tracks, octave} quand l'Orchestre est actif et qu'une partie m'est donnee, sinon None
+        (= tout le morceau, comme avant l'Orchestre)."""
+        parts = self.parts or {}
+        if not parts.get("enabled") or self.player_id is None:
+            return None
+        part = (parts.get("parts") or {}).get(str(self.player_id))
+        if not isinstance(part, dict) or not part.get("tracks"):
+            return None
+        return {"tracks": sorted(int(i) for i in part["tracks"]), "octave": part.get("octave")}
+
+    def my_part_label(self):
+        return orchestra.part_label((self.song or {}).get("tracks"), self.my_part(),
+                                    i18n.t("room.parts.track_n", n="{n}"))
+
+    def set_parts(self, spec):
+        """Chef : envoie la repartition {enabled, parts: {id: {tracks, octave}}} (voir server/app/rooms.py)."""
+        if self.state == "idle":
+            self.notify(i18n.t("room.no_room"), "warn")
+            return False
+        if not self.is_host():
+            self.notify(i18n.t("room.host_only.parts"), "warn")
+            return False
+        if self.room_state != "lobby":
+            self.notify(i18n.t("room.wait_end"), "warn")
+            return False
+        spec = spec if isinstance(spec, dict) else {}
+        parts = {}
+        for sid, part in (spec.get("parts") or {}).items():
+            if not isinstance(part, dict):
+                continue
+            octave = part.get("octave")
+            parts[str(sid)] = {"tracks": sorted({int(i) for i in part.get("tracks") or []}),
+                               "octave": None if octave in (None, "", "auto") else max(-2, min(2, int(octave)))}
+        return self._send({"type": "set_parts", "enabled": bool(spec.get("enabled", True)), "parts": parts})
+
+    def propose_parts(self, instruments=None):
+        """Chef : repartition automatique d'apres le registre de l'instrument de chaque joueur, puis envoi."""
+        tracks = (self.song or {}).get("tracks") or []
+        if not tracks:
+            self.notify(i18n.t("room.parts.no_tracks"), "warn")
+            return False
+        seats = []
+        for pl in self.players:
+            inst = None
+            for i in instruments or []:
+                if getattr(i, "id", None) == pl.get("instrument"):
+                    inst = i
+                    break
+            lo, hi, perc = orchestra.seat_register(inst)
+            seats.append({"id": pl.get("id"), "low": lo, "high": hi, "percussive": perc})
+        return self.set_parts({"enabled": True, "parts": orchestra.propose(tracks, seats)})
+
     def set_instrument(self, inst_id):
         if self.state == "idle":
             return False
@@ -419,6 +476,8 @@ class RoomSession:
             self.notify(i18n.t("room.countdown_no_file"), "warn")
             return False
         if self.room_state == "playing":
+            if self.rejoin_position() is not None:
+                return self.rejoin(lead=self.REJOIN_LEAD_KEY_S)
             self.notify(i18n.t("room.playing_wait"), "warn")
             return False
         if self.is_host():
@@ -443,6 +502,74 @@ class RoomSession:
             self.player.stop(reason=reason)
             return True
         return False
+
+    REJOIN_LEAD_UI_S = 3.0      # depuis le bouton : le temps de revenir sur le jeu
+    REJOIN_LEAD_KEY_S = 1.0     # depuis F6 (on est deja dans le jeu)
+    REJOIN_END_MARGIN_S = 2.0   # trop pres de la fin : rien a rejoindre
+
+    def rejoin_position(self):
+        """Salon en train de jouer sans nous (arret par erreur : souris, touche, fenetre) : position actuelle
+        des autres dans le morceau (s), ou None si on ne peut pas les rejoindre."""
+        with self._lock:
+            song = self.song
+            if self.state != "lobby" or self.room_state != "playing" or not self.start_at_ms or not song:
+                return None
+            if self._have != (song.get("sha256"), int(song.get("key_shift") or 0)) or self.clock.offset_ms is None:
+                return None
+            net = float(ensure_defaults(self.cfg).get("net_offset_ms", 0) or 0) / 1000.0
+            pos = time.perf_counter() - (self.clock.to_local(self.start_at_ms) + net)
+            dur = float(song.get("duration_ms") or 0) / 1000.0
+            if pos < 0 or (dur and pos > dur - self.REJOIN_END_MARGIN_S):
+                return None
+            return pos
+
+    def rejoin(self, lead=None):
+        """Reprend la lecture la ou en sont les autres : meme horloge que le depart commun, on demarre dans
+        `lead` secondes a la position qu'ils auront atteinte a cet instant."""
+        lead = self.REJOIN_LEAD_UI_S if lead is None else float(lead)
+        p = self.player
+        with self._lock:
+            if self.rejoin_position() is None:
+                self.notify(i18n.t("room.rejoin.unavailable"), "warn")
+                return False
+            if not getattr(p.instrument, "ready", True):
+                self.notify(i18n.t("room.blocker.instrument", name=p.instrument.name, reason=p.instrument.blocked_reason), "warn")
+                return False
+            try:
+                prepared = self._prepare(self._song_path, *self._have)
+            except Exception as e:  # noqa
+                self.notify(i18n.t("room.file.unreadable", error=e), "warn")
+                return False
+            if p.state != "stopped":
+                p.stop(join=True)
+            net = float(ensure_defaults(self.cfg).get("net_offset_ms", 0) or 0) / 1000.0
+            song_start = self.clock.to_local(self.start_at_ms) + net
+            self.deadline = time.perf_counter() + lead
+            offset = self.deadline - song_start
+            if prepared.get("duration") and offset > prepared["duration"] - self.REJOIN_END_MARGIN_S:
+                self.deadline = None
+                self.notify(i18n.t("room.rejoin.unavailable"), "warn")
+                return False
+            self.armed_start_at = self.start_at_ms
+            self._aborted_start_at = None
+            self._abort.clear()
+            with p._lock:
+                p.state = "sync"
+                p.target = "game"
+                p._expected = {}
+                p.last_stop_reason = ""
+            self.state = "armed"
+            self.message = i18n.t("room.state.armed", seconds=round(lead, 1))
+            self.log(f"salon : on rejoint la lecture à {offset:.2f} s (départ dans {lead:.1f} s)")
+        if ensure_defaults(self.cfg).get("room_minimize"):
+            try:
+                self.minimize()
+            except Exception:  # noqa
+                pass
+        self._send({"type": "player_state", "status": "armed", "clock": self.clock.status()})
+        self._arm_thread = threading.Thread(target=self._arm_run, args=(prepared, offset), name="room-arm", daemon=True)
+        self._arm_thread.start()
+        return True
 
     def on_player_stop(self, reason=""):
         """Appelé par Player.stop() / une frappe clavier pendant l'attente : annulation locale."""
@@ -470,7 +597,7 @@ class RoomSession:
         role = "host" if host else ("guest" if self.player_id is not None else "")
         blocker = self._start_blocker() if host else ""
         return {
-            "enabled": m.get("mode") == "room", "state": self.state, "mode": "room", "role": role,
+            "enabled": self.active(), "state": self.state, "mode": "room", "role": role,
             "seconds_left": round(left, 1) if left is not None else None, "message": self.message,
             "player_id": self.player_id, "leader_id": self.host_id,
             "players": [p.get("id") for p in self.players],
@@ -483,6 +610,8 @@ class RoomSession:
                 "me": {"id": self.player_id, "ready": bool(me.get("ready")), "has_file": self._have is not None,
                        "host": host, "name": me.get("name")},
                 "error": self.error, "last_room": m.get("last_room", ""), "min_version": self.min_version,
+                "rejoin_pos": self.rejoin_position(),
+                "parts": self.parts, "my_part": self.my_part_label(),
             },
         }
 
@@ -747,6 +876,14 @@ class RoomSession:
             song = self.song
             want = (song["sha256"], int(song.get("key_shift") or 0)) if song else None
             st = self.state
+            part_before = self.my_part()
+            self.parts = m.get("parts") if isinstance(m.get("parts"), dict) else None
+            part_changed = self.my_part() != part_before
+        if part_changed and want is not None and want == self._have and self._song_path:
+            # ma partie a change : la chronologie est refaite tout de suite (pas au moment du depart)
+            self.log(f"salon : ma partie : {self.my_part_label() or 'tout le morceau'}")
+            threading.Thread(target=self._safe_prepare, args=(self._song_path, *want), name="room-part",
+                             daemon=True).start()
         if want is None:
             self._have = None
             self._prepared = None
@@ -782,6 +919,8 @@ class RoomSession:
                 self.song = m["song"]
             if m.get("players"):
                 self.players = [p for p in m["players"] if isinstance(p, dict)]
+            if "parts" in m:
+                self.parts = m["parts"] if isinstance(m.get("parts"), dict) else None
             song = self.song
         self._burst(4)
         want = (song["sha256"], int(song.get("key_shift") or 0)) if song else None
@@ -831,7 +970,9 @@ class RoomSession:
     def _on_error(self, m):
         code, fatal = str(m.get("code") or ""), bool(m.get("fatal"))
         # code connu : message traduit ici ; sinon le texte du serveur (qui seul connait les details)
-        if code in SERVER_ERROR_CODES:
+        if code == "bad_message" and "set_parts" in str(m.get("message") or ""):
+            text = i18n.t("room.parts.server_old")     # serveur d'avant l'Orchestre
+        elif code in SERVER_ERROR_CODES:
             text = i18n.t(f"room.server.{code}")
         else:
             text = m.get("message") or code or i18n.t("room.error.generic")
@@ -936,10 +1077,19 @@ class RoomSession:
         p = self.player
         inst = p.instrument
         ident = getattr(inst, "fingerprint", None) or getattr(inst, "id", "")
-        key = (sha, ident, int(key_shift), p.cfg.get("hold_time", 0.04), p.cfg.get("hold_mode", "note"))
+        part = self.my_part()
+        part_key = (tuple(part["tracks"]), part.get("octave")) if part else None
+        key = (sha, ident, int(key_shift), p.cfg.get("hold_time", 0.04), p.cfg.get("hold_mode", "note"), part_key)
         if self._prep_key == key and self._prepared is not None:
             return self._prepared
-        prepared = p.prepare(path, inst, "game", extra=int(key_shift))
+        if part:
+            # Orchestre : seules mes pistes ; l'octave « auto » est choisie pour mon instrument dans la tonalite commune
+            mine = set(part["tracks"])
+            skip = [t["index"] for t in core.midi_tracks(path) if t["index"] not in mine]
+            prepared = p.prepare(path, inst, "game", extra=int(key_shift), skip_tracks=skip,
+                                 octave=int(part.get("octave") or 0))
+        else:
+            prepared = p.prepare(path, inst, "game", extra=int(key_shift))
         self._prepared, self._prep_key = prepared, key
         try:
             mine = choose_common_extra(self._notes_of(path))
@@ -975,7 +1125,11 @@ class RoomSession:
             if source == "room":
                 self.message = i18n.t("room.state.uploading")
                 self.client.upload(f"/api/rooms/{self.code}/song", {"title": name}, "file", path)
-            msg = {"type": "set_song", "sha256": sha, "name": name, "duration_ms": duration_ms,
+            try:
+                tracks = orchestra.track_summary(path)
+            except Exception:  # noqa - un fichier sans pistes lisibles reste jouable en entier
+                tracks = []
+            msg = {"type": "set_song", "sha256": sha, "name": name, "duration_ms": duration_ms, "tracks": tracks,
                    "key_shift": int(key_shift), "source": source}
             if online_id is not None:
                 msg["online_id"] = online_id
@@ -1080,26 +1234,45 @@ class RoomSession:
                 self.log("salon : horloge peu fiable (moins de 4 échantillons ou trop ancienne)")
             self.log(f"salon : armé, start_at {start_at_ms:.0f}, deadline dans {left:.3f} s, offset "
                      f"{c.offset_ms:.1f} ± {c.err_ms:.1f} ms, rtt_min {c.rtt_min_ms:.1f} ms, avance/retard {net * 1000:+.0f} ms")
-        try:
-            self.minimize()
-        except Exception:  # noqa
-            pass
+        if ensure_defaults(self.cfg).get("room_minimize"):
+            try:
+                self.minimize()
+            except Exception:  # noqa
+                pass
         self._send({"type": "player_state", "status": "armed", "clock": self.clock.status()})
         self._arm_thread = threading.Thread(target=self._arm_run, args=(prepared,), name="room-arm", daemon=True)
         self._arm_thread.start()
         return True
 
-    def _arm_run(self, prepared):
+    FRONT_CHECK_S = 0.2         # frequence de la verification « le jeu est devant » pendant l'attente
+    CLICK_GRACE_S = 0.6         # clic qui ramene le jeu devant : ne compte pas comme un arret
+
+    def _arm_run(self, prepared, offset=0.0):
         p = self.player
         try:
             stop_on_input = self.cfg.get("stop_on_input", True)
-            mouse_check = 0.0
+            mouse_check = front_check = 0.0
+            # DodoTopia ne se reduit plus au depart : il faut cliquer sur le jeu pendant le compte a rebours.
+            # Un clic n'annule donc le depart que si le jeu est devant depuis un instant (sinon c'est le clic
+            # qui le ramene) ; tant qu'il n'est pas devant, le bandeau le dit.
+            front_since = None
+            armed_msg = self.message
             while True:
                 self._check_abort()
                 now = time.perf_counter()
+                if now - front_check > self.FRONT_CHECK_S:
+                    front_check = now
+                    front = platform_io.game_in_front(self.cfg.get("game_process"))
+                    if front is False:
+                        front_since = None
+                        self.message = i18n.t("room.state.switch_to_game")
+                    else:
+                        if front_since is None:
+                            front_since = now
+                        self.message = armed_msg
                 if stop_on_input and now - mouse_check > 0.03:
                     mouse_check = now
-                    if mouse_button_down():
+                    if front_since is not None and now - front_since > self.CLICK_GRACE_S and mouse_button_down():
                         raise _Aborted("mouse")
                 if now >= self.deadline - 0.12:
                     break
@@ -1110,7 +1283,7 @@ class RoomSession:
                 p.lock_speed = True
                 if self.deadline < time.perf_counter():
                     self.log("salon : départ déjà passé, rattrapage")
-                p.play_at(self.deadline, prepared, "game")
+                p.play_at(self.deadline, prepared, "game", offset)
                 self.state = "playing"
                 self.message = i18n.t("room.state.playing")
             self._send({"type": "player_state", "status": "playing"})

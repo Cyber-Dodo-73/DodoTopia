@@ -174,5 +174,21 @@
   "settings.protocol.state.other": "เชื่อมกับ DodoTopia ตัวอื่นอยู่",
   "settings.protocol.state.none": "ยังไม่ได้เชื่อม",
   "settings.protocol.register": "เชื่อมกับ DodoTopia",
-  "settings.protocol.register_again": "เชื่อมอีกครั้ง"
+  "settings.protocol.register_again": "เชื่อมอีกครั้ง",
+  "settings.arrange.label": "เรียบเรียงอัตโนมัติ",
+  "settings.arrange.help": "ปรับเพลงให้เข้ากับเครื่องดนตรีที่มีคีย์น้อย: เก็บทำนองไว้เสมอและย้ายทีละวลี ลดโน้ตในคอร์ด และตัดโน้ตที่ไม่มีคีย์ตรงออกแทนที่จะเล่นเพี้ยน อัตโนมัติ: เฉพาะเครื่องดนตรีที่ไม่มีครบทุกเครื่องหมายแปลงเสียง แต่ละเพลงเลือกเวอร์ชันได้ใน “การตั้งค่าเพลง”",
+  "settings.arrange.opt.auto": "อัตโนมัติ",
+  "settings.arrange.opt.on": "เสมอ",
+  "settings.arrange.opt.off": "ไม่ใช้",
+  "settings.overlay.enabled.label": "โอเวอร์เลย์ใน Heartopia",
+  "settings.overlay.enabled.help": "หน้าต่างเล็กๆ ที่มุมเกม แสดงเพลงหรือภาพวาดที่กำลังทำงาน จะแสดงเฉพาะเมื่อ Heartopia อยู่ด้านหน้าและมีเพลงหรือภาพวาดกำลังทำงาน การคลิกจะทะลุผ่าน และจะไม่ปรากฏในภาพหน้าจอ",
+  "settings.overlay.corner.label": "ตำแหน่งโอเวอร์เลย์",
+  "settings.overlay.corner.help": "มุมของหน้าต่างเกมที่จะแสดง",
+  "settings.overlay.corner.opt.top-right": "มุมขวาบน",
+  "settings.overlay.corner.opt.top-left": "มุมซ้ายบน",
+  "settings.overlay.corner.opt.top-center": "ด้านบนตรงกลาง",
+  "settings.overlay.corner.opt.bottom-left": "มุมซ้ายล่าง",
+  "settings.overlay.corner.opt.bottom-right": "มุมขวาล่าง",
+  "settings.multi.room_minimize.label": "ย่อ DodoTopia เมื่อห้องเริ่ม",
+  "settings.multi.room_minimize.help": "ปิด: DodoTopia จะเปิดค้างไว้ตอนเริ่ม ให้คลิกที่ Heartopia ระหว่างนับถอยหลัง (การคลิกนั้นไม่ยกเลิกการเริ่ม)"
 }

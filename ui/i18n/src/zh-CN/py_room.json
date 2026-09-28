@@ -58,5 +58,11 @@
   "room.file.no_sha": "服务器未公布此曲目的校验和",
   "room.file.unavailable": "房间文件不可用：{error}",
   "room.file.unreadable": "文件无法读取：{error}",
-  "room.song.choose_failed": "无法选择曲目：{error}"
+  "room.song.choose_failed": "无法选择曲目：{error}",
+  "room.rejoin.unavailable": "无法重新加入演奏：乐曲已结束、尚未收到，或房间时钟尚未就绪",
+  "room.parts.track_n": "音轨 {n}",
+  "room.host_only.parts": "只有房主可以分配音轨。",
+  "room.parts.no_tracks": "这首曲子没有可分配的音轨。",
+  "room.parts.server_old": "服务器尚不支持乐团：所有人演奏整首曲子。",
+  "room.state.switch_to_game": "开始前请点击 Heartopia（打开乐器）"
 }

@@ -56,9 +56,7 @@
   "shell.discover.col_action": "Ação",
   "shell.discover.prev_page": "Página anterior",
   "shell.discover.next_page": "Próxima página",
-  "shell.together.back_solo": "Voltar a tocar sozinho",
   "shell.together.intro": "Duas formas de começar a mesma música no mesmo momento. Cada um mantém o próprio instrumento.",
-  "shell.together.method_aria": "Método",
   "shell.together.room": "Sala online",
   "shell.together.recommended": "recomendado",
   "shell.together.room_sub": "Um código de seis caracteres reúne os jogadores; o anfitrião dá a largada pelo servidor.",
@@ -191,5 +189,6 @@
   "shell.gallery.sort.recent": "Recentes",
   "shell.gallery.sort.popular": "Mais curtidos",
   "shell.gallery.refresh": "Recarregar a galeria",
-  "shell.gallery.intro": "Desenhos compartilhados pelos jogadores. “Reproduzir” carrega a grade de casas na sua atividade Desenho, pronta para pintar no Heartopia."
+  "shell.gallery.intro": "Desenhos compartilhados pelos jogadores. “Reproduzir” carrega a grade de casas na sua atividade Desenho, pronta para pintar no Heartopia.",
+  "shell.together.audio_on": "Ativar a sincronização pelo som"
 }

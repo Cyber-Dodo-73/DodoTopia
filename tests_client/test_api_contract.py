@@ -35,6 +35,11 @@ deeplink_confirm deeplink_dismiss handle_deeplink protocol_status register_proto
 online_like_song online_import_url gallery_list gallery_share gallery_open gallery_take gallery_like gallery_delete
 gallery_report room_exists open_external save_drawing_png
 ui_log
+draw_resume draw_forget_resume
+resume_song forget_song_resume room_rejoin
+song_arrange_info set_song_arrange
+room_set_parts room_propose_parts
+diag_preview diag_save diag_send
 """.split())
 
 

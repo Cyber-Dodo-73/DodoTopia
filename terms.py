@@ -13,7 +13,7 @@ import time
 
 # A faire correspondre a la ligne « Version : » de legal/CGU-fr.md (verifie par tests_client/test_terms.py).
 TERMS_VERSION = "2026-10"
-LANGS = ("fr", "en")
+LANGS = ("fr", "en", "es", "de", "pt-BR", "zh-CN", "ja", "th", "id", "fil")
 SUMMARY_TITLES = {"fr": "L'essentiel en 6 points", "en": "The essentials in 6 points"}
 
 _cache = {}
@@ -129,22 +129,23 @@ def markdown_to_html(md):
 
 
 def _summary(md, lang):
-    """Les 6 points du resume : les elements numerotes sous le titre « L'essentiel en 6 points »."""
-    title = SUMMARY_TITLES.get(lang, SUMMARY_TITLES["fr"])
-    lines = md.splitlines()
-    items = []
-    inside = False
-    for line in lines:
+    """Les 6 points du resume : les elements numerotes sous le titre « L'essentiel en 6 points ». Langue sans
+    titre dans SUMMARY_TITLES : la premiere section `##` qui contient une liste numerotee (meme place dans
+    toutes les traductions)."""
+    title = SUMMARY_TITLES.get(lang)
+    sections = []
+    for line in md.splitlines():
         if line.startswith("## "):
-            if inside:
-                break
-            inside = line[3:].strip().lower().startswith(title.lower()[:12])
+            sections.append((line[3:].strip().lower(), []))
             continue
-        if inside:
-            m = re.match(r"^\s*\d+[.)]\s+(.*)$", line)
-            if m:
-                items.append(re.sub(r"\*\*(.+?)\*\*", r"\1", m.group(1)).strip())
-    return items
+        m = re.match(r"^\s*\d+[.)]\s+(.*)$", line)
+        if m and sections:
+            sections[-1][1].append(re.sub(r"\*\*(.+?)\*\*", r"\1", m.group(1)).strip())
+    if title:
+        for heading, items in sections:
+            if heading.startswith(title.lower()[:12]):
+                return items
+    return next((items for _, items in sections if items), [])
 
 
 def _version_in(md):
@@ -153,13 +154,14 @@ def _version_in(md):
 
 
 def load(res_dir, lang="fr"):
-    """{version, lang, summary, markdown, html}. Cache par (chemin, mtime). Repli sur le francais si la
-    langue demandee n'est pas livree."""
+    """{version, lang, summary, markdown, html}. Cache par (chemin, mtime). Repli sur l'anglais puis sur le
+    francais si la langue demandee n'est pas livree."""
     lang = lang if lang in LANGS else "fr"
     path = path_for(res_dir, lang)
-    if not os.path.isfile(path):
-        path = path_for(res_dir, "fr")
-        lang = "fr"
+    for fallback in ("en", "fr"):
+        if os.path.isfile(path):
+            break
+        path, lang = path_for(res_dir, fallback), fallback
     try:
         mtime = os.path.getmtime(path)
     except OSError:

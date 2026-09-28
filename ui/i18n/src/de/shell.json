@@ -56,9 +56,7 @@
   "shell.discover.col_action": "Aktion",
   "shell.discover.prev_page": "Vorherige Seite",
   "shell.discover.next_page": "Nächste Seite",
-  "shell.together.back_solo": "Zurück zum Solospiel",
   "shell.together.intro": "Zwei Wege, dasselbe Lied im selben Moment zu starten. Jeder behält sein eigenes Instrument.",
-  "shell.together.method_aria": "Methode",
   "shell.together.room": "Online-Raum",
   "shell.together.recommended": "empfohlen",
   "shell.together.room_sub": "Ein sechsstelliger Code bringt die Spieler zusammen; der Gastgeber gibt den Start über den Server.",
@@ -191,5 +189,6 @@
   "shell.gallery.sort.recent": "Neueste",
   "shell.gallery.sort.popular": "Meistgeliked",
   "shell.gallery.refresh": "Galerie neu laden",
-  "shell.gallery.intro": "Von Spielern geteilte Zeichnungen. „Nachmalen“ lädt das Kästchenraster in deine Zeichnen-Aktivität, bereit zum Malen in Heartopia."
+  "shell.gallery.intro": "Von Spielern geteilte Zeichnungen. „Nachmalen“ lädt das Kästchenraster in deine Zeichnen-Aktivität, bereit zum Malen in Heartopia.",
+  "shell.together.audio_on": "Synchronisierung per Ton einschalten"
 }

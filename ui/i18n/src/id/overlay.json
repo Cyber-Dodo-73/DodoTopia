@@ -1,0 +1,20 @@
+{
+  "overlay.role.music": "Musik",
+  "overlay.role.paused": "Dijeda",
+  "overlay.role.sync": "Sesi grup",
+  "overlay.role.room": "Ruang {code}",
+  "overlay.role.room_without_you": "Ruang sedang bermain tanpamu",
+  "overlay.role.draw": "Menggambar",
+  "overlay.role.measure": "Pengukuran otomatis",
+  "overlay.seconds": "{n} s",
+  "overlay.players": "{n, plural, other {# pemain}}",
+  "overlay.draw.starting": "Menggambar akan dimulai…",
+  "overlay.draw.cells": "{done} / {total} kotak",
+  "overlay.hint.music": "{play} jeda · {stop} berhenti",
+  "overlay.hint.sync": "{stop} membatalkan",
+  "overlay.hint.room_start": "Tetap di Heartopia dengan instrumen terbuka",
+  "overlay.hint.room_host": "{stop} menghentikan seluruh ruang",
+  "overlay.hint.room_guest": "{stop} menghentikanmu (yang lain lanjut)",
+  "overlay.hint.rejoin": "{play}: gabung lagi",
+  "overlay.hint.draw": "{stop} berhenti · jangan sentuh mouse"
+}

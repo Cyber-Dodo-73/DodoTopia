@@ -56,9 +56,7 @@
   "shell.discover.col_action": "Action",
   "shell.discover.prev_page": "Page précédente",
   "shell.discover.next_page": "Page suivante",
-  "shell.together.back_solo": "Revenir au jeu en solo",
   "shell.together.intro": "Deux façons de démarrer le même morceau au même instant. Chacun garde son instrument.",
-  "shell.together.method_aria": "Méthode",
   "shell.together.room": "Salon en ligne",
   "shell.together.recommended": "recommandé",
   "shell.together.room_sub": "Un code à six caractères réunit les joueurs ; le chef donne le départ par le serveur.",
@@ -191,5 +189,6 @@
   "shell.gallery.sort.recent": "Récents",
   "shell.gallery.sort.popular": "Les plus aimés",
   "shell.gallery.refresh": "Recharger la galerie",
-  "shell.gallery.intro": "Des dessins partagés par les joueurs. « Reproduire » charge la grille de cases dans ton activité Dessin, prête à peindre dans Heartopia."
+  "shell.gallery.intro": "Des dessins partagés par les joueurs. « Reproduire » charge la grille de cases dans ton activité Dessin, prête à peindre dans Heartopia.",
+  "shell.together.audio_on": "Activer la synchro par le son"
 }

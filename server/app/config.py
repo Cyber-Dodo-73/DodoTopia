@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     REQUEST_OVERHEAD_BYTES: int = 64 * 1024             # en-têtes multipart autour du fichier
     RATE_LIMIT: int = 1                                 # 0 = limitation désactivée (tests)
     SESSION_DAYS: int = 90
+    ADMIN_SESSION_DAYS: int = 7                         # session web de l'espace admin (cookie), glissante
     SESSION_TOUCH_S: int = 3600                         # last_used_at / expires_at réécrits au plus une fois par heure
     LOGIN_TICKET_S: int = 600
     LOGIN_CODE_ATTEMPTS: int = 5                        # essais du code affiché dans l'app avant mise en erreur du ticket
@@ -59,6 +60,9 @@ class Settings(BaseSettings):
     INDEXNOW_KEY: str = ""
     # --- Annonces ---
     DISCORD_ANNOUNCE_WEBHOOK: str = ""                  # webhook Discord (https) : annonce de chaque version publiée
+    # Webhook des notifications d'administration (nouveaux comptes, modération, signalements, erreurs, résumé du
+    # jour). Valeur par défaut : l'URL enregistrée depuis l'espace admin du site (/admin, Réglages) a priorité.
+    DISCORD_ADMIN_WEBHOOK: str = ""
     # --- Import par lien (Online Sequencer, BitMidi, URL .mid) ---
     IMPORT_TIMEOUT_S: float = 10                        # par requête sortante
     IMPORT_MAX_REDIRECTS: int = 2
@@ -71,6 +75,9 @@ class Settings(BaseSettings):
     MAX_DRAWING_PX: int = 1024                          # largeur et hauteur maximales du PNG
     DRAWING_THUMB_PX: int = 400
     MAX_DRAWING_TITLE_LEN: int = 60
+    # --- Rapports de diagnostic (bouton « Envoyer un rapport » de l'app) ---
+    MAX_DIAG_REPORT_BYTES: int = 8 * 1024 * 1024
+    DIAG_REPORT_TTL_DAYS: float = 30
 
     @property
     def public_url(self) -> str:
@@ -81,6 +88,15 @@ class Settings(BaseSettings):
         """Clé IndexNow si elle est bien formée, sinon "" (IndexNow désactivé)."""
         key = self.INDEXNOW_KEY.strip()
         return key if re.fullmatch(r"[A-Za-z0-9-]{8,128}", key) else ""
+
+    @property
+    def secure_cookies(self) -> bool:
+        return self.public_url.startswith("https://")
+
+    @property
+    def admin_cookie(self) -> str:
+        """`__Host-` (Secure, Path=/, sans Domain) en HTTPS ; nom simple en développement HTTP."""
+        return "__Host-dodo_admin" if self.secure_cookies else "dodo_admin"
 
     @property
     def admin_ids(self) -> set[str]:
@@ -109,6 +125,10 @@ class Settings(BaseSettings):
     @property
     def drawings_dir(self) -> Path:
         return self.data_dir / "drawings"
+
+    @property
+    def diag_reports_dir(self) -> Path:
+        return self.data_dir / "diag_reports"
 
     @property
     def import_cache_dir(self) -> Path:

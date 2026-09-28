@@ -1,0 +1,22 @@
+{
+  "terms.title": "Mga Tuntunin ng Paggamit ng DodoTopia",
+  "terms.sub": "Bersyon {v} · Ang French na bersyon ang masusunod.",
+  "terms.gist": "Ang mahahalaga sa 6 na punto",
+  "terms.full": "Buong text ng mga tuntunin",
+  "terms.lang_en": "Read in English",
+  "terms.lang_fr": "Lire en français",
+  "terms.check": "Nabasa ko at tinatanggap ko ang mga tuntunin ng paggamit",
+  "terms.accept": "Tanggapin at magpatuloy",
+  "terms.refuse": "Tanggihan at umalis",
+  "terms.why_scroll": "I-scroll ang text hanggang sa dulo",
+  "terms.why_check": "I-tick ang kahon para tanggapin",
+  "terms.ready": "Ayos na, puwede ka nang magpatuloy.",
+  "terms.loading": "Nilo-load ang mga tuntunin…",
+  "terms.error": "Hindi ma-load ang mga tuntunin ng paggamit.",
+  "terms.confirm": "Aalis sa DodoTopia nang hindi tumatanggap?",
+  "terms.yes": "Oo, umalis",
+  "terms.no": "Bumalik",
+  "terms.pos": "{p}% nabasa",
+  "terms.pos_done": "Nabasa hanggang dulo",
+  "terms.accept_failed": "Hindi ma-save ang pagtanggap mo. Pakisubukan ulit."
+}

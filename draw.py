@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """Dessin dans Heartopia : calibrage (canevas, palette, outils) et peinture case par case a la souris."""
+import base64
+import hashlib
+import json
+import os
 import threading
 import time
 
@@ -423,6 +427,43 @@ STEPS = [
 ]
 
 
+# ---------------------------------------------------------------- reprise d'un dessin interrompu
+# Un dessin arrete (touche, souris bougee, erreur, application fermee...) laisse un fichier de reprise : l'image
+# et les cases deja peintes. Relancer la meme image, ou « Reprendre » (meme apres un redemarrage, sans l'image),
+# ne peint que ce qui manque. Les cases d'une couleur verifiable a l'ecran sont relues (l'ecran fait foi) ; pour
+# les autres (blanc, creme... trop proches des rayures de la toile vide) seul ce fichier dit ce qui est fait.
+RESUME_VERSION = 1
+RESUME_SAVE_EVERY = 2.0      # secondes entre deux sauvegardes pendant le dessin
+
+
+def job_key(job):
+    """Empreinte d'un travail : meme image, meme format, memes couleurs ignorees."""
+    raw = json.dumps([job.get("format"), int(job["w"]), int(job["h"]), [int(c) for c in job["cells"]],
+                      sorted(int(i) for i in job.get("skip", []))], separators=(",", ":"))
+    return hashlib.sha1(raw.encode("ascii")).hexdigest()
+
+
+def _pack_bits(idx, n):
+    b = bytearray((n + 7) // 8)
+    for i in idx:
+        if 0 <= i < n:
+            b[i >> 3] |= 1 << (i & 7)
+    return base64.b64encode(bytes(b)).decode("ascii")
+
+
+def _unpack_bits(data, n):
+    b = base64.b64decode(data or "")
+    return {i for i in range(min(n, len(b) * 8)) if b[i >> 3] >> (i & 7) & 1}
+
+
+def _pack_cells(cells):
+    return base64.b64encode(bytes(int(c) + 1 for c in cells)).decode("ascii")      # -1 (vide) .. 125 -> 0 .. 126
+
+
+def _unpack_cells(data):
+    return [c - 1 for c in base64.b64decode(data or "")]
+
+
 def ensure_defaults(cfg):
     d = cfg.setdefault("draw", {})
     for k, v in DEFAULT_DRAW.items():
@@ -443,8 +484,14 @@ def format_grid(cfg, fmt):
 class Drawer(MouseBot):
     ACTIVE_STATES = ("drawing", "autocal")
 
-    def __init__(self, cfg, log=print, on_change=None, save=None, logfile=None):
+    def __init__(self, cfg, log=print, on_change=None, save=None, logfile=None, resume_path=None):
         self.cfg = cfg
+        self.resume_path = resume_path   # fichier de reprise (None : pas de reprise apres redemarrage)
+        self._resume_lock = threading.Lock()
+        self._job = None                 # travail en cours (pour le fichier de reprise)
+        self._done_cells = set()         # cases peintes par ce dessin et les precedents interrompus
+        self._prior_done = set()         # cases deja peintes au lancement (fichier de reprise)
+        self._resume_saved = 0.0
         self._ui_log = log
         self.logfile = logfile
         self._t0 = time.perf_counter()
@@ -480,6 +527,7 @@ class Drawer(MouseBot):
         self._last_seen = None        # derniere lecture du canevas (_read_canvas)
         self._used = None             # nuances utilisees par le dessin en cours (les autres se lisent « vide »)
         ensure_defaults(cfg)
+        self._resume = self._load_resume()
 
     @property
     def draw_cfg(self):
@@ -738,6 +786,81 @@ class Drawer(MouseBot):
     def calibrated(self, fmt):
         d = self.draw_cfg
         return bool(d["formats"].get(fmt, {}).get("rect") and d["palette"].get("pos0") and d["palette"].get("pos1"))
+
+    # ---- reprise d'un dessin interrompu
+    def _load_resume(self):
+        if not self.resume_path or not os.path.isfile(self.resume_path):
+            return None
+        try:
+            with open(self.resume_path, encoding="utf-8") as f:
+                r = json.load(f)
+            job = r["job"]
+            job["cells"] = _unpack_cells(job["cells"])
+            if r.get("version") != RESUME_VERSION or len(job["cells"]) != int(job["w"]) * int(job["h"]) \
+                    or job_key(job) != r.get("key"):
+                raise ValueError("fichier incohérent")
+            r["done"] = _unpack_bits(r.get("done"), len(job["cells"]))
+            return r
+        except Exception as e:  # noqa - fichier abime : on l'ignore, le dessin repartira de la lecture de l'ecran
+            self.log(f"fichier de reprise ignoré : {e}")
+            return None
+
+    def resume_job(self):
+        """Le dessin interrompu, pret a relancer (format, w, h, cells, skip, name), ou None."""
+        with self._resume_lock:
+            r = self._resume
+            return dict(r["job"], cells=list(r["job"]["cells"])) if r else None
+
+    def resume_info(self):
+        """Resume pour l'interface, ou None."""
+        with self._resume_lock:
+            r = self._resume
+            if not r:
+                return None
+            job = r["job"]
+            return {"name": job.get("name") or "", "format": job.get("format"), "w": job["w"], "h": job["h"],
+                    "done": int(r.get("done_count") or 0), "total": int(r.get("total") or 0),
+                    "saved_at": r.get("saved_at"), "reason": r.get("reason") or "", "key": r.get("key")}
+
+    def forget_resume(self):
+        with self._resume_lock:
+            self._resume = None
+            if self.resume_path:
+                try:
+                    os.remove(self.resume_path)
+                except OSError:
+                    pass
+
+    def _mark(self, idx, k, cells):
+        """Cases peintes en couleur k (seules celles qui attendent k comptent) ; sauvegarde de temps en temps."""
+        self._done_cells.update(i for i in idx if cells[i] == k)
+        if time.perf_counter() - self._resume_saved >= RESUME_SAVE_EVERY:
+            self._save_resume()
+
+    def _save_resume(self):
+        job = self._job
+        if not job:
+            return
+        self._resume_saved = time.perf_counter()
+        key = job_key(job)
+        r = {"version": RESUME_VERSION, "key": key,
+             "job": {"format": job.get("format"), "w": int(job["w"]), "h": int(job["h"]),
+                     "cells": list(job["cells"]), "skip": list(job.get("skip", [])), "name": job.get("name") or ""},
+             "done": set(self._done_cells), "done_count": self.done, "total": self.total,
+             "saved_at": time.time(), "reason": self.last_stop_reason}
+        with self._resume_lock:
+            self._resume = r
+            if not self.resume_path:
+                return
+            data = dict(r, job=dict(r["job"], cells=_pack_cells(job["cells"])),
+                        done=_pack_bits(r["done"], len(job["cells"])))
+            tmp = f"{self.resume_path}.tmp"
+            try:
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(data, f, separators=(",", ":"))
+                os.replace(tmp, self.resume_path)
+            except OSError as e:
+                self.log(f"fichier de reprise non enregistré : {e}")
 
     # ---- dessin
     def start(self, job, delay=1.0):
@@ -1423,6 +1546,14 @@ class Drawer(MouseBot):
         self.step = float(self.draw_cfg["step_delay"])
         self.unrepaired = 0
         self.progress_msg = ""
+        # meme image qu'un dessin interrompu : on repart de ses cases deja peintes
+        self._job = job
+        with self._resume_lock:
+            r = self._resume
+            self._prior_done = set(r["done"]) if r and r.get("key") == job_key(job) else set()
+        self._done_cells = set(self._prior_done)
+        self.done = self.total = 0
+        painted = False
         try:
             end = time.perf_counter() + delay
             while True:
@@ -1433,6 +1564,7 @@ class Drawer(MouseBot):
                 time.sleep(0.05)
             self.countdown = 0.0
             if not self._stop.is_set():
+                painted = True
                 self._paint(job)
         except Exception as e:  # noqa
             self.log(f"erreur dessin : {e}")
@@ -1441,6 +1573,14 @@ class Drawer(MouseBot):
         finally:
             if self.last_stop_reason and self.last_stop_reason != "erreur":
                 self.message = f"Dessin arrêté ({self.last_stop_reason}) : {self.done} / {self.total} cases peintes."
+            try:
+                if painted and not self.last_stop_reason:
+                    self.forget_resume()          # dessin fini : plus rien a reprendre
+                elif self._done_cells - self._prior_done or (self.total and self._prior_done):
+                    self._save_resume()           # arret, quelle qu'en soit la raison : reprise possible
+            except Exception as e:  # noqa
+                self.log(f"fichier de reprise : {e}")
+            self._job = None
             try:
                 mouse_up()
             except Exception:
@@ -1524,7 +1664,13 @@ class Drawer(MouseBot):
         def in_place(seen_):
             return sum(1 for i, k in enumerate(cells) if k in same and seen_[i] in same[k]) if seen_ is not None else 0
 
+        # cases deja peintes d'apres le fichier de reprise : elles comptent pour les couleurs que l'ecran ne
+        # permet pas de verifier (trop proches de la toile vide) ; pour les autres, l'ecran fait foi
+        rec = self._prior_done
+
         def pending_of(k, seen_):
+            if rec and (seen_ is None or not self._checkable(colors[k])):
+                return [i for i, c in enumerate(cells) if c == k and i not in rec]
             return [i for i, c in enumerate(cells) if c == k and (seen_ is None or seen_[i] not in same[k])]
 
         already = in_place(seen)
@@ -1532,11 +1678,23 @@ class Drawer(MouseBot):
         # les rayures ressemblent a une nuance), rare sur un dessin entame
         contra = sum(1 for i, k in enumerate(cells) if k in same and seen[i] >= 0 and seen[i] not in same[k])             if seen is not None else 0
         fresh = already <= 0.02 * self.total or contra >= 0.5 * self.total
+        if rec:
+            # la toile a-t-elle ete videe depuis l'arret ? on le voit sur les cases verifiables deja peintes
+            vis = [i for i in rec if cells[i] in same and self._checkable(colors[cells[i]])] if seen is not None else []
+            if len(vis) >= 10 and sum(1 for i in vis if seen[i] in same[cells[i]]) < 0.1 * len(vis):
+                self.log("reprise impossible : la toile ne montre plus les cases peintes avant l'arrêt, dessin repris du début")
+                rec = self._prior_done = set()
+                self._done_cells = set()
+            else:
+                fresh = False
         if self._settle_empties(cur, fresh, counts, colors) and seen is not None:
             seen = self._read_canvas(geo)
             already = in_place(seen)
         if not fresh:
-            self.log(f"reprise d'un dessin : {already} cases déjà en place à l'écran, {self.total - already} à peindre")
+            already = sum(counts[k] - len(pending_of(k, seen)) for k in counts)
+            self.log(f"reprise d'un dessin : {already} cases déjà en place"
+                     + (f" ({len(rec)} d'après le fichier de reprise)" if rec else " à l'écran")
+                     + f", {self.total - already} à peindre")
             self.done = already
             if outline:
                 self.log("mode contours : la reprise se fait au crayon, sur les cases manquantes")
@@ -1577,7 +1735,8 @@ class Drawer(MouseBot):
             if fresh:
                 seed = (W // 2, H // 2)
             elif seen is not None:
-                empty_fill = [i for i, k in enumerate(cells) if k == fill_color and (seen[i] == -1 or seen[i] not in counts)]
+                empty_fill = [i for i, k in enumerate(cells) if k == fill_color and (seen[i] == -1 or seen[i] not in counts)
+                              and i not in rec]
                 if empty_fill:
                     si = min(empty_fill, key=lambda i: (i % W - W / 2) ** 2 + (i // W - H / 2) ** 2)
                     seed = (si % W, si // W)
@@ -1590,6 +1749,7 @@ class Drawer(MouseBot):
                     return
                 if fresh:
                     self.done += counts[fill_color]
+                    self._mark([i for i, c in enumerate(cells) if c == fill_color], fill_color, cells)
                     if refine and self._checkable(colors[fill_color]):
                         box = self._refine_by_fill(x1, y1, x2, y2, colors[fill_color])
                         if box:
@@ -1599,7 +1759,7 @@ class Drawer(MouseBot):
                             self.log(f"cases {geo[2]:.3f}×{geo[3]:.3f} px")
                 else:
                     seen = self._read_canvas(geo)
-                    self.done = in_place(seen)
+                    self.done = sum(counts[k] - len(pending_of(k, seen)) for k in counts)
             if not self._click(*tools["pencil"], delay=0.15):
                 return
         else:
@@ -1700,6 +1860,7 @@ class Drawer(MouseBot):
             if not ok:
                 return False
             self.done += n
+            self._mark(_stroke_cells(pts, W), k, cells)
             self.on_change()
             if not self._probed and checkable and n >= 20:
                 # sonde : le jeu a-t-il trace toute la ligne entre deux positions ?
@@ -1831,6 +1992,7 @@ class Drawer(MouseBot):
                 if not ok:
                     return None
                 self.repaired += n
+                self._mark(_stroke_cells(pts, W), k, cells)
             self.on_change()
             attempt += 1
         if history and history[-1][2] is None:
@@ -1930,6 +2092,7 @@ class Drawer(MouseBot):
                             return
                     if ok:
                         self.done += len(comp)
+                        self._mark(comp, k, cells)
                     else:
                         nleak += 1
                         fallback.setdefault(k, []).extend(comp)
@@ -2029,5 +2192,6 @@ class Drawer(MouseBot):
             "unrepaired": self.unrepaired,
             "step": self.step,
             "screen_ok": SCREEN_OK,
+            "resume": self.resume_info(),
         }
         return st

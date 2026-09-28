@@ -60,6 +60,26 @@ class MusicMixin:
             self._sync.abort("stop")
         return self.get_state()
 
+    def resume_song(self):
+        """Reprend dans le jeu le morceau interrompu, a l'endroit ou il s'est arrete (solo)."""
+        if self._room.active() or self._sync.active():
+            self._notify(i18n.t("api.music.resume_solo_only"), "warn")
+            return self.get_state()
+        if self._player.resume():
+            self._minimize_for_game()
+        else:
+            self._notify(i18n.t("api.music.nothing_to_resume"), "warn")
+        return self.get_state()
+
+    def forget_song_resume(self):
+        self._player.forget_resume()
+        return self.get_state()
+
+    def room_rejoin(self):
+        """Salon : reprendre la lecture la ou en sont les autres (apres un arret par erreur)."""
+        self._room.rejoin()
+        return self.get_state()
+
     def room_stop_local(self):
         """Salon : ne couper que soi-meme, meme quand on est chef (bouton « Arreter pour moi »)."""
         self._room.stop_local("stop")
@@ -72,6 +92,8 @@ class MusicMixin:
         if mode not in sync.PLAY_MODES:
             self._notify(i18n.t("api.mode.unknown", mode=mode), "warn")
             return self.get_state()
+        if mode == "room":
+            mode = "solo"       # le salon se deduit du salon rejoint (voir _play_mode) : rien a memoriser
         r = self.set_setting("multi.mode", mode)
         if not r.get("ok"):
             self._notify(r.get("error") or i18n.t("api.mode.refused"), "warn")

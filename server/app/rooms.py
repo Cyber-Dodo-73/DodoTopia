@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, File, Request, UploadFile, WebSocket, We
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
-from . import db
+from . import db, notify, stats
 from .auth import api_error, get_current_user, user_from_token
 from .config import Settings
 from .library import MidiError, read_upload, validate_midi
@@ -106,7 +106,7 @@ class Seat:
     def public(self, host_id: int | None) -> dict:
         return {"id": self.id, "name": self.name, "avatar": self.avatar, "instrument": self.instrument,
                 "host": self.id == host_id, "connected": self.connected, "have_song": self.have_song,
-                "ready": self.ready, "status": self.status}
+                "ready": self.ready, "status": self.status, "version": self.version}
 
 
 class Room:
@@ -120,10 +120,13 @@ class Room:
         self.countdown_s = COUNTDOWN_DEFAULT
         self.start_at_ms: int | None = None
         self.song: dict | None = None
+        # Orchestre : {"enabled": bool, "parts": {id de siège: {"tracks": [...], "octave": int|None}}} ou None
+        self.parts: dict | None = None
         self.files: set[str] = set()    # sha256 des fichiers éphémères déposés pour CE salon
         self.seq = 0
         self.empty_since: float | None = time.monotonic()
         self.timer: asyncio.Task | None = None
+        self.created_at = time.time()          # âge affiché dans l'espace admin
 
     # --- composition ---
     def add_seat(self, user, name: str, instrument: str, version: str) -> Seat:
@@ -137,6 +140,8 @@ class Room:
 
     def remove_seat(self, seat: Seat) -> None:
         self.seats.pop(seat.id, None)
+        if self.parts:
+            self.parts["parts"].pop(seat.id, None)
         if not self.seats:
             self.empty_since = time.monotonic()
         self.promote()
@@ -174,7 +179,14 @@ class Room:
         return {"type": "state", "seq": self.next_seq(), "room_code": self.code, "state": self.state,
                 "host_id": self.host_id, "countdown_s": self.countdown_s, "start_at_ms": self.start_at_ms,
                 "max_players": self.max_players, "server_now_ms": srv_ms(), "song": self.song,
-                "players": self.players()}
+                "players": self.players(), "parts": self.parts_public()}
+
+    def parts_public(self) -> dict | None:
+        """Parties de l'Orchestre, clés de siège en texte (JSON)."""
+        if not self.parts:
+            return None
+        return {"enabled": bool(self.parts.get("enabled")),
+                "parts": {str(k): dict(v) for k, v in sorted(self.parts["parts"].items())}}
 
     async def broadcast(self, msg: dict) -> None:
         for seat in list(self.seats.values()):
@@ -211,6 +223,11 @@ class RoomManager:
         self.settings = settings
         self.rooms: dict[str, Room] = {}
         self._reaper: asyncio.Task | None = None
+        self.stats_app = None                  # app FastAPI (statistiques et notifications), posée par main.py
+
+    def _hit(self, key: str, dim: str = "") -> None:
+        if self.stats_app is not None:
+            stats.hit(self.stats_app, key, dim)
 
     # --- cycle de vie ---
     def start(self) -> None:
@@ -308,6 +325,7 @@ class RoomManager:
                 raise RoomError("rate_limited", "Trop de salons créés, patiente une minute.", fatal=True)
             room = self.create(body.max_players)
             seat = room.add_seat(user, name, body.instrument, body.version)
+            self._hit("room_create")
         else:
             if limiter.check("room_join", ip, ROOM_JOIN_PER_MIN, 60) > 0:
                 raise RoomError("rate_limited", "Trop de tentatives, patiente une minute.", fatal=True)
@@ -333,6 +351,7 @@ class RoomManager:
                 if len(room.seats) >= room.max_players:
                     raise RoomError("room_full", "Ce salon est complet.", fatal=True)
                 seat = room.add_seat(user, name, body.instrument, body.version)
+                self._hit("room_join")
                 if room.song is not None:
                     seat.status = "no_song"
         seat.attach(ws)
@@ -382,11 +401,42 @@ class RoomManager:
         if room.state != "lobby":
             raise RoomError("bad_state", "Impossible de changer de morceau pendant une partie.")
         room.song = {"sha256": body.sha256, "name": body.name, "duration_ms": body.duration_ms,
-                     "key_shift": body.key_shift, "source": body.source, "online_id": body.online_id}
+                     "key_shift": body.key_shift, "source": body.source, "online_id": body.online_id,
+                     "tracks": [t.model_dump() for t in body.tracks]}
+        room.parts = None           # nouvelles pistes : l'ancienne répartition ne veut plus rien dire
         for s in room.seats.values():
             s.have_song = False
             s.ready = False
             s.status = "no_song"
+        await room.push_state()
+
+    async def _on_set_parts(self, room, seat, ws, body):
+        """Orchestre : le chef répartit les pistes du morceau entre les sièges (salon au repos seulement).
+        Un siège dont la partie change n'est plus « prêt » : il doit réentendre ce qu'il va jouer."""
+        self._require_host(room, seat)
+        if room.state != "lobby":
+            raise RoomError("bad_state", "Impossible de changer les parties pendant une partie.")
+        if room.song is None:
+            raise RoomError("bad_state", "Choisis d'abord un morceau.")
+        known = {t["index"] for t in room.song.get("tracks") or []}
+        parts = {}
+        for key, part in body.parts.items():
+            try:
+                sid = int(key)
+            except ValueError:
+                raise RoomError("bad_message", f"Siège inconnu : {key!r}.")
+            if sid not in room.seats:
+                continue            # siège parti entre-temps : ignoré
+            tracks = sorted(set(part.tracks))
+            if known and any(i not in known for i in tracks):
+                raise RoomError("bad_message", "Piste inconnue dans la répartition.")
+            parts[sid] = {"tracks": tracks, "octave": part.octave}
+        old = (room.parts or {}).get("parts") or {}
+        was_on = bool((room.parts or {}).get("enabled"))
+        room.parts = {"enabled": bool(body.enabled), "parts": parts}
+        for sid, s in room.seats.items():
+            if was_on != room.parts["enabled"] or old.get(sid) != parts.get(sid):
+                s.ready = False
         await room.push_state()
 
     async def _on_song_status(self, room, seat, ws, body):
@@ -427,7 +477,14 @@ class RoomManager:
         room.timer = asyncio.create_task(self._start_timer(room))
         await room.broadcast({"type": "start", "seq": room.next_seq(), "start_at_ms": room.start_at_ms,
                               "countdown_s": countdown, "song": room.song, "players": room.players(),
-                              "by": seat.id})
+                              "parts": room.parts_public(), "by": seat.id})
+        n = len(room.connected_seats())
+        self._hit("room_start")
+        self._hit("room_start_size", f"{n} joueur" + ("s" if n > 1 else ""))
+        if self.stats_app is not None:
+            notify.emit(self.stats_app, "room_started", f"Partie lancée dans le salon {room.code}",
+                        f"{n} joueur(s) · {(room.song or {}).get('title') or 'morceau'}",
+                        fields=[("Joueurs", ", ".join(s.name for s in room.connected_seats())[:900])])
         await room.push_state()
 
     async def _start_timer(self, room: Room) -> None:

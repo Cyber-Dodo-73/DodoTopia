@@ -2,7 +2,7 @@
 
 Version : 2026-10
 
-Dernière mise à jour : 16 septembre 2026 — entrée en vigueur : 1er octobre 2026
+Dernière mise à jour : 28 septembre 2026 — entrée en vigueur : 1er octobre 2026
 
 Les présentes conditions générales d'utilisation (les « CGU ») régissent l'installation et l'utilisation de l'application DodoTopia (l'« Application »), du site **dodotopia.cyber-dodo.fr** et du service en ligne associé (mises à jour, bibliothèque de fichiers MIDI partagée, salons synchronisés ; ensemble, le « Service »). La version française des CGU fait foi ; la traduction anglaise n'est fournie qu'à titre d'information.
 
@@ -170,9 +170,10 @@ Ce résumé est là pour t'aider ; en cas de doute, ce sont les articles ci-dess
 - si l'Utilisateur **active l'affichage de son activité dans Discord (Rich Presence)**, lorsque cette fonction est proposée : les informations d'activité (par exemple le titre en cours) sont envoyées localement, depuis son ordinateur, à l'application Discord installée sur ce même ordinateur, sans passer par le serveur de l'Éditeur ;
 - lors d'un **import par URL** : l'adresse indiquée est transmise au serveur pour qu'il télécharge le fichier ;
 - sur le **site** : une éventuelle mesure d'audience sans cookie ni identifiant individuel (nombre de visites par page), qui ne permet pas d'identifier l'Utilisateur ;
+- si l'Utilisateur **envoie un rapport de diagnostic** depuis l'Application : le message qu'il rédige, la fin des journaux de l'Application, ses réglages (sans son pseudonyme ni ses réglages en ligne), une fiche technique (version, système, instrument, état du jeu) et, seulement s'il coche les options correspondantes, des captures de l'activité Cuisine et le dernier enregistrement audio ; le rapport est rattaché à son compte s'il est connecté et effacé au bout de trente (30) jours ;
 - pour le fonctionnement du réseau : l'adresse IP, dans les journaux techniques et pour la limitation de débit.
 
-11.3. Aucune donnée n'est vendue, louée, cédée à des tiers ni utilisée à des fins publicitaires ou de profilage. Le contenu de l'écran et les frappes de clavier sont analysés localement et ne sont jamais transmis. L'Utilisateur dispose des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité, exerçables auprès de contact@cyber-dodo.fr, et du droit d'introduire une réclamation auprès de la CNIL (www.cnil.fr).
+11.3. Aucune donnée n'est vendue, louée, cédée à des tiers ni utilisée à des fins publicitaires ou de profilage. Le contenu de l'écran et les frappes de clavier sont analysés localement et ne sont jamais transmis, à la seule exception des captures que l'Utilisateur choisit de joindre à un rapport de diagnostic. L'Utilisateur dispose des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité, exerçables auprès de contact@cyber-dodo.fr, et du droit d'introduire une réclamation auprès de la CNIL (www.cnil.fr).
 
 ## Article 12 — Propriété intellectuelle
 

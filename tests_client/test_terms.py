@@ -15,7 +15,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def test_la_version_du_code_correspond_au_texte_livre():
     for lang in terms.LANGS:
+        assert os.path.isfile(terms.path_for(ROOT, lang)), f"legal/CGU-{lang}.md manquant"
         doc = terms.load(ROOT, lang)
+        assert doc["lang"] == lang
         assert doc["version"] == terms.TERMS_VERSION, f"legal/CGU-{lang}.md : Version ≠ TERMS_VERSION"
         assert len(doc["summary"]) == 6, f"le résumé en 6 points manque en {lang}"
         assert "<h2>" in doc["html"] and "<ol>" in doc["html"]

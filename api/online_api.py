@@ -251,6 +251,16 @@ class OnlineMixin:
         self._online_call(self._room.stop)
         return self.get_state()
 
+    def room_set_parts(self, spec):
+        """Orchestre (chef) : {enabled, parts: {id de siege: {tracks: [index], octave: int|None}}}."""
+        self._online_call(self._room.set_parts, spec)
+        return self.get_state()
+
+    def room_propose_parts(self):
+        """Orchestre (chef) : repartition automatique selon l'instrument de chaque joueur."""
+        self._online_call(self._room.propose_parts, self._player.instruments)
+        return self.get_state()
+
     def room_set_offset(self, ms):
         """Avance (negatif) / retard du joueur en ms (-300..300) : reglage multi.net_offset_ms + salon."""
         r = self.set_setting("multi.net_offset_ms", ms)

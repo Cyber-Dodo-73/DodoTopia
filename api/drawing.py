@@ -35,7 +35,8 @@ class DrawMixin:
         """L'onglet Image envoie la grille a peindre (indices de la palette du jeu, -1 = vide)."""
         if isinstance(job, dict) and job.get("cells"):
             self._draw_job = {"format": job.get("format", "16:9"), "w": int(job["w"]), "h": int(job["h"]),
-                              "cells": [int(c) for c in job["cells"]], "skip": list(job.get("skip", []))}
+                              "cells": [int(c) for c in job["cells"]], "skip": list(job.get("skip", [])),
+                              "name": str(job.get("name") or "")[:120]}
         else:
             self._draw_job = None
         self._refresh_draw_stats()
@@ -51,6 +52,20 @@ class DrawMixin:
 
     def draw_start(self):
         self._draw_toggle(from_ui=True)
+        return self.get_state()
+
+    def draw_resume(self):
+        """Reprend le dessin interrompu (meme apres un redemarrage, sans que l'image soit chargee)."""
+        job = self._drawer.resume_job()
+        if not job:
+            self._notify(i18n.t("api.draw.nothing_to_resume"), "warn")
+            return self.get_state()
+        self._draw_toggle(from_ui=True, job=job)
+        return self.get_state()
+
+    def draw_forget_resume(self):
+        """Oublie le dessin interrompu (le prochain dessin repartira de ce que montre la toile)."""
+        self._drawer.forget_resume()
         return self.get_state()
 
     def draw_stop(self):

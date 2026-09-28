@@ -58,5 +58,11 @@
   "room.file.no_sha": "เซิร์ฟเวอร์ไม่ได้แจ้ง checksum ของเพลงนี้",
   "room.file.unavailable": "ไฟล์ของห้องไม่พร้อมใช้งาน: {error}",
   "room.file.unreadable": "อ่านไฟล์ไม่ได้: {error}",
-  "room.song.choose_failed": "เลือกเพลงไม่ได้: {error}"
+  "room.song.choose_failed": "เลือกเพลงไม่ได้: {error}",
+  "room.rejoin.unavailable": "กลับเข้าร่วมการเล่นไม่ได้: เพลงจบแล้ว ยังไม่ได้รับไฟล์ หรือนาฬิกาของห้องยังไม่พร้อม",
+  "room.parts.track_n": "แทร็ก {n}",
+  "room.host_only.parts": "เฉพาะหัวหน้าห้องเท่านั้นที่แบ่งแทร็กได้",
+  "room.parts.no_tracks": "เพลงนี้ไม่มีแทร็กให้แบ่ง",
+  "room.parts.server_old": "เซิร์ฟเวอร์ยังไม่รองรับวงออร์เคสตรา: ทุกคนเล่นทั้งเพลง",
+  "room.state.switch_to_game": "คลิกที่ Heartopia ก่อนเริ่ม (เปิดเครื่องดนตรีไว้)"
 }

@@ -131,5 +131,11 @@
   "image.gallery.loaded": "“{title}” is ready to draw.",
   "image.gallery.grid_sub": "Gallery grid · {format} · {w} × {h} cells",
   "image.gallery.grid_note": "Grid taken from the gallery, already converted: framing and colours can't be adjusted ({format}).",
-  "image.gallery.grid_mismatch": "Warning: this drawing is {w} × {h} cells, your {format} area is set to {gw} × {gh}. Adjust the grid in Settings › Drawing before drawing."
+  "image.gallery.grid_mismatch": "Warning: this drawing is {w} × {h} cells, your {format} area is set to {gw} × {gh}. Adjust the grid in Settings › Drawing before drawing.",
+  "image.run.resume_role": "Drawing interrupted",
+  "image.run.resume_text_named": "“{name}” ({format}): you can pick it up where it stopped.",
+  "image.run.resume_text": "{format} drawing: you can pick it up where it stopped.",
+  "image.run.resume_meta": "{done} / {total} cells already painted · only the missing cells will be painted, keep the drawing open in Heartopia",
+  "image.run.resume_btn": "Resume",
+  "image.run.resume_forget": "Forget"
 }

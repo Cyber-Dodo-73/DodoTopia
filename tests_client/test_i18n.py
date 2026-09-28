@@ -39,6 +39,8 @@ def test_plural_rules():
     assert [i18n.plural("de", n) for n in (0, 1, 2)] == ["other", "one", "other"]
     assert [i18n.plural("ja", n) for n in (0, 1, 2)] == ["other", "other", "other"]
     assert i18n.plural("zh-CN", 1) == "other" and i18n.plural("th", 1) == "other"
+    assert [i18n.plural("id", n) for n in (0, 1, 2)] == ["other", "other", "other"]
+    assert [i18n.plural("fil", n) for n in (0, 1, 2)] == ["other", "one", "other"]
     assert i18n.plural("fr-CA", 0) == "one"  # sous-langue inconnue → règle de la langue primaire
     assert i18n.plural("fr", "abc") == "other"
 
@@ -137,7 +139,7 @@ def test_resolve_lang_windows(monkeypatch):
     monkeypatch.setattr(i18n.sys, "platform", "win32")
     for lcid, expected in ((0x040C, "fr"), (0x080C, "fr"), (0x0409, "en"), (0x0809, "en"), (0x0C0A, "es"),
                            (0x2C0A, "es"), (0x0407, "de"), (0x0416, "pt-BR"), (0x0804, "zh-CN"), (0x0411, "ja"),
-                           (0x041E, "th"), (0x0419, "en")):
+                           (0x041E, "th"), (0x0421, "id"), (0x0464, "fil"), (0x0419, "en")):
         monkeypatch.setattr(i18n, "_windows_lcid", lambda v=lcid: v)
         assert i18n.resolve_lang("auto") == expected, hex(lcid)
     monkeypatch.setattr(i18n, "_windows_lcid", lambda: (_ for _ in ()).throw(OSError("pas de kernel32")))

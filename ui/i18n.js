@@ -16,9 +16,9 @@
   // nom de regle → categories produites ; la regle vient de _meta.plural, sinon de la langue
   const PLURAL_RULES = {
     fr: ['one', 'other'], en: ['one', 'other'], de: ['one', 'other'], es: ['one', 'other'], 'pt-BR': ['one', 'other'],
-    it: ['one', 'other'], 'zh-CN': ['other'], ja: ['other'], th: ['other'],
+    it: ['one', 'other'], 'zh-CN': ['other'], ja: ['other'], th: ['other'], id: ['other'], fil: ['one', 'other'],
   };
-  const PRIMARY_TAG = {fr: 'fr', en: 'en', es: 'es', de: 'de', pt: 'pt-BR', zh: 'zh-CN', ja: 'ja', th: 'th'};
+  const PRIMARY_TAG = {fr: 'fr', en: 'en', es: 'es', de: 'de', pt: 'pt-BR', zh: 'zh-CN', ja: 'ja', th: 'th', id: 'id', in: 'id', fil: 'fil', tl: 'fil'};
   const NAME_RE = /[A-Za-z0-9_.\-]+/y;
   const SELECTOR_RE = /=\d+|[A-Za-z0-9_.\-]+/y;
 

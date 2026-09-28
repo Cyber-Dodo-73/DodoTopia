@@ -174,5 +174,21 @@
   "settings.protocol.state.other": "別の DodoTopia に関連付け済み",
   "settings.protocol.state.none": "未関連付け",
   "settings.protocol.register": "DodoTopia に関連付け",
-  "settings.protocol.register_again": "再度関連付け"
+  "settings.protocol.register_again": "再度関連付け",
+  "settings.arrange.label": "自動アレンジ",
+  "settings.arrange.help": "キーの少ない楽器に曲を合わせます。メロディは常に残し、フレーズ単位でオクターブを移動し、和音を軽くし、合うキーのない音は外れた音で鳴らさずに省きます。自動：すべての臨時記号を持たない楽器のみ。曲ごとに「曲の設定」でバージョンを選べます。",
+  "settings.arrange.opt.auto": "自動",
+  "settings.arrange.opt.on": "常に",
+  "settings.arrange.opt.off": "しない",
+  "settings.overlay.enabled.label": "Heartopia 上のオーバーレイ",
+  "settings.overlay.enabled.help": "ゲームの隅に演奏中の曲やお絵描きの進み具合を表示する小さなウィンドウ。Heartopia が前面にあり、曲やお絵描きが動いているときだけ表示されます。クリックは通り抜け、スクリーンショットには写りません。",
+  "settings.overlay.corner.label": "オーバーレイの位置",
+  "settings.overlay.corner.help": "表示するゲームウィンドウの隅。",
+  "settings.overlay.corner.opt.top-right": "右上",
+  "settings.overlay.corner.opt.top-left": "左上",
+  "settings.overlay.corner.opt.top-center": "上中央",
+  "settings.overlay.corner.opt.bottom-left": "左下",
+  "settings.overlay.corner.opt.bottom-right": "右下",
+  "settings.multi.room_minimize.label": "ルーム開始時に DodoTopia を最小化",
+  "settings.multi.room_minimize.help": "オフ：開始時も DodoTopia は開いたままです。カウントダウン中に Heartopia をクリックしてください（そのクリックで開始は取り消されません）。"
 }

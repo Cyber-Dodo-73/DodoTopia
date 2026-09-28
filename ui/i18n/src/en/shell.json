@@ -56,9 +56,7 @@
   "shell.discover.col_action": "Action",
   "shell.discover.prev_page": "Previous page",
   "shell.discover.next_page": "Next page",
-  "shell.together.back_solo": "Back to solo play",
   "shell.together.intro": "Two ways to start the same song at the same moment. Everyone keeps their own instrument.",
-  "shell.together.method_aria": "Method",
   "shell.together.room": "Online room",
   "shell.together.recommended": "recommended",
   "shell.together.room_sub": "A six-character code brings the players together; the host gives the go through the server.",
@@ -191,5 +189,6 @@
   "shell.gallery.sort.recent": "Recent",
   "shell.gallery.sort.popular": "Most liked",
   "shell.gallery.refresh": "Reload the gallery",
-  "shell.gallery.intro": "Drawings shared by players. “Reproduce” loads the cell grid into your Drawing activity, ready to paint in Heartopia."
+  "shell.gallery.intro": "Drawings shared by players. “Reproduce” loads the cell grid into your Drawing activity, ready to paint in Heartopia.",
+  "shell.together.audio_on": "Turn on sound sync"
 }

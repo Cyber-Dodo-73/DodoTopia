@@ -162,8 +162,8 @@ class IntegrationsMixin:
                     self._notify(i18n.t("integrations.deeplink.room_already", code=code), "info")
                     return self.get_state()
                 self._online_call(self._room.leave)
-            if self._cfg.get("multi", {}).get("mode") != "room":
-                self.set_play_mode("room")
+            if self._cfg.get("multi", {}).get("mode") == "audio":
+                self.set_play_mode("solo")
             return self.room_join(code)
         if action == "drawing":
             self._tab = "image"

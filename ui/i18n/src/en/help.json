@@ -7,7 +7,6 @@
   "help.topic.cook": "Cooking",
   "help.topic.keys": "Shortcuts",
   "help.topic.fix": "Troubleshooting",
-
   "help.start.intro": "DodoTopia prepares your work here, then carries it out in Heartopia for you: it presses the keys and clicks on your behalf. The game must be open when you start.",
   "help.start.activities.title": "The three activities",
   "help.start.activities.music": "<b>Music</b>: play a MIDI file on one of the game's instruments.",
@@ -15,7 +14,6 @@
   "help.start.activities.cook": "<b>Cooking</b>: cook the last recipe on a loop.",
   "help.start.activities.note": "Music works right after installation. Drawing and cooking need a one-time setup.",
   "help.start.glossary": "DodoTopia's vocabulary",
-
   "help.gloss.midi.term": "MIDI file (.mid)",
   "help.gloss.midi.def": "A score: the list of notes and their durations, with no recorded sound. DodoTopia replays it on the keys of the game's instrument.",
   "help.gloss.listen.term": "Preview",
@@ -34,7 +32,6 @@
   "help.gloss.dither.def": "Alternate two neighbouring colours cell by cell to imitate a shade the palette lacks.",
   "help.gloss.outline.term": "Outlines + paint bucket",
   "help.gloss.outline.def": "Trace the edge of an area with the pencil, then fill it with a single bucket click instead of painting every cell.",
-
   "help.music.import.title": "Import a song",
   "help.music.import.s1": "Music › My library › <b>Import</b>, or drop a <code>.mid</code> file onto the window.",
   "help.music.import.s2": "Files are copied into your songs folder; the original is left untouched.",
@@ -54,7 +51,6 @@
   "help.music.together.s2": "<b>By sound</b>: no network, the first player plays a cue note that the others detect.",
   "help.music.together.s3": "<b>Online room</b>: a six-character code, a host who starts the session.",
   "help.music.together.note": "Timing depends on your machine and your connection: starts are adjusted as well as possible, not perfectly.",
-
   "help.draw.prepare.title": "Prepare an image",
   "help.draw.prepare.s1": "Drawing › <b>Import an image</b> (.png, .jpg, .gif, .bmp, .webp).",
   "help.draw.prepare.s2": "The preview shows the cell-by-cell result using the colours of the game's palette.",
@@ -69,7 +65,6 @@
   "help.draw.run.s1": "Open an empty canvas in the right format, pencil tool selected, no zoom.",
   "help.draw.run.s2": "<b>Draw in Heartopia</b> button or <kbd class=\"kbd\">{f6}</kbd>, then don't touch the mouse.",
   "help.draw.run.note": "An interrupted drawing resumes where it stopped: start it again on the same canvas, only the missing cells are painted.",
-
   "help.cook.setup.title": "Set up cooking",
   "help.cook.setup.s1": "In the game, stand in front of the stove, bubble visible.",
   "help.cook.setup.s2": "Cooking › <b>Set up cooking</b>, then follow the steps one by one.",
@@ -80,10 +75,8 @@
   "help.cook.run.s2": "Choose <b>Set quantity</b> or <b>Endless</b>, and the number of stoves.",
   "help.cook.run.s3": "Stand in front of the stove, then <kbd class=\"kbd\">{f6}</kbd>.",
   "help.cook.run.note": "During the loop, <kbd class=\"kbd\">{f7}</kbd>, any key or a mouse movement stops everything.",
-
   "help.keys.title": "Global shortcuts",
   "help.keys.intro": "Active even when Heartopia is in the foreground. Editable in Settings › Shortcuts.",
-
   "help.fix.keys.q": "The game doesn't receive the keys",
   "help.fix.keys.a": "Heartopia must be the active window. If nothing gets through, restart DodoTopia as administrator.",
   "help.fix.notes.q": "The notes are wrong",
@@ -94,5 +87,27 @@
   "help.fix.cook.a": "Run “Test the detection” in front of the stove, then recapture the bubble icons.",
   "help.fix.stop.q": "Stop everything right now",
   "help.fix.stop.a": "<kbd class=\"kbd\">{f7}</kbd>, any key or a left click stops the automation in progress.",
-  "help.fix.open_logs": "Open the logs"
+  "help.fix.open_logs": "Open the logs",
+  "support.title": "Send a report",
+  "support.report_btn": "Send a report",
+  "support.intro": "Something isn't working? DodoTopia gathers its logs and screenshots into a report. You get a code to paste on the DodoTopia Discord: we find everything without asking you for files.",
+  "support.note_label": "What happened?",
+  "support.note_ph": "For example: the 2nd stove is never served, the lute doesn't follow the piano…",
+  "support.audio": "Attach the latest sound sync audio recording",
+  "support.files": "Report contents: {n} files, {size}",
+  "support.system_desc": "version, system, instrument, game state",
+  "support.privacy": "Never sent: your sign-in token, your song library, your nickname. Your personal folder is masked in the logs. The report is deleted from the server after 30 days.",
+  "support.send": "Send",
+  "support.save": "Save the zip",
+  "support.saved": "Report saved: {name}",
+  "support.offline": "Server unreachable: save the zip and send it on Discord.",
+  "support.sent": "Report sent. Here is your code:",
+  "support.sent_hint": "Paste this code on the DodoTopia Discord and describe the problem.",
+  "support.copy": "Copy the code",
+  "support.copied": "Code copied",
+  "support.size_kb": "{n} KB",
+  "support.size_mb": "{n} MB",
+  "support.help_hint": "The fastest way to get help: a report gathers everything needed to understand the problem.",
+  "support.about_hint": "logs and screenshots, with a code for Discord",
+  "support.images": "Attach the cooking screenshots (images of the recognised bubble and of the last error)"
 }

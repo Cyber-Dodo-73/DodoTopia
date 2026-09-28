@@ -92,11 +92,10 @@
       "category": "winds",
       "image": "instruments/recorder.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 74,
       "polyphony": null,
@@ -130,11 +129,10 @@
       "category": "winds",
       "image": "instruments/xiao.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 77,
       "polyphony": null,
@@ -164,11 +162,10 @@
       "category": "strings",
       "image": "instruments/lute.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 24,
       "polyphony": null,
@@ -274,11 +271,10 @@
       "category": "keys",
       "image": "instruments/concertina.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 23,
       "polyphony": null,
@@ -346,11 +342,10 @@
       "category": "strings",
       "image": "instruments/lyre.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 46,
       "polyphony": null,
@@ -383,11 +378,10 @@
       "category": "strings",
       "image": "instruments/violin.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 40,
       "polyphony": null,
@@ -417,11 +411,10 @@
       "category": "strings",
       "image": "instruments/cello.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "lute-15-3row"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 42,
       "polyphony": null,
@@ -455,11 +448,10 @@
       "category": "percussion",
       "image": "instruments/conga.png",
       "supportedLayoutIds": [
-        "diatonic-15-2row",
-        "diatonic-15-3row"
+        "conga-8"
       ],
-      "defaultLayoutId": "diatonic-15-3row",
-      "mappingStatus": "community-documented-not-tested-in-game",
+      "defaultLayoutId": "conga-8",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": true,
       "previewProgram": 117,
       "polyphony": null,
@@ -560,9 +552,11 @@
       ],
       "category": "winds",
       "image": "instruments/saxophone.png",
-      "supportedLayoutIds": [],
-      "defaultLayoutId": null,
-      "mappingStatus": "unknown",
+      "supportedLayoutIds": [
+        "lute-15-3row"
+      ],
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 65,
       "polyphony": null,
@@ -590,9 +584,11 @@
       ],
       "category": "strings",
       "image": "instruments/harp.png",
-      "supportedLayoutIds": [],
-      "defaultLayoutId": null,
-      "mappingStatus": "unknown",
+      "supportedLayoutIds": [
+        "piano-chromatic-37"
+      ],
+      "defaultLayoutId": "piano-chromatic-37",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 46,
       "polyphony": null,
@@ -623,9 +619,11 @@
       ],
       "category": "percussion",
       "image": "instruments/steel-tongue-drum.png",
-      "supportedLayoutIds": [],
-      "defaultLayoutId": null,
-      "mappingStatus": "unknown",
+      "supportedLayoutIds": [
+        "lute-15-3row"
+      ],
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 114,
       "polyphony": null,
@@ -653,9 +651,11 @@
       ],
       "category": "winds",
       "image": "instruments/ocarina.png",
-      "supportedLayoutIds": [],
-      "defaultLayoutId": null,
-      "mappingStatus": "unknown",
+      "supportedLayoutIds": [
+        "lute-15-3row"
+      ],
+      "defaultLayoutId": "lute-15-3row",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 79,
       "polyphony": null,

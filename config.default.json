@@ -352,7 +352,8 @@
     "mode": "solo",
     "name": "",
     "net_offset_ms": 0,
-    "last_room": null
+    "last_room": null,
+    "room_minimize": false
   },
   "cook": {
     "points": {},
@@ -375,5 +376,10 @@
   "min_gap": 0.012,
   "sustain": false,
   "game_process": "xdt.exe, Heartopia.exe",
-  "hotkeys_migrated_f12": true
+  "hotkeys_migrated_f12": true,
+  "arrange": "auto",
+  "overlay": {
+    "enabled": true,
+    "corner": "top-right"
+  }
 }

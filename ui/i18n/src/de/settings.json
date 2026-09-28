@@ -174,5 +174,21 @@
   "settings.protocol.state.other": "Mit einem anderen DodoTopia verknüpft",
   "settings.protocol.state.none": "Nicht verknüpft",
   "settings.protocol.register": "Mit DodoTopia verknüpfen",
-  "settings.protocol.register_again": "Erneut verknüpfen"
+  "settings.protocol.register_again": "Erneut verknüpfen",
+  "settings.arrange.label": "Automatisches Arrangement",
+  "settings.arrange.help": "Passt das Stück an Instrumente mit wenigen Tasten an: Die Melodie bleibt immer erhalten und wird phrasenweise verschoben, Akkorde werden ausgedünnt, und Noten ohne passende Taste werden weggelassen statt falsch zu klingen. Auto: nur für Instrumente ohne alle Vorzeichen. Jedes Stück kann seine Fassung unter „Einstellungen des Stücks“ wählen.",
+  "settings.arrange.opt.auto": "Auto",
+  "settings.arrange.opt.on": "Immer",
+  "settings.arrange.opt.off": "Nie",
+  "settings.overlay.enabled.label": "Overlay in Heartopia",
+  "settings.overlay.enabled.help": "Kleines Fenster in einer Ecke des Spiels, das das laufende Stück oder die Zeichnung zeigt. Es erscheint nur, wenn Heartopia im Vordergrund ist und ein Stück oder eine Zeichnung läuft; Klicks gehen hindurch und es erscheint nicht auf Screenshots.",
+  "settings.overlay.corner.label": "Position des Overlays",
+  "settings.overlay.corner.help": "Ecke des Spielfensters, in der es erscheint.",
+  "settings.overlay.corner.opt.top-right": "Oben rechts",
+  "settings.overlay.corner.opt.top-left": "Oben links",
+  "settings.overlay.corner.opt.top-center": "Oben mittig",
+  "settings.overlay.corner.opt.bottom-left": "Unten links",
+  "settings.overlay.corner.opt.bottom-right": "Unten rechts",
+  "settings.multi.room_minimize.label": "DodoTopia beim Raumstart minimieren",
+  "settings.multi.room_minimize.help": "Aus: DodoTopia bleibt beim Start offen; klicke während des Countdowns auf Heartopia (dieser Klick bricht den Start nicht ab)."
 }

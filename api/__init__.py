@@ -42,10 +42,12 @@ from .wizard import WizardMixin
 from .settings_api import SettingsMixin
 from .online_api import OnlineMixin
 from .integrations import IntegrationsMixin
+from .support import SupportMixin
+from .overlay import OverlayMixin
 
 
 class Api(BaseMixin, HotkeysMixin, StateMixin, CookMixin, DrawMixin, LibraryMixin, MusicMixin, InstrumentsMixin, WizardMixin, SettingsMixin, OnlineMixin,
-          IntegrationsMixin):
+          IntegrationsMixin, SupportMixin, OverlayMixin):
     def __init__(self):
         # pywebview execute chaque appel JS dans un fil : tout ce que get_state() lit et que les autres
         # methodes ecrivent (toasts, erreur, diagnostic) passe par ce verrou reentrant
@@ -78,7 +80,8 @@ class Api(BaseMixin, HotkeysMixin, StateMixin, CookMixin, DrawMixin, LibraryMixi
         self._cfg["hotkeys"].setdefault("draw_point", "F3")
         self._drawer = draw.Drawer(self._cfg, log=self._log, on_change=self._on_module_change,
                                    save=lambda: core.save_config(self._cfg),
-                                   logfile=os.path.join(core.DATA_DIR, "dessin.log"))
+                                   logfile=os.path.join(core.DATA_DIR, "dessin.log"),
+                                   resume_path=os.path.join(core.DATA_DIR, "dessin_reprise.json"))
         self._cook = cook.Cooker(self._cfg, log=self._log, on_change=self._on_module_change,
                                  save=lambda: core.save_config(self._cfg),
                                  logfile=os.path.join(core.DATA_DIR, "cuisine.log"), data_dir=core.DATA_DIR)

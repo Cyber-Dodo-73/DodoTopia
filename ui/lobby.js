@@ -107,7 +107,7 @@ function myInstrumentRow(st){
       <span class="roomsong__lbl">${esc(t('lobby.my_instrument.label'))}</span>
       ${ins ? instrumentIconHtml(st, ins.id) : icon('note')}
       <span class="t">${esc(ins ? cap(ins.name || ins.id) : t('lobby.my_instrument.none'))}</span>
-      ${stt ? `<span class="chip chip--badge ${stt.chip}">${esc(stt.label)}</span>` : ''}
+      ${stt && stt.label ? `<span class="chip chip--badge ${stt.chip}">${esc(stt.label)}</span>` : ''}
       <div class="spacer"></div>
       <button class="btn btn--secondary btn--sm" type="button" data-act="inst">${esc(t('lobby.my_instrument.change'))}</button>
     </div>`;
@@ -144,7 +144,7 @@ function roomViewHtml(st, R, D, hk){
         ${D.connected === false ? `<span class="chip chip--badge chip--warn">${esc(t('lobby.room.reconnecting'))}</span>` : ''}
       </div>
       <div class="spacer"></div>
-      ${roomUrl ? `<button class="btn btn--secondary btn--sm" type="button" data-act="invite" title="${esc(roomUrl)}">${icon('link')}<span>${esc(t('lobby.room.invite_copy'))}</span></button>
+      ${roomUrl ? `<button class="btn ${players.length <= 1 ? 'btn--cta' : 'btn--secondary'} btn--sm" type="button" data-act="invite" title="${esc(roomUrl)}">${icon('link')}<span>${esc(t('lobby.room.invite_copy'))}</span></button>
       <button class="iconbtn iconbtn--sm" type="button" data-act="share" aria-haspopup="menu" title="${esc(t('share.title'))}" aria-label="${esc(t('lobby.room.share_aria'))}">${icon('share')}</button>` : ''}
       <button class="btn btn--secondary btn--sm" type="button" data-act="leave" title="${esc(t('lobby.room.leave_title'))}">${esc(t('lobby.room.leave'))}</button>
     </div>
@@ -171,7 +171,7 @@ function roomViewHtml(st, R, D, hk){
       <span class="m">${song && song.duration_ms ? esc(fmt(song.duration_ms / 1000)) : ''}</span>
       ${me.has_file === false && song ? `<span class="chip chip--badge chip--warn">${esc(t('lobby.room.song.receiving'))}</span>` : ''}
       <div class="spacer"></div>
-      ${host ? `<button class="btn btn--secondary btn--sm" type="button" data-act="song">${esc(t('lobby.room.song.choose'))}</button>` : ''}
+      ${host ? `<button class="btn ${song ? 'btn--secondary' : 'btn--cta'} btn--sm" type="button" data-act="song">${icon('music')}<span>${esc(song ? t('lobby.room.song.change') : t('lobby.room.song.choose'))}</span></button>` : ''}
     </div>
     ${myInstrumentRow(st)}
     <ul class="roomplayers">${players.map(p => `<li class="roomplayer${p.connected === false ? ' is-off' : ''}">
@@ -180,8 +180,103 @@ function roomViewHtml(st, R, D, hk){
         <span class="ins" title="${esc(instrumentName(st, p.instrument) || t('lobby.room.instrument_unknown'))}">${instrumentBadgeHtml(st, p.instrument)}</span>
         <span class="bdg">${p.host ? badge(t('lobby.room.badge.host'), 'host', 'crown') : ''}${p.ready ? badge(t('lobby.room.badge.ready'), 'ok', 'check') : ''}${p.have_song === false ? badge(t('lobby.room.badge.file_pending'), 'wait', 'download') : ''}${p.connected === false ? badge(t('lobby.room.badge.disconnected'), 'off', 'offline') : ''}</span>
       </li>`).join('')}</ul>
+    ${players.length <= 1 ? `<p class="hint left">${esc(t('lobby.room.alone_hint'))}</p>` : ''}
+    ${typeof orchestraHtml === 'function' ? orchestraHtml(st, D) : ''}
     ${D.error ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(D.error)}</div></div>` : ''}
     <div class="gamebtn roomcta">${main}${hint ? `<span class="hint">${esc(hint)}</span>` : ''}</div>`;
+}
+
+// ------------------------------------------------ Orchestre : parties par siège (page du salon)
+// D.song.tracks = [{index, name, notes, low, high, mean, drums}] (envoyé par le chef avec le morceau) ;
+// D.parts = {enabled, parts: {"<id siège>": {tracks: [index], octave: int|null}}} | null.
+// Le chef coche les pistes de chacun et règle l'octave ; les invités voient la répartition.
+const ORCH_MIN_VERSION = [2, 1, 0];
+function orchVersionOk(v){
+  const n = String(v || '').split(/[.-]/).map(x => parseInt(x, 10) || 0);
+  for(let i = 0; i < 3; i++){ if((n[i] || 0) !== ORCH_MIN_VERSION[i]) return (n[i] || 0) > ORCH_MIN_VERSION[i]; }
+  return true;
+}
+function orchTrackName(tr){ return (tr.name && String(tr.name).trim()) || t('music.tracks.track_n', {n: Number(tr.index) + 1}); }
+function orchSpec(D){
+  // copie modifiable de la répartition en cours (toujours envoyée en entier)
+  const p = D.parts || {};
+  const parts = {};
+  Object.entries(p.parts || {}).forEach(([k, v]) => { parts[k] = {tracks: (v.tracks || []).slice(), octave: v.octave == null ? null : v.octave}; });
+  return {enabled: !!p.enabled, parts};
+}
+function orchestraHtml(st, D){
+  const song = D.song;
+  if(!song) return '';
+  const tracks = (song.tracks || []).filter(tr => Number(tr.notes) > 0);
+  const host = !!(D.me && D.me.host);
+  const on = !!(D.parts && D.parts.enabled);
+  const head = `<div class="orch__head"><h4>${icon('users')}<span>${esc(t('lobby.orch.title'))}</span></h4>
+      ${host && tracks.length >= 2 ? `<label class="switch"><input type="checkbox" data-orch="toggle"${on ? ' checked' : ''}><span class="switch__track"></span><span>${esc(t('lobby.orch.enable'))}</span></label>` : ''}
+      <div class="spacer"></div>
+      ${host && tracks.length >= 2 ? `<button class="btn btn--secondary btn--sm" type="button" data-orch="auto">${icon('refresh')}<span>${esc(t('lobby.orch.auto'))}</span></button>` : ''}
+    </div>`;
+  if(tracks.length < 2){
+    return `<section class="orch">${head}<p class="hint left">${esc(t('lobby.orch.single_track'))}</p></section>`;
+  }
+  if(!on){
+    return `<section class="orch">${head}<p class="hint left">${esc(host ? t('lobby.orch.off_host') : t('lobby.orch.off_guest'))}</p></section>`;
+  }
+  const parts = (D.parts && D.parts.parts) || {};
+  const rows = (D.players || []).map(p => {
+    const part = parts[String(p.id)] || {tracks: [], octave: null};
+    const old = !orchVersionOk(p.version);
+    const chips = tracks.map(tr => {
+      const sel = (part.tracks || []).includes(Number(tr.index));
+      const label = orchTrackName(tr) + (tr.drums ? ' · ' + t('music.tracks.drums') : '');
+      return host
+        ? `<button type="button" class="chip orch__chip${sel ? ' active' : ''}" aria-pressed="${sel}" data-orch="track" data-seat="${p.id}" data-track="${Number(tr.index)}">${esc(label)}</button>`
+        : (sel ? `<span class="chip chip--badge">${esc(label)}</span>` : '');
+    }).join('');
+    const oct = part.octave == null ? 'auto' : String(part.octave);
+    const octCtl = host
+      ? `<select class="sortsel orch__oct" data-orch="octave" data-seat="${p.id}" aria-label="${esc(t('lobby.orch.octave_aria', {name: p.name || ''}))}">
+          ${[['auto', t('lobby.orch.octave_auto')], ['-1', '−1'], ['0', '0'], ['1', '+1']].map(([v, l]) => `<option value="${v}"${v === oct ? ' selected' : ''}>${esc(t('lobby.orch.octave', {value: l}))}</option>`).join('')}
+        </select>`
+      : (part.octave == null ? '' : `<span class="chip chip--badge">${esc(t('lobby.orch.octave', {value: (part.octave > 0 ? '+' : '') + part.octave}))}</span>`);
+    const none = !(part.tracks || []).length;
+    return `<li class="orch__row${p.id === (D.me || {}).id ? ' is-me' : ''}">
+        <span class="orch__who">${personHtml(p, 'avatar avatar--sm')}<span class="nm">${esc(p.name || t('lobby.room.player_n', {id: p.id}))}</span>
+          <span class="ins">${instrumentBadgeHtml(st, p.instrument)}</span></span>
+        <span class="orch__tracks">${chips}${none && !host ? `<span class="hint">${esc(t('lobby.orch.plays_all'))}</span>` : ''}</span>
+        ${octCtl}
+        ${old ? `<span class="chip chip--badge chip--warn" title="${esc(t('lobby.orch.old_title'))}">${esc(t('lobby.orch.old'))}</span>` : ''}
+      </li>`;
+  }).join('');
+  return `<section class="orch">${head}
+      <p class="hint left">${esc(host ? t('lobby.orch.help_host') : t('lobby.orch.help_guest'))}</p>
+      <ul class="orch__list">${rows}</ul></section>`;
+}
+function orchestraWire(box){
+  const act = () => { const R = roomInfo(S); return R && R.room ? R.room : null; };
+  box.querySelectorAll('[data-orch]').forEach(el => {
+    const kind = el.dataset.orch;
+    const handler = () => {
+      const D = act();
+      if(!D) return;
+      if(kind === 'auto'){ api('room_propose_parts'); return; }
+      const spec = orchSpec(D);
+      if(kind === 'toggle'){
+        spec.enabled = el.checked;
+        if(el.checked && !Object.keys(spec.parts).length){ api('room_propose_parts'); return; }
+      } else {
+        const sid = String(el.dataset.seat);
+        const part = spec.parts[sid] || (spec.parts[sid] = {tracks: [], octave: null});
+        if(kind === 'track'){
+          const i = Number(el.dataset.track);
+          part.tracks = part.tracks.includes(i) ? part.tracks.filter(x => x !== i) : part.tracks.concat([i]).sort((a, b) => a - b);
+        } else if(kind === 'octave'){
+          part.octave = el.value === 'auto' ? null : Number(el.value);
+        }
+      }
+      api('room_set_parts', spec);
+    };
+    if(el.tagName === 'SELECT' || el.type === 'checkbox') el.onchange = handler; else el.onclick = handler;
+  });
 }
 
 // ------------------------------------------------ actions du panneau
@@ -219,7 +314,7 @@ function roomWire(box){
         case 'start': api('room_start'); break;
         case 'cancel': api('room_cancel'); break;
         case 'stop': api('stop'); break;
-        case 'song': showMusicView('discover'); break;
+        case 'song': openSongPicker(b); break;
         case 'inst': openInstrumentSelector(); break;
       }
     };
@@ -231,10 +326,11 @@ function roomWire(box){
   }
 }
 
-// appele par music.js quand le mode « Salon » est choisi et qu'aucune session n'occupe le bloc
+// appele par music.js (renderTogether) a chaque rendu : formulaire « creer / rejoindre » dans la carte
+// Salon en ligne tant qu'on n'est dans aucun salon, page du salon (#roomBox) des qu'on y est.
 function roomPanel(st){
-  const box = $('roomBox');
-  if(!box) return;
+  const box = $('roomBox'), jbox = $('roomJoinBox');
+  if(!box || !jbox) return;
   const o = st.online || null;
   const R = roomInfo(st);
   const D = R ? R.room : null;
@@ -243,28 +339,166 @@ function roomPanel(st){
   const clock = (D && D.clock) || {};
   const sig = JSON.stringify([!!o, logged, o && o.server_ok, o && o.client_too_old, R && R.state, R && R.message, inRoom,
     D && D.code, D && D.state, D && D.connected, D && D.error, D && D.last_room, D && D.can_start, D && D.start_blocker,
-    D && D.song && [D.song.name, D.song.duration_ms], D && D.me, D && D.max_players,
-    D && (D.players || []).map(p => [p.id, p.name, p.instrument, p.host, p.connected, p.have_song, p.ready]),
+    D && D.song && [D.song.name, D.song.duration_ms, D.song.sha256, (D.song.tracks || []).length], D && D.me, D && D.max_players,
+    D && (D.players || []).map(p => [p.id, p.name, p.instrument, p.host, p.connected, p.have_song, p.ready, p.version]),
+    D && D.parts, D && D.my_part,
     clock.err_ms == null ? null : Math.round(clock.err_ms), clock.rtt_ms == null ? null : Math.round(clock.rtt_ms),
     st.instrument, st.instrument_id, (st.instruments || []).length, (st.hotkeys || {}).play_pause, o && o.room_url, I18N.lang]);
-  if(changed(box, sig)){
-    const wasTyping = document.activeElement && document.activeElement.classList
-      && document.activeElement.classList.contains('roomcode__in');
-    box.innerHTML = inRoom ? roomViewHtml(st, R, D, st.hotkeys) : roomJoinHtml(st, o, logged);
+  if(!changed(box, sig)) return;
+  const typing = document.activeElement && document.activeElement.classList
+    && document.activeElement.classList.contains('roomcode__in');
+  if(inRoom){
+    if(jbox.innerHTML) jbox.innerHTML = '';
+    box.innerHTML = roomViewHtml(st, R, D, st.hotkeys);
     const sb = box.querySelector('[data-act="start"]');
     if(sb) setAction(sb, {disabled: !D.can_start, reason: D.start_blocker || ''});
     roomWire(box);
-    if(wasTyping){
-      const inp = box.querySelector('.roomcode__in');
+    orchestraWire(box);
+    const oc = box.querySelector('.offsetctl');
+    if(oc){
+      const m = (st.settings && st.settings.multi) || {};
+      offsetCtl(oc, (D.net_offset_ms != null ? D.net_offset_ms : m.net_offset_ms) || 0);
+    }
+  } else {
+    box.innerHTML = '';
+    jbox.innerHTML = roomJoinHtml(st, o, logged);
+    roomWire(jbox);
+    if(typing){
+      const inp = jbox.querySelector('.roomcode__in');
       if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
     }
   }
-  const oc = box.querySelector('.offsetctl');
-  if(oc){
-    const m = (st.settings && st.settings.multi) || {};
-    offsetCtl(oc, (D && D.net_offset_ms != null ? D.net_offset_ms : m.net_offset_ms) || 0);
-  }
 }
+
+// ------------------------------------------------ barre de groupe (#groupBar)
+// Visible dans la bibliotheque et « Decouvrir » des qu'on est dans un salon ou que la synchro par le son est
+// activee : on voit toujours avec qui on joue, quel morceau, et on agit sans changer de page.
+function groupBar(st, mode, session){
+  const bar = $('groupBar');
+  if(!bar) return;
+  const R = roomInfo(st);
+  const D = R ? R.room : null;
+  const inRoom = mode === 'room' && !!(D && D.code);
+  const show = (inRoom || mode === 'audio') && MUSIC_VIEW !== 'together';
+  const hk = st.hotkeys || {};
+  const sig = JSON.stringify([show, mode, session, R && R.state, R && R.message, D && D.code, D && D.state,
+    D && D.song && D.song.name, D && D.me, D && D.can_start, D && D.start_blocker, D && D.my_part,
+    D && (D.players || []).map(p => [p.id, p.name, p.avatar, p.connected]),
+    ((st.settings || {}).multi || {}).player_id, hk.play_pause, MUSIC_VIEW, I18N.lang]);
+  if(!changed(bar, sig)) return;
+  bar.hidden = !show;
+  if(!show){ bar.innerHTML = ''; return; }
+  const f6 = `<kbd>${esc(hk.play_pause || 'F6')}</kbd>`;
+  const open = `<button class="btn btn--secondary btn--sm" type="button" data-gb="open">${esc(t('lobby.bar.open'))}${icon('chevron-right')}</button>`;
+  if(!inRoom){
+    const pid = ((st.settings || {}).multi || {}).player_id || 1;
+    bar.innerHTML = `<span class="groupbar__what">${icon('users')}${esc(t('music.together.audio.label'))}</span>
+      <span class="groupbar__part">${esc(t('lobby.bar.player_no', {n: pid}))}</span>
+      <div class="spacer"></div>${open}
+      <button class="btn btn--ghost btn--sm" type="button" data-gb="audio_off">${esc(t('music.together.audio_off'))}</button>`;
+  } else {
+    const players = D.players || [];
+    const faces = players.slice(0, 5).map(p => personHtml(p, 'avatar avatar--sm')).join('')
+      + (players.length > 5 ? `<span class="avatar avatar--sm avatar--ini">+${players.length - 5}</span>` : '');
+    const host = !!(D.me && D.me.host);
+    let act = '';
+    if(!session && D.state === 'lobby'){
+      const blocked = host && !D.can_start;
+      const label = host ? t('music.together.start_session') : (D.me && D.me.ready ? t('lobby.room.ready_cancel') : t('lobby.room.ready'));
+      act = `<button class="btn ${host || !(D.me && D.me.ready) ? 'btn--cta' : 'btn--secondary'} btn--sm" type="button" data-gb="main"${blocked ? ' disabled' : ''}
+        title="${esc(blocked ? (D.start_blocker || '') : '')}">${icon(host ? 'play' : 'check')}<span>${esc(label)}</span>${f6}</button>`;
+    }
+    const part = D.my_part ? `<span class="groupbar__part">${icon('note')}${esc(D.my_part)}</span>` : '';
+    bar.innerHTML = `<span class="groupbar__what">${icon('globe')}${esc(t('lobby.bar.room'))}</span>
+      <button class="groupbar__code" type="button" data-gb="code" title="${esc(t('lobby.room.copy_code'))}">${esc(D.code)}</button>
+      <span class="groupbar__faces" title="${esc(players.map(p => p.name || '').join(', '))}">${faces}</span>
+      <span class="groupbar__song">${icon('music')}<b>${esc(D.song ? (D.song.name || '') : t('lobby.room.song.none'))}</b></span>
+      ${part}
+      ${session || D.state !== 'lobby' ? `<span class="groupbar__part">${esc(R.message || '')}</span>` : ''}
+      <div class="spacer"></div>${act}${open}
+      <button class="btn btn--ghost btn--sm" type="button" data-gb="leave">${esc(t('lobby.room.leave'))}</button>`;
+  }
+  bar.querySelectorAll('[data-gb]').forEach(b => b.onclick = () => {
+    const x = b.dataset.gb;
+    if(x === 'open') showMusicView('together');
+    else if(x === 'leave') api('room_leave');
+    else if(x === 'audio_off') setPlayMode('solo');
+    else if(x === 'main') api('play_game');
+    else if(x === 'code'){ const r = roomInfo(S); copyText(r && r.room && r.room.code, t('lobby.room.code_copied')); }
+  });
+}
+
+// ------------------------------------------------ selecteur de morceau du salon (panneau)
+// Deux onglets : la bibliotheque locale (un morceau local est televerse pour le salon) et « Decouvrir » (morceau
+// partage). Choisir ferme le panneau et laisse l'utilisateur ou il etait : plus de detour par « Decouvrir ».
+const PICK = {tab: 'library', q: ''};
+function openSongPicker(opener){
+  PICK.q = '';
+  openPanel({title: t('lobby.picker.title'), wide: true, opener, html: pickerHtml(S), render: pickerHtml, wire: pickerWire});
+}
+function pickerOpen(){ return !!(PANEL && PANEL.render === pickerHtml && panelOpen()); }
+function pickerHtml(st){
+  const online = !!(st && st.online && st.online.server_ok !== false);
+  const lib = PICK.tab === 'library';
+  return `<div class="seg picker__tabs" role="tablist">
+      <button type="button" role="tab" data-pt="library" class="${lib ? 'active' : ''}" aria-selected="${lib}">${esc(t('shell.music.library'))}</button>
+      <button type="button" role="tab" data-pt="discover" class="${lib ? '' : 'active'}" aria-selected="${!lib}"${online ? '' : ' disabled'}>${esc(t('shell.music.discover'))}</button>
+    </div>
+    <label class="search picker__search">${icon('search')}
+      <input id="pickQ" value="${esc(PICK.q)}" placeholder="${esc(lib ? t('shell.music.search_ph') : t('shell.discover.search_ph'))}" aria-label="${esc(t('shell.music.search_aria'))}"></label>
+    <div class="picker__list" id="pickList">${pickerListHtml(st)}</div>
+    <p class="hint left">${esc(lib ? t('lobby.picker.library_hint') : t('lobby.picker.discover_hint'))}</p>`;
+}
+function pickerListHtml(st){
+  const D = ((roomInfo(st) || {}).room) || {};
+  const curSha = D.song && D.song.sha256;
+  if(PICK.tab === 'library'){
+    const q = norm(PICK.q);
+    const rows = (st.songs || []).filter(s => !q || norm(s.name).includes(q) || norm(s.file).includes(q))
+      .sort((a, b) => (b.fav - a.fav) || I18N.compare(a.name, b.name));
+    if(!rows.length) return `<p class="hint left">${esc(st.songs && st.songs.length ? t('music.library.empty.no_match') : t('lobby.picker.library_empty'))}</p>`;
+    return rows.map(s => `<button type="button" class="pickrow${curSha && s.sha256 === curSha ? ' is-current' : ''}" data-sid="${esc(s.id)}">
+        ${icon(s.fav ? 'star-fill' : 'music')}<span class="t">${esc(s.name)}</span><span class="m">${esc(fmt(s.duration))}</span></button>`).join('');
+  }
+  const lib = (st.online && st.online.library) || {};
+  const items = lib.items || [];
+  if(!items.length) return `<p class="hint left">${esc(lib.loading ? t('online.discover.loading') : t('online.discover.empty_prompt'))}</p>`;
+  return items.map(it => `<button type="button" class="pickrow" data-oid="${esc(it.id)}">
+      ${icon('globe')}<span class="t">${esc(it.title || t('online.discover.untitled'))}</span><span class="m">${esc(it.duration_s ? fmt(it.duration_s) : '')}</span></button>`).join('');
+}
+function pickerWire(box){
+  box.querySelectorAll('[data-pt]').forEach(b => b.onclick = () => {
+    PICK.tab = b.dataset.pt; PICK.q = '';
+    if(PICK.tab === 'discover' && typeof onlineSearchNow === 'function'){ ONL.q = ''; onlineSearchNow(1); }
+    refreshPanel();
+    const q = $('pickQ'); if(q) q.focus();
+  });
+  const q = $('pickQ');
+  if(q){
+    let timer = null;
+    q.oninput = () => {
+      PICK.q = q.value;
+      if(PICK.tab === 'library'){ html('pickList', pickerListHtml(S)); pickerWireRows(box); }
+      else { clearTimeout(timer); timer = setTimeout(() => { ONL.q = PICK.q; onlineSearchNow(1); }, 300); }
+    };
+    q.onkeydown = e => { e.stopPropagation(); if(e.key === 'Escape') closePanel(); };
+  }
+  pickerWireRows(box);
+}
+function pickerChosen(spec){
+  api('room_set_song', spec);
+  closePanel();
+  toast(t('online.discover.proposed_to_room'), 'ok');
+}
+function pickerWireRows(box){
+  box.querySelectorAll('[data-sid]').forEach(b => b.onclick = () => pickerChosen(b.dataset.sid));
+  box.querySelectorAll('[data-oid]').forEach(b => b.onclick = () => pickerChosen(Number(b.dataset.oid)));
+}
+// la liste suit l'etat (resultats en ligne, bibliotheque qui change) sans toucher au champ de saisie
+view('songPicker', {sig: st => pickerOpen() ? JSON.stringify([PICK.tab, PICK.q, (st.songs || []).length,
+  ((st.online || {}).library || {}).items, ((st.online || {}).library || {}).loading,
+  ((((roomInfo(st) || {}).room) || {}).song || {}).sha256]) : 'closed',
+  draw: st => { if(pickerOpen()){ html('pickList', pickerListHtml(st)); pickerWireRows($('panelBody')); } }});
 
 // ------------------------------------------------ bandeau de session (#musicSession) : compte a rebours et lecture
 // Rendu par music.js (renderSession) : meme composant que le Multi audio et le dessin.
@@ -288,6 +522,14 @@ function roomSessionSpec(st, R, hk){
             meta: t('lobby.session.meta', {code: D.code || '', n: players.length, clock: clockText(D.clock)}),
             actions: host ? [{label: t('lobby.session.cancel_all'), api: 'room_cancel'}]
                           : [{label: t('common.cancel'), kbd: stopKey, api: 'stop', cls: 'btn--secondary'}]};
+  }
+  if(R.state === 'lobby' && D.rejoin_pos != null){
+    // le salon joue encore sans nous (arret par erreur) : on reprend la ou en sont les autres
+    const dur = D.song && D.song.duration_ms ? D.song.duration_ms / 1000 : 0, pos = Math.min(D.rejoin_pos, dur || D.rejoin_pos);
+    return {role: t('lobby.session.rejoin_role'), text: (D.song && D.song.name) || '',
+            meta: `${code} · ${t('lobby.session.rejoin_meta', {key: hk.play_pause || 'F6'})}`,
+            progress: {pct: dur ? pos / dur * 100 : 0, left: fmt(pos), right: fmt(dur)},
+            actions: [{label: t('lobby.session.rejoin_btn'), icon: 'play', kbd: hk.play_pause || 'F6', api: 'room_rejoin', cls: 'btn--cta'}]};
   }
   if(R.state === 'playing'){
     const dur = st.duration || 0, pos = Math.min(st.position || 0, dur);

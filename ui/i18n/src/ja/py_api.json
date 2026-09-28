@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "ギャラリーには大きすぎる画像です（最大 512 KB）。",
   "api.gallery.png_invalid": "絵の画像を読み取れません。もう一度変換してください。",
   "api.gallery.deleted": "ギャラリーから絵を削除しました",
-  "api.gallery.reported": "報告を送信しました。ありがとうございます。モデレーターが確認します。"
+  "api.gallery.reported": "報告を送信しました。ありがとうございます。モデレーターが確認します。",
+  "api.draw.nothing_to_resume": "再開できる中断したお絵描きはありません",
+  "api.music.nothing_to_resume": "再開できる中断した曲はありません",
+  "api.music.resume_solo_only": "曲の再開はソロのみです。先にルームやグループセッションを抜けてください",
+  "support.save_failed": "レポートを保存できません：{error}",
+  "support.send_failed": "送信できません（{error}）：zip を保存して Discord で送ってください。"
 }

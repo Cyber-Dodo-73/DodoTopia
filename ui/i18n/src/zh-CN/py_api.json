@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "图片太大，无法发布到画廊（最大 512 KB）。",
   "api.gallery.png_invalid": "绘画图片无法读取：请重新转换。",
   "api.gallery.deleted": "已从画廊移除该画作",
-  "api.gallery.reported": "举报已发送：谢谢，管理员会查看。"
+  "api.gallery.reported": "举报已发送：谢谢，管理员会查看。",
+  "api.draw.nothing_to_resume": "没有可继续的中断绘画",
+  "api.music.nothing_to_resume": "没有可继续的中断乐曲",
+  "api.music.resume_solo_only": "只有单人模式才能继续乐曲：请先离开房间或多人会话",
+  "support.save_failed": "无法保存报告：{error}",
+  "support.send_failed": "无法发送（{error}）：请保存 zip 并通过 Discord 发送。"
 }

@@ -1,0 +1,20 @@
+{
+  "overlay.role.music": "演奏中",
+  "overlay.role.paused": "一時停止中",
+  "overlay.role.sync": "グループセッション",
+  "overlay.role.room": "ルーム {code}",
+  "overlay.role.room_without_you": "ルームはあなた抜きで演奏中",
+  "overlay.role.draw": "お絵描き",
+  "overlay.role.measure": "自動測定",
+  "overlay.seconds": "{n} s",
+  "overlay.players": "{n, plural, other {# 人}}",
+  "overlay.draw.starting": "お絵描きを開始します…",
+  "overlay.draw.cells": "{done} / {total} マス",
+  "overlay.hint.music": "{play} 一時停止 · {stop} 停止",
+  "overlay.hint.sync": "{stop} でキャンセル",
+  "overlay.hint.room_start": "楽器を開いたまま Heartopia にいてください",
+  "overlay.hint.room_host": "{stop} でルーム全体を停止",
+  "overlay.hint.room_guest": "{stop} で自分だけ停止（他の人は続行）",
+  "overlay.hint.rejoin": "{play}：みんなと再開",
+  "overlay.hint.draw": "{stop} で停止 · マウスに触れないで"
+}

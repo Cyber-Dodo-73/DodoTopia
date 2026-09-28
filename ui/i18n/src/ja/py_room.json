@@ -58,5 +58,11 @@
   "room.file.no_sha": "サーバーがこの曲のチェックサムを通知していません",
   "room.file.unavailable": "ルームのファイルを使えません：{error}",
   "room.file.unreadable": "ファイルを読み込めません：{error}",
-  "room.song.choose_failed": "曲を選べませんでした：{error}"
+  "room.song.choose_failed": "曲を選べませんでした：{error}",
+  "room.rejoin.unavailable": "演奏に戻れません：曲が終わった、まだ受信していない、またはルームの時計が準備できていません",
+  "room.parts.track_n": "トラック {n}",
+  "room.host_only.parts": "トラックを分担できるのはルームのホストだけです。",
+  "room.parts.no_tracks": "この曲には分担できるトラックがありません。",
+  "room.parts.server_old": "サーバーはまだオーケストラに対応していません：全員が曲全体を演奏します。",
+  "room.state.switch_to_game": "開始前に Heartopia をクリックしてください（楽器を開いた状態）"
 }

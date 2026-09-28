@@ -443,3 +443,43 @@ def test_sortie_midi_indisponible_arrete_l_ecoute_avec_une_raison(player, clock,
     player.play("preview")
     _run_to_end(player, clock)
     assert player.last_stop_reason == "midi_out_unavailable"
+
+
+
+# ================================================================ reprise d'un morceau interrompu
+def test_morceau_arrete_se_reprend_la_ou_il_s_est_arrete(player, clock, sent):
+    player.set_instrument("piano")
+    player.cfg["hold_mode"] = "tap"
+    _song(player, "long.mid", [(float(t), 60 + t, 0.2) for t in range(6)])
+    t0 = clock.perf_counter()
+    clock.at(t0 + 3.5, lambda: player.stop(reason="mouse"))
+    player.play("game")
+    _run_to_end(player, clock)
+    assert len([1 for k, up, t in sent if not up]) == 4          # notes de 0, 1, 2 et 3 s
+    info = player.resume_info()
+    assert info and info["name"] == "long" and abs(info["pos"] - 3.5) < 0.05, info
+    assert info["reason"] == "mouse"
+    # l'application redemarre : la reprise est relue sur le disque
+    p2 = core.Player(player.cfg, log=lambda m: None)
+    assert p2.resume_info()["pos"] == info["pos"]
+    sent.clear()
+    t1 = clock.perf_counter()
+    assert player.resume()
+    _run_to_end(player, clock)
+    ons = [t - t1 for keys, up, t in sent if not up]
+    # seules les notes de 4 et 5 s, jouees 0,5 et 1,5 s apres la reprise
+    assert len(ons) == 2 and abs(ons[0] - 0.5) < 0.03 and abs(ons[1] - 1.5) < 0.03, ons
+    assert player.resume_info() is None, "morceau fini : plus rien a reprendre"
+
+
+def test_pas_de_reprise_pour_un_arret_au_tout_debut_ni_pour_l_ecoute(player, clock, sent):
+    player.set_instrument("piano")
+    player.cfg["hold_mode"] = "tap"
+    _song(player, "court.mid", [(float(t), 60, 0.2) for t in range(6)])
+    t0 = clock.perf_counter()
+    clock.at(t0 + 1.0, lambda: player.stop(reason="mouse"))
+    player.play("game")
+    _run_to_end(player, clock)
+    assert player.resume_info() is None
+    player.forget_resume()
+    assert player.resume() is False

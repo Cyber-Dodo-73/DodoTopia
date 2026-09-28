@@ -7,7 +7,6 @@
   "help.topic.cook": "料理",
   "help.topic.keys": "ショートカット",
   "help.topic.fix": "トラブルシューティング",
-
   "help.start.intro": "DodoTopia はここで準備をしてから、Heartopia で代わりに実行します。キーを押したりクリックしたりするのは DodoTopia です。開始するときはゲームを起動しておいてください。",
   "help.start.activities.title": "3 つのアクティビティ",
   "help.start.activities.music": "<b>音楽</b>：ゲームの楽器で MIDI ファイルを演奏します。",
@@ -15,7 +14,6 @@
   "help.start.activities.cook": "<b>料理</b>：最後のレシピをくり返し料理します。",
   "help.start.activities.note": "音楽はインストール直後から使えます。お絵描きと料理は最初に一度だけ設定が必要です。",
   "help.start.glossary": "DodoTopia の用語",
-
   "help.gloss.midi.term": "MIDI ファイル (.mid)",
   "help.gloss.midi.def": "楽譜のようなもので、音符とその長さの一覧です。録音された音は含まれません。DodoTopia はそれをゲームの楽器のキーで再生します。",
   "help.gloss.listen.term": "試聴",
@@ -34,7 +32,6 @@
   "help.gloss.dither.def": "隣り合う 2 色をマスごとに交互に置き、パレットにない色合いを表現します。",
   "help.gloss.outline.term": "輪郭 + 塗りつぶし",
   "help.gloss.outline.def": "エリアの縁を鉛筆でなぞり、すべてのマスを塗る代わりに塗りつぶしを 1 回クリックして埋めます。",
-
   "help.music.import.title": "曲を読み込む",
   "help.music.import.s1": "音楽 › マイライブラリ › <b>読み込む</b>、または <code>.mid</code> ファイルをウィンドウにドロップします。",
   "help.music.import.s2": "ファイルは曲フォルダーにコピーされ、元のファイルはそのまま残ります。",
@@ -54,7 +51,6 @@
   "help.music.together.s2": "<b>音で同期</b>：ネットワーク不要。最初のプレイヤーが合図の音を鳴らし、他のプレイヤーがそれを検出します。",
   "help.music.together.s3": "<b>オンラインルーム</b>：6 文字のコードと、セッションを開始するホスト。",
   "help.music.together.note": "タイミングはお使いのマシンと接続状況によります。開始はできるかぎり揃えますが、完璧ではありません。",
-
   "help.draw.prepare.title": "画像を準備する",
   "help.draw.prepare.s1": "お絵描き › <b>画像を読み込む</b>（.png, .jpg, .gif, .bmp, .webp）。",
   "help.draw.prepare.s2": "プレビューには、ゲームのパレットの色を使ったマスごとの仕上がりが表示されます。",
@@ -69,7 +65,6 @@
   "help.draw.run.s1": "正しい形式の空のキャンバスを開き、鉛筆ツールを選択し、ズームはしないでください。",
   "help.draw.run.s2": "<b>Heartopia で描く</b>ボタン、または <kbd class=\"kbd\">{f6}</kbd>。その後はマウスに触れないでください。",
   "help.draw.run.note": "中断したお絵描きは止まったところから再開できます。同じキャンバスでもう一度開始すると、足りないマスだけが塗られます。",
-
   "help.cook.setup.title": "料理を設定する",
   "help.cook.setup.s1": "ゲーム内で、吹き出しが見える状態でコンロの前に立ちます。",
   "help.cook.setup.s2": "料理 › <b>料理を設定</b> を押し、手順に 1 つずつ従います。",
@@ -80,10 +75,8 @@
   "help.cook.run.s2": "<b>数量を指定</b>か<b>無制限</b>、そしてコンロの台数を選びます。",
   "help.cook.run.s3": "コンロの前に立ってから <kbd class=\"kbd\">{f6}</kbd>。",
   "help.cook.run.note": "ループ中は、<kbd class=\"kbd\">{f7}</kbd>、任意のキー、またはマウスを動かすとすべて停止します。",
-
   "help.keys.title": "グローバルショートカット",
   "help.keys.intro": "Heartopia が前面にあっても有効です。設定 › ショートカットで変更できます。",
-
   "help.fix.keys.q": "ゲームにキーが届かない",
   "help.fix.keys.a": "Heartopia がアクティブなウィンドウである必要があります。それでも届かない場合は、DodoTopia を管理者として再起動してください。",
   "help.fix.notes.q": "音が間違っている",
@@ -94,5 +87,27 @@
   "help.fix.cook.a": "コンロの前で「検出をテスト」を実行し、吹き出しのアイコンを撮り直してください。",
   "help.fix.stop.q": "今すぐすべて止めたい",
   "help.fix.stop.a": "<kbd class=\"kbd\">{f7}</kbd>、任意のキー、または左クリックで実行中の自動操作が止まります。",
-  "help.fix.open_logs": "ログを開く"
+  "help.fix.open_logs": "ログを開く",
+  "support.title": "レポートを送信",
+  "support.report_btn": "レポートを送信",
+  "support.intro": "うまく動きませんか？DodoTopia がログとキャプチャをレポートにまとめます。表示されるコードを DodoTopia の Discord に貼れば、ファイルを送らなくても内容を確認できます。",
+  "support.note_label": "何が起きましたか？",
+  "support.note_ph": "例：2台目のコンロが使われない、リュートがピアノについてこない…",
+  "support.audio": "音で同期の最新の録音を添付する",
+  "support.files": "レポートの内容：{n} ファイル、{size}",
+  "support.system_desc": "バージョン、システム、楽器、ゲームの状態",
+  "support.privacy": "送信されないもの：ログイントークン、曲のライブラリ、ニックネーム。ログ内の個人フォルダは伏せられます。レポートは30日後にサーバーから削除されます。",
+  "support.send": "送信",
+  "support.save": "zip を保存",
+  "support.saved": "レポートを保存しました：{name}",
+  "support.offline": "サーバーに接続できません：zip を保存して Discord で送ってください。",
+  "support.sent": "レポートを送信しました。コードはこちら：",
+  "support.sent_hint": "このコードを DodoTopia の Discord に貼って、問題を説明してください。",
+  "support.copy": "コードをコピー",
+  "support.copied": "コードをコピーしました",
+  "support.size_kb": "{n} KB",
+  "support.size_mb": "{n} MB",
+  "support.help_hint": "いちばん早くサポートを受ける方法：レポートに問題の把握に必要な情報がすべてまとまります。",
+  "support.about_hint": "ログとキャプチャ、Discord 用のコード付き",
+  "support.images": "料理のキャプチャを添付する（認識した吹き出しと最後のエラーの画像）"
 }

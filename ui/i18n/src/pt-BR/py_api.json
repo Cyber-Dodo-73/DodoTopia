@@ -107,5 +107,10 @@
   "api.gallery.png_too_big": "Imagem pesada demais para a galeria (no máximo 512 KB).",
   "api.gallery.png_invalid": "Imagem do desenho ilegível: converta de novo.",
   "api.gallery.deleted": "Desenho removido da galeria",
-  "api.gallery.reported": "Denúncia enviada: obrigado, um moderador vai verificar."
+  "api.gallery.reported": "Denúncia enviada: obrigado, um moderador vai verificar.",
+  "api.draw.nothing_to_resume": "Nenhum desenho interrompido para retomar",
+  "api.music.nothing_to_resume": "Nenhuma música interrompida para retomar",
+  "api.music.resume_solo_only": "Retomar uma música funciona no solo: saia antes da sala ou da sessão em grupo",
+  "support.save_failed": "Não foi possível salvar o relatório: {error}",
+  "support.send_failed": "Não foi possível enviar ({error}): salve o zip e envie pelo Discord."
 }

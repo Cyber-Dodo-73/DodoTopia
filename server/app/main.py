@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.gzip import DEFAULT_EXCLUDED_CONTENT_TYPES, GZipMiddleware
 
-from . import auth, db, gallery, importer, library, og, releases, rooms, site
+from . import admin, auth, db, diag_reports, gallery, importer, library, notify, og, releases, rooms, site, stats
 from .config import SERVER_VERSION, Settings
 from .ratelimit import RateLimiter
 from .rooms import RoomManager
@@ -29,6 +29,8 @@ log = logging.getLogger("dodo")
 CLEANUP_INTERVAL_S = 60
 # Envoi des binaires de release (jeton de publication) : corps volumineux streamé, exempté du plafond.
 BIG_BODY_PREFIXES = ("/api/admin/releases/",)
+# Plafonds propres à un chemin (au lieu du plafond ordinaire) : un rapport de diagnostic dépasse un MIDI.
+PATH_LIMITS = {"/api/diag-reports": lambda s: s.MAX_DIAG_REPORT_BYTES + s.REQUEST_OVERHEAD_BYTES}
 
 
 class BodySizeLimitMiddleware:
@@ -39,16 +41,20 @@ class BodySizeLimitMiddleware:
     compteur d'octets de `library.read_upload` arrive alors trop tard et le disque est déjà rempli.
     """
 
-    def __init__(self, app, max_bytes: int):
+    def __init__(self, app, max_bytes: int, path_limits: dict | None = None):
         self.app = app
-        self.max_bytes = max_bytes
+        self.default_bytes = max_bytes
+        self.path_limits = path_limits or {}
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope.get("path", "").startswith(BIG_BODY_PREFIXES):
             return await self.app(scope, receive, send)
+        return await self._limited(scope, receive, send, self.path_limits.get(scope.get("path", ""), self.default_bytes))
+
+    async def _limited(self, scope, receive, send, max_bytes):
         headers = {k.lower(): v for k, v in scope.get("headers", [])}
         declared = headers.get(b"content-length")
-        if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
+        if declared is not None and declared.isdigit() and int(declared) > max_bytes:
             return await self._too_large(send)
         seen = 0
 
@@ -59,9 +65,9 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message.get("type") == "http.request":
                 seen += len(message.get("body", b""))
-                if seen > self.max_bytes:
+                if seen > max_bytes:
                     log.warning("corps de requête tronqué (plus de %d octets) sur %s",
-                                self.max_bytes, scope.get("path"))
+                                max_bytes, scope.get("path"))
                     return {"type": "http.request", "body": b"", "more_body": False}
             return message
 
@@ -149,6 +155,11 @@ def cleanup_once(settings: Settings, limiter: RateLimiter) -> None:
             pass
     importer.purge_cache(settings)
     og.purge_cache(settings)
+    conn = db.connect(settings)
+    try:
+        diag_reports.purge(settings, conn)
+    finally:
+        conn.close()
     limiter.prune()
 
 
@@ -159,6 +170,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         db.init(settings)
         app.state.rooms.start()
+        app.state.notifier.start()
 
         async def cleanup_loop():
             while True:
@@ -167,6 +179,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     await asyncio.to_thread(cleanup_once, settings, app.state.ratelimiter)
                 except Exception:
                     log.exception("cleanup")
+                try:
+                    await asyncio.to_thread(admin.background_tick, app)
+                except Exception:
+                    log.exception("stats")
 
         task = asyncio.create_task(cleanup_loop())
         try:
@@ -174,6 +190,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             task.cancel()
             await app.state.rooms.stop()
+            try:   # les compteurs de la dernière minute ne sont pas perdus à l'arrêt
+                stats.flush(settings, app.state.stats)
+            except Exception:
+                log.exception("stats à l'arrêt")
+            app.state.notifier.stop()
 
     app = FastAPI(title="DodoTopia", version=SERVER_VERSION, lifespan=lifespan, docs_url=None, redoc_url=None)
     app.state.settings = settings
@@ -182,8 +203,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.site_cache = {}           # (page_id, lang) -> (expiration, html, etag) des pages du site
     app.state.stats_cache = None        # (expiration, dict) de GET /api/stats
     app.state.import_tokens = {}        # jeton -> fichier importé par lien (usage unique, 10 min)
+    app.state.stats = stats.Recorder()  # statistiques de l'espace admin (mémoire, vidées chaque minute)
+    app.state.notifier = notify.Notifier(settings)   # webhook Discord des admins
+    app.state.rooms.stats_app = app
 
-    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
+    app.add_middleware(stats.StatsMiddleware)                 # le plus interne : statut et type de la vraie réponse
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes,
+                       path_limits={p: f(settings) for p, f in PATH_LIMITS.items()})
     app.add_middleware(site.SecurityHeadersMiddleware, settings=settings)
     app.add_middleware(SelectiveGZipMiddleware, minimum_size=1024)   # compresse après les en-têtes, sauf fichiers
     app.add_middleware(HeadAsGetMiddleware)                    # le plus externe : HEAD = GET sans corps
@@ -192,12 +218,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.mount("/static", StaticFiles(directory=site.STATIC_DIR), name="static")
 
     app.include_router(auth.router)
+    app.include_router(admin.router)
     app.include_router(library.router)
     app.include_router(gallery.router)
     app.include_router(importer.router)
     app.include_router(og.router)
     app.include_router(releases.router)
     app.include_router(rooms.router)
+    app.include_router(diag_reports.router)
 
     # Chemins de l'API et des fichiers : erreurs JSON (contrat du client). Tout le reste : page 404 du site,
     # traduite, `noindex`.

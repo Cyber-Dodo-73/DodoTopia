@@ -146,6 +146,7 @@ kbd,.kbd{
 
 /* ================================================================ composant .chip (filtres, badges) */
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip.is-hidden,.chip:empty{display:none}
 .chip{
   display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:4px 12px;border-radius:var(--r-pill);font-size:var(--fs-xs);font-weight:700;
   background:var(--c-surface-2);border:2px solid var(--c-line);color:var(--c-text-2);cursor:pointer;white-space:nowrap;word-break:keep-all;
@@ -581,6 +582,8 @@ main.active{display:grid}
 main > .card{min-width:0}
 /* Musique : une page, trois destinations, une grille par destination */
 #pageMusic.active{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+/* barre de groupe visible : une rangée de plus entre la navigation et la page */
+#pageMusic.active:has(> .groupbar:not([hidden])){grid-template-rows:auto auto minmax(0,1fr)}
 .musicviews{display:grid;min-height:0;gap:14px;grid-column:1/-1}
 .musicview{display:none;min-height:0}
 .musicview.active{display:grid;gap:14px;min-height:0}
@@ -672,13 +675,22 @@ main > .card{min-width:0}
 .instsum{display:flex;align-items:center;gap:6px;padding:0 0 0 86px;margin-top:-4px;min-width:0}
 .instsum__txt{font-size:var(--fs-xs);color:var(--c-text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .instsum .linkbtn{flex:none;font-size:var(--fs-xs)}
-/* rappel discret : une session à plusieurs est armée */
-.moderecall{
-  display:inline-flex;align-items:center;gap:8px;align-self:flex-start;min-height:36px;padding:4px 12px;border-radius:var(--r-pill);
-  border:2px solid var(--c-info-line);background:var(--c-info-soft);color:var(--c-info);font:inherit;font-weight:700;font-size:var(--fs-sm);cursor:pointer
+/* barre de groupe : le salon (ou la synchro par le son) reste visible dans toute la Musique */
+.groupbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0;padding:8px 12px;border-radius:var(--r-lg);
+  border:2px solid var(--c-info-line);background:var(--c-info-soft);color:var(--c-text);font-size:var(--fs-sm)
 }
-.moderecall:hover{filter:brightness(1.03)}
-.moderecall__go{display:inline-flex;align-items:center;gap:2px;font-weight:600;text-decoration:underline}
+.groupbar[hidden]{display:none}
+.groupbar__what{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--c-info)}
+.groupbar__code{font-family:var(--font-mono);letter-spacing:2px;font-weight:700;color:var(--c-brand);background:var(--c-surface);border:1px dashed var(--c-line-2);border-radius:var(--r-md);padding:0 8px;cursor:pointer;font-size:var(--fs-sm);min-height:28px}
+.groupbar__faces{display:inline-flex;align-items:center}
+.groupbar__faces .avatar{margin-left:-6px;border:2px solid var(--c-surface)}
+.groupbar__faces .avatar:first-child{margin-left:0}
+.groupbar__song{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:280px;color:var(--c-text-2)}
+.groupbar__song b{color:var(--c-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.groupbar__part{display:inline-flex;align-items:center;gap:4px;color:var(--c-text-2)}
+.groupbar .spacer{flex:1}
+.groupbar .btn kbd{margin-left:4px}
 
 /* ================================================================ Jouer ensemble : méthodes et salon */
 .methods{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
@@ -695,6 +707,24 @@ main > .card{min-width:0}
 .method__nm{font-weight:700;font-size:var(--fs-md)}
 .method__tag{margin-left:6px;padding:1px 8px;border-radius:var(--r-pill);background:var(--c-primary-soft);color:var(--c-brand);font-size:var(--fs-xs);font-weight:700;vertical-align:middle;white-space:nowrap}
 .method__sub{font-size:var(--fs-sm);color:var(--c-text-2);line-height:1.45}
+.tcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:8px 0}
+.tcard{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:var(--r-lg);border:2px solid var(--c-line);background:var(--c-surface)}
+.tcard--main{border-color:var(--c-primary-line)}
+.tcard__head{display:flex;align-items:flex-start;gap:12px}
+.tcard__head h3{margin:0 0 2px;font-size:var(--fs-md)}
+.tcard__head .hint{margin:0;white-space:normal}
+.tcard .btnrow{justify-content:flex-start;margin:0}
+#roomJoinBox{display:flex;flex-direction:column;gap:6px}
+#roomJoinBox .hint{white-space:normal;text-align:left;margin:0}
+/* sélecteur de morceau du salon (panneau) */
+.picker__tabs{margin-bottom:8px}
+.picker__search{margin-bottom:8px;width:100%}
+.picker__list{display:flex;flex-direction:column;gap:4px;max-height:52vh;overflow:auto}
+.pickrow{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--r-md);border:1px solid var(--c-line);background:var(--c-surface);font:inherit;color:var(--c-text);text-align:left;cursor:pointer;width:100%}
+.pickrow:hover,.pickrow:focus-visible{border-color:var(--c-primary);background:var(--c-primary-soft)}
+.pickrow.is-current{border-color:var(--c-ok-line);background:var(--c-ok-soft)}
+.pickrow .t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pickrow .m{flex:none;font-size:var(--fs-xs);color:var(--c-text-2);font-variant-numeric:tabular-nums}
 #roomBox{display:flex;flex-direction:column;gap:6px}
 #roomBox .hint{white-space:normal;text-align:left;margin:0;overflow:visible}
 #roomBox .notice{padding:6px 10px}
@@ -724,6 +754,20 @@ main > .card{min-width:0}
 .roomplayer .bdg .ok{color:var(--c-ok)}
 .roomplayer .bdg .wait{color:var(--c-warn)}
 .roomplayer .bdg .off{color:var(--c-danger-text)}
+/* Orchestre : répartition des pistes par joueur */
+.orch{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--c-line);border-radius:var(--r-md);background:var(--c-surface)}
+.orch__head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.orch__head h4{display:flex;align-items:center;gap:6px;margin:0}
+.orch .hint{margin:0;white-space:normal;text-align:left}
+.orch__list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.orch__row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 6px;border-radius:var(--r-md)}
+.orch__row.is-me{background:var(--c-primary-soft)}
+.orch__who{display:flex;align-items:center;gap:6px;min-width:170px;flex:0 0 auto}
+.orch__who .nm{font-weight:600;font-size:var(--fs-sm)}
+.orch__who .ins{display:inline-flex;align-items:center;font-size:var(--fs-xs);color:var(--c-text-2)}
+.orch__tracks{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:0}
+.orch__chip{font-size:var(--fs-xs);min-height:28px}
+.orch__oct{flex:none}
 .insico{width:18px;height:18px;object-fit:contain;flex:none;margin-right:4px;display:inline-grid;place-items:center;color:var(--c-text-2)}
 .insico .ic{width:15px;height:15px}
 /* l'action principale du salon reste visible quand le panneau défile */
@@ -1051,6 +1095,10 @@ table.instkeys--tech code{font-size:var(--fs-xs);background:var(--c-surface-2);b
 .wiz__lead{display:flex;align-items:center;gap:14px}
 .wiz__lead h3{margin:0 0 4px;font-size:var(--fs-lg);font-weight:600;color:var(--c-text)}
 .wizbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wizear{margin-top:14px;padding:12px 14px;border:1px solid var(--c-line);border-radius:12px;display:flex;flex-direction:column;gap:8px}
+.wizear--main{border-color:var(--c-primary-line);background:var(--c-primary-soft)}
+.wizear h4{display:flex;align-items:center;gap:8px;margin:0}
+.wizear .notice{margin:0}
 .wizask{border:2px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-surface-2);padding:10px 14px 12px;margin:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .wizask legend{font-size:var(--fs-xs);color:var(--c-brand);font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:0 4px}
 .wizask .hint{flex:1 1 100%}
@@ -1227,6 +1275,26 @@ table.instkeys--tech code{font-size:var(--fs-xs);background:var(--c-surface-2);b
   .row__main{flex-basis:65%}
   .search .clr,.instfav,.instrowx{width:44px;height:44px}
 }
+/* ================================================================ apparitions (douces, dans l'esprit de Heartopia)
+   Uniquement sur ce qui APPARAIT (page, vue, fenetre, menu, message, barre) : une animation rejouee a chaque
+   redessin d'une liste la ferait clignoter. Tout est coupe par « mouvement reduit » ci-dessous. */
+@keyframes dodo-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes dodo-drop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes dodo-pop{0%{opacity:0;transform:scale(.94)}70%{opacity:1;transform:scale(1.015)}100%{opacity:1;transform:none}}
+@keyframes dodo-fade{from{opacity:0}to{opacity:1}}
+main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
+.musicview.active,.tcards,#roomBox:not([hidden]),#audioPanel:not([hidden]){animation:dodo-rise var(--dur-slow) var(--ease)}
+.musicview.active > .card:nth-child(2){animation:dodo-rise calc(var(--dur-slow) + 80ms) var(--ease) both}
+.overlay.open{animation:dodo-fade var(--dur) ease-out}
+.menu{animation:dodo-pop var(--dur) var(--ease);transform-origin:top right}
+.groupbar:not([hidden]),.card--session:not([hidden]){animation:dodo-drop var(--dur-slow) var(--ease)}
+.notice:not([hidden]),.btn__why:not([hidden]){animation:dodo-fade var(--dur-slow) ease-out}
+.welcome,.tcard,.instcard,.diagdone{animation:dodo-pop var(--dur-slow) var(--ease) both}
+.tcard + .tcard,.welcome .steps li:nth-child(2){animation-delay:60ms}
+.welcome .steps li:nth-child(3){animation-delay:120ms}
+.gamechip:not([hidden]),.runpill:not([hidden]),.pill:not([hidden]){animation:dodo-pop var(--dur-slow) var(--ease)}
+.disclosure[open] > .disclosure__body{animation:dodo-rise var(--dur) var(--ease)}
+.btn:active,.iconbtn:active{transform:translateY(1px) scale(.98)}
 /* mouvement réduit : aucune animation ni transition, aucun déplacement au survol */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
@@ -1265,6 +1333,9 @@ table.instkeys--tech code{font-size:var(--fs-xs);background:var(--c-surface-2);b
 #instRow > #btnTestNote{flex:none}
 /* pistes MIDI du morceau */
 .tracksblock{display:flex;flex-direction:column;gap:6px}
+.arrangeblock{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.arrangeblock > .seg{align-self:flex-start}
+.arrangeblock > .hint{text-align:left;margin:0}
 .tracksblock > .hint{text-align:left;margin:0}
 .tracks{display:flex;flex-direction:column;gap:4px}
 .track{display:flex;align-items:center;gap:10px;min-height:38px;padding:4px 10px;border-radius:var(--r-md,12px);border:1px solid var(--c-line);background:var(--c-surface);cursor:pointer;font-size:var(--fs-sm)}
@@ -1378,3 +1449,11 @@ table.instkeys--tech code{font-size:var(--fs-xs);background:var(--c-surface-2);b
 /* dessin : partage et note de grille ajoutent des lignes ; sur une fenêtre basse la zone défile au lieu de déborder */
 #drawWork{overflow-y:auto}
 #drawWork > .canvaswrap{flex:1 0 180px}
+
+/* ================================================================ Envoyer un rapport (support.js) */
+.diagnote{width:100%;resize:vertical;min-height:80px;font:inherit;margin:4px 0 8px}
+.check{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);margin:4px 0}
+.diagfiles{margin:0;padding-left:18px;font-size:var(--fs-sm);display:flex;flex-direction:column;gap:2px}
+.diagfiles .hint{margin-left:6px}
+.diagdone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
+.diagcode{font-size:var(--fs-xl)}

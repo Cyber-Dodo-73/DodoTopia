@@ -56,9 +56,7 @@
   "shell.discover.col_action": "การดำเนินการ",
   "shell.discover.prev_page": "หน้าก่อนหน้า",
   "shell.discover.next_page": "หน้าถัดไป",
-  "shell.together.back_solo": "กลับไปเล่นคนเดียว",
   "shell.together.intro": "สองวิธีในการเริ่มเพลงเดียวกันในเวลาเดียวกัน ทุกคนใช้เครื่องดนตรีของตัวเอง",
-  "shell.together.method_aria": "วิธี",
   "shell.together.room": "ห้องออนไลน์",
   "shell.together.recommended": "แนะนำ",
   "shell.together.room_sub": "รหัสหกตัวอักษรรวมผู้เล่นเข้าด้วยกัน เจ้าของห้องให้สัญญาณเริ่มผ่านเซิร์ฟเวอร์",
@@ -191,5 +189,6 @@
   "shell.gallery.sort.recent": "ล่าสุด",
   "shell.gallery.sort.popular": "ถูกใจมากที่สุด",
   "shell.gallery.refresh": "โหลดแกลเลอรีใหม่",
-  "shell.gallery.intro": "ภาพวาดที่ผู้เล่นแชร์ “วาดซ้ำ” จะโหลดกริดช่องเข้ากิจกรรมวาดภาพ พร้อมระบายใน Heartopia"
+  "shell.gallery.intro": "ภาพวาดที่ผู้เล่นแชร์ “วาดซ้ำ” จะโหลดกริดช่องเข้ากิจกรรมวาดภาพ พร้อมระบายใน Heartopia",
+  "shell.together.audio_on": "เปิดการซิงก์ด้วยเสียง"
 }

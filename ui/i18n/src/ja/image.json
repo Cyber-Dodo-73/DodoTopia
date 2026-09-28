@@ -131,5 +131,11 @@
   "image.gallery.loaded": "「{title}」を描く準備ができました。",
   "image.gallery.grid_sub": "ギャラリーのグリッド · {format} · {w} × {h} マス",
   "image.gallery.grid_note": "ギャラリーから取り込んだ変換済みのグリッドです。切り抜きと色は調整できません（{format}）。",
-  "image.gallery.grid_mismatch": "注意：この絵は {w} × {h} マスですが、{format} の範囲は {gw} × {gh} に設定されています。描く前に 設定 › お絵かき でグリッドを合わせてください。"
+  "image.gallery.grid_mismatch": "注意：この絵は {w} × {h} マスですが、{format} の範囲は {gw} × {gh} に設定されています。描く前に 設定 › お絵かき でグリッドを合わせてください。",
+  "image.run.resume_role": "お絵描きが中断されました",
+  "image.run.resume_text_named": "「{name}」（{format}）：止まったところから再開できます。",
+  "image.run.resume_text": "{format} のお絵描き：止まったところから再開できます。",
+  "image.run.resume_meta": "{done} / {total} マス塗り済み · 足りないマスだけを塗ります。Heartopia で絵を開いたままにしてください",
+  "image.run.resume_btn": "再開",
+  "image.run.resume_forget": "破棄"
 }

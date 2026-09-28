@@ -54,6 +54,7 @@ class StateMixin:
                 "online_id": m.get("online_id"),
                 "sha256": m.get("sha256"),
                 "tracks_off": list(m.get("tracks_off") or []),
+                "arrange": m.get("arrange"),
                 "source_url": m.get("source_url"),
                 "source_name": m.get("source_name"),
             })
@@ -129,7 +130,7 @@ class StateMixin:
         dcfg = self._cfg.get("draw") or {}
         ccfg = self._cfg.get("cook") or {}
         ocfg = online.ensure_defaults(self._cfg)
-        mode = self._cfg["multi"].get("mode", "solo")
+        mode = self._play_mode()
         ost = self._online.status()                 # copie sous verrou, aucune E/S reseau
         self._sync_update_toast(ost.get("update"))
         st = {
@@ -152,6 +153,7 @@ class StateMixin:
             "state": p.state,
             "target": p.target,
             "position": p.position(),
+            "resume": p.resume_info() if p.state == "stopped" else None,
             "duration": p.duration if p.state != "stopped" else (
                 p.song_duration(p.current()) if p.current() else 0.0),
             "speed": p.speed,
@@ -171,9 +173,10 @@ class StateMixin:
                 "preview_volume": int(self._cfg.get("preview_volume", 100)),
                 "keyboard_layout": self._cfg.get("keyboard_layout", "auto"),
                 "fold_out_of_range": bool(self._cfg.get("fold_out_of_range", True)),
-                "multi": {k: self._cfg["multi"].get(k) for k in
+                "arrange": self._cfg.get("arrange", "auto"),
+                "multi": {**{k: self._cfg["multi"].get(k) for k in
                           ("enabled", "mode", "name", "player_id", "countdown", "lead", "offset_ms", "net_offset_ms",
-                           "latency", "beacon_freqs", "tune", "device", "calib")},
+                           "latency", "beacon_freqs", "tune", "device", "calib")}, "mode": mode},
                 # valeurs affichees en contexte (page Image, panneau Multi, onglet Cuisine)
                 "draw": {k: dcfg.get(k, draw.DEFAULT_DRAW.get(k)) for k in
                          ("outline", "fill_background", "skip_white", "verify", "dense", "refine", "mouse_glide",

@@ -131,5 +131,11 @@
   "image.gallery.loaded": "《{title}》已可开始绘制。",
   "image.gallery.grid_sub": "画廊网格 · {format} · {w} × {h} 格",
   "image.gallery.grid_note": "来自画廊的网格已转换完成：无法调整取景和颜色（{format}）。",
-  "image.gallery.grid_mismatch": "注意：这幅画为 {w} × {h} 格，而你的 {format} 区域设置为 {gw} × {gh}。请先在 设置 › 绘画 中调整网格。"
+  "image.gallery.grid_mismatch": "注意：这幅画为 {w} × {h} 格，而你的 {format} 区域设置为 {gw} × {gh}。请先在 设置 › 绘画 中调整网格。",
+  "image.run.resume_role": "绘画已中断",
+  "image.run.resume_text_named": "“{name}”（{format}）：可以从停下的地方继续。",
+  "image.run.resume_text": "{format} 绘画：可以从停下的地方继续。",
+  "image.run.resume_meta": "已画 {done} / {total} 格 · 只会补画缺少的格子，请在 Heartopia 中保持该画作打开",
+  "image.run.resume_btn": "继续",
+  "image.run.resume_forget": "放弃"
 }

@@ -48,8 +48,8 @@ mimetypes.add_type("image/webp", ".webp")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 NONCE = "__NONCE__"                     # marqueur dans le HTML en cache, remplacé à chaque envoi
-LAST_UPDATE_ISO = "2026-09-17"          # dernière mise à jour du contenu rédigé (légal, aide) ; sitemap lastmod
-LAST_UPDATE = {"fr": "17 septembre 2026", "en": "September 17, 2026"}
+LAST_UPDATE_ISO = "2026-09-28"          # dernière mise à jour du contenu rédigé (légal, aide) ; sitemap lastmod
+LAST_UPDATE = {"fr": "28 septembre 2026", "en": "September 28, 2026"}
 STATIC_IMMUTABLE = "public, max-age=31536000, immutable"
 STATIC_SHORT = "public, max-age=86400"
 REDIRECT_CACHE = "public, max-age=3600"
@@ -72,6 +72,10 @@ MONTHS = {
               "novembro", "dezembro"),
     "th": ("มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน",
            "ตุลาคม", "พฤศจิกายน", "ธันวาคม"),
+    "id": ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober",
+           "November", "Desember"),
+    "fil": ("Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo", "Hulyo", "Agosto", "Setyembre", "Oktubre",
+            "Nobyembre", "Disyembre"),
 }
 
 # --------------------------------------------------------------------------------------------------
@@ -90,7 +94,7 @@ SITE_HOST = "dodotopia.cyber-dodo.fr"
 
 # --------------------------------------------------------------------------------------------------
 # Registre des pages : identifiant -> slug par langue (ASCII ; traduit pour fr/en/es/de/pt-BR, anglais pour
-# zh-CN/ja/th). L'accueil a le slug vide (`/{lang}/`).
+# zh-CN/ja/th/id/fil). L'accueil a le slug vide (`/{lang}/`).
 ROUTES: dict[str, dict[str, str]] = {
     "home": {"fr": "", "en": "", "es": "", "de": "", "pt-BR": ""},
     "music": {"fr": "musique", "en": "music", "es": "musica", "de": "musik", "pt-BR": "musica"},
@@ -184,8 +188,10 @@ def human_date(iso: str | None, lang: str = "fr") -> str:
         return f"{d.day}. {MONTHS['de'][month]} {d.year}"
     if lang in ("zh-CN", "ja"):
         return f"{d.year}年{d.month}月{d.day}日"
-    if lang == "th":
-        return f"{d.day} {MONTHS['th'][month]} {d.year}"
+    if lang in ("th", "id"):
+        return f"{d.day} {MONTHS[lang][month]} {d.year}"
+    if lang == "fil":
+        return f"{MONTHS['fil'][month]} {d.day}, {d.year}"
     return d.strftime("%Y-%m-%d")
 
 
@@ -783,7 +789,7 @@ def download_go(platform: str, request: Request):
         return _not_found(request)
     conn = db.connect(settings)
     try:
-        releases.count_download(conn, latest["version"], asset["filename"])
+        releases.count_download(conn, latest["version"], asset["filename"], request.app, "site")
     finally:
         conn.close()
     request.app.state.stats_cache = None

@@ -12,6 +12,7 @@ from collections import deque
 
 import webview
 
+import arrange
 import cook
 import core
 import draw
@@ -147,6 +148,40 @@ class LibraryMixin:
                 self._player.library.set_tracks_off(song_id, off)
             except (TypeError, ValueError):
                 pass
+            self._compat_key = None
+            self._compat_notes = None
+        return self.get_state()
+
+    def song_arrange_info(self, song_id):
+        """Original ou arrange pour ce morceau et l'instrument actif : choix du morceau, reglage general, et ce
+        que donne chaque version (notes jouees, part jouee a la hauteur exacte)."""
+        path = os.path.join(self._player.songs_folder, os.path.basename(str(song_id or "")))
+        if not os.path.isfile(path):
+            return {"ok": False, "error": i18n.t("api.song.not_found")}
+        p = self._player
+        inst = p.instrument
+        mode = p.song_arrange(path)
+        general = self._cfg.get("arrange", "auto")
+        out = {"ok": True, "mode": mode, "general": general, "instrument": inst.name,
+               "applies": bool(arrange.applies(inst, mode or general)), "original": None, "arranged": None}
+        if not inst.offset_to_key:
+            return out
+        try:
+            grouped = core.parse_midi(path, self._cfg, skip_tracks=p.song_skip_tracks(path))
+        except core.MidiRefused as e:
+            return {"ok": False, "error": str(e)}
+        for name, m in (("original", "off"), ("arranged", "on")):
+            _, info = core.fit_song(grouped, inst, self._cfg, mode=m)
+            played = max(0, info["notes"] - info["dropped"])
+            out[name] = {"notes": info["notes"], "played": played, "exact": info["exact"],
+                         "exact_pct": round(100 * info["exact"] / played) if played else 0}
+        return out
+
+    def set_song_arrange(self, song_id, mode):
+        """Arrangement de ce morceau : 'on' | 'off' | 'auto', ou None pour suivre le reglage general."""
+        sid = os.path.basename(str(song_id or ""))
+        if os.path.isfile(os.path.join(self._player.songs_folder, sid)):
+            self._player.library.set_arrange(sid, mode if mode in core.ARRANGE_MODES else None)
             self._compat_key = None
             self._compat_notes = None
         return self.get_state()

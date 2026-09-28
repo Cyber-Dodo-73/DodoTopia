@@ -1,0 +1,20 @@
+{
+  "overlay.role.music": "Música",
+  "overlay.role.paused": "En pausa",
+  "overlay.role.sync": "Sesión en grupo",
+  "overlay.role.room": "Sala {code}",
+  "overlay.role.room_without_you": "La sala toca sin ti",
+  "overlay.role.draw": "Dibujo",
+  "overlay.role.measure": "Medición automática",
+  "overlay.seconds": "{n} s",
+  "overlay.players": "{n, plural, one {# jugador} other {# jugadores}}",
+  "overlay.draw.starting": "El dibujo empieza…",
+  "overlay.draw.cells": "{done} / {total} casillas",
+  "overlay.hint.music": "{play} pausa · {stop} detener",
+  "overlay.hint.sync": "{stop} cancela",
+  "overlay.hint.room_start": "Quédate en Heartopia con el instrumento abierto",
+  "overlay.hint.room_host": "{stop} detiene toda la sala",
+  "overlay.hint.room_guest": "{stop} te detiene (los demás siguen)",
+  "overlay.hint.rejoin": "{play}: volver con los demás",
+  "overlay.hint.draw": "{stop} detiene · no toques el ratón"
+}

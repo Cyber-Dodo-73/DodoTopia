@@ -1,0 +1,20 @@
+{
+  "overlay.role.music": "เพลง",
+  "overlay.role.paused": "หยุดชั่วคราว",
+  "overlay.role.sync": "เซสชันกลุ่ม",
+  "overlay.role.room": "ห้อง {code}",
+  "overlay.role.room_without_you": "ห้องกำลังเล่นโดยไม่มีคุณ",
+  "overlay.role.draw": "วาดภาพ",
+  "overlay.role.measure": "วัดอัตโนมัติ",
+  "overlay.seconds": "{n} s",
+  "overlay.players": "{n, plural, other {# ผู้เล่น}}",
+  "overlay.draw.starting": "กำลังเริ่มวาด…",
+  "overlay.draw.cells": "{done} / {total} ช่อง",
+  "overlay.hint.music": "{play} หยุดชั่วคราว · {stop} หยุด",
+  "overlay.hint.sync": "{stop} ยกเลิก",
+  "overlay.hint.room_start": "อยู่ใน Heartopia และเปิดเครื่องดนตรีไว้",
+  "overlay.hint.room_host": "{stop} หยุดทั้งห้อง",
+  "overlay.hint.room_guest": "{stop} หยุดเฉพาะคุณ (คนอื่นเล่นต่อ)",
+  "overlay.hint.rejoin": "{play}: กลับไปเล่นกับคนอื่น",
+  "overlay.hint.draw": "{stop} หยุด · อย่าแตะเมาส์"
+}

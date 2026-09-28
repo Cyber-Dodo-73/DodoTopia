@@ -334,3 +334,70 @@ def test_stop_request_host_stops_everyone(tmp_path):
         wait_for(lambda: e.A.state == "lobby", what="lobby")
     finally:
         e.close()
+
+
+
+def test_rejoindre_la_lecture_apres_un_arret_par_erreur(tmp_path):
+    """B s'arrete par erreur (clic) pendant que A continue : B peut reprendre a la position de A, calee sur
+    le meme depart commun (et F6 fait pareil)."""
+    e = Env(tmp_path, play_duration=6.0)
+    try:
+        add_song(e.pA, "morceau.mid", notes=tuple(range(48, 80)))       # 8 s (le morceau par defaut fait 2 s)
+        e.lobby()
+        e.choose_song()
+        assert e.A.start()
+        wait_for(lambda: e.A.state == "playing" and e.B.state == "playing", timeout=3, what="lecture")
+        # le morceau a vraiment commence (un arret pendant le compte a rebours re-arme, c'est autre chose)
+        wait_for(lambda: e.server.room_of(e.A.code).state == "playing"
+                 and time.perf_counter() > e.pA.started_at + 0.5, timeout=5, what="morceau commence")
+        e.pB.stop(reason="mouse")
+        wait_for(lambda: e.B.state == "lobby", what="B arrete seul")
+        wait_for(lambda: e.B.status()["room"]["rejoin_pos"] is not None, what="B peut rejoindre")
+        assert e.server.room_of(e.A.code).state == "playing"
+        assert e.A.state == "playing"
+        assert e.B.rejoin(lead=0.2)
+        wait_for(lambda: e.B.state == "playing" and len(e.pB.play_calls) == 2, timeout=3, what="B rejoint")
+        deadline = e.pB.play_calls[-1][0]
+        # meme horloge que le depart commun : position = nouvelle echeance - depart de A
+        assert abs(e.pB.offset - (deadline - e.pA.started_at)) < 0.01, (e.pB.offset, deadline, e.pA.started_at)
+        assert e.pB.offset > 0.1
+        # F6 dans le lobby pendant la lecture rejoint aussi
+        e.pB.stop(reason="keyboard")
+        wait_for(lambda: e.B.state == "lobby" and e.B.status()["room"]["rejoin_pos"] is not None, what="B de nouveau seul")
+        assert e.B.on_f6()
+        wait_for(lambda: len(e.pB.play_calls) == 3, timeout=3, what="B rejoint par F6")
+    finally:
+        e.close()
+
+
+def test_rejoindre_impossible_sans_lecture_en_cours(env):
+    env.lobby()
+    env.choose_song()
+    assert env.B.status()["room"]["rejoin_pos"] is None
+    assert env.B.rejoin() is False
+
+
+def test_le_clic_qui_ramene_le_jeu_n_annule_pas_le_depart(tmp_path, monkeypatch):
+    """DodoTopia ne se reduit plus au depart : on clique sur le jeu pendant le compte a rebours. Ce clic (jeu
+    pas encore devant, ou devant depuis moins de CLICK_GRACE_S) n'annule pas le depart ; un clic plus tard,
+    jeu devant, l'annule comme avant."""
+    e = Env(tmp_path)
+    try:
+        e.lobby()
+        e.choose_song()
+        e.pB.cfg["stop_on_input"] = True
+        state = {"front": False, "click": False}
+        monkeypatch.setattr(roommod.platform_io, "game_in_front", lambda gp: state["front"])
+        monkeypatch.setattr(roommod, "mouse_button_down", lambda: state["click"])
+        assert e.A.start(countdown_s=3)
+        wait_for(lambda: e.B.state == "armed", what="B arme")
+        assert not e.pB.cfg.get("multi", {}).get("room_minimize")
+        state["click"] = True                      # clic sur la fenetre du jeu...
+        wait_for(lambda: "Heartopia" in e.B.message, what="message « clique sur Heartopia »")
+        state["front"] = True                      # ... qui passe devant
+        time.sleep(0.3)
+        state["click"] = False
+        assert e.B.state == "armed", "le clic qui ramene le jeu a annule le depart"
+        wait_for(lambda: e.pB.started_at is not None, timeout=5, what="B demarre")
+    finally:
+        e.close()

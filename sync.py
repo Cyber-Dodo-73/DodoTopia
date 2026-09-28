@@ -45,6 +45,7 @@ DEFAULT_MULTI = {
                                # derive de `enabled` pour les anciennes configs (ensure_defaults)
     "name": "",                # pseudo affiche dans les salons (vide = nom Discord ou « Joueur »)
     "net_offset_ms": 0,        # salon : avance (negatif) / retard du joueur en ms (-300..300)
+    "room_minimize": False,    # salon : reduire DodoTopia au depart (sinon il faut passer sur le jeu a la main)
     "last_room": "",           # salon : dernier code rejoint (pre-rempli dans l'interface)
     "player_id": 1,            # numero du joueur 1..5 : note d'identite du motif, creneau de compte a rebours
     "countdown": 10.0,         # secondes d'ecoute avant de devenir meneur (+0,3 s par numero)
@@ -80,6 +81,10 @@ def ensure_defaults(cfg):
     if m.get("mode") not in PLAY_MODES:
         # ancienne config (interrupteur Solo / Multi) ou valeur inconnue : derive de `enabled`
         m["mode"] = "audio" if m.get("enabled") else "solo"
+    if m["mode"] == "room":
+        # 2.1 : le salon n'est plus un mode memorise (il se deduit du salon rejoint) ; l'ancien reglage
+        # detournait F6 vers un salon deja quitte
+        m["mode"] = "solo"
     for k, v in DEFAULT_MULTI.items():
         m.setdefault(k, list(v) if isinstance(v, list) else v)
     try:

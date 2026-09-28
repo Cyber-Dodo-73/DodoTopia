@@ -13,6 +13,7 @@ entre deux positions tant que le bouton est enfoncé), pot de peinture (4-connex
 Les temporisations de draw.py sont divisées par 25 (fixture `rapide`) : les vraies séquences de clics sont
 jouées, en quelques secondes."""
 import math
+import os
 import threading
 import time
 
@@ -414,6 +415,95 @@ def test_reprise_apres_arret(jeu, rapide, monkeypatch):
     assert not manquantes(j, cells), d.logs
     assert j.fills == 1, "le fond a été rempli une seconde fois"
     assert j.wasted < 0.25 * en_place, f"la reprise a repeint {j.wasted} cases déjà en place (sur {en_place})"
+
+
+GRIS = flat(14, 7)         # (207, 201, 209) : se confond avec les rayures, invérifiable à l'écran
+
+
+def image_grise():
+    """image_test avec un bloc gris, couleur que l'écran ne permet pas de vérifier."""
+    cells = image_test()
+    for y in range(26, 36):
+        for x in range(40, 56):
+            cells[y * W + x] = GRIS
+    return cells
+
+
+def arrete_apres(monkeypatch, couleur):
+    """Arrête le dessin juste après les traits de `couleur`."""
+    vrai = draw.Drawer._paint_strokes
+
+    def coupe(self, k, *a, **kw):
+        r = vrai(self, k, *a, **kw)
+        if k == couleur:
+            self.stop("souris bougée")
+        return r
+    monkeypatch.setattr(draw.Drawer, "_paint_strokes", coupe)
+    return vrai
+
+
+def test_reprise_apres_redemarrage(jeu, rapide, monkeypatch, tmp_path):
+    """Arrêt, puis application relancée (nouveau Drawer, image plus chargée) : « Reprendre » relance l'image
+    enregistrée, ne remplit pas le fond une seconde fois et ne repeint pas les cases déjà peintes, y compris
+    celles d'une couleur que le jeu réel ne permet pas de vérifier à l'écran (ici le faux écran, sans bruit, la
+    lit quand même : le fichier de reprise est le filet de sécurité du vrai jeu)."""
+    chemin = str(tmp_path / "dessin_reprise.json")
+    j, d = jeu(dx=0.8, dy=1.0)
+    d.resume_path = chemin
+    d.draw_cfg["empty_colors"] = [list(c) for c in RAYURES]
+    cells = image_grise()
+    vrai = arrete_apres(monkeypatch, GRIS)
+    dessine(d, cells)
+    assert d.last_stop_reason == "souris bougée", d.logs[-5:]
+    assert manquantes(j, cells), "l'arrêt n'a rien laissé à reprendre"
+    assert all(j.cells[i] == GRIS for i, k in enumerate(cells) if k == GRIS)
+    monkeypatch.setattr(draw.Drawer, "_paint_strokes", vrai)
+
+    logs = []
+    d2 = draw.Drawer(d.cfg, log=logs.append, on_change=lambda: None, save=lambda: None, logfile=None,
+                     resume_path=chemin)
+    info = d2.resume_info()
+    assert info and 0 < info["done"] < info["total"], info
+    reprise = d2.resume_job()
+    assert reprise["cells"] == cells and reprise["format"] == "16:9"
+    j.wasted = 0
+    d2._last_toggle = 0.0
+    assert d2.start(reprise, delay=0.0)
+    d2._thread.join(timeout=120)
+    assert d2.last_stop_reason == "", (d2.message, logs[-5:])
+    assert "reprise" in d2.message, d2.message
+    assert not manquantes(j, cells), logs
+    assert j.fills == 1, "le fond a été rempli une seconde fois"
+    gris = sum(1 for k in cells if k == GRIS)
+    assert j.wasted < 0.1 * gris, f"{j.wasted} cases repeintes pour rien ({gris} cases grises)"
+    assert d2.resume_info() is None and not os.path.exists(chemin), "le dessin fini doit oublier la reprise"
+
+
+def test_reprise_toile_videe_repart_du_debut(jeu, rapide, monkeypatch, tmp_path):
+    """Fichier de reprise, mais la toile a été vidée dans le jeu depuis : tout est repeint, rien n'est sauté."""
+    chemin = str(tmp_path / "dessin_reprise.json")
+    j, d = jeu()
+    d.resume_path = chemin
+    cells = image_test()
+    vrai = arrete_apres(monkeypatch, JAUNE)
+    dessine(d, cells)
+    assert d.resume_info() and os.path.exists(chemin)
+    monkeypatch.setattr(draw.Drawer, "_paint_strokes", vrai)
+    j.cells = [-1] * (W * H)
+    j._dirty()
+    dessine(d, cells)
+    assert d.last_stop_reason == "", d.logs[-5:]
+    assert any(l.startswith("reprise impossible") for l in d.logs), d.logs
+    assert not manquantes(j, cells), d.logs
+    assert d.resume_info() is None
+
+
+def test_fichier_de_reprise_abime_ignore(tmp_path):
+    chemin = tmp_path / "dessin_reprise.json"
+    chemin.write_text("{pas du json", encoding="utf-8")
+    d = draw.Drawer(config(), log=lambda m: None, on_change=lambda: None, save=lambda: None, logfile=None,
+                    resume_path=str(chemin))
+    assert d.resume_info() is None and d.resume_job() is None
 
 
 def test_reprise_avec_fond_encore_vide(jeu, rapide):
