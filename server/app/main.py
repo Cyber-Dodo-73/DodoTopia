@@ -149,6 +149,7 @@ def cleanup_once(settings: Settings, limiter: RateLimiter) -> None:
             pass
     importer.purge_cache(settings)
     og.purge_cache(settings)
+    releases.purge_pings(settings)
     limiter.prune()
 
 

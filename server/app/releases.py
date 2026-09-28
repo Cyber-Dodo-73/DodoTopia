@@ -8,9 +8,10 @@ import hashlib
 import json
 import logging
 import re
+import secrets
 import shutil
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -20,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from . import db, indexnow
 from .auth import api_error, require_publish_token, settings_of
 from .config import Settings
-from .ratelimit import limit
+from .ratelimit import client_ip, limit
 from .schemas import PublishIn
 
 log = logging.getLogger("dodo.releases")
@@ -33,6 +34,9 @@ VERSION_RE = re.compile(r"^[0-9]+(\.[0-9]+){1,3}$")
 FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 STATS_CACHE_S = 60.0
+PINGS_KEEP_DAYS = 90                # installations actives : lignes et sel d'empreinte gardés au plus 90 jours
+SALT_FILE = "stats_salt"            # DATA_DIR/stats_salt : sel secret des empreintes (renouvelé avec les lignes)
+STATS_WINDOWS = (1, 7, 30)          # fenêtres « actives sur N jours » du tableau de bord
 
 
 def version_key(v: str) -> tuple[int, ...]:
@@ -115,6 +119,7 @@ def manifest(conn: db.Connection, settings: Settings, version: str) -> dict | No
             "sha256": a["sha256"],
             "size": a["size"],
             "downloads": a["downloads"],
+            "updates": a["updates"],
         }
     mandatory = bool(rel["mandatory"])
     return {"version": version, "published_at": rel["published_at"], "notes": rel["notes"] or "",
@@ -145,6 +150,8 @@ def latest(request: Request, current: str = "", platform: str = "", conn: db.Con
             raise api_error(422, "bad_version", "Paramètre current invalide.")
     m["update_available"] = update_available
     m["asset"] = m["assets"].get(platform) if platform else None
+    if current:
+        record_ping(request, conn, current, platform)
     return m
 
 
@@ -171,11 +178,125 @@ def _counts_as_download(range_header: str | None) -> bool:
     return re.sub(r"\s", "", range_header).lower() == "bytes=0-"
 
 
-def count_download(conn: db.Connection, version: str, filename: str) -> None:
-    """Un téléchargement de plus pour cet asset (compteur `release_assets.downloads`, publié par /api/stats)."""
-    conn.execute("UPDATE release_assets SET downloads = downloads + 1 WHERE version=? AND filename=?",
+def count_download(conn: db.Connection, version: str, filename: str, update: bool = False) -> None:
+    """Un téléchargement de plus pour cet asset (compteur `release_assets.downloads`, publié par /api/stats).
+    `update` : téléchargé par l'application pour se mettre à jour (`?via=update`) : compté aussi dans `updates`,
+    ce qui laisse `downloads - updates` = nouvelles installations (site, lien direct)."""
+    extra = ", updates = updates + 1" if update else ""
+    conn.execute(f"UPDATE release_assets SET downloads = downloads + 1{extra} WHERE version=? AND filename=?",
                  (version, filename))
     conn.commit()
+
+
+# --- Installations actives ------------------------------------------------------------
+#
+# Chaque application interroge `/api/releases/latest?current=<version>&platform=…` au démarrage. On en garde
+# une trace anonyme : par jour, une ligne par empreinte = SHA-256(sel secret | adresse IP), tronqué. Le sel vit
+# dans DATA_DIR (jamais dans la base ni dans le dépôt) et change tous les PINGS_KEEP_DAYS jours ; l'adresse n'est
+# pas conservée et une empreinte ne peut pas être ramenée à une adresse sans le sel. Deux installations derrière
+# la même adresse comptent pour une, une adresse qui change compte deux fois : c'est un ordre de grandeur.
+
+def _today() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def ping_salt(settings: Settings) -> bytes:
+    """Sel secret des empreintes, créé au premier usage, renouvelé après PINGS_KEEP_DAYS jours."""
+    path = settings.data_dir / SALT_FILE
+    try:
+        if path.is_file() and path.stat().st_mtime > time.time() - PINGS_KEEP_DAYS * 86400:
+            data = path.read_bytes()
+            if len(data) >= 32:
+                return data
+    except OSError:
+        pass
+    data = secrets.token_bytes(32)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    except OSError:
+        log.exception("sel des empreintes non enregistré")
+    return data
+
+
+def record_ping(request: Request, conn: db.Connection, version: str, platform: str) -> None:
+    """Une installation vue aujourd'hui (empreinte anonyme) ; ne fait jamais échouer la vérification de mise à jour."""
+    settings = settings_of(request)
+    ip = client_ip(request)
+    fp = hashlib.sha256(ping_salt(settings) + b"|" + ip.encode("utf-8", "replace")).hexdigest()[:32]
+    try:
+        conn.execute("INSERT INTO install_pings (day, fp, version, platform) VALUES (?, ?, ?, ?) "
+                     "ON CONFLICT (day, fp) DO UPDATE SET version=excluded.version, platform=excluded.platform",
+                     (_today(), fp, version[:32], (platform or "?")[:32]))
+        conn.commit()
+    except Exception:  # noqa - base indisponible ou verrouillée : la réponse part quand même
+        log.exception("installation active non enregistrée")
+
+
+def purge_pings(settings: Settings) -> None:
+    """Efface les lignes de plus de PINGS_KEEP_DAYS jours (appelé par le nettoyage périodique)."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=PINGS_KEEP_DAYS)).strftime("%Y-%m-%d")
+    conn = db.connect(settings)
+    try:
+        conn.execute("DELETE FROM install_pings WHERE day < ?", (cutoff,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _since(days: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+
+
+def _latest_state(conn: db.Connection, since: str) -> list[db.Row]:
+    """(version, platform, n) des installations vues depuis `since`, chacune comptée sur sa dernière apparition
+    (une installation mise à jour dans la fenêtre ne compte que pour sa version actuelle)."""
+    return conn.execute(
+        "SELECT p.version AS version, p.platform AS platform, COUNT(*) AS n FROM install_pings p "
+        "JOIN (SELECT fp, MAX(day) AS d FROM install_pings WHERE day >= ? GROUP BY fp) m "
+        "ON m.fp = p.fp AND m.d = p.day GROUP BY p.version, p.platform", (since,)).fetchall()
+
+
+def usage_stats(conn: db.Connection, settings: Settings) -> dict:
+    """Tableau de bord de l'éditeur : la dernière version d'abord (téléchargements nouveaux / mises à jour par
+    plateforme, installations actives qui la font tourner), puis l'ensemble des installations actives par
+    version et par plateforme, et le détail des 30 derniers jours."""
+    versions = published_versions(conn)
+    latest = manifest(conn, settings, versions[0]) if versions else None
+    windows = {}
+    for days in STATS_WINDOWS:
+        rows = _latest_state(conn, _since(days))
+        total = sum(int(r["n"]) for r in rows)
+        on_latest = sum(int(r["n"]) for r in rows if latest and r["version"] == latest["version"])
+        by_version: dict[str, int] = {}
+        by_platform: dict[str, int] = {}
+        for r in rows:
+            by_version[r["version"]] = by_version.get(r["version"], 0) + int(r["n"])
+            by_platform[r["platform"]] = by_platform.get(r["platform"], 0) + int(r["n"])
+        windows[f"{days}d"] = {"installs": total, "on_latest": on_latest,
+                               "by_version": dict(sorted(by_version.items(), key=lambda kv: -kv[1])),
+                               "by_platform": dict(sorted(by_platform.items(), key=lambda kv: -kv[1]))}
+    days = conn.execute("SELECT day, COUNT(*) AS n, SUM(CASE WHEN version = ? THEN 1 ELSE 0 END) AS on_latest "
+                        "FROM install_pings WHERE day >= ? GROUP BY day ORDER BY day",
+                        (latest["version"] if latest else "", _since(30))).fetchall()
+    first = conn.execute("SELECT MIN(day) AS d FROM install_pings").fetchone()
+    out = {"generated_at": db.now_iso(), "recording_since": (first["d"] if first else None) or None,
+           "latest": None, "active_installs": windows,
+           "days": [{"day": r["day"], "installs": int(r["n"]), "on_latest": int(r["on_latest"] or 0)}
+                    for r in days],
+           "note": "Une installation = une adresse IP (empreinte salée, renouvelée tous les "
+                   f"{PINGS_KEEP_DAYS} jours) vue par la vérification de mise à jour : ordre de grandeur, "
+                   "pas un décompte exact. downloads - updates = nouvelles installations."}
+    if latest:
+        assets = {}
+        for platform, a in latest["assets"].items():
+            dl, up = int(a.get("downloads") or 0), int(a.get("updates") or 0)
+            assets[platform] = {"downloads": dl, "updates": up, "new": dl - up}
+        out["latest"] = {"version": latest["version"], "published_at": latest["published_at"], "assets": assets,
+                         "downloads": sum(a["downloads"] for a in assets.values()),
+                         "new_installs": sum(a["new"] for a in assets.values()),
+                         "active_installs": {k: v["on_latest"] for k, v in windows.items()}}
+    return out
 
 
 @router.get("/dl/{version}/{filename}", dependencies=[Depends(limit("dl", 10, 60))])
@@ -184,7 +305,8 @@ def download_asset(version: str, filename: str, request: Request, via: str = "",
     """Binaires publiés, servis par l'API (FileResponse : Range/206 et ETag gérés par Starlette).
 
     `?via=site` : la page de téléchargement du site passe par `/telecharger/go/<plateforme>`, qui a déjà compté
-    ce téléchargement avant de rediriger ici — on ne le compte pas deux fois.
+    ce téléchargement avant de rediriger ici — on ne le compte pas deux fois. `?via=update` : mise à jour
+    automatique lancée par l'application, comptée à part (`updates`).
     """
     check_version(version)
     if not FILENAME_RE.match(filename):
@@ -193,7 +315,7 @@ def download_asset(version: str, filename: str, request: Request, via: str = "",
     if not path.is_file():
         raise api_error(404, "not_found", "Fichier inconnu.")
     if request.method != "HEAD" and via != "site" and _counts_as_download(request.headers.get("Range")):
-        count_download(conn, version, filename)
+        count_download(conn, version, filename, update=(via == "update"))
     return FileResponse(path, media_type="application/octet-stream", filename=filename,
                         headers={"Cache-Control": "public, max-age=3600"})
 
@@ -230,6 +352,12 @@ def stats(request: Request):
 
 
 # --- Publication (jeton) ---------------------------------------------------------
+
+@router.get("/api/admin/stats", dependencies=[Depends(require_publish_token)])
+def admin_stats(request: Request, conn: db.Connection = Depends(db.get_db)):
+    """Usage réel, réservé à l'éditeur (jeton de publication) : `curl -H "X-Publish-Token: …" …/api/admin/stats`."""
+    return JSONResponse(usage_stats(conn, settings_of(request)), headers={"Cache-Control": "no-store"})
+
 
 @router.get("/api/admin/releases/check", dependencies=[Depends(require_publish_token)])
 def check_token():

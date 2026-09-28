@@ -1039,6 +1039,9 @@ class Updater:
     def _download(self):
         asset = self.asset
         url = str(asset["url"])
+        # `via=update` : le serveur compte ce telechargement comme une mise a jour, pas comme une nouvelle
+        # installation (le fichier, son nom et son empreinte sont les memes).
+        url += ("&" if "?" in url else "?") + "via=update"
         name = os.path.basename(urllib.parse.urlparse(url).path) or f"DodoTopia-{self.latest}"
         name = "".join(ch for ch in name if ch.isalnum() or ch in "._-") or "update.bin"
         dest = os.path.join(self.updates_dir, name)

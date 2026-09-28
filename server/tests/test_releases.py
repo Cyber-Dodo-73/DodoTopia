@@ -1,8 +1,12 @@
 """Dépôt d'assets, publication, manifeste, latest/update_available, téléchargement de secours."""
 import hashlib
+import os
+import time
+from datetime import datetime, timezone
 
 import pytest
 
+from app import db, releases
 from app.releases import version_key
 
 
@@ -95,3 +99,102 @@ def test_put_bad_sha_and_headers(client, publish_headers, settings):
     assert put(client, publish_headers, "1.7.0", "mac", b"abc").status_code == 422
     assert put(client, publish_headers, "1.7.0", "windows-setup", b"abc", "../evil.exe").status_code == 422
     assert put(client, publish_headers, "v1", "windows-setup", b"abc", "a.exe").status_code == 422
+
+
+# --- Usage réel : mises à jour comptées à part, installations actives, tableau de bord ------------------
+
+def _publish(client, publish_headers, version="2.0.2"):
+    put(client, publish_headers, version, "windows-setup", b"S" * 2000, f"DodoTopia-{version}-Setup.exe")
+    put(client, publish_headers, version, "linux-x64", b"L" * 2000, f"DodoTopia-{version}-linux-x64.tar.gz")
+    r = client.post(f"/api/admin/releases/{version}/publish", headers=publish_headers, json={"notes": "n"})
+    assert r.status_code == 200, r.text
+
+
+def test_update_downloads_are_counted_apart(client, publish_headers):
+    _publish(client, publish_headers)
+    url = "/dl/2.0.2/DodoTopia-2.0.2-Setup.exe"
+    assert client.get(url).status_code == 200                          # lien direct : nouvelle installation
+    assert client.get(url + "?via=update").status_code == 200          # l'application se met à jour
+    assert client.get(url + "?via=update").status_code == 200
+    assert client.head(url + "?via=update").status_code == 200         # HEAD : jamais compté
+    asset = client.get("/api/releases/latest").json()["assets"]["windows-setup"]
+    assert (asset["downloads"], asset["updates"]) == (3, 2)
+    stats = client.get("/api/admin/stats", headers=publish_headers).json()
+    assert stats["latest"]["assets"]["windows-setup"] == {"downloads": 3, "updates": 2, "new": 1}
+    assert stats["latest"]["downloads"] == 3 and stats["latest"]["new_installs"] == 1
+    assert client.get("/api/stats").json()["downloads_total"] == 3   # le compteur public reste le total
+
+
+def test_update_checks_count_active_installs_anonymously(client, publish_headers, settings):
+    _publish(client, publish_headers)
+    assert client.get("/api/admin/stats").status_code == 403
+    empty = client.get("/api/admin/stats", headers=publish_headers).json()
+    assert empty["active_installs"]["30d"] == {"installs": 0, "on_latest": 0, "by_version": {}, "by_platform": {}}
+    assert empty["recording_since"] is None and empty["days"] == []
+
+    # une adresse sous Linux, en 2.0.1 (le client de test ne transmet pas X-Forwarded-For : sans proxy, cette
+    # ligne porte la même empreinte que les suivantes et sera remplacée par la dernière vue ; derrière Traefik,
+    # `--proxy-headers` donne l'adresse réelle et ce serait une deuxième installation)
+    r = client.get("/api/releases/latest", params={"current": "2.0.1", "platform": "linux-x64"},
+                   headers={"X-Forwarded-For": "203.0.113.9"})
+    assert r.status_code == 200
+    # la même installation vérifie trois fois dans la journée, d'abord en 2.0.1 puis en 2.0.2 : une seule ligne
+    for current in ("2.0.1", "2.0.1", "2.0.2"):
+        r = client.get("/api/releases/latest", params={"current": current, "platform": "windows-setup"})
+        assert r.status_code == 200
+    # sans `current` (navigateur curieux) : rien n'est enregistré
+    assert client.get("/api/releases/latest").status_code == 200
+
+    conn = db.connect(settings)
+    try:
+        rows = conn.execute("SELECT day, fp, version, platform FROM install_pings ORDER BY fp").fetchall()
+    finally:
+        conn.close()
+    assert len(rows) in (1, 2)
+    for row in rows:
+        assert len(row["fp"]) == 32 and "testclient" not in row["fp"] and "203.0.113.9" not in row["fp"]
+        assert row["day"] == datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    mine = [r for r in rows if r["platform"] == "windows-setup"]
+    assert len(mine) == 1 and mine[0]["version"] == "2.0.2"     # dernière version vue : la 2.0.2
+
+    stats = client.get("/api/admin/stats", headers=publish_headers).json()
+    for window in ("1d", "7d", "30d"):
+        w = stats["active_installs"][window]
+        assert w["installs"] == len(rows) and w["on_latest"] == 1
+        assert w["by_version"]["2.0.2"] == 1 and w["by_platform"]["windows-setup"] == 1
+    assert stats["latest"]["version"] == "2.0.2" and stats["latest"]["active_installs"]["7d"] == 1
+    assert stats["days"] == [{"day": rows[0]["day"], "installs": len(rows), "on_latest": 1}]
+    assert stats["recording_since"] == rows[0]["day"]
+    # le sel est un secret du serveur, hors base, et l'empreinte change avec lui
+    salt = settings.data_dir / releases.SALT_FILE
+    assert salt.is_file() and len(salt.read_bytes()) == 32
+
+
+def test_pings_are_purged_and_salt_renewed(client, publish_headers, settings):
+    _publish(client, publish_headers)
+    client.get("/api/releases/latest", params={"current": "2.0.2", "platform": "windows-setup"})
+    conn = db.connect(settings)
+    try:
+        conn.execute("INSERT INTO install_pings (day, fp, version, platform) VALUES (?, ?, ?, ?)",
+                     ("2020-01-01", "x" * 32, "1.0.0", "windows-setup"))
+        conn.commit()
+    finally:
+        conn.close()
+    releases.purge_pings(settings)
+    conn = db.connect(settings)
+    try:
+        days = [r["day"] for r in conn.execute("SELECT day FROM install_pings").fetchall()]
+    finally:
+        conn.close()
+    assert days == [datetime.now(timezone.utc).strftime("%Y-%m-%d")]
+    salt = settings.data_dir / releases.SALT_FILE
+    before = salt.read_bytes()
+    old = time.time() - (releases.PINGS_KEEP_DAYS + 1) * 86400
+    os.utime(salt, (old, old))
+    assert releases.ping_salt(settings) != before                 # sel périmé : renouvelé
+    assert salt.read_bytes() == releases.ping_salt(settings)      # puis stable
+
+
+def test_stats_endpoint_without_any_release(client, publish_headers):
+    stats = client.get("/api/admin/stats", headers=publish_headers).json()
+    assert stats["latest"] is None and stats["active_installs"]["1d"]["installs"] == 0

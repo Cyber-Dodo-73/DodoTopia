@@ -276,6 +276,20 @@ MIGRATIONS = [
     ALTER TABLE reports_new RENAME TO reports;
     """,
     },
+    # v4 (usage réel) : part des téléchargements qui sont des mises à jour automatiques (`?via=update`), et
+    # installations actives : une ligne par jour et par empreinte d'installation (condensé salé de l'adresse IP,
+    # jamais l'adresse), avec la version et la plateforme vues en dernier ce jour-là. Purgée après PINGS_KEEP_DAYS.
+    """
+    ALTER TABLE release_assets ADD COLUMN updates INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE install_pings (
+        day      TEXT NOT NULL,
+        fp       TEXT NOT NULL,
+        version  TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        PRIMARY KEY (day, fp)
+    );
+    CREATE INDEX install_pings_day ON install_pings(day);
+    """,
 ]
 
 # Postgres seulement, hors numérotation : recherche par trigrammes (`LIKE '%mot%'` sur titre/artiste). L'extension
@@ -287,7 +301,7 @@ POSTGRES_OPTIONAL = [
     "CREATE INDEX IF NOT EXISTS songs_artist_trgm ON songs USING GIN (LOWER(artist) gin_trgm_ops)",
 ]
 
-TABLES = ("release_assets", "releases", "song_likes", "drawing_likes", "reports", "drawings", "songs", "login_tickets",
+TABLES = ("install_pings", "release_assets", "releases", "song_likes", "drawing_likes", "reports", "drawings", "songs", "login_tickets",
           "sessions", "users", "schema_version")
 
 _DDL_TYPES = {

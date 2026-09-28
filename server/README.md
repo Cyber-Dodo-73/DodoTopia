@@ -170,6 +170,19 @@ pour réessayer à la publication suivante). X et Bluesky sont annoncés par la 
 step de `release.yml`, secrets GitHub `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`,
 `BSKY_HANDLE`, `BSKY_APP_PASSWORD` ; chaque réseau est ignoré si ses secrets manquent ; `--dry-run` pour relire).
 
+**Usage réel (téléchargements, installations actives).** `GET /api/stats` (public) donne le total des
+téléchargements ; `GET /api/releases` le détail par version et par fichier, avec `updates` = part téléchargée par
+l'application pour se mettre à jour (`/dl/…?via=update`, envoyé par les versions ≥ 2.0.3) : `downloads - updates`
+= nouvelles installations. Les installations actives viennent de la vérification de mise à jour
+(`/api/releases/latest?current=…&platform=…`) : par jour, une ligne `install_pings` par empreinte
+SHA-256(sel | adresse IP) tronquée, jamais l'adresse ; le sel est dans `DATA_DIR/stats_salt` (hors base, renouvelé
+tous les 90 jours) et les lignes de plus de 90 jours sont purgées par le nettoyage périodique. Tableau de bord
+réservé à l'éditeur : `curl -H "X-Publish-Token: $PUBLISH_TOKEN" https://dodotopia.cyber-dodo.fr/api/admin/stats`
+→ `latest` (version, téléchargements nouveaux / mises à jour par plateforme, installations actives sur 1, 7 et
+30 jours qui la font tourner), `active_installs` par fenêtre, par version et par plateforme (chaque installation
+comptée sur sa dernière version vue), `days` (30 derniers jours). Ordre de grandeur : une adresse partagée compte
+pour une, une adresse qui change compte deux fois. La page Confidentialité décrit ce compteur (section 3).
+
 **Présentation dans les résultats.** Le nom du site vient du nœud JSON-LD `WebSite` (`name` DodoTopia, `url` = la
 racine `PUBLIC_URL/`), servi identique sur toutes les pages : la racine redirige (302, `Vary: Accept-Language`) vers
 un accueil traduit, et Google lit le nom sur la page d'accueil du sous-domaine après redirection. L'éditeur est un
