@@ -207,15 +207,26 @@ def run_seo() -> dict:
                 if len(r.content) >= MAX_HTML:
                     err(path, "html_size", f"{len(r.content)} octets")
                 types = []
+                websites = []
                 for block in p.ld:
                     try:
                         data = json.loads(block)
-                        types.append(data.get("@type"))
                     except ValueError as exc:
                         err(path, "json_ld", str(exc))
+                        continue
+                    for node in data.get("@graph", [data]):        # le site et son éditeur partagent un script
+                        types.append(node.get("@type"))
+                        if node.get("@type") == "WebSite":
+                            websites.append(node)
                 info["json_ld"] = types
                 if "Organization" not in types:
                     err(path, "json_ld_organization")
+                # nom du site (Google « site names ») : un seul nœud WebSite, nom de la marque, url = racine du site
+                if len(websites) != 1 or websites[0].get("name") != "DodoTopia" \
+                        or websites[0].get("url") != f"{BASE}/":
+                    err(path, "json_ld_website", json.dumps(websites, ensure_ascii=False)[:200])
+                if "max-image-preview:large" not in p.meta.get("robots", ""):
+                    err(path, "robots_image_preview", p.meta.get("robots", ""))
                 if page_id != "home" and "BreadcrumbList" not in types:
                     err(path, "json_ld_breadcrumb")
                 if page_id in ("home", "download") and "SoftwareApplication" not in types:

@@ -383,13 +383,12 @@ p.small{font-size:14px;margin:20px 0 0}"""
 
 def _shell(title: str, inner: str, status: int) -> HTMLResponse:
     # Favicon et logo : l'onglet du navigateur rattache visuellement ces pages à DodoTopia, au moment le plus
-    # sensible du parcours.
+    # sensible du parcours. Mêmes icônes que le site (import tardif : site.py importe releases, qui importe auth).
+    from . import site
     html = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>DodoTopia – {escape(title)}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<link rel="icon" href="/static/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="/static/logo.png">
-<style>{_PAGE_STYLE}</style></head>
+{site.icon_links()}<style>{_PAGE_STYLE}</style></head>
 <body><main><img src="/static/logo.png" width="72" height="72" alt="DodoTopia">{inner}</main></body></html>"""
     return HTMLResponse(html, status_code=status, headers={"Cache-Control": "no-store"})
 

@@ -201,6 +201,16 @@ pour réessayer à la publication suivante). X et Bluesky sont annoncés par la 
 step de `release.yml`, secrets GitHub `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`,
 `BSKY_HANDLE`, `BSKY_APP_PASSWORD` ; chaque réseau est ignoré si ses secrets manquent ; `--dry-run` pour relire).
 
+**Présentation dans les résultats.** Le nom du site vient du nœud JSON-LD `WebSite` (`name` DodoTopia, `url` = la
+racine `PUBLIC_URL/`), servi identique sur toutes les pages : la racine redirige (302, `Vary: Accept-Language`) vers
+un accueil traduit, et Google lit le nom sur la page d'accueil du sous-domaine après redirection. L'éditeur est un
+nœud `Organization` séparé (Cyber-Dodo), référencé par `publisher` et par l'auteur de `SoftwareApplication`. Les
+icônes (`/favicon.ico` 16-48 px, `/static/favicon-96.png`, `/static/favicon-192.png`, `/static/apple-touch-icon.png`)
+sont générées depuis `logo.png` par `.tools/make_favicons.py` et déclarées avec leurs vraies dimensions, à des URL
+stables sans empreinte. Les pages indexables portent `max-image-preview:large`. Après un changement de ces
+éléments, redemander l'exploration de la racine et des accueils traduits dans Search Console : Google décide seul du
+nom, du titre, de l'extrait et de la vignette affichés, et ne les met pas à jour tout de suite.
+
 **Moteurs de recherche.** `/sitemap.xml` est un index : il liste `/sitemap-pages.xml` et, seulement s'ils ont au
 moins une URL, `/sitemap-songs.xml` (morceaux approuvés d'au moins `SONG_INDEX_MIN_NOTES` notes) et
 `/sitemap-gallery.xml` (dessins approuvés), chacun avec son `<lastmod>` ; un sitemap vide listé dans l'index est
