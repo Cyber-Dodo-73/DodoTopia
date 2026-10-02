@@ -124,8 +124,12 @@ Dans DodoTopia, « Partager le journal » : le fichier `spike.log` contient tout
 - La carte de mesure en cours n'a pas de bouton Stop et n'est pas tactile, pour ne pas avaler les appuis envoyés au jeu.
 - La petite flèche qui relie le menu à la bulle n'est pas reprise.
 - La carte « Afficher par-dessus les autres applis » est gardée mais ne demande rien : la bulle est une fenêtre du service d'accessibilité. Elle passe à « Accordée » quand le service est activé.
-- La bulle s'allume à la main. L'ébauche dit « elle apparaît dès que le jeu passe devant » : il faudra le nom de paquet d'Heartopia, à relever une fois le jeu installé.
+- La bulle s'allume à la main. L'ébauche dit « elle apparaît dès que le jeu passe devant » : le paquet d'Heartopia (Play Store, version globale) est `com.xd.xdtglobal.gp`, activité `com.xd.xdt.MainActivity`.
 - Interface native pour l'instant ; le brief prévoit des WebView à l'étape 2.
 - Les captures donnent la luminosité du pixel central et la moyenne d'une grille de 25 points : un pixel central noir peut n'être qu'un décor sombre.
 - Les polices Fredoka et Nunito de `ui/fonts` (woff2 variables) sont converties en TTF statiques dans `res/font`, Android ne lisant pas le woff2.
 - Le build a installé « Android SDK Build-Tools 34 » dans le SDK local (demandé par AGP 8.7).
+
+## Heartopia sur l'émulateur : ne démarre pas
+
+Essayé le 2 octobre 2026 sur l'émulateur x86_64 (Android 16, image Google Play), Heartopia 0.5.5 : plantage dès le lancement, `SIGSEGV (SEGV_ACCERR)` dans le fil `UnityMain` juste après l'initialisation de Unity. Le jeu n'existe qu'en ARM64 (Unity il2cpp, avec ses bibliothèques de protection `libmagtsdk` et THEMIS) et tourne donc à travers la traduction ARM de l'émulateur, qui ne le supporte pas. Les mesures de l'étape 1 demandent de toute façon un vrai téléphone.
