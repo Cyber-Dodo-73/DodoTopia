@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <Button
+        android:id="@+id/btnLancer"
+        style="@style/BoutonOverlay.Teal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/lancer" />
+
+    <Button
+        android:id="@+id/btnCaptureService"
+        style="@style/BoutonOverlay.Contour"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/capture_service" />
+
+    <TextView
+        android:id="@+id/txtResume"
+        style="@style/Texte.Mesure"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textIsSelectable="false" />
+
+    <TextView
+        style="@style/Texte.Discret"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/rappel_stop" />
+</LinearLayout>

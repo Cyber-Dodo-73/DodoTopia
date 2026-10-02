@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jetons repris de ui/tokens.css (thème clair). Même nom que le jeton web, sans le préfixe. -->
+<resources>
+    <color name="c_bg">#F4EAD8</color>
+    <color name="c_bg_glow">#FFFAF1</color>
+    <color name="c_surface">#FFFFFF</color>
+    <color name="c_surface_2">#FBF5EA</color>
+    <color name="c_line">#EFE3CF</color>
+    <color name="c_line_2">#E4D4BA</color>
+    <color name="c_text">#6B5A52</color>
+    <color name="c_text_2">#7D6A5F</color>
+    <color name="c_brand">#B56F3F</color>
+    <color name="c_brand_edge">#7D4826</color>
+    <color name="c_primary">#E8A531</color>
+    <color name="c_primary_edge">#C98A1F</color>
+    <color name="c_primary_ink">#4A3527</color>
+    <color name="c_primary_soft">#FBE7BD</color>
+    <color name="c_cta">#187B75</color>
+    <color name="c_cta_edge">#125E59</color>
+    <color name="c_danger">#C94F5A</color>
+    <color name="c_danger_edge">#A83B46</color>
+    <color name="c_danger_soft">#FDE3E3</color>
+    <color name="c_danger_text">#A83B46</color>
+    <color name="c_ok">#5E6F2B</color>
+    <color name="c_ok_soft">#EEF2DA</color>
+    <color name="c_icone_fond">#F7EEDB</color>
+    <color name="blanc">#FFFFFF</color>
+</resources>

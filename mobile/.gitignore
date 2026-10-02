@@ -1,0 +1,10 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+
+# Brief de travail : hors du dépôt public, comme les Prompt-Claude-Code-*.md de la racine
+PROMPT-*.md

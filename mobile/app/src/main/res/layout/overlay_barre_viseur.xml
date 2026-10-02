@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/panneau_fond"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/txtCompte"
+        style="@style/Texte"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp" />
+
+    <Button
+        android:id="@+id/btnValider"
+        style="@style/BoutonOverlay.Teal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/valider" />
+
+    <Button
+        android:id="@+id/btnRetirer"
+        style="@style/BoutonOverlay.Contour"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="@string/annuler_dernier" />
+
+    <Button
+        android:id="@+id/btnTerminer"
+        style="@style/BoutonOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="@string/terminer" />
+</LinearLayout>

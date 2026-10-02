@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DodoTopia</string>
+    <string name="sous_titre">Appli de test · étape 1</string>
+
+    <string name="service_resume">Joue les appuis à ta place dans Heartopia</string>
+    <string name="service_description">DodoTopia utilise ce service pour appuyer sur les touches de l\'instrument à ta place, afficher sa bulle par-dessus le jeu et s\'arrêter quand tu presses volume bas. Il ne lit pas le contenu de l\'écran des autres applis.</string>
+
+    <string name="acces_titre">Service d\'accessibilité</string>
+    <string name="acces_actif">Activé</string>
+    <string name="acces_inactif">Désactivé</string>
+    <string name="acces_aide">Active « DodoTopia » dans la liste. Si Android grise l\'interrupteur (« paramètre restreint »), ouvre les infos de l\'appli, menu ⋮, « Autoriser les paramètres restreints ».</string>
+    <string name="acces_bouton">Ouvrir les réglages d\'accessibilité</string>
+    <string name="acces_infos">Infos de l\'appli</string>
+
+    <string name="capture_titre">Capture écran + son</string>
+    <string name="capture_aide">Après ton accord (choisis « Tout l\'écran »), tu as 6 secondes pour revenir sur Heartopia, bouger la caméra et jouer une note. La mesure dure 3 secondes.</string>
+    <string name="capture_bouton">Lancer le test capture écran + son</string>
+    <string name="capture_vide">Pas encore de mesure.</string>
+
+    <string name="metronome_titre">Dernier métronome</string>
+    <string name="metronome_vide">Lance-le depuis la bulle, par-dessus le jeu.</string>
+
+    <string name="journal_titre">Journal</string>
+    <string name="journal_partager">Partager le journal</string>
+    <string name="journal_effacer">Effacer</string>
+    <string name="journal_absent">Le journal est vide.</string>
+    <string name="journal_efface">Journal effacé.</string>
+
+    <string name="mode_titre">Mode d\'emploi</string>
+    <string name="mode_emploi">1. Active le service d\'accessibilité : la bulle dodo apparaît au bord de l\'écran.\n2. Ouvre Heartopia et un instrument, touche la bulle, place un repère sur chaque touche puis lance le métronome.\n3. Reviens ici pour le test de capture, puis partage le journal.</string>
+
+    <string name="panneau_titre">DodoTopia · test</string>
+    <string name="fermer">Fermer</string>
+    <string name="reperes_placer">Placer un repère</string>
+    <string name="reperes_effacer">Effacer</string>
+    <string name="accord">Accord (tous les repères en même temps, 10 max)</string>
+    <string name="lancer">Lancer le métronome</string>
+    <string name="capture_service">Capture par le service</string>
+    <string name="rappel_stop">Volume bas ou appui sur la bulle = stop</string>
+    <string name="valider">Valider</string>
+    <string name="annuler_dernier">Retirer</string>
+    <string name="terminer">Terminer</string>
+    <string name="bulle">Bulle DodoTopia</string>
+</resources>

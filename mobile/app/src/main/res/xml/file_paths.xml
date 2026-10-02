@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Le journal de mesures (filesDir/spike.log) sort par « Partager le journal », avec un droit de lecture ponctuel. -->
+    <files-path name="journal" path="." />
+</paths>

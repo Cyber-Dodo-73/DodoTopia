@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/racine"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/dodo" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="28sp" />
+
+                <TextView
+                    style="@style/Texte.Discret"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sous_titre" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Service d'accessibilité -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/carte"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/acces_titre" />
+
+                <TextView
+                    android:id="@+id/txtAcces"
+                    style="@style/Texte"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/pastille_alerte"
+                    android:fontFamily="@font/nunito_extrabold"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/acces_inactif"
+                    android:textColor="@color/c_danger_text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/Texte.Discret"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/acces_aide" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAcces"
+                style="@style/Bouton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/acces_bouton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnInfos"
+                style="@style/Bouton.Contour"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/acces_infos" />
+        </LinearLayout>
+
+        <!-- Capture -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/carte"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                style="@style/Titre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/capture_titre" />
+
+            <TextView
+                style="@style/Texte.Discret"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/capture_aide" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCapture"
+                style="@style/Bouton.Teal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/capture_bouton" />
+
+            <TextView
+                android:id="@+id/txtCapture"
+                style="@style/Texte.Mesure"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/capture_vide" />
+        </LinearLayout>
+
+        <!-- Métronome -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/carte"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                style="@style/Titre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/metronome_titre" />
+
+            <TextView
+                android:id="@+id/txtMetronome"
+                style="@style/Texte.Mesure"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/metronome_vide" />
+        </LinearLayout>
+
+        <!-- Journal -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/carte"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                style="@style/Titre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/journal_titre" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPartager"
+                    style="@style/Bouton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/journal_partager" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEffacer"
+                    style="@style/Bouton.Contour"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/journal_effacer" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            style="@style/Titre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/mode_titre" />
+
+        <TextView
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/mode_emploi" />
+    </LinearLayout>
+</ScrollView>

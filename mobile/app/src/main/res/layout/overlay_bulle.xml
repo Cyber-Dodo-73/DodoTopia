@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bulle"
+    android:layout_width="56dp"
+    android:layout_height="56dp"
+    android:background="@drawable/bulle_fond"
+    android:contentDescription="@string/bulle">
+
+    <ImageView
+        android:id="@+id/imgBulle"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="3dp"
+        android:background="@drawable/rond"
+        android:clipToOutline="true"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:src="@drawable/dodo" />
+
+    <!-- Pendant une mesure, la bulle devient le bouton Stop. -->
+    <View
+        android:id="@+id/carreStop"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="center"
+        android:background="@color/blanc"
+        android:visibility="gone" />
+</FrameLayout>
