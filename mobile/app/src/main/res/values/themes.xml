@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Toujours clair pour l'étape 1 : le crème de l'appli PC, sans gérer le thème sombre d'une appli jetable. -->
     <style name="Theme.Dodo" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/c_primary</item>
@@ -8,82 +8,119 @@
         <item name="android:colorBackground">@color/c_bg</item>
         <item name="android:windowBackground">@color/c_bg</item>
         <item name="android:textColorPrimary">@color/c_text</item>
-        <item name="android:fontFamily">@font/nunito_semibold</item>
+        <item name="android:fontFamily">@font/nunito_bold</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:forceDarkAllowed" tools:targetApi="29" xmlns:tools="http://schemas.android.com/tools">false</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
     </style>
 
     <!-- Les fenêtres par-dessus le jeu sont gonflées depuis le service, sans AppCompat :
-         thème de la plateforme et widgets simples, habillés par nos propres fonds. -->
+         thème de la plateforme et vues simples, habillées par nos propres fonds. -->
     <style name="Theme.DodoOverlay" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:colorAccent">@color/c_primary</item>
-        <item name="android:colorControlActivated">@color/c_primary</item>
         <item name="android:textColorPrimary">@color/c_text</item>
-        <item name="android:fontFamily">@font/nunito_semibold</item>
+        <item name="android:fontFamily">@font/nunito_bold</item>
     </style>
 
+    <!-- Textes : tailles et graisses des ébauches « DodoTopia Mobile » (1 px CSS = 1 dp/sp). -->
     <style name="Titre">
         <item name="android:fontFamily">@font/fredoka_semibold</item>
-        <item name="android:textColor">@color/c_brand</item>
-        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/c_titre</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="Titre.Encre">
+        <item name="android:textColor">@color/c_ink</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+    <style name="Libelle">
+        <item name="android:fontFamily">@font/nunito_extrabold</item>
+        <item name="android:textColor">@color/c_ink</item>
+        <item name="android:textSize">14sp</item>
     </style>
     <style name="Texte">
-        <item name="android:fontFamily">@font/nunito_semibold</item>
-        <item name="android:textColor">@color/c_text</item>
-        <item name="android:textSize">14sp</item>
-    </style>
-    <style name="Texte.Discret">
+        <item name="android:fontFamily">@font/nunito_bold</item>
         <item name="android:textColor">@color/c_text_2</item>
-        <item name="android:textSize">13sp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:lineSpacingMultiplier">1.1</item>
+    </style>
+    <style name="Texte.Petit">
+        <item name="android:textSize">11sp</item>
     </style>
     <style name="Texte.Mesure">
-        <item name="android:fontFamily">monospace</item>
-        <item name="android:textSize">12sp</item>
-        <item name="android:textIsSelectable">true</item>
-    </style>
-
-    <!-- Boutons de l'activité (Material) -->
-    <style name="Bouton" parent="Widget.Material3.Button">
-        <item name="android:fontFamily">@font/nunito_extrabold</item>
-        <item name="android:textSize">15sp</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="cornerRadius">12dp</item>
-        <item name="backgroundTint">@color/c_primary</item>
-        <item name="android:textColor">@color/c_primary_ink</item>
-    </style>
-    <style name="Bouton.Teal">
-        <item name="backgroundTint">@color/c_cta</item>
-        <item name="android:textColor">@color/blanc</item>
-    </style>
-    <style name="Bouton.Contour" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="android:fontFamily">@font/nunito_extrabold</item>
-        <item name="android:textSize">15sp</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="cornerRadius">12dp</item>
-        <item name="strokeColor">@color/c_line_2</item>
         <item name="android:textColor">@color/c_text</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+    <style name="Pilule">
+        <item name="android:fontFamily">@font/nunito_extrabold</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">5dp</item>
+        <item name="android:paddingBottom">5dp</item>
+        <item name="android:maxLines">1</item>
+    </style>
+    <style name="Compte">
+        <item name="android:fontFamily">@font/fredoka_semibold</item>
+        <item name="android:textColor">@color/blanc</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:paddingBottom">3dp</item>
+        <item name="android:maxLines">1</item>
     </style>
 
-    <!-- Boutons des fenêtres par-dessus le jeu (widgets de la plateforme) -->
-    <style name="BoutonOverlay">
+    <!-- Boutons pilule « à tranche » : des TextView, pour que ni AppCompat ni Material ne remplacent le fond.
+         Le texte remonte de 3 dp pour rester centré sur la face du bouton, pas sur sa tranche. -->
+    <style name="Bouton">
         <item name="android:background">@drawable/btn_ambre</item>
-        <item name="android:textColor">@color/c_primary_ink</item>
+        <item name="android:textColor">@color/c_ink</item>
         <item name="android:fontFamily">@font/nunito_extrabold</item>
         <item name="android:textSize">14sp</item>
-        <item name="android:textAllCaps">false</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">47dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingBottom">3dp</item>
         <item name="android:maxLines">1</item>
-        <item name="android:minHeight">44dp</item>
-        <item name="android:minWidth">44dp</item>
-        <item name="android:paddingStart">14dp</item>
-        <item name="android:paddingEnd">14dp</item>
-        <item name="android:stateListAnimator">@null</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
     </style>
-    <style name="BoutonOverlay.Teal">
+    <style name="Bouton.Teal">
         <item name="android:background">@drawable/btn_teal</item>
         <item name="android:textColor">@color/blanc</item>
     </style>
-    <style name="BoutonOverlay.Contour">
+    <style name="Bouton.Creme">
+        <item name="android:background">@drawable/btn_creme</item>
+        <item name="android:textColor">@color/c_text_2</item>
+    </style>
+    <style name="Bouton.Contour">
         <item name="android:background">@drawable/btn_contour</item>
         <item name="android:textColor">@color/c_text</item>
+    </style>
+    <style name="Bouton.Grand">
+        <item name="android:textSize">16sp</item>
+        <item name="android:minHeight">58dp</item>
+    </style>
+    <style name="Bouton.Petit">
+        <item name="android:textSize">13sp</item>
+        <item name="android:minHeight">43dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+    </style>
+    <style name="Onglet">
+        <item name="android:fontFamily">@font/nunito_bold</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:clickable">true</item>
+    </style>
+    <style name="BoutonRond">
+        <item name="android:background">@drawable/rond_contour</item>
+        <item name="android:tint">@color/c_text</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:clickable">true</item>
     </style>
 </resources>

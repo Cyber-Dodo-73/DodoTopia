@@ -47,8 +47,11 @@ class Metronome(private val service: AccessibilityService) {
 
     val enCours: Boolean get() = mesure != null
 
-    /** [surFin] est appelé sur le fil principal avec le résumé, que la mesure aille au bout ou soit arrêtée. */
-    fun lancer(reglages: Reglages, surFin: (String) -> Unit) {
+    /**
+     * [surFin] est appelé sur le fil principal avec le résumé, que la mesure aille au bout ou soit arrêtée.
+     * [surAppui] l'est aussi, après chaque envoi, avec le nombre d'appuis partis : il ne sert qu'à l'affichage.
+     */
+    fun lancer(reglages: Reglages, surAppui: (Int) -> Unit, surFin: (String) -> Unit) {
         if (enCours || reglages.reperes.isEmpty()) return
         val m = Mesure(reglages)
         mesure = m
@@ -62,7 +65,10 @@ class Metronome(private val service: AccessibilityService) {
             for (i in 0 until m.n) {
                 val quand = t0 + (i * 60000.0 / reglages.bpm).roundToLong()
                 m.prevuNs[i] = maintenantNs + (quand - maintenantMs) * 1_000_000
-                handler.postAtTime({ appuyer(m, i) }, m, quand)
+                handler.postAtTime({
+                    appuyer(m, i)
+                    principal.post { if (mesure === m) surAppui(i + 1) }
+                }, m, quand)
                 dernier = quand
             }
             handler.postAtTime({ finir(m, false, surFin) }, m, dernier + reglages.dureeMs + ATTENTE_FIN_MS)

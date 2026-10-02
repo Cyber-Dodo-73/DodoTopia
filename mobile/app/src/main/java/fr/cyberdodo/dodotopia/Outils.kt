@@ -16,6 +16,25 @@ object Resultats {
     val metronome = MutableLiveData<String>()
 }
 
+/** Choix de l'utilisateur partagés entre l'activité et le service (même processus, même fichier). */
+object Preferences {
+    const val FICHIER = "etape1"
+    private const val BULLE = "bulle_active"
+    private const val CONFIG = "config_faite"
+
+    private fun prefs(context: Context) = context.getSharedPreferences(FICHIER, Context.MODE_PRIVATE)
+
+    /** Éteinte par défaut : rien ne s'affiche par-dessus le jeu tant qu'on ne l'a pas demandé. */
+    fun bulleActive(context: Context): Boolean = prefs(context).getBoolean(BULLE, false)
+
+    fun definirBulle(context: Context, active: Boolean) = prefs(context).edit().putBoolean(BULLE, active).apply()
+
+    /** Vrai une fois l'écran « Avant de commencer » passé. */
+    fun configFaite(context: Context): Boolean = prefs(context).getBoolean(CONFIG, false)
+
+    fun definirConfigFaite(context: Context) = prefs(context).edit().putBoolean(CONFIG, true).apply()
+}
+
 /**
  * Taille réelle de l'écran dans son orientation actuelle (barres système comprises).
  * getRealSize est déprécié mais reste le seul appel valable depuis un service sur toutes les versions,

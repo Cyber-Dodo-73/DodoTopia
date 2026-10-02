@@ -5,33 +5,39 @@
     android:background="@drawable/panneau_fond"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="8dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="9dp">
 
     <TextView
         android:id="@+id/txtCompte"
-        style="@style/Texte"
+        style="@style/Compte"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="8dp" />
+        android:layout_marginEnd="10dp"
+        android:background="@drawable/pilule_rose" />
 
-    <Button
+    <TextView
         android:id="@+id/btnValider"
-        style="@style/BoutonOverlay.Teal"
+        style="@style/Bouton.Petit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/valider" />
+        android:background="@drawable/btn_teal"
+        android:text="@string/valider"
+        android:textColor="@color/blanc" />
 
-    <Button
+    <TextView
         android:id="@+id/btnRetirer"
-        style="@style/BoutonOverlay.Contour"
+        style="@style/Bouton.Petit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:text="@string/annuler_dernier" />
+        android:background="@drawable/btn_contour"
+        android:text="@string/annuler_dernier"
+        android:textColor="@color/c_text" />
 
-    <Button
+    <TextView
         android:id="@+id/btnTerminer"
-        style="@style/BoutonOverlay"
+        style="@style/Bouton.Petit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"

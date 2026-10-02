@@ -25,4 +25,26 @@
     <color name="c_ok_soft">#EEF2DA</color>
     <color name="c_icone_fond">#F7EEDB</color>
     <color name="blanc">#FFFFFF</color>
+    <!-- Ébauches « DodoTopia Mobile » : encre forte, pastilles d'activité, bords -->
+    <color name="c_caramel_ink">#FFF8EC</color>
+    <color name="c_ink">#4A3527</color>
+    <color name="c_titre">#9A5A2F</color>
+    <color name="c_bord">#E4D4BA</color>
+    <color name="c_creme">#FFFAF1</color>
+    <color name="c_creme_2">#F8EAD3</color>
+    <color name="c_ambre_fond">#FFE9C7</color>
+    <color name="c_ambre_trait">#E8932F</color>
+    <color name="c_ambre_encre">#7A4310</color>
+    <color name="c_ambre_texte">#8A5F0F</color>
+    <color name="c_ambre_ligne">#F3D79A</color>
+    <color name="c_rose">#D9639A</color>
+    <color name="c_rose_fond">#FFE0EC</color>
+    <color name="c_rose_encre">#7A2F57</color>
+    <color name="c_menthe">#1F9D8F</color>
+    <color name="c_menthe_fond">#D9F7EA</color>
+    <color name="c_menthe_encre">#0F5C55</color>
+    <color name="c_teal_fond">#DFF6F4</color>
+    <color name="c_pastille">#9FB356</color>
+    <color name="c_danger_ligne">#F0B9B9</color>
+    <color name="c_interrupteur_off">#D8CFBE</color>
 </resources>

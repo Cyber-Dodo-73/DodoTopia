@@ -1,59 +1,332 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/racine"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:clipToPadding="false"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <!-- Écran 1 : « Avant de commencer » (ébauche App · première ouverture) -->
+    <ScrollView
+        android:id="@+id/ecranAutorisations"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="34dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="26dp">
 
             <ImageView
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/logo_masque"
+                android:clipToOutline="true"
+                android:elevation="6dp"
                 android:importantForAccessibility="no"
                 android:src="@drawable/dodo" />
 
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                style="@style/Titre"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/avant_titre"
+                android:textSize="26sp" />
 
-                <TextView
-                    style="@style/Titre"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/app_name"
-                    android:textSize="28sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="10dp"
+                android:fontFamily="@font/nunito_bold"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.15"
+                android:paddingHorizontal="8dp"
+                android:text="@string/avant_texte"
+                android:textColor="@color/c_text"
+                android:textSize="14sp" />
 
-                <TextView
-                    style="@style/Texte.Discret"
-                    android:layout_width="wrap_content"
+            <LinearLayout
+                
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/sous_titre" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/tuile_ambre"
+                        android:importantForAccessibility="no"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_calques"
+                        android:tint="@color/c_ambre_encre"
+                        tools:ignore="UseAppTint" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/aut_bulle_titre" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/aut_bulle_texte" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/pilBulle"
+                        style="@style/Pilule"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/pilule_attente"
+                        android:text="@string/pil_avec_service"
+                        android:textColor="@color/c_ambre_texte" />
+                </LinearLayout>
+
             </LinearLayout>
-        </LinearLayout>
 
-        <!-- Service d'accessibilité -->
+
+            <LinearLayout
+                android:id="@+id/carteService"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/tuile_rose"
+                        android:importantForAccessibility="no"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_main"
+                        android:tint="@color/c_rose_encre"
+                        tools:ignore="UseAppTint" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/aut_service_titre" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/aut_service_texte" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/pilService"
+                        style="@style/Pilule"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/pilule_attente"
+                        android:text="@string/pil_a_activer"
+                        android:textColor="@color/c_ambre_texte" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnAcces"
+                    style="@style/Bouton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/acces_bouton" />
+
+                <TextView
+                    android:id="@+id/lienRestreint"
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/acces_restreint" />
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/tuile_menthe"
+                        android:importantForAccessibility="no"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_ecran"
+                        android:tint="@color/c_menthe_encre"
+                        tools:ignore="UseAppTint" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/aut_capture_titre" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/aut_capture_texte" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/pilCapture"
+                        style="@style/Pilule"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/pilule_teal"
+                        android:text="@string/pil_au_lancement"
+                        android:textColor="@color/c_cta_edge" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/encart_ambre"
+                android:orientation="horizontal"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="12dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginTop="1dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_bouclier"
+                    android:tint="@color/c_ambre_texte"
+                    tools:ignore="UseAppTint" />
+
+                <TextView
+                    style="@style/Texte"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:text="@string/avant_note"
+                    android:textColor="@color/c_ambre_texte" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:minHeight="14dp" />
+
+            <TextView
+                android:id="@+id/btnContinuer"
+                style="@style/Bouton.Grand"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/btn_creme"
+                android:text="@string/continuer_sans"
+                android:textColor="@color/c_text_2" />
+
+            <TextView
+                android:id="@+id/txtContinuer"
+                style="@style/Texte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text="@string/continuer_sans_aide" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Écran 2 : accueil de l'appli de test, dans le style de l'ébauche App · Musique -->
+    <ScrollView
+        android:id="@+id/ecranAccueil"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/carte"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="20dp"
+            android:paddingTop="22dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="26dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -61,165 +334,224 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
+                <ImageView
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/logo_masque_petit"
+                    android:clipToOutline="true"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/dodo" />
+
                 <TextView
                     style="@style/Titre"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
                     android:layout_weight="1"
-                    android:text="@string/acces_titre" />
+                    android:text="@string/app_name"
+                    android:textSize="22sp" />
 
-                <TextView
-                    android:id="@+id/txtAcces"
-                    style="@style/Texte"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/pastille_alerte"
-                    android:fontFamily="@font/nunito_extrabold"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="4dp"
-                    android:text="@string/acces_inactif"
-                    android:textColor="@color/c_danger_text"
-                    android:textSize="13sp" />
+                <ImageView
+                    android:id="@+id/btnReglages"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/rond_blanc"
+                    android:clickable="true"
+                    android:contentDescription="@string/autorisations"
+                    android:focusable="true"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_reglages"
+                    android:tint="@color/c_text_2"
+                    tools:ignore="UseAppTint" />
             </LinearLayout>
-
-            <TextView
-                style="@style/Texte.Discret"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/acces_aide" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAcces"
-                style="@style/Bouton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/acces_bouton" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnInfos"
-                style="@style/Bouton.Contour"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/acces_infos" />
-        </LinearLayout>
-
-        <!-- Capture -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/carte"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                style="@style/Titre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/capture_titre" />
-
-            <TextView
-                style="@style/Texte.Discret"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/capture_aide" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCapture"
-                style="@style/Bouton.Teal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/capture_bouton" />
-
-            <TextView
-                android:id="@+id/txtCapture"
-                style="@style/Texte.Mesure"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/capture_vide" />
-        </LinearLayout>
-
-        <!-- Métronome -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/carte"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                style="@style/Titre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/metronome_titre" />
-
-            <TextView
-                android:id="@+id/txtMetronome"
-                style="@style/Texte.Mesure"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/metronome_vide" />
-        </LinearLayout>
-
-        <!-- Journal -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/carte"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                style="@style/Titre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/journal_titre" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
+                android:layout_marginTop="16dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="14dp">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPartager"
-                    style="@style/Bouton"
-                    android:layout_width="0dp"
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/journal_partager" />
+                    android:text="@string/tester_titre" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnEffacer"
-                    style="@style/Bouton.Contour"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/journal_effacer" />
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/bulle_titre" />
+
+                        <TextView
+                            android:id="@+id/txtBulle"
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/bulle_inactive" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/swBulle"
+                        android:layout_width="54dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/interrupteur"
+                        android:clickable="true"
+                        android:contentDescription="@string/bulle_titre"
+                        android:focusable="true" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@color/c_line" />
+
+                <TextView
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:lineSpacingMultiplier="1.25"
+                    android:text="@string/mode_emploi" />
             </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/capture_titre" />
+
+                <TextView
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/capture_aide" />
+
+                <TextView
+                    android:id="@+id/btnCapture"
+                    style="@style/Bouton.Teal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/capture_bouton" />
+
+                <TextView
+                    android:id="@+id/txtCapture"
+                    style="@style/Texte.Mesure"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/encart"
+                    android:padding="10dp"
+                    android:text="@string/capture_vide"
+                    android:textIsSelectable="true" />
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/metronome_titre" />
+
+                <TextView
+                    android:id="@+id/txtMetronome"
+                    style="@style/Texte.Mesure"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/encart"
+                    android:padding="10dp"
+                    android:text="@string/metronome_vide"
+                    android:textIsSelectable="true" />
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/carte"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/journal_titre" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btnPartager"
+                        style="@style/Bouton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/journal_partager" />
+
+                    <TextView
+                        android:id="@+id/btnEffacer"
+                        style="@style/Bouton.Contour"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/journal_effacer" />
+                </LinearLayout>
+            </LinearLayout>
+
         </LinearLayout>
-
-        <TextView
-            style="@style/Titre"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/mode_titre" />
-
-        <TextView
-            style="@style/Texte"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:lineSpacingExtra="3dp"
-            android:text="@string/mode_emploi" />
-    </LinearLayout>
-</ScrollView>
+    </ScrollView>
+</FrameLayout>

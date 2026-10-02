@@ -1,21 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DodoTopia</string>
-    <string name="sous_titre">Appli de test · étape 1</string>
 
     <string name="service_resume">Joue les appuis à ta place dans Heartopia</string>
     <string name="service_description">DodoTopia utilise ce service pour appuyer sur les touches de l\'instrument à ta place, afficher sa bulle par-dessus le jeu et s\'arrêter quand tu presses volume bas. Il ne lit pas le contenu de l\'écran des autres applis.</string>
 
-    <string name="acces_titre">Service d\'accessibilité</string>
-    <string name="acces_actif">Activé</string>
-    <string name="acces_inactif">Désactivé</string>
-    <string name="acces_aide">Active « DodoTopia » dans la liste. Si Android grise l\'interrupteur (« paramètre restreint »), ouvre les infos de l\'appli, menu ⋮, « Autoriser les paramètres restreints ».</string>
-    <string name="acces_bouton">Ouvrir les réglages d\'accessibilité</string>
-    <string name="acces_infos">Infos de l\'appli</string>
+    <!-- Écran « Avant de commencer » -->
+    <string name="avant_titre">Avant de commencer</string>
+    <string name="avant_texte">Pour appuyer sur l\'écran à ta place et lire le jeu, DodoTopia a besoin de trois autorisations. Elles se donnent une fois, dans les réglages d\'Android.</string>
+    <string name="aut_bulle_titre">Afficher par-dessus les autres applis</string>
+    <string name="aut_bulle_texte">C\'est la bulle qui flotte sur le jeu. Elle vient avec le service d\'accessibilité.</string>
+    <string name="aut_service_titre">Service d\'accessibilité</string>
+    <string name="aut_service_texte">Pour appuyer et tracer sur l\'écran à ta place, et pour arrêter avec la touche volume.</string>
+    <string name="aut_capture_titre">Capture de l\'écran</string>
+    <string name="aut_capture_texte">Pour lire le dessin et les bulles de la cuisine. Android la redemande à chaque lancement.</string>
+    <string name="pil_accordee">Accordée</string>
+    <string name="pil_avec_service">Avec le service</string>
+    <string name="pil_active">Activé</string>
+    <string name="pil_a_activer">À activer</string>
+    <string name="pil_au_lancement">Au lancement</string>
+    <string name="acces_bouton">Ouvrir les réglages d\'accessibilité  ›</string>
+    <string name="acces_restreint">Interrupteur grisé (« paramètre restreint ») ? Touche ici pour ouvrir les infos de l\'appli, puis menu ⋮, « Autoriser les paramètres restreints ».</string>
+    <string name="avant_note">DodoTopia Mobile s\'installe depuis dodotopia.cyber-dodo.fr, pas depuis le Play Store. Les mises à jour se font dans l\'appli, comme sur PC.</string>
+    <string name="continuer_pret">C\'est parti</string>
+    <string name="continuer_pret_aide">Tout est prêt, direction les tests</string>
+    <string name="continuer_sans">Continuer sans le service</string>
+    <string name="continuer_sans_aide">Tu pourras lire les résultats, mais pas afficher la bulle ni jouer dans le jeu</string>
+    <string name="autorisations">Autorisations</string>
+
+    <!-- Accueil -->
+    <string name="tester_titre">Tester dans Heartopia</string>
+    <string name="bulle_titre">Bulle dans le jeu</string>
+    <string name="bulle_active">Active : elle flotte par-dessus le jeu</string>
+    <string name="bulle_inactive">Éteinte : rien ne s\'affiche par-dessus le jeu</string>
+    <string name="bulle_sans_service">Active d\'abord le service d\'accessibilité</string>
+    <string name="mode_emploi">1. Active la bulle, puis ouvre Heartopia et un instrument.\n2. Touche la bulle, place un repère sur chaque touche, puis lance le métronome.\n3. Reviens ici pour le test de capture, puis partage le journal.</string>
 
     <string name="capture_titre">Capture écran + son</string>
     <string name="capture_aide">Après ton accord (choisis « Tout l\'écran »), tu as 6 secondes pour revenir sur Heartopia, bouger la caméra et jouer une note. La mesure dure 3 secondes.</string>
-    <string name="capture_bouton">Lancer le test capture écran + son</string>
+    <string name="capture_bouton">Lancer le test de capture</string>
     <string name="capture_vide">Pas encore de mesure.</string>
 
     <string name="metronome_titre">Dernier métronome</string>
@@ -27,19 +50,27 @@
     <string name="journal_absent">Le journal est vide.</string>
     <string name="journal_efface">Journal effacé.</string>
 
-    <string name="mode_titre">Mode d\'emploi</string>
-    <string name="mode_emploi">1. Active le service d\'accessibilité : la bulle dodo apparaît au bord de l\'écran.\n2. Ouvre Heartopia et un instrument, touche la bulle, place un repère sur chaque touche puis lance le métronome.\n3. Reviens ici pour le test de capture, puis partage le journal.</string>
-
-    <string name="panneau_titre">DodoTopia · test</string>
-    <string name="fermer">Fermer</string>
+    <!-- Par-dessus le jeu -->
+    <string name="bulle">Bulle DodoTopia</string>
+    <string name="bulle_aide">Appuie pour ouvrir DodoTopia</string>
+    <string name="onglet_metronome">Métronome</string>
+    <string name="onglet_reperes">Repères</string>
+    <string name="onglet_capture">Capture</string>
+    <string name="tempo">Tempo</string>
+    <string name="appuis">Appuis</string>
+    <string name="duree">Durée</string>
+    <string name="accord">Accord</string>
+    <string name="lancer">Lancer le métronome</string>
+    <string name="moins">Moins</string>
+    <string name="plus">Plus</string>
+    <string name="reperes_aide">Pose le viseur sur chaque touche de l\'instrument, puis valide. Les repères sont effacés quand l\'écran tourne.</string>
     <string name="reperes_placer">Placer un repère</string>
     <string name="reperes_effacer">Effacer</string>
-    <string name="accord">Accord (tous les repères en même temps, 10 max)</string>
-    <string name="lancer">Lancer le métronome</string>
-    <string name="capture_service">Capture par le service</string>
-    <string name="rappel_stop">Volume bas ou appui sur la bulle = stop</string>
+    <string name="capture_service_aide">Capture de secours par le service d\'accessibilité : temps mis, taille et luminosité de l\'image.</string>
+    <string name="capture_service">Prendre une capture</string>
+    <string name="ouvrir_dodotopia">Ouvrir DodoTopia  ›</string>
+    <string name="rappel_stop">Volume bas = stop</string>
     <string name="valider">Valider</string>
     <string name="annuler_dernier">Retirer</string>
     <string name="terminer">Terminer</string>
-    <string name="bulle">Bulle DodoTopia</string>
 </resources>

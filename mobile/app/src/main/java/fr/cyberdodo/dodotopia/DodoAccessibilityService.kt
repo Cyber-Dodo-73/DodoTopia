@@ -14,6 +14,7 @@ import androidx.lifecycle.MutableLiveData
 /**
  * Le cœur de l'appli côté système : envoie les gestes, porte la bulle (fenêtre d'accessibilité,
  * donc sans SYSTEM_ALERT_WINDOW), intercepte volume bas et sait faire une capture de secours.
+ * Activer le service ne suffit pas à faire apparaître la bulle : il faut aussi l'allumer dans l'appli.
  * Il n'observe aucun contenu d'écran : onAccessibilityEvent reste vide.
  */
 class DodoAccessibilityService : AccessibilityService() {
@@ -28,13 +29,21 @@ class DodoAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         SpikeLog.init(this)
         metronome = Metronome(this)
-        overlay = Overlay(this).also { it.montrerBulle() }
+        overlay = Overlay(this)
+        instance = this
         actif.value = true
+        appliquerBulle()
         val e = tailleEcran(this)
         SpikeLog.log(
             "Service d'accessibilité connecté · ${Build.MANUFACTURER} ${Build.MODEL} · " +
                 "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · écran ${e.x}×${e.y}"
         )
+    }
+
+    /** Montre ou retire la bulle selon le choix fait dans l'appli (interrupteur « Bulle dans le jeu »). */
+    fun appliquerBulle() {
+        val o = overlay ?: return
+        if (Preferences.bulleActive(this)) o.montrerBulle() else o.fermerTout()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -75,6 +84,7 @@ class DodoAccessibilityService : AccessibilityService() {
     private fun fermer() {
         val o = overlay ?: return
         overlay = null
+        instance = null
         o.fermerTout()
         metronome.fermer()
         actif.value = false
@@ -142,6 +152,11 @@ class DodoAccessibilityService : AccessibilityService() {
     companion object {
         /** Vrai tant que le service est connecté : l'activité s'y abonne pour son état. */
         val actif = MutableLiveData(false)
+
+        /** Le service connecté, pour que l'activité lui demande de montrer ou retirer la bulle. */
+        @Volatile
+        var instance: DodoAccessibilityService? = null
+            private set
 
         private const val GRILLE = 5
     }

@@ -1,28 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Bulle de 66 dp dans une fenêtre de 86 dp : la marge laisse la place à l'ombre, à la pastille et à l'anneau de mesure. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/bulle"
-    android:layout_width="56dp"
-    android:layout_height="56dp"
-    android:background="@drawable/bulle_fond"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="86dp"
+    android:layout_height="86dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:contentDescription="@string/bulle">
 
-    <ImageView
-        android:id="@+id/imgBulle"
+    <View
+        android:id="@+id/anneau"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="3dp"
-        android:background="@drawable/rond"
-        android:clipToOutline="true"
-        android:importantForAccessibility="no"
-        android:scaleType="centerCrop"
-        android:src="@drawable/dodo" />
-
-    <!-- Pendant une mesure, la bulle devient le bouton Stop. -->
-    <View
-        android:id="@+id/carreStop"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:layout_gravity="center"
-        android:background="@color/blanc"
+        android:background="@drawable/bulle_anneau"
         android:visibility="gone" />
+
+    <FrameLayout
+        android:id="@+id/cercle"
+        android:layout_width="66dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bulle_fond"
+        android:elevation="8dp">
+
+        <ImageView
+            android:id="@+id/imgBulle"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_gravity="center"
+            android:background="@drawable/rond"
+            android:clipToOutline="true"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:src="@drawable/dodo" />
+
+        <ImageView
+            android:id="@+id/badge"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center"
+            android:background="@drawable/rond_sombre"
+            android:importantForAccessibility="no"
+            android:padding="7dp"
+            android:src="@drawable/ic_fermer"
+            android:tint="@color/c_caramel_ink"
+            android:visibility="gone"
+            tools:ignore="UseAppTint" />
+    </FrameLayout>
+
+    <View
+        android:id="@+id/pastille"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="7dp"
+        android:layout_marginBottom="7dp"
+        android:background="@drawable/bulle_pastille"
+        android:elevation="9dp" />
 </FrameLayout>
