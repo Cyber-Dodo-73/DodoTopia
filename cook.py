@@ -30,6 +30,7 @@ ASSOC = 70          # tolerance (px) autour de la position ATTENDUE d'une bulle 
 STILL = 6           # une bulle qui bouge de plus de STILL px entre deux lectures est « en mouvement »
 CAM_WINDOW = 4.5    # la camera ne bouge que dans les secondes qui suivent un clic sur une bulle (le personnage
                     # marche) : hors de cette fenetre, une bulle lointaine est une AUTRE cuisiniere, pas un glissement
+RING_CLICKS_MAX = 40 # clics de suite sur le meme anneau (vert ou rouge) avant de declarer que le feu ne se regle pas
 RING_PENDING = 1.5  # secondes au plus a attendre qu'un anneau vert vu une fois devienne stable avant de faire autre chose
 CAM_SETTLE = 3.0    # secondes de recherche large forcee apres un clic sur une autre cuisiniere (la camera bouge)
 WIDE_EVERY = 0.7    # secondes entre deux recherches larges quand toutes les bulles sont suivies
@@ -48,6 +49,7 @@ DEFAULT_COOK = {
     "cook_timeout": 240.0,   # secondes max pour qu'un plat soit pret
     "poll": 0.1,             # secondes entre deux lectures de l'ecran
     "match": 0.62,           # score minimal (Jaccard) pour reconnaitre une icone
+    "red_ring": True,        # l'anneau devenu rouge (clic pas pris a temps) se clique aussi
     "green_px": 60,          # pixels verts minimum pour l'anneau de la spatule
     "click_delay": 0.3,      # secondes apres un clic
     # --- ordonnanceur multi-cuisinieres (voir Cooker._may_launch)
@@ -136,6 +138,22 @@ def green_mask(im, ring_color=None):
         m = ImageChops.darker(r.point(_lut(r0 - t, r0 + t)), g.point(_lut(g0 - t, g0 + t)))
         return ImageChops.darker(m, b.point(_lut(b0 - t, b0 + t)))
     return ImageChops.darker(ImageChops.darker(g.point(_lut(lo=175)), r.point(_lut(hi=150))), b.point(_lut(hi=130)))
+
+
+def red_mask(im):
+    """Pixels d'un anneau rouge vif (rouge fort, vert et bleu faibles : les flammes orangees n'en sont pas)."""
+    from PIL import ImageChops
+    r, g, b = im.split()
+    return ImageChops.darker(ImageChops.darker(r.point(_lut(lo=195)), g.point(_lut(hi=105))), b.point(_lut(hi=105)))
+
+
+def ring_mask(im, ring_color=None, red=True):
+    """Anneau de la spatule, vert OU rouge. Releve en jeu (2026-10-04, proprietaire) : quand le clic sur l'anneau
+    vert n'est pas pris a temps (le personnage est occupe a ramasser un plat...), l'anneau passe au rouge et il
+    faut continuer de cliquer. La couleur exacte du rouge n'a pas ete mesuree : seuils d'un rouge vif."""
+    from PIL import ImageChops
+    gm = green_mask(im, ring_color)
+    return ImageChops.lighter(gm, red_mask(im)) if red else gm
 
 
 def find_rings(gm, need):
@@ -795,8 +813,9 @@ class Cooker(MouseBot):
                         return
                     continue
                 ring_streak = ring_streak + 1 if now - ring_at < 3.0 else 1
-                if ring_streak > 12:
-                    raise RuntimeError("le feu ne se règle pas (12 clics de suite sur un anneau vert sans effet)")
+                # le jeu peut ignorer les clics un moment (personnage occupe) : on insiste longtemps avant d'abandonner
+                if ring_streak > RING_CLICKS_MAX:
+                    raise RuntimeError(f"le feu ne se règle pas ({RING_CLICKS_MAX} clics de suite sur un anneau sans effet)")
                 self.phase = "feu"
                 b = d.get("burner")
                 self._acted(b)
@@ -1241,7 +1260,7 @@ class Cooker(MouseBot):
             else:
                 ring = im.crop((gx - RING, gy - RING, gx + RING, gy + RING))
             if ring is not None:
-                green = count(green_mask(ring, c.get("ring_color")))
+                green = count(ring_mask(ring, c.get("ring_color"), c.get("red_ring", True)))
             if green >= int(c.get("green_px", 60)):
                 state = "spatula"
         scores["vert"] = green
@@ -1300,7 +1319,7 @@ class Cooker(MouseBot):
                 ring = im.crop((gx - RING, gy - RING, gx + RING, gy + RING))
         if ring is None:
             ring = grab((x - RING, y - RING, x + RING, y + RING))
-        green = count(green_mask(ring, c.get("ring_color"))) if ring is not None else 0
+        green = count(ring_mask(ring, c.get("ring_color"), c.get("red_ring", True))) if ring is not None else 0
         det["scores"]["vert"] = green
         if green >= int(c.get("green_px", 60)):
             det["state"] = "spatula"
@@ -1339,7 +1358,7 @@ class Cooker(MouseBot):
             out.append(det)
         # anneaux verts de TOUTE la zone : pendant « Ajuste le feu » l'icone est animee et souvent pas
         # reconnue ; l'anneau, lui, se voit toujours. Il ne depend donc plus de la position suivie des bulles.
-        for cx, cy, n in find_rings(green_mask(im, c.get("ring_color")), int(c.get("green_px", 60))):
+        for cx, cy, n in find_rings(ring_mask(im, c.get("ring_color"), c.get("red_ring", True)), int(c.get("green_px", 60))):
             pos = (rect[0] + cx, rect[1] + cy)
             near = next((d for d in out if (pos[0] - d["pos"][0]) ** 2 + (pos[1] - d["pos"][1]) ** 2 < SEP * SEP), None)
             if near is not None:
@@ -1433,7 +1452,7 @@ class Cooker(MouseBot):
                 part, px, py = grab(box), box[0], box[1]
             if part is None:
                 return None
-            gm = green_mask(part, c.get("ring_color"))
+            gm = ring_mask(part, c.get("ring_color"), c.get("red_ring", True))
             green = count(gm)
             bb = gm.getbbox()
             if green < need or not bb:

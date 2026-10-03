@@ -6,6 +6,7 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
 ## 2.2.3
+- **Cuisine, spatule en rouge** : quand l'anneau de la spatule passe au rouge (le jeu n'a pas pris le clic à temps, par exemple pendant que le personnage ramasse un plat), DodoTopia continue de cliquer dessus au lieu de l'ignorer, et il insiste plus longtemps avant d'abandonner.
 - **Cuisine et dessin** : une frappe isolée au clavier n'arrête plus l'action (une touche envoyée par un autre programme coupait la cuisine sans que personne ne touche le clavier). Échap arrête tout de suite ; une autre touche arrête si une deuxième frappe suit dans les 2 secondes. Le raccourci d'arrêt ne change pas.
 
 ## 2.2.2

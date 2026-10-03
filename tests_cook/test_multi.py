@@ -669,3 +669,17 @@ def test_anneau_sans_icone_reconnue(jeu, souris_rapide):
     tourne(c, ecran, duree=12.0, plats=2)
     assert ecran.rates == 0, ecran.events
     assert {i for e, i in ecran.events if e == "anneau"} == {1, 2}, ecran.events
+
+
+def test_anneau_rouge_reconnu_comme_un_anneau():
+    """L'anneau passé au rouge compte comme l'anneau vert ; une flamme orangée ou un rouge terne n'en sont pas."""
+    def ring(color):
+        im = Image.new("RGB", (160, 160), (120, 150, 90))
+        ImageDraw.Draw(im).ellipse((40, 40, 120, 120), outline=color, width=6)
+        return im
+    need = cook.DEFAULT_COOK["green_px"]
+    for color, seen in (((235, 40, 45), True), ((60, 220, 90), True), ((250, 150, 40), False), ((150, 60, 60), False)):
+        m = cook.ring_mask(ring(color))
+        assert (cook.count(m) >= need) is seen, color
+        assert bool(cook.find_rings(m, need)) is seen, color
+    assert cook.count(cook.ring_mask(ring((235, 40, 45)), red=False)) == 0
