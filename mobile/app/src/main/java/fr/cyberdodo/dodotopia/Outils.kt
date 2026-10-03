@@ -53,7 +53,23 @@ object Preferences {
         .putString(INSTRUMENT, id).putString(DISPOSITION, Instruments.clavier(id).id).apply()
 
     /** Vrai (par défaut) : rangée grave en bas de l'écran, comme le piano du jeu. « Graves ⇅ » du calibrage l'inverse. */
-    fun inverse(context: Context, d: Disposition): Boolean = prefs(context).getBoolean("inverse_${d.id}", true)
+    fun inverse(context: Context, d: Disposition): Boolean {
+        val p = prefs(context)
+        val cle = "inverse_${cleCalibrage(context, d)}"
+        return if (p.contains(cle) || !heriteAncien(context, d)) p.getBoolean(cle, true) else p.getBoolean("inverse_${d.id}", true)
+    }
+
+    /**
+     * Le calibrage appartient à l'instrument ET à son clavier : dans le jeu, deux instruments qui ont le même
+     * nombre de touches ne les posent pas au même endroit de l'écran. Clé « instrument@clavier ».
+     */
+    private fun cleCalibrage(context: Context, d: Disposition) = "${instrument(context)}@${d.id}"
+
+    /**
+     * Avant le choix de l'instrument, le calibrage n'était rangé que par clavier. On le reprend pour l'instrument
+     * que ce clavier annonçait alors (luth pour 15 notes sur 3 rangées, piano pour les autres), pas pour les autres.
+     */
+    private fun heriteAncien(context: Context, d: Disposition) = instrument(context) == d.instrument
 
     /**
      * Le centre de chaque touche pour l'écran dans son orientation actuelle, ou null si ce clavier
@@ -61,7 +77,9 @@ object Preferences {
      */
     fun touches(context: Context, d: Disposition): List<PointF>? {
         val e = tailleEcran(context)
-        val texte = prefs(context).getString("touches_${d.id}_${e.x}x${e.y}", null) ?: return null
+        val texte = prefs(context).getString("touches_${cleCalibrage(context, d)}_${e.x}x${e.y}", null)
+            ?: (if (heriteAncien(context, d)) prefs(context).getString("touches_${d.id}_${e.x}x${e.y}", null) else null)
+            ?: return null
         val points = texte.split(';').mapNotNull { morceau ->
             val xy = morceau.split(',')
             val x = xy.getOrNull(0)?.toFloatOrNull()
@@ -74,8 +92,8 @@ object Preferences {
     fun definirTouches(context: Context, d: Disposition, points: List<PointF>, inverse: Boolean) {
         val e = tailleEcran(context)
         prefs(context).edit()
-            .putString("touches_${d.id}_${e.x}x${e.y}", points.joinToString(";") { "${it.x},${it.y}" })
-            .putBoolean("inverse_${d.id}", inverse)
+            .putString("touches_${cleCalibrage(context, d)}_${e.x}x${e.y}", points.joinToString(";") { "${it.x},${it.y}" })
+            .putBoolean("inverse_${cleCalibrage(context, d)}", inverse)
             .apply()
     }
 
@@ -150,7 +168,9 @@ object Preferences {
 
     /** Vrai si ce clavier a été calibré, quelle que soit l'orientation (l'appli est en portrait, le jeu en paysage). */
     fun calibre(context: Context, d: Disposition): Boolean =
-        prefs(context).all.keys.any { it.startsWith("touches_${d.id}_") }
+        prefs(context).all.keys.any {
+            it.startsWith("touches_${cleCalibrage(context, d)}_") || (heriteAncien(context, d) && it.startsWith("touches_${d.id}_"))
+        }
 }
 
 /**

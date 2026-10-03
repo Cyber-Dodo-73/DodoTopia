@@ -33,6 +33,9 @@ object CuisineVue {
         val bulles: List<Bulle>,
         val largeur: Int,
         val hauteur: Int,
+        /** Centre du bouton Cuisiner trouvé dans le menu des recettes (pixels), ou -1 s'il n'a pas été cherché. */
+        val cuisinerX: Float = -1f,
+        val cuisinerY: Float = -1f,
     )
 
     /** Côté de la grille qui décrit la forme d'une icône. */
@@ -81,6 +84,9 @@ object CuisineVue {
     private val BOUTON_X = floatArrayOf(0.68f, 0.7325f, 0.79f)
     private val BOUTON_Y = floatArrayOf(0.907f, 0.89f, 0.907f)
 
+    /** Recherche du bouton par sa couleur : assez de points bleu-vert pour ne pas prendre une icône pour lui. */
+    private const val BOUTON_POINTS_MIN = 12
+
     /**
      * Boîte de dialogue du bas de l'écran, gris très clair (231, 233, 231) : elle va de 22 % à 78 % de la largeur
      * et de 80 % à 95 % de la hauteur (écran 16:9). On la reconnaît sur deux lignes sans texte, au-dessus et
@@ -122,15 +128,39 @@ object CuisineVue {
             val b = c and 0xFF
             if (r > 215 && v in 111..189 && b < 110) orange++
         }
-        var bouton = 0
-        for (i in BOUTON_X.indices) {
-            val c = point(BOUTON_X[i], BOUTON_Y[i])
+        fun bleuVert(c: Int): Boolean {
             val r = (c shr 16) and 0xFF
             val v = (c shr 8) and 0xFF
             val b = c and 0xFF
-            if (r < 80 && v in 110..200 && b in 100..190 && v - r > 70) bouton++
+            return r < 80 && v in 110..200 && b in 100..190 && v - r > 70
         }
+        var bouton = 0
+        for (i in BOUTON_X.indices) if (bleuVert(point(BOUTON_X[i], BOUTON_Y[i]))) bouton++
         if (orange >= 6 && bouton >= 2) return Lecture(true, false, emptyList(), l, h)
+        if (orange >= 6) {
+            // Écran plus allongé que le 16:9 des relevés : le bouton Cuisiner n'est pas aux fractions attendues.
+            // On le cherche par sa couleur dans le bas de l'écran ; son centre est la médiane des points trouvés.
+            val xs = ArrayList<Int>()
+            val ys = ArrayList<Int>()
+            val pas = (h / 90).coerceAtLeast(2)
+            var y = (h * 0.78f).toInt()
+            while (y < (h * 0.98f).toInt()) {
+                var x = (l * 0.35f).toInt()
+                while (x < (l * 0.98f).toInt()) {
+                    if (bleuVert(pixels[y * l + x])) {
+                        xs.add(x)
+                        ys.add(y)
+                    }
+                    x += pas
+                }
+                y += pas
+            }
+            if (xs.size >= BOUTON_POINTS_MIN) {
+                xs.sort()
+                ys.sort()
+                return Lecture(true, false, emptyList(), l, h, xs[xs.size / 2].toFloat(), ys[ys.size / 2].toFloat())
+            }
+        }
 
         var clair = 0
         for (fy in DIALOGUE_Y) for (i in 0 until DIALOGUE_POINTS) {

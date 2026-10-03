@@ -85,7 +85,9 @@ class CuisineBoucle(private val plusieurs: Boolean, private val intervalleMs: Lo
             return Decision(
                 listOf(
                     Appui(TUILE_X * v.largeur, TUILE_Y * v.hauteur),
-                    Appui(CUISINER_X * v.largeur, CUISINER_Y * v.hauteur, ATTENTE_TUILE_MS),
+                    // Le bouton trouvé par sa couleur (écran qui n'est pas en 16:9), sinon sa place relevée en 16:9.
+                    if (v.cuisinerX >= 0) Appui(v.cuisinerX, v.cuisinerY, ATTENTE_TUILE_MS)
+                    else Appui(CUISINER_X * v.largeur, CUISINER_Y * v.hauteur, ATTENTE_TUILE_MS),
                 )
             )
         }

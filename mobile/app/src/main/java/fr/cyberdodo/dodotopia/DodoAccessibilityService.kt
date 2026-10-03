@@ -94,6 +94,12 @@ class DodoAccessibilityService : AccessibilityService() {
             paquet == packageName -> if (classe.endsWith("MainActivity")) false else return
             // Clavier, volet des notifications : le jeu est toujours dessous.
             paquet == "com.android.systemui" || classe.contains("SoftInputWindow") || paquet.contains("inputmethod") -> return
+            // Fenêtre passagère d'une autre appli par-dessus le jeu (barre de jeu du constructeur, boîte de
+            // dialogue, menu, info-bulle) : sa classe est une vue ou un dialogue d'Android, pas un écran d'appli.
+            // Le jeu est toujours dessous et ne renverra aucun événement à sa fermeture : sans cette exception,
+            // la bulle disparaissait et ne revenait qu'au prochain changement d'écran du jeu.
+            classe.startsWith("android.widget.") || classe.startsWith("android.view.") ||
+                (classe.startsWith("android.app.") && classe.contains("Dialog")) -> return
             else -> false
         }
         if (devant != jeuDevant) {

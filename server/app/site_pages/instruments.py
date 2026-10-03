@@ -65,7 +65,10 @@ def _instrument_json(name: str) -> dict:
 def _state_of(inst: dict) -> str:
     if not inst.get("supportedLayoutIds") or inst.get("mappingStatus") in (None, "", "unknown"):
         return "unknown"
-    return "candidate" if inst.get("percussive") else "documented"
+    # Percussion : « candidate » tant que la correspondance n'a pas été confirmée dans le jeu (la conga l'a été).
+    if inst.get("percussive") and inst.get("mappingStatus") != "owner-confirmed-in-game":
+        return "candidate"
+    return "documented"
 
 
 def _describe_layout(layout: dict) -> dict:

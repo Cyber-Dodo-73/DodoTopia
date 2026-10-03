@@ -379,12 +379,30 @@ class Etapes(
         if (page < 0) throw NuancesIllisibles()
         var essais = 0
         while (page != cible) {
-            if (essais++ >= ESSAIS_PAGE) throw NuancesIllisibles()
-            val fleche = if (cible > page) n[SUIVANT] else n[PRECEDENT]
-            atelier.tracer(List(abs(cible - page)) { appui(fleche, PAUSE_PAGE_MS) })
+            if (essais >= ESSAIS_PAGE) throw NuancesIllisibles()
+            if (essais == 0 && page >= 0) {
+                val fleche = if (cible > page) n[SUIVANT] else n[PRECEDENT]
+                atelier.tracer(List(abs(cible - page)) { appui(fleche, PAUSE_PAGE_MS) })
+            } else {
+                // Les flèches n'ont pas mené à la bonne page (appui ignoré par le jeu, repère à côté de la flèche) :
+                // on repasse par la palette principale, où choisir la famille puis rouvrir les nuances mène droit
+                // à sa page, sans aucune flèche.
+                atelier.tracer(
+                    listOf(
+                        appui(n[RETOUR], PAUSE_OUTIL_MS),
+                        appui(pastille(Nuancier.FAMILLES[cible]), PAUSE_PASTILLE_MS),
+                        appui(n[BOUTON], PAUSE_PAGE_MS),
+                    )
+                )
+            }
+            essais++
             page = lirePage(journal = true)
-            if (page < 0) throw NuancesIllisibles()
-            if (page != cible) atelier.journal("page de nuances ${page + 1} au lieu de ${cible + 1}, nouvel essai")
+            if (page != cible) {
+                atelier.journal(
+                    (if (page < 0) "page de nuances non reconnue" else "page de nuances ${page + 1}") +
+                        " au lieu de ${cible + 1}, nouvel essai par la palette principale"
+                )
+            }
         }
         pageConnue = page
         atelier.tracer(listOf(appui(nuance(n, Nuancier.RANG[k]), PAUSE_PASTILLE_MS)))
@@ -521,13 +539,14 @@ class Etapes(
         /** Après un changement de couleur : une pastille ratée peindrait toute la couleur suivante avec la précédente. */
         private const val PAUSE_PASTILLE_MS = 160L
         private const val PAUSE_OUTIL_MS = 250L
-        private const val PAUSE_PAGE_MS = 220L
+        /** Entre deux flèches : le jeu anime le changement de page et ignore un appui trop rapproché. */
+        private const val PAUSE_PAGE_MS = 380L
         private const val PAUSE_POT_MS = 400L
 
         /** Le temps que le dernier trait s'affiche avant de regarder l'écran. */
         private const val DELAI_CAPTURE_MS = 600L
         private const val PASSES_RETOUCHE = 2
-        private const val ESSAIS_PAGE = 3
+        private const val ESSAIS_PAGE = 4
 
         /** Une page de nuances est reconnue si six emplacements sur dix montrent la couleur attendue. */
         private const val PART_NUANCES = 0.6f

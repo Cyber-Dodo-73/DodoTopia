@@ -500,8 +500,8 @@ def test_instruments_states_match_the_catalogue_data(client):
     by_id = {t["id"]: t for t in cat["types"]}
     for missing in ("conch",):
         assert by_id[missing]["state"] == "unknown", missing
-    for perc in ("conga", "cajon"):
-        assert by_id[perc]["state"] == "candidate", perc
+    assert by_id["cajon"]["state"] == "candidate"
+    assert by_id["conga"]["state"] == "documented"          # confirmée dans le jeu par le propriétaire
     assert by_id["piano"]["state"] == "documented"
 
 
