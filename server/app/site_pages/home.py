@@ -190,6 +190,7 @@ def render(settings, lang: str, ctx) -> str:
 {activity_section(lang, "music", "musique", False)}
 {activity_section(lang, "draw", "dessin", True)}
 {activity_section(lang, "cook", "cuisine", False)}
+{activity_section(lang, "creations", "creations", True)}
 {together_band(lang)}
 <section class="section wavy wavy--2 plain" id="comment-ca-marche"><div class="wrap">
   {section_head(esc(t(lang, "site.home.steps_title")))}

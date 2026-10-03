@@ -9,7 +9,7 @@
   "onb.next": "Lanjut",
   "onb.finish": "Selesai",
   "onb.welcome.title": "Selamat datang di DodoTopia",
-  "onb.welcome.intro": "DodoTopia main musik, menggambar, dan memasak untukmu di Heartopia. Tiga langkah singkat untuk mulai.",
+  "onb.welcome.intro": "DodoTopia memainkan musik, menggambar, dan memasak untukmu di Heartopia. Beberapa langkah singkat untuk memulai.",
   "onb.welcome.lang": "Bahasa",
   "onb.welcome.lang_help": "Bahasa bertanda beta mungkin masih menampilkan sebagian teks dalam bahasa Prancis.",
   "onb.welcome.theme": "Tema",
@@ -52,5 +52,11 @@
   "deeplink.title.import": "Impor file MIDI",
   "deeplink.intro": "Sebuah tautan dodotopia:// meminta DodoTopia melakukan ini. Tidak ada yang terjadi tanpa persetujuanmu.",
   "deeplink.confirm": "Konfirmasi",
-  "deeplink.dismiss": "Abaikan"
+  "deeplink.dismiss": "Abaikan",
+  "onb.step.discord": "Discord",
+  "onb.discord.title": "Bergabung dengan pemain lain",
+  "onb.discord.intro": "Masuk dengan Discord untuk menikmati semua hal yang dilakukan bersama. Gratis dan hanya butuh beberapa detik.",
+  "onb.discord.connected": "Masuk dengan Discord: {name}",
+  "onb.discord.unavailable": "Server sedang tidak merespons: kamu bisa masuk nanti lewat tombol di kanan atas.",
+  "onb.discord.optional": "Opsional: kamu bisa melewati langkah ini dan masuk nanti lewat tombol di kanan atas."
 }

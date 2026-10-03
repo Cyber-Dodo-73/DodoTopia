@@ -1,4 +1,4 @@
-// DodoTopia : premiere experience (decouverte en 3 etapes), etat de la fenetre du jeu (puce d'en-tete),
+// DodoTopia : premiere experience (decouverte en 4 etapes), etat de la fenetre du jeu (puce d'en-tete),
 // « Tester une note » et confirmation des liens dodotopia://.
 // Donnees : get_state().game_window {found, foreground, elevated, checked, process}, is_admin, terms, deeplink.
 // Textes : cles onb.*, game.*, deeplink.* (ui/i18n/src/<lang>/onboarding.json).
@@ -58,7 +58,7 @@ function testNote(btn, done){
 
 // ------------------------------------------------ premiere experience
 const ONB_KEY = 'dodotopia.onboarded';
-const ONB_STEPS = ['welcome', 'game', 'song'];
+const ONB_STEPS = ['welcome', 'game', 'discord', 'song'];
 const ONB = {step: 0, shown: false, test: null};
 function onbDone(){ try{ return localStorage.getItem(ONB_KEY) === '1'; }catch(e){ return false; } }
 function onbMark(){ try{ localStorage.setItem(ONB_KEY, '1'); }catch(e){} }
@@ -132,6 +132,25 @@ function onbBody(st, key){
         </div></div>
       <p class="hint left">${esc(t('onb.game.tip'))}</p>`;
   }
+  if(key === 'discord'){
+    // facultative : ce que la connexion apporte, le bouton Discord, ou l'état si c'est déjà fait
+    const o = typeof onlineOf === 'function' ? onlineOf(st || {}) : null;
+    const logged = !!(o && o.logged_in && o.user);
+    const waiting = !!(o && (o.login || {}).state === 'waiting');
+    const can = !!(o && o.server_ok === true && !o.client_too_old);
+    return `<p class="onb__intro">${esc(t('onb.discord.intro'))}</p>
+      <ul class="account-why">
+        <li>${icon('share')}<span>${esc(t('online.account.benefit.share'))}</span></li>
+        <li>${icon('users')}<span>${esc(t('online.account.benefit.rooms'))}</span></li>
+        <li>${icon('heart')}<span>${esc(t('online.account.benefit.like'))}</span></li>
+        <li>${icon('link')}<span>${esc(t('online.account.benefit.import'))}</span></li>
+      </ul>
+      ${logged ? `<div class="notice notice--ok" role="status"><span class="notice__ic" aria-hidden="true">${icon('check')}</span><div class="notice__text"><b>${esc(t('onb.discord.connected', {name: userLabel(o.user)}))}</b></div></div>`
+        : `<div class="btnrow"><button class="btn btn--discord" type="button" data-act="discord"${can ? '' : ' disabled'}>${icon('discord')}<span>${esc(t(waiting ? 'online.account.open_browser' : 'online.account.login'))}</span></button></div>
+      ${can ? '' : `<p class="btn__why onb__why">${icon('info')}<span>${esc(t('onb.discord.unavailable'))}</span></p>`}`}
+      <p class="hint left">${icon('shield')} ${esc(t('online.account.privacy'))}</p>
+      ${logged ? '' : `<p class="hint left">${esc(t('onb.discord.optional'))}</p>`}`;
+  }
   // premier morceau
   const ins = typeof curInstrument === 'function' ? curInstrument(st || {}) : null;
   const ready = ins && typeof instrumentReady === 'function' ? instrumentReady(st || {}) : false;
@@ -164,6 +183,7 @@ function onbWire(box){
   if(seg) seg.querySelectorAll('button').forEach(b => b.onclick = () => { segMark(seg, x => x === b); setTheme(b.dataset.v); });
   const on = (act, fn) => { const b = box.querySelector(`[data-act="${act}"]`); if(b) b.onclick = () => fn(b); };
   on('adminhow', () => gameAdminHelp());
+  on('discord', () => { if(typeof discordLogin === 'function') discordLogin(); });
   on('import', b => apiAction(b, 'import_dialog'));
   on('discover', () => { closeOnboarding(); showTab('music'); showMusicView('discover'); });
   on('inst', () => { if(typeof openInstrumentSelector === 'function') openInstrumentSelector(); });
@@ -175,12 +195,12 @@ function onbDraw(st, force){
   // pas de redessin pendant un appel en cours ou une saisie (liste des langues ouverte)
   const busy = $('onbBody').querySelector('.is-loading');
   if(busy && !force) return;
-  const names = [t('onb.step.welcome'), t('onb.step.game'), t('onb.step.song')];
+  const names = [t('onb.step.welcome'), t('onb.step.game'), t('onb.step.discord'), t('onb.step.song')];
   $('onbSteps').querySelectorAll('.onb__stepnm').forEach((el, i) => { el.textContent = names[i]; });
   $('onbSteps').setAttribute('aria-label', t('onb.progress_aria'));
   stepsMark($('onbSteps'), ONB_STEPS.slice(0, ONB.step), key);
   txt('onbCount', t('onb.count', {n: ONB.step + 1, total: ONB_STEPS.length}));
-  txt('onbTitle', key === 'welcome' ? t('onb.welcome.title') : key === 'game' ? t('onb.game.title') : t('onb.song.title'));
+  txt('onbTitle', key === 'welcome' ? t('onb.welcome.title') : key === 'game' ? t('onb.game.title') : key === 'discord' ? t('onb.discord.title') : t('onb.song.title'));
   const body = $('onbBody');
   body.innerHTML = onbBody(st || {}, key);
   onbWire(body);
@@ -208,6 +228,7 @@ view('onboarding', {sig: st => {
   const key = ONB_STEPS[ONB.step];
   return JSON.stringify([open, ONB.step, !!(st.terms && st.terms.required), !!st.deeplink, I18N.lang,
     open && key === 'game' ? gameInfo(st) : null,
+    open && key === 'discord' && st.online ? [st.online.logged_in, st.online.server_ok, st.online.client_too_old, (st.online.login || {}).state, (st.online.user || {}).name] : null,
     open && key === 'song' ? [st.instrument_id, st.instrument_ready, st.state] : null]);
 }, draw: st => {
   if(onbShouldAuto(st)){

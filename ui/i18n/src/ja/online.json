@@ -24,7 +24,7 @@
   "online.account.link_help": "リンクはスマートフォンからも使えます{has_expiry, select, yes { · 有効期限は {min} 分} other {}}。他人から送られたコードは絶対に入力しないでください。",
   "online.account.blocked_server": "サーバーに接続できません。現在サインインできません。",
   "online.account.blocked_old": "サインインするには DodoTopia をアップデートしてください（最低バージョン {version}）。",
-  "online.account.no_account": "音楽、お絵描き、料理は<b>アカウントなし</b>で使えます。Discord アカウントは、曲の共有と他のプレイヤーとのルームでの演奏にだけ使います。",
+  "online.account.no_account": "音楽・お絵かき・料理は<b>アカウントなし</b>でも使えます。",
   "online.account.login": "Discord でサインイン",
   "online.account.sign_in": "サインイン",
   "online.account.link_copied": "リンクをコピーしました",
@@ -154,5 +154,14 @@
   "online.license.cc": "クリエイティブ・コモンズ",
   "online.license.cc_help": "作者が共有を許可しています。上に出典を記入してください。",
   "online.license.unknown": "わからない",
-  "online.license.unknown_help": "モデレーターが確認します。せめてファイルの入手元を書いてください。"
+  "online.license.unknown_help": "モデレーターが確認します。せめてファイルの入手元を書いてください。",
+  "online.invite.title": "Discord でほかのプレイヤーとつながろう",
+  "online.invite.text": "曲や絵を共有し、ほかの人の作品に「いいね」を付け、友だちとルームで演奏できます。無料で、数秒で完了します。",
+  "online.invite.later": "あとで",
+  "online.account.benefits_title": "ログインするとできること",
+  "online.account.benefit.share": "自分の曲や絵をほかのプレイヤーと共有する",
+  "online.account.benefit.rooms": "ルームで演奏する：全員が同じ瞬間に、それぞれの楽器で始められます",
+  "online.account.benefit.like": "気に入った曲や絵に「いいね」を付ける",
+  "online.account.benefit.import": "リンクから曲を取り込む（Online Sequencer、BitMidi など）",
+  "online.account.privacy": "DodoTopia が読み取るのは Discord のユーザー名、アバター、ID だけで、あなたのアカウントに投稿することはできません。"
 }

@@ -226,6 +226,61 @@ function mockMain(){
     diag_send: () => later({ok: true, code: 'K7P2QDMN', files: 5}, 700),
     diag_save: () => later({ok: true, name: 'rapport-dodotopia-20260928-193000.zip'}, 300),
   };
+  // Mes créations (&tab=creations) : images dessinées sur un canvas, mêmes réponses que api/creations_api.py
+  const crImg = (w, h, hue, cells) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+    if(cells){ const n = 10, sw = w / n, sh = h / n; for(let y = 0; y < n; y++) for(let x = 0; x < n; x++){ g.fillStyle = `hsl(${(hue + (x * 7 + y * 13) * 9) % 360} 70% ${55 + ((x + y) % 3) * 10}%)`; g.fillRect(x * sw, y * sh, sw + 1, sh + 1); } }
+    else { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, `hsl(${hue} 70% 70%)`); gr.addColorStop(1, `hsl(${(hue + 60) % 360} 60% 40%)`); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.arc(w * .7, h * .3, Math.min(w, h) * .12, 0, 7); g.fill(); }
+    return c.toDataURL('image/png');
+  };
+  // section : album photo (photo prise ici), peinture du joueur, sinon cache du jeu
+  const crMk = (i, cat, kind, w, h, mine, vars, backup) => ({id: 'cr' + i, cat, kind, player: mine === null ? null : (mine ? '54a72h7q' : 'zz9x1abc'), mine,
+    section: kind === 'Photo' ? 'photo' : (cat === 'draw' && mine ? 'painting' : 'cache'), added: false,
+    created: NOW - i * 86400 * 3, modified: NOW - i * 3600, w, h, backup: !!backup, indexed: cat === 'draw',
+    variants: vars.map(([vw, vh, f]) => ({folder: f, name: `normal+54a72h7q+${kind}+13435000000000${i}.png_${vw}_${vh}.jpg`, w: vw, h: vh, bytes: vw * vh / 4}))});
+  const MOCK_CR = [
+    crMk(1, 'photo', 'Photo', 1920, 1080, true, [[256, 144, 'Photo'], [512, 288, 'Photo'], [1564, 880, 'Photo'], [1920, 1080, 'Photo']]),
+    crMk(2, 'draw', 'DrawManual', 150, 150, true, [[150, 150, 'Draw']], true),
+    crMk(3, 'cover', 'RecordCover', 512, 288, true, [[256, 144, 'Limit'], [512, 288, 'Photo']]),
+    crMk(4, 'frame', 'PhotoFrame', 256, 144, true, [[256, 144, 'Limit']]),
+    crMk(5, 'draw', 'DrawManual', 128, 128, false, [[128, 128, 'Draw']]),
+    crMk(6, 'photo', 'TakePhoto', 256, 144, false, [[256, 144, 'Photo']]),
+    crMk(7, 'home', 'MicroHomeland', 256, 144, true, [[256, 144, 'Limit']]),
+    crMk(8, 'book', 'Book', 256, 256, null, [[256, 256, 'NoBgPhoto']]),
+    crMk(9, 'announcement', 'Announcement', 1600, 850, null, [[1600, 850, 'Announcement']]),
+    crMk(10, 'photo', 'Photo', 1920, 1080, true, [[256, 144, 'Photo'], [512, 288, 'Photo'], [1564, 880, 'Photo'], [1920, 1080, 'Photo']]),
+    crMk(11, 'draw', 'DrawManual', 150, 84, true, [[150, 84, 'Draw']]),
+  ];
+  const crMus = (i, name, duration, notes, mine, extra) => Object.assign({id: 'mu' + i, section: mine ? 'music' : 'cache', cat: 'music', kind: 'Record',
+    player: '54a72h7q', mine, created: NOW - i * 86400 * 2, modified: NOW - i * 7200, w: 0, h: 0, indexed: false, backup: false, added: false,
+    name, duration, notes, remote: !mine, variants: [{folder: 'record/54a72h7q' + (mine ? '' : '/remote'), name: `${name}_20261002213601490_${Math.round(duration * 1000)}.bin`, w: 0, h: 0, bytes: notes * 52 + 14}]}, extra || {});
+  MOCK_CR.push(crMus(1, 'Golden Brown', 213.57, 3643, true), crMus(2, 'Edith Piaf La Foule', 173.03, 4068, true, {backup: true}),
+    crMus(3, 'AriaMath', 185.2, 1210, true, {added: true}), crMus(4, 'May It Be', 187.68, 632, false));
+  const crShown = () => has('crnone') ? [] : MOCK_CR.filter(it => crCache() || it.section !== 'cache');
+  const crCache = () => !!window.MOCK_CR_CACHE || has('crcache');
+  const crCount = key => { const o = {}; crShown().forEach(it => { if(key === 'section' || it.section === 'cache') o[it[key]] = (o[it[key]] || 0) + 1; }); return o; };
+  const crPic = (it, max) => { const s = Math.min(1, max / Math.max(it.w, it.h)); const w = Math.max(1, Math.round(it.w * s)), h = Math.max(1, Math.round(it.h * s)); return {data: crImg(w, h, (parseInt(it.id.slice(2)) * 47) % 360, it.cat === 'draw'), w, h}; };
+  Object.assign(window.MOCK_API, {
+    creations_list: () => later({ok: true, available: true, folder: 'C:\\Users\\dodo\\AppData\\LocalLow\\xd\\Heartopia\\ScreenCapture', found: !has('crnone'), my_id: '54a72h7q',
+      show_cache: crCache(), total: crShown().length, items: crShown(), sections: crCount('section'), cats: crCount('cat'), error: null}, 250),
+    creations_add_dialog: sec => { const it = sec === 'music' ? crMus(MOCK_CR.length, 'Nouvelle musique', 95, 420, true, {added: true, created: NOW})
+        : Object.assign(crMk(MOCK_CR.length + 20, 'photo', 'Photo', 1920, 1080, true, [[256, 144, 'Photo'], [1920, 1080, 'Photo']]), {added: true, created: NOW});
+      MOCK_CR.push(it); return later({ok: true, section: sec, item: it}, 500); },
+    creations_add: sec => window.MOCK_API.creations_add_dialog(sec),
+    creations_delete: id => { const i = MOCK_CR.findIndex(x => x.id === id); if(i >= 0) MOCK_CR.splice(i, 1); return later({ok: true, files: 1}, 300); },
+    creations_thumb: id => { const it = MOCK_CR.find(x => x.id === id); return later(it ? Object.assign({ok: true, id}, crPic(it, 240)) : {ok: false, id, error: 'unknown'}, 120); },
+    creations_view: id => { const it = MOCK_CR.find(x => x.id === id); return later(!it ? {ok: false, id, error: 'unknown'}
+      : it.cat === 'music' ? {ok: true, id, data: null, w: 0, h: 0, item: it, music: {notes: it.notes, duration: it.duration, players: 2, instruments: [1, 17]}}
+      : Object.assign({ok: true, id, item: it}, crPic(it, 1920)), 300); },
+    creations_replace_dialog: id => { const it = MOCK_CR.find(x => x.id === id); if(it) it.backup = true; return later({ok: true, files: it ? it.variants.length : 0, item: it}, 500); },
+    creations_replace: id => window.MOCK_API.creations_replace_dialog(id),
+    creations_restore: id => { const it = MOCK_CR.find(x => x.id === id); if(it) it.backup = false; return later({ok: true, files: it ? it.variants.length : 0, item: it}, 300); },
+    creations_export: () => later({ok: true, path: 'C:\\Users\\dodo\\Pictures\\heartopia-photo.jpg'}, 300),
+    creations_open_folder: () => later(true, 50),
+    creations_choose_folder: () => later({ok: false, error: 'cancelled'}, 100),
+    creations_set_folder: () => later({ok: false, error: 'bad_folder'}, 100),
+  });
   const MOCK_TOASTS = [];
   if(location.search.includes('toast')) MOCK_TOASTS.push({id: 1, t: 0, msg: '2 musiques importées', kind: 'ok', sticky: false},
     {id: 2, t: 0, msg: 'Arrêt : touche pressée', kind: 'warn', sticky: false});
@@ -332,7 +387,7 @@ ${LOREM[(p + a) % LOREM.length]}
   // l'apercu navigateur montre le meme en-tete que l'application : le logo vient du dossier assets
   const lg = document.getElementById('logo');
   if(lg && !lg.src){ lg.src = '../assets/logo.png'; lg.style.display = ''; }
-  const mt = /tab=(music|image|cook|online)/.exec(location.search);
+  const mt = /tab=(music|image|cook|online|creations)/.exec(location.search);
   // ?mock&sel : selecteur ouvert ; &keys : panneau « Voir les touches » de l'instrument actif
   if(has('sel')) setTimeout(() => openInstrumentSelector(), 0);
   else if(has('keys')) setTimeout(() => openKeysPanel(instCur.id), 0);
@@ -380,7 +435,7 @@ ${LOREM[(p + a) % LOREM.length]}
     choice('multi.mode', 'multi', 'solo', ['solo', 'audio', 'room']); str('multi.name', 'multi', ''); int('multi.net_offset_ms', 'multi', 0, -300, 300, 'ms');
     num('draw.step_delay', 'draw', 20, 0, 500, 'ms', 5); num('draw.click_delay', 'draw', 50, 0, 1000, 'ms', 10); num('draw.glide_speed', 'draw', 1, 0.2, 4, '×', 0.1);
     for(const k of ['fill_background', 'verify', 'refine', 'outline', 'mouse_glide']) bool('draw.' + k, 'draw', true);
-    bool('draw.skip_white', 'draw', false); bool('draw.dense', 'draw', false);
+    bool('draw.skip_white', 'draw', false); bool('draw.dense', 'draw', false); bool('creations.show_cache', 'general', false, !!window.MOCK_CR_CACHE);
     const G = {'16:9':[140,84], '4:3':[150,114], '1:1':[150,150], '3:4':[114,150], '9:16':[84,150]};
     for(const f in G){ int(`draw.formats.${f}.cols`, 'grids', G[f][0], 4, 400, '', f === '16:9' ? 96 : (f === '4:3' ? 120 : undefined)); int(`draw.formats.${f}.rows`, 'grids', G[f][1], 4, 400, '', f === '16:9' ? 54 : undefined); }
     int('cook.max_dishes', 'cook', 0, 0, 999, '', 10); num('cook.cook_timeout', 'cook', 240, 30, 900, 's', 10); num('cook.match', 'cook', 0.62, 0.3, 0.9, '', 0.05);

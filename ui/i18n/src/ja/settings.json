@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "左下",
   "settings.overlay.corner.opt.bottom-right": "右下",
   "settings.multi.room_minimize.label": "ルーム開始時に DodoTopia を最小化",
-  "settings.multi.room_minimize.help": "オフ：開始時も DodoTopia は開いたままです。カウントダウン中に Heartopia をクリックしてください（そのクリックで開始は取り消されません）。"
+  "settings.multi.room_minimize.help": "オフ：開始時も DodoTopia は開いたままです。カウントダウン中に Heartopia をクリックしてください（そのクリックで開始は取り消されません）。",
+  "settings.creations.show_cache.label": "マイ作品：ゲームのキャッシュも表示",
+  "settings.creations.show_cache.help": "マイ作品に「ゲームのキャッシュ」セクションを追加します。他のプレイヤーの画像や音楽、フォトフレーム、レコードジャケット、お知らせなど、自分の写真・絵・音楽以外に Heartopia がダウンロードまたは生成したものすべてです。"
 }

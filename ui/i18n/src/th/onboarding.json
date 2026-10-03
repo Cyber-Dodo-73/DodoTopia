@@ -9,7 +9,7 @@
   "onb.next": "ถัดไป",
   "onb.finish": "เสร็จสิ้น",
   "onb.welcome.title": "ยินดีต้อนรับสู่ DodoTopia",
-  "onb.welcome.intro": "DodoTopia เล่นดนตรี วาดรูป และทำอาหารแทนคุณใน Heartopia เริ่มต้นได้ใน 3 ขั้นตอนง่าย ๆ",
+  "onb.welcome.intro": "DodoTopia เล่นดนตรี วาดภาพ และทำอาหารแทนคุณใน Heartopia ไม่กี่ขั้นตอนง่าย ๆ เพื่อเริ่มต้น",
   "onb.welcome.lang": "ภาษา",
   "onb.welcome.lang_help": "ภาษาที่มีป้ายเบต้าอาจยังมีข้อความภาษาฝรั่งเศสอยู่บ้าง",
   "onb.welcome.theme": "ธีม",
@@ -52,5 +52,11 @@
   "deeplink.title.import": "นำเข้าไฟล์ MIDI",
   "deeplink.intro": "ลิงก์ dodotopia:// ขอให้ DodoTopia ทำสิ่งนี้ จะไม่มีอะไรเกิดขึ้นหากคุณไม่ยินยอม",
   "deeplink.confirm": "ยืนยัน",
-  "deeplink.dismiss": "ละเว้น"
+  "deeplink.dismiss": "ละเว้น",
+  "onb.step.discord": "Discord",
+  "onb.discord.title": "เข้าร่วมกับผู้เล่นคนอื่น",
+  "onb.discord.intro": "เข้าสู่ระบบด้วย Discord เพื่อใช้ทุกฟีเจอร์ที่เล่นร่วมกันได้ ฟรีและใช้เวลาไม่กี่วินาที",
+  "onb.discord.connected": "เข้าสู่ระบบด้วย Discord แล้ว: {name}",
+  "onb.discord.unavailable": "เซิร์ฟเวอร์ยังไม่ตอบสนองในขณะนี้ คุณเข้าสู่ระบบภายหลังได้จากปุ่มมุมขวาบน",
+  "onb.discord.optional": "ไม่บังคับ: คุณข้ามขั้นตอนนี้และเข้าสู่ระบบภายหลังได้จากปุ่มมุมขวาบน"
 }

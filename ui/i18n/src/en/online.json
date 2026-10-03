@@ -24,7 +24,7 @@
   "online.account.link_help": "The link also works from a phone{has_expiry, select, yes { · it expires in {min} min} other {}}. Never enter a code someone sent you.",
   "online.account.blocked_server": "Server unreachable: signing in is not possible right now.",
   "online.account.blocked_old": "Update DodoTopia to sign in (minimum version {version}).",
-  "online.account.no_account": "Music, drawing and cooking work <b>without an account</b>. A Discord account is only used to share your songs and to play in rooms with other players.",
+  "online.account.no_account": "Music, drawing and cooking also work <b>without an account</b>.",
   "online.account.login": "Sign in with Discord",
   "online.account.sign_in": "Sign in",
   "online.account.link_copied": "Link copied",
@@ -154,5 +154,14 @@
   "online.license.cc": "Creative Commons",
   "online.license.cc_help": "The author allows sharing: give the source above.",
   "online.license.unknown": "I don't know",
-  "online.license.unknown_help": "A moderator will check: at least say where the file comes from."
+  "online.license.unknown_help": "A moderator will check: at least say where the file comes from.",
+  "online.invite.title": "Join the other players with Discord",
+  "online.invite.text": "Share your songs and drawings, like other players' creations and play in rooms with your friends. It's free and takes a few seconds.",
+  "online.invite.later": "Later",
+  "online.account.benefits_title": "What signing in gives you",
+  "online.account.benefit.share": "Share your songs and drawings with other players",
+  "online.account.benefit.rooms": "Play in rooms: everyone starts at the same moment, each on their own instrument",
+  "online.account.benefit.like": "Like the songs and drawings you enjoy most",
+  "online.account.benefit.import": "Import a song from a link (Online Sequencer, BitMidi…)",
+  "online.account.privacy": "DodoTopia only reads your Discord username, avatar and ID, and cannot post anything on your account."
 }

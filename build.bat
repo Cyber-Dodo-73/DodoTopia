@@ -14,7 +14,7 @@ if not defined PYTHON set PYTHON=py
 
 echo.
 echo [1/4] Dependances Python...
-%PYTHON% -m pip install --quiet --upgrade mido keyboard pywebview pyinstaller pillow numpy soundcard websocket-client certifi pynacl pypresence
+%PYTHON% -m pip install --quiet --upgrade mido keyboard pywebview pyinstaller pillow numpy soundcard websocket-client certifi pynacl pypresence cryptography
 if errorlevel 1 goto :error
 
 echo [2/4] Config livree (sans calibrage perso) et icone...
@@ -37,7 +37,7 @@ echo [3/4] PyInstaller (dist\DodoTopia\)...
   --add-data "assets\instruments\CREDITS.md;assets\instruments" ^
   --hidden-import keyboard --hidden-import mido --hidden-import webview ^
   --hidden-import numpy --hidden-import soundcard --collect-data soundcard ^
-  --hidden-import websocket --collect-data certifi --hidden-import nacl ^
+  --hidden-import websocket --collect-data certifi --hidden-import nacl --hidden-import cryptography ^
   --exclude-module _linux_io ^
   --collect-all webview ^
   app.py

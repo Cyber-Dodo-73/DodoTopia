@@ -40,6 +40,9 @@ resume_song forget_song_resume room_rejoin
 song_arrange_info set_song_arrange
 room_set_parts room_propose_parts
 diag_preview diag_save diag_send
+creations_list creations_thumb creations_view creations_replace_dialog creations_replace creations_restore
+creations_export creations_choose_folder creations_set_folder creations_open_folder
+creations_add_dialog creations_add creations_delete
 """.split())
 
 

@@ -206,7 +206,8 @@ class StateMixin:
         return st
 
     def set_tab(self, name):
-        """Activite ouverte : music | image (dessin) | cook. Les raccourcis suivent cette valeur.
+        """Activite ouverte : music | image (dessin) | cook | creations. Les raccourcis suivent cette valeur
+        (« creations » garde ceux de la musique, comme l'ancien onglet En ligne).
         « online » est accepte pour compatibilite : le catalogue est maintenant une vue de la Musique."""
-        self._tab = name if name in ("image", "cook") else "music"
+        self._tab = name if name in ("image", "cook", "creations") else "music"
         return True

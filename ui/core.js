@@ -537,23 +537,26 @@ function viewToasts(st){
 }
 view('toasts', {draw: viewToasts});
 
-// ------------------------------------------------ navigation : 3 activites + vues locales de la Musique
+// ------------------------------------------------ navigation : 4 activites + vues locales de la Musique
 let TAB = 'music';
 let MUSIC_VIEW = 'library';     // library | discover | together
+const TABS = ['music', 'image', 'cook', 'creations'];
 function showTab(name){
   if(name === 'online'){ showTab('music'); showMusicView('discover'); return; }   // ancien onglet « En ligne »
-  if(!['music', 'image', 'cook'].includes(name)) name = 'music';
+  if(!TABS.includes(name)) name = 'music';
   TAB = name;
   closeMenu();
   segMark($('tabs'), t => t.dataset.tab === name);
   $('pageMusic').classList.toggle('active', name === 'music');
   $('pageImage').classList.toggle('active', name === 'image');
   $('pageCook').classList.toggle('active', name === 'cook');
+  $('pageCreations').classList.toggle('active', name === 'creations');
   $('openLog').style.display = name === 'image' ? '' : 'none';
   $('openCookLog').style.display = name === 'cook' ? '' : 'none';
   try{ localStorage.setItem('tab', name); }catch(e){}
   api('set_tab', name);
   if(name === 'image'){ renderPixels(); }
+  if(name === 'creations' && typeof openCreations === 'function') openCreations();
   if(S) render(S);
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => showTab(t.dataset.tab));
@@ -639,7 +642,7 @@ $('panelClose').onclick = () => closePanel();
 $('panelOverlay').onclick = e => { if(e.target === $('panelOverlay')) closePanel(); };
 
 // ------------------------------------------------ indicateur global : une tache tourne dans une autre activite
-function runTabLabel(tab){ return tab === 'image' ? t('shell.tab.image') : tab === 'cook' ? t('shell.tab.cook') : t('shell.tab.music'); }
+function runTabLabel(tab){ return tab === 'image' ? t('shell.tab.image') : tab === 'cook' ? t('shell.tab.cook') : tab === 'creations' ? t('shell.tab.creations') : t('shell.tab.music'); }
 function runningTask(st){
   if(st.draw && (st.draw.state === 'drawing' || st.draw.state === 'autocal'))
     return {tab: 'image', label: st.draw.state === 'autocal' ? t('shell.run.autocal') : t('shell.run.drawing'), stop: 'draw_stop'};
@@ -686,7 +689,7 @@ function onReady(){ loadLogo(); api('set_tab', TAB); loadI18n().finally(tick); }
 function boot(){
   // dernier contexte : activité et vue de la Musique (aucune automatisation n'est relancée)
   try{ const v0 = localStorage.getItem('musicView'); if(v0 && v0 !== 'library') showMusicView(v0); }catch(e){}
-  try{ const t0 = localStorage.getItem('tab'); if(t0 === 'image' || t0 === 'cook') showTab(t0); }catch(e){}
+  try{ const t0 = localStorage.getItem('tab'); if(t0 === 'image' || t0 === 'cook' || t0 === 'creations') showTab(t0); }catch(e){}
   $('btnHelp').onclick = () => helpPanel(S);
   window.addEventListener('pywebviewready', onReady);
   if(window.pywebview) onReady();

@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "Ibabang kaliwa",
   "settings.overlay.corner.opt.bottom-right": "Ibabang kanan",
   "settings.multi.room_minimize.label": "I-minimize ang DodoTopia pagsimula ng room",
-  "settings.multi.room_minimize.help": "Naka-off: nananatiling bukas ang DodoTopia sa simula; i-click ang Heartopia habang nagbibilang (hindi nito kinakansela ang simula)."
+  "settings.multi.room_minimize.help": "Naka-off: nananatiling bukas ang DodoTopia sa simula; i-click ang Heartopia habang nagbibilang (hindi nito kinakansela ang simula).",
+  "settings.creations.show_cache.label": "Mga likha ko: ipakita rin ang cache ng laro",
+  "settings.creations.show_cache.help": "Nagdaragdag ng seksyong “Cache ng laro” sa Mga likha ko: mga larawan at musika ng ibang manlalaro, mga photo frame, cover ng plaka, anunsyo… lahat ng na-download o ginawa ng Heartopia bukod sa sarili mong mga litrato, painting, at musika."
 }

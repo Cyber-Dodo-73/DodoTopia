@@ -24,7 +24,7 @@
   "online.account.link_help": "Gumagana rin ang link sa phone{has_expiry, select, yes { · mag-e-expire ito sa loob ng {min} min} other {}}. Huwag kailanman maglagay ng code na ipinadala sa iyo ng ibang tao.",
   "online.account.blocked_server": "Hindi maabot ang server: hindi puwedeng mag-sign in ngayon.",
   "online.account.blocked_old": "I-update ang DodoTopia para makapag-sign in (minimum na bersyon {version}).",
-  "online.account.no_account": "Gumagana ang musika, pagguhit at pagluluto <b>kahit walang account</b>. Ginagamit lang ang Discord account para i-share ang mga kanta mo at para maglaro sa mga room kasama ang ibang player.",
+  "online.account.no_account": "Gumagana rin ang musika, pagguhit, at pagluluto <b>nang walang account</b>.",
   "online.account.login": "Mag-sign in gamit ang Discord",
   "online.account.sign_in": "Mag-sign in",
   "online.account.link_copied": "Nakopya ang link",
@@ -154,5 +154,14 @@
   "online.license.cc": "Creative Commons",
   "online.license.cc_help": "Pinapayagan ng author ang pag-share: ilagay ang source sa itaas.",
   "online.license.unknown": "Hindi ko alam",
-  "online.license.unknown_help": "Titingnan ito ng isang moderator: sabihin man lang kung saan galing ang file."
+  "online.license.unknown_help": "Titingnan ito ng isang moderator: sabihin man lang kung saan galing ang file.",
+  "online.invite.title": "Sumali sa ibang manlalaro gamit ang Discord",
+  "online.invite.text": "Ibahagi ang mga kanta at drawing mo, i-like ang gawa ng iba, at tumugtog sa room kasama ang mga kaibigan. Libre at ilang segundo lang.",
+  "online.invite.later": "Mamaya",
+  "online.account.benefits_title": "Ang makukuha mo sa pag-sign in",
+  "online.account.benefit.share": "Ibahagi ang mga kanta at drawing mo sa ibang manlalaro",
+  "online.account.benefit.rooms": "Tumugtog sa room: sabay-sabay na nagsisimula ang lahat, bawat isa sa sarili niyang instrumento",
+  "online.account.benefit.like": "I-like ang mga kanta at drawing na gusto mo",
+  "online.account.benefit.import": "Mag-import ng kanta mula sa link (Online Sequencer, BitMidi…)",
+  "online.account.privacy": "Binabasa lang ng DodoTopia ang Discord username, avatar, at ID mo, at hindi ito makakapag-post ng anuman sa account mo."
 }

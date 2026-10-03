@@ -134,8 +134,16 @@ function accountHtml(st){
   // texte d'accueil : balisage <b> sans donnee utilisateur, injecte tel quel
   return `${blocked ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(blocked)}</div></div>` : ''}
     ${lg.state === 'error' && lg.error ? `<div class="notice notice--warn"><span class="notice__ic" aria-hidden="true">${icon('warn')}</span><div class="notice__text">${esc(lg.error)}</div></div>` : ''}
-    <p>${t('online.account.no_account')}</p>
-    <div class="btnrow"><button class="btn btn--cta" type="button" data-act="login"${blocked ? ' disabled' : ''}>${esc(t('online.account.login'))}</button></div>
+    <h3 class="account-why__t">${esc(t('online.account.benefits_title'))}</h3>
+    <ul class="account-why">
+      <li>${icon('share')}<span>${esc(t('online.account.benefit.share'))}</span></li>
+      <li>${icon('users')}<span>${esc(t('online.account.benefit.rooms'))}</span></li>
+      <li>${icon('heart')}<span>${esc(t('online.account.benefit.like'))}</span></li>
+      <li>${icon('link')}<span>${esc(t('online.account.benefit.import'))}</span></li>
+    </ul>
+    <div class="btnrow"><button class="btn btn--discord" type="button" data-act="login"${blocked ? ' disabled' : ''}>${icon('discord')}<span>${esc(t('online.account.login'))}</span></button></div>
+    <p class="hint left">${icon('shield')} ${esc(t('online.account.privacy'))}</p>
+    <p class="hint left">${t('online.account.no_account')}</p>
     ${foot}`;
 }
 function accountWire(box){
@@ -516,10 +524,11 @@ function viewAccountPill(st){
     pill.title = t('online.account.title');
     pill.setAttribute('aria-label', t('online.account.pill_label', {name: userLabel(o.user)}));
   } else {
-    pill.innerHTML = `<span class="avatar avatar--sm avatar--ini" aria-hidden="true">${icon('user')}</span><span>${esc(t('online.account.sign_in'))}</span>`;
+    pill.innerHTML = `${icon('discord')}<span>${esc(t('online.account.sign_in'))}</span>`;
     pill.title = t('online.account.login');
     pill.setAttribute('aria-label', t('online.account.pill_label_anonymous'));
   }
+  pill.classList.toggle('account--join', !(o.logged_in && o.user));
   const u = o.update || {};
   if(dot) dot.hidden = !(u.state === 'available' || u.state === 'ready');
   if(PANEL && PANEL.render === accountHtml) refreshPanel();
@@ -528,6 +537,43 @@ view('accountPill', {sig: st => {
   const o = onlineOf(st);
   return JSON.stringify(o ? [o.logged_in, o.user, o.is_admin, o.login, o.server_ok, (o.update || {}).state, ONL.loginUrl, I18N.lang] : null);
 }, draw: viewAccountPill});
+
+// ------------------------------------------------ invitation à se connecter avec Discord (tous les onglets)
+// Affichée tant qu'on n'est pas connecté et que le serveur répond ; « Plus tard » la masque deux semaines
+// (localStorage), la connexion la retire. Jamais pendant une attente de connexion ni si le client est trop vieux.
+const DINVITE_KEY = 'discord.invite.until', DINVITE_SNOOZE_MS = 14 * 86400 * 1000;
+function discordInviteWanted(o){
+  if(!o || o.logged_in || o.server_ok !== true || o.client_too_old || (o.login || {}).state === 'waiting') return false;
+  let until = 0;
+  try{ until = Number(localStorage.getItem(DINVITE_KEY)) || 0; }catch(e){}
+  return Date.now() >= until;
+}
+function discordLogin(){
+  accountPanel();
+  api('online_login').then(r => { if(r && r.url){ ONL.loginUrl = r.url; refreshPanel(); } });
+}
+function viewDiscordInvite(st){
+  const box = $('discordInvite');
+  if(!box) return;
+  // pas pendant la découverte du premier lancement : elle a sa propre étape Discord
+  const show = discordInviteWanted(onlineOf(st)) && !(typeof onbOpen === 'function' && onbOpen());
+  box.hidden = !show;
+  if(!show){ box.innerHTML = ''; return; }
+  box.innerHTML = `<span class="dinvite__ic" aria-hidden="true">${icon('discord')}</span>
+    <div class="dinvite__txt"><b>${esc(t('online.invite.title'))}</b><span>${esc(t('online.invite.text'))}</span></div>
+    <button class="btn btn--discord btn--sm" type="button" data-act="join">${icon('discord')}<span>${esc(t('online.account.login'))}</span></button>
+    <button class="btn btn--ghost btn--sm" type="button" data-act="later">${esc(t('online.invite.later'))}</button>`;
+  box.querySelector('[data-act="join"]').onclick = discordLogin;
+  box.querySelector('[data-act="later"]').onclick = () => {
+    try{ localStorage.setItem(DINVITE_KEY, String(Date.now() + DINVITE_SNOOZE_MS)); }catch(e){}
+    box.hidden = true; box.innerHTML = '';
+  };
+}
+view('discordInvite', {sig: st => {
+  const o = onlineOf(st);
+  return JSON.stringify(o ? [o.logged_in, o.server_ok, o.client_too_old, (o.login || {}).state, I18N.lang,
+    typeof onbOpen === 'function' && onbOpen()] : null);
+}, draw: viewDiscordInvite});
 
 // ------------------------------------------------ recherche, tri, pagination
 function onlineSearchNow(page){

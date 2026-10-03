@@ -67,3 +67,10 @@ config.json.broken-*
 # Captures de vérification de l'interface
 artifacts/
 config.json.bak-*
+
+# Analyse locale des fichiers du jeu et sauvegardes de « Mes créations » : jamais versionnées
+creations_backup/
+heartopia_dump.cs
+stringliteral.json
+extract_key.py
+heartopia_crypto.py

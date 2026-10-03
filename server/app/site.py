@@ -115,6 +115,8 @@ ROUTES: dict[str, dict[str, str]] = {
     "music": {"fr": "musique", "en": "music", "es": "musica", "de": "musik", "pt-BR": "musica"},
     "draw": {"fr": "dessin", "en": "drawing", "es": "dibujo", "de": "zeichnen", "pt-BR": "desenho"},
     "cook": {"fr": "cuisine", "en": "cooking", "es": "cocina", "de": "kochen", "pt-BR": "cozinha"},
+    "creations": {"fr": "mes-creations", "en": "my-creations", "es": "mis-creaciones", "de": "meine-kreationen",
+                  "pt-BR": "minhas-criacoes"},
     "together": {"fr": "jouer-ensemble", "en": "play-together", "es": "tocar-juntos", "de": "zusammen-spielen",
                  "pt-BR": "tocar-juntos"},
     "download": {"fr": "telecharger", "en": "download", "es": "descargar", "de": "herunterladen",
@@ -146,8 +148,8 @@ _FR_SLUGS = {slugs["fr"]: page_id for page_id, slugs in ROUTES.items()}
 
 # Ambiance de couleur par rubrique : classe `theme-<nom>` sur <body> (et sur les sections de l'accueil), lue par
 # la feuille de style à travers les variables `--t-*`. Tout le reste est « neutral ».
-THEMES = {"music": "music", "draw": "draw", "cook": "cook", "together": "rooms", "songs": "music",
-          "gallery": "draw"}
+THEMES = {"music": "music", "draw": "draw", "cook": "cook", "creations": "draw", "together": "rooms",
+          "songs": "music", "gallery": "draw"}
 
 
 def theme_of(page_id: str) -> str:
@@ -159,6 +161,7 @@ DB_PAGES = frozenset({"home", "download", "news", "songs", "gallery", "android"}
 # Hints du sitemap (changefreq, priority).
 SITEMAP_HINTS = {"home": ("weekly", "1.0"), "download": ("weekly", "0.9"), "news": ("weekly", "0.6"),
                  "music": ("monthly", "0.8"), "draw": ("monthly", "0.8"), "cook": ("monthly", "0.8"),
+                 "creations": ("monthly", "0.8"),
                  "together": ("monthly", "0.7"), "instruments": ("monthly", "0.7"), "help": ("monthly", "0.7"),
                  "community": ("monthly", "0.5"), "songs": ("daily", "0.8"), "gallery": ("daily", "0.7"),
                  "android": ("weekly", "0.8")}
@@ -656,7 +659,7 @@ def head(settings, lang: str, page_id: str, title: str, description: str, extra:
         f'<a href="{url_for(lang, pid)}"' + (f' class="nav--{pid}"' if pid in ("music", "draw", "cook") else "")
         + (' aria-current="page"' if pid == page_id else "")
         + f'>{esc(t(lang, f"site.nav.{pid}"))}</a>'
-        for pid in ("music", "draw", "cook", "songs", "gallery", "help"))
+        for pid in ("music", "draw", "cook", "creations", "songs", "gallery", "help"))
     body_class = body_class or f"page-{page_id} theme-{theme_of(page_id)}"
     beta = ""
     if i18n.is_beta(lang):
@@ -712,7 +715,7 @@ def foot(settings, lang: str, page_id: str, version_line: str, paths: dict[str, 
     def link(pid: str) -> str:
         return f'<li><a href="{url_for(lang, pid)}">{esc(t(lang, f"site.nav.{pid}"))}</a></li>'
     paths = paths or {code: url_for(code, page_id) for code in LANGS}
-    product = "".join(link(p) for p in ("music", "draw", "cook", "together", "songs", "gallery", "download",
+    product = "".join(link(p) for p in ("music", "draw", "cook", "creations", "together", "songs", "gallery", "download",
                                         "android", "instruments", "news"))
     support = "".join(link(p) for p in ("help", "community"))
     support += f'<li><a href="mailto:{EDITEUR_COURRIEL}">{esc(t(lang, "site.footer.contact"))}</a></li>'

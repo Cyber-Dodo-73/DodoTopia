@@ -9,7 +9,7 @@
   "onb.next": "Susunod",
   "onb.finish": "Tapusin",
   "onb.welcome.title": "Maligayang pagdating sa DodoTopia",
-  "onb.welcome.intro": "Ang DodoTopia ang tutugtog, guguhit at magluluto para sa iyo sa Heartopia. Tatlong mabilis na hakbang para makapagsimula.",
+  "onb.welcome.intro": "Tumutugtog, gumuguhit, at nagluluto ang DodoTopia para sa iyo sa Heartopia. Ilang mabilis na hakbang para makapagsimula.",
   "onb.welcome.lang": "Wika",
   "onb.welcome.lang_help": "Ang mga wikang may markang beta ay baka may ilang text pa na nasa French.",
   "onb.welcome.theme": "Tema",
@@ -52,5 +52,11 @@
   "deeplink.title.import": "Mag-import ng MIDI file",
   "deeplink.intro": "May dodotopia:// link na humihiling sa DodoTopia na gawin ito. Walang mangyayari nang wala ang pahintulot mo.",
   "deeplink.confirm": "Kumpirmahin",
-  "deeplink.dismiss": "Huwag pansinin"
+  "deeplink.dismiss": "Huwag pansinin",
+  "onb.step.discord": "Discord",
+  "onb.discord.title": "Sumali sa ibang manlalaro",
+  "onb.discord.intro": "Mag-sign in gamit ang Discord para ma-enjoy ang lahat ng ginagawa nang sama-sama. Libre at ilang segundo lang.",
+  "onb.discord.connected": "Naka-sign in gamit ang Discord: {name}",
+  "onb.discord.unavailable": "Hindi tumutugon ang server sa ngayon: makakapag-sign in ka mamaya mula sa button sa kanang itaas.",
+  "onb.discord.optional": "Opsyonal: maaari mong laktawan ang hakbang na ito at mag-sign in mamaya mula sa button sa kanang itaas."
 }

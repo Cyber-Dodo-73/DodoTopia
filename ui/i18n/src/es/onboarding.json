@@ -9,7 +9,7 @@
   "onb.next": "Siguiente",
   "onb.finish": "Terminar",
   "onb.welcome.title": "Te damos la bienvenida a DodoTopia",
-  "onb.welcome.intro": "DodoTopia toca música, dibuja y cocina por ti en Heartopia. Tres pasos rápidos para empezar.",
+  "onb.welcome.intro": "DodoTopia toca música, dibuja y cocina por ti en Heartopia. Unos pasos rápidos para empezar bien.",
   "onb.welcome.lang": "Idioma",
   "onb.welcome.lang_help": "Los idiomas marcados como beta pueden mostrar textos en francés.",
   "onb.welcome.theme": "Tema",
@@ -52,5 +52,11 @@
   "deeplink.title.import": "Importar un archivo MIDI",
   "deeplink.intro": "Un enlace dodotopia:// pide a DodoTopia que haga esto. No pasa nada sin tu permiso.",
   "deeplink.confirm": "Confirmar",
-  "deeplink.dismiss": "Ignorar"
+  "deeplink.dismiss": "Ignorar",
+  "onb.step.discord": "Discord",
+  "onb.discord.title": "Únete a los demás jugadores",
+  "onb.discord.intro": "Inicia sesión con Discord para disfrutar de todo lo que se hace en grupo. Es gratis y lleva unos segundos.",
+  "onb.discord.connected": "Sesión iniciada con Discord: {name}",
+  "onb.discord.unavailable": "El servidor no responde por ahora: podrás iniciar sesión más tarde desde el botón de arriba a la derecha.",
+  "onb.discord.optional": "Opcional: puedes saltarte este paso e iniciar sesión más tarde desde el botón de arriba a la derecha."
 }

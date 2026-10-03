@@ -5,6 +5,17 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.2.0
+- **Mes créations**, nouvelle activité : tes photos, tes peintures et tes musiques enregistrées dans Heartopia, lues directement dans les fichiers que le jeu garde sur ton ordinateur, rangées en trois onglets (Photos, Peintures, Musiques) et triées par date.
+- **Importer dans le jeu** : « Ajouter une photo » met ton image dans l'album d'Heartopia (aux quatre tailles que le jeu garde, chiffrée comme les siennes, avec sa fiche) et « Ajouter une musique » convertit un fichier MIDI en enregistrement du jeu joué au piano, sans rien remplacer. « Supprimer cet ajout » retire ce que DodoTopia a ajouté, jamais ce que le jeu a créé. Fonction récente : relance Heartopia pour voir l'ajout.
+- **Remplacer** une photo ou une musique : l'image est amenée à chaque taille que le jeu garde (« Remplir » ou « Ajuster »), un fichier MIDI (ou un enregistrement `.bin`) prend la place d'une musique en gardant son titre. L'original est sauvegardé et « Remettre l'original » le restaure. Les peintures s'exportent seulement : le jeu garde le vrai dessin sur ses serveurs (pour peindre une image, c'est l'activité Dessin).
+- **Exporter** : photos et peintures en image aux vraies couleurs, musiques en fichier MIDI (une piste par joueur et par instrument), relisible dans l'activité Musique.
+- Par défaut, seules tes propres créations sont affichées. Le reste de ce que le jeu garde (images et musiques des autres joueurs, cadres, pochettes, annonces) apparaît dans une section « Cache du jeu » avec le réglage **Réglages › Apparence › Mes créations : afficher aussi le cache du jeu**.
+- Le dossier du jeu est détecté tout seul (Windows ; Proton/Wine sous Linux) et peut être choisi à la main. Nouvelle dépendance : `cryptography`.
+- **Xylophone à 8 notes** : jouable, avec ses touches du jeu (A S D F G H J K, de do à do). Les morceaux sont ramenés sur son octave par l'arrangeur.
+- **Connexion Discord plus visible** : tant que tu n'es pas connecté, le bouton de l'en-tête prend les couleurs de Discord, « Mon compte » liste ce que la connexion apporte (partager, jouer en salon, aimer, importer par lien) et une invitation apparaît en haut de chaque activité ; « Plus tard » la masque deux semaines. La découverte du premier lancement a une étape « Discord », facultative. Tout fonctionne toujours sans compte.
+- Site : nouvelle page « Mes créations » dans les 10 langues (menu, accueil, plan du site, image de partage).
+
 ## 2.1.0
 - **Jouer ensemble, plus simple.** Le salon n'est plus un « mode » à activer puis à désactiver : on est en salon tant qu'on y est, et le quitter ramène au jeu en solo. Une barre en haut de la Musique montre le salon (code, joueurs, morceau) et son action principale (« Je suis prêt » / « Lancer la session ») depuis la bibliothèque comme depuis « Découvrir ». Le bouton du lecteur et F6 font l'action du salon au lieu de disparaître.
 - **Choisir le morceau du salon sans quitter le salon** : un sélecteur réunit ta bibliothèque et les morceaux partagés ; « Jouer dans le salon » dans le menu de chaque morceau, et « Proposer au salon » dans le lecteur pour le chef.

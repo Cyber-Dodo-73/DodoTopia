@@ -24,7 +24,7 @@
   "online.account.link_help": "El enlace también funciona desde un móvil{has_expiry, select, yes { · caduca en {min} min} other {}}. Nunca introduzcas un código que te haya enviado otra persona.",
   "online.account.blocked_server": "Servidor inaccesible: no se puede iniciar sesión ahora mismo.",
   "online.account.blocked_old": "Actualiza DodoTopia para iniciar sesión (versión mínima {version}).",
-  "online.account.no_account": "La música, el dibujo y la cocina funcionan <b>sin cuenta</b>. Una cuenta de Discord solo sirve para compartir tus canciones y tocar en salas con otros jugadores.",
+  "online.account.no_account": "La música, el dibujo y la cocina también funcionan <b>sin cuenta</b>.",
   "online.account.login": "Iniciar sesión con Discord",
   "online.account.sign_in": "Iniciar sesión",
   "online.account.link_copied": "Enlace copiado",
@@ -154,5 +154,14 @@
   "online.license.cc": "Creative Commons",
   "online.license.cc_help": "El autor permite compartirla: indica la fuente arriba.",
   "online.license.unknown": "No lo sé",
-  "online.license.unknown_help": "Un moderador lo revisará: indica al menos de dónde viene el archivo."
+  "online.license.unknown_help": "Un moderador lo revisará: indica al menos de dónde viene el archivo.",
+  "online.invite.title": "Únete a los demás jugadores con Discord",
+  "online.invite.text": "Comparte tus canciones y dibujos, da me gusta a los de otros y toca en salas con tus amigos. Es gratis y lleva unos segundos.",
+  "online.invite.later": "Más tarde",
+  "online.account.benefits_title": "Lo que te aporta iniciar sesión",
+  "online.account.benefit.share": "Compartir tus canciones y dibujos con otros jugadores",
+  "online.account.benefit.rooms": "Tocar en salas: todos empiezan en el mismo instante, cada uno con su instrumento",
+  "online.account.benefit.like": "Dar me gusta a las canciones y dibujos que prefieras",
+  "online.account.benefit.import": "Importar una canción desde un enlace (Online Sequencer, BitMidi…)",
+  "online.account.privacy": "DodoTopia solo lee tu nombre de usuario, tu avatar y tu ID de Discord, y no puede publicar nada en tu cuenta."
 }

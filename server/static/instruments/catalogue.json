@@ -521,9 +521,11 @@
       ],
       "category": "percussion",
       "image": "instruments/xylophone.png",
-      "supportedLayoutIds": [],
-      "defaultLayoutId": null,
-      "mappingStatus": "unknown",
+      "supportedLayoutIds": [
+        "xylophone-8"
+      ],
+      "defaultLayoutId": "xylophone-8",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 13,
       "polyphony": null,

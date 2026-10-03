@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "左下角",
   "settings.overlay.corner.opt.bottom-right": "右下角",
   "settings.multi.room_minimize.label": "房间开始时最小化 DodoTopia",
-  "settings.multi.room_minimize.help": "关闭：开始时 DodoTopia 保持打开；倒计时期间点击 Heartopia（这次点击不会取消开始）。"
+  "settings.multi.room_minimize.help": "关闭：开始时 DodoTopia 保持打开；倒计时期间点击 Heartopia（这次点击不会取消开始）。",
+  "settings.creations.show_cache.label": "我的作品：同时显示游戏缓存",
+  "settings.creations.show_cache.help": "在“我的作品”中增加“游戏缓存”分区：其他玩家的图片和音乐、相框、唱片封面、公告……除了你自己的照片、画作和音乐之外，Heartopia 下载或生成的所有内容。"
 }

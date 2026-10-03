@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "Embaixo à esquerda",
   "settings.overlay.corner.opt.bottom-right": "Embaixo à direita",
   "settings.multi.room_minimize.label": "Minimizar o DodoTopia ao iniciar uma sala",
-  "settings.multi.room_minimize.help": "Desativado: o DodoTopia fica aberto na largada; clique no Heartopia durante a contagem (esse clique não cancela a largada)."
+  "settings.multi.room_minimize.help": "Desativado: o DodoTopia fica aberto na largada; clique no Heartopia durante a contagem (esse clique não cancela a largada).",
+  "settings.creations.show_cache.label": "Minhas criações: mostrar também o cache do jogo",
+  "settings.creations.show_cache.help": "Adiciona uma seção “Cache do jogo” a Minhas criações: imagens e músicas de outros jogadores, molduras, capas de disco, anúncios… tudo o que o Heartopia baixou ou gerou além das suas fotos, pinturas e músicas."
 }

@@ -329,6 +329,7 @@ def run_ui() -> None:
             page.set_viewport_size({"width": width, "height": height})
             for name, route in [("music", "/ui/index.html?mock"), ("empty", "/ui/index.html?mock&empty"),
                                 ("draw", "/ui/index.html?mock&image&tab=image"), ("cook", "/ui/index.html?mock&cook&tab=cook"),
+                                ("creations", "/ui/index.html?mock&tab=creations"),
                                 ("settings", "/ui/index.html?mock&settings"), ("instruments-app", "/ui/index.html?mock&sel"),
                                 ("discover", "/ui/index.html?mock&online&view=discover"),
                                 ("together", "/ui/index.html?mock&view=together"),

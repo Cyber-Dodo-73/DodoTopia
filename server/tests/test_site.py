@@ -498,7 +498,7 @@ def test_instruments_states_match_the_catalogue_data(client):
     counts = cat["counts"]
     assert sum(counts.values()) == cat["total"]
     by_id = {t["id"]: t for t in cat["types"]}
-    for missing in ("xylophone", "conch"):
+    for missing in ("conch",):
         assert by_id[missing]["state"] == "unknown", missing
     for perc in ("conga", "cajon"):
         assert by_id[perc]["state"] == "candidate", perc
@@ -572,7 +572,7 @@ def test_unreadable_catalogue_does_not_break_the_site(client, monkeypatch):
 def test_instrument_layouts_are_described_from_the_data(client):
     cat = catalogue()
     html = client.get("/fr/instruments").text
-    assert [lay["count"] for lay in cat["layouts"]] == [15, 15, 15, 22, 37, 8]
+    assert [lay["count"] for lay in cat["layouts"]] == [15, 15, 15, 22, 37, 8, 8]
     for lay in cat["layouts"]:
         assert lay["id"] in html, lay["id"]
     assert "les trois dispositions à 15 notes ne diffèrent pas seulement par leur" in html

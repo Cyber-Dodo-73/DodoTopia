@@ -114,6 +114,7 @@ def sanitize(cfg):
     for k in ("terms_accepted_version", "terms_accepted_at", "terms_accepted_lang"):
         cfg.pop(k, None)
     cfg.pop("general", None)                   # langue : "auto" par defaut (langue du systeme)
+    cfg.pop("creations", None)                 # dossier ScreenCapture choisi a la main : propre a cette machine
     return cfg
 
 

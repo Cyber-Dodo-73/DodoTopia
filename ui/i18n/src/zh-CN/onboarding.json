@@ -9,7 +9,7 @@
   "onb.next": "下一步",
   "onb.finish": "完成",
   "onb.welcome.title": "欢迎使用 DodoTopia",
-  "onb.welcome.intro": "DodoTopia 可以在 Heartopia 中替你演奏音乐、画画和烹饪。只需三个简单步骤即可开始。",
+  "onb.welcome.intro": "DodoTopia 在 Heartopia 中替你演奏、绘画和烹饪。只需几个简单步骤即可开始。",
   "onb.welcome.lang": "语言",
   "onb.welcome.lang_help": "标记为测试版的语言可能仍有法语文本。",
   "onb.welcome.theme": "主题",
@@ -52,5 +52,11 @@
   "deeplink.title.import": "导入 MIDI 文件",
   "deeplink.intro": "一个 dodotopia:// 链接请求 DodoTopia 执行此操作。未经你同意，不会进行任何操作。",
   "deeplink.confirm": "确认",
-  "deeplink.dismiss": "忽略"
+  "deeplink.dismiss": "忽略",
+  "onb.step.discord": "Discord",
+  "onb.discord.title": "加入其他玩家",
+  "onb.discord.intro": "用 Discord 登录，享受所有多人功能。免费，只需几秒钟。",
+  "onb.discord.connected": "已通过 Discord 登录：{name}",
+  "onb.discord.unavailable": "服务器暂时没有响应：稍后可以通过右上角的按钮登录。",
+  "onb.discord.optional": "可选：你可以跳过这一步，稍后通过右上角的按钮登录。"
 }
