@@ -111,6 +111,8 @@ SCHEMA = {
     # ---- overlay au-dessus du jeu
     "overlay.enabled": Bool(section="general"),
     "overlay.corner": Choice("top-right", "top-left", "top-center", "bottom-left", "bottom-right", section="general"),
+    # ---- Mes créations : montrer aussi le cache du jeu (images des autres joueurs, cadres, pochettes, annonces)
+    "creations.show_cache": Bool(section="general"),
     # ---- dessin
     "draw.step_delay": Num(0.0, 0.5, "ms", scale=1000, step=5, section="draw"),
     "draw.click_delay": Num(0.0, 1.0, "ms", scale=1000, step=10, section="draw"),
@@ -165,6 +167,7 @@ def defaults():
     out["multi.room_minimize"] = sync.DEFAULT_MULTI.get("room_minimize", False)
     out["overlay.enabled"] = core.DEFAULT_CONFIG["overlay"]["enabled"]
     out["overlay.corner"] = core.DEFAULT_CONFIG["overlay"]["corner"]
+    out["creations.show_cache"] = False
     for k in ("step_delay", "click_delay", "glide_speed", "fill_background", "skip_white", "verify",
               "dense", "refine", "outline", "mouse_glide"):
         out["draw." + k] = draw.DEFAULT_DRAW[k]

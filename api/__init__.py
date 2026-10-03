@@ -44,10 +44,11 @@ from .online_api import OnlineMixin
 from .integrations import IntegrationsMixin
 from .support import SupportMixin
 from .overlay import OverlayMixin
+from .creations_api import CreationsMixin
 
 
 class Api(BaseMixin, HotkeysMixin, StateMixin, CookMixin, DrawMixin, LibraryMixin, MusicMixin, InstrumentsMixin, WizardMixin, SettingsMixin, OnlineMixin,
-          IntegrationsMixin, SupportMixin, OverlayMixin):
+          IntegrationsMixin, SupportMixin, OverlayMixin, CreationsMixin):
     def __init__(self):
         # pywebview execute chaque appel JS dans un fil : tout ce que get_state() lit et que les autres
         # methodes ecrivent (toasts, erreur, diagnostic) passe par ce verrou reentrant

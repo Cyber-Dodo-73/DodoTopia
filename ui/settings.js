@@ -31,6 +31,8 @@ function FIELDS(){ return [
    options: () => [['top-right', t('settings.overlay.corner.opt.top-right')], ['top-left', t('settings.overlay.corner.opt.top-left')],
                    ['top-center', t('settings.overlay.corner.opt.top-center')], ['bottom-left', t('settings.overlay.corner.opt.bottom-left')],
                    ['bottom-right', t('settings.overlay.corner.opt.bottom-right')]]},
+  // ---- Mes créations : montrer aussi le cache du jeu (creations.js relit sa liste quand il change)
+  {path: 'creations.show_cache', section: 'general', control: 'switch', label: t('settings.creations.show_cache.label'), help: t('settings.creations.show_cache.help')},
   // ---- Musique et audio : lecture dans le jeu (groupe « lecture »)
   {path: 'stop_on_input', section: 'audio', group: 'lecture', control: 'switch', label: t('settings.stop_on_input.label'), help: t('settings.stop_on_input.help')},
   {path: 'start_delay', section: 'audio', group: 'lecture', control: 'slider', label: t('settings.start_delay.label'), help: t('settings.start_delay.help')},
@@ -124,10 +126,12 @@ function saveSetting(path, value){
       if(spec) spec.value = value; flashSaved(true);
       // la langue change quand même en aperçu (mock.js fournit MOCK_I18N) ; en vrai, Python appelle applyLanguage()
       if(path === 'general.lang' && window.MOCK_I18N) applyLanguage(value);
+      if(path === 'creations.show_cache' && typeof crSettingChanged === 'function'){ window.MOCK_CR_CACHE = !!value; crSettingChanged(); }
       return r;
     }
     if(r.ok){
       if(spec) spec.value = r.value;
+      if(path === 'creations.show_cache' && typeof crSettingChanged === 'function') crSettingChanged();
       setFieldError(path, ''); refreshField(path, r.value); flashSaved(true);
     } else {
       delete SET.lastSent[path];

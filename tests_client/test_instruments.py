@@ -145,7 +145,7 @@ def test_catalogue_provenance_sans_pretendre_avoir_teste(cat):
             assert t.mapping_status == "unknown"
             assert t.default_layout_id is None
     a_relever = {t.id for t in cat.types if not t.supported_layout_ids}
-    assert a_relever == {"xylophone", "conch"}
+    assert a_relever == {"conch"}
     percussifs = {t.id for t in cat.types if t.percussive}
     assert percussifs == {"conga", "cajon"}
 
@@ -153,7 +153,7 @@ def test_catalogue_provenance_sans_pretendre_avoir_teste(cat):
 # ================================================================ 2. dispositions
 def test_dispositions_quinze_quinze_vingt_deux_trente_sept(cat):
     attendu = {"lute-15-3row": 15, "diatonic-15-2row": 15, "diatonic-15-3row": 15,
-               "piano-diatonic-22": 22, "piano-chromatic-37": 37, "conga-8": 8}
+               "piano-diatonic-22": 22, "piano-chromatic-37": 37, "conga-8": 8, "xylophone-8": 8}
     assert set(cat.layouts) == set(attendu)
     for lid, n in attendu.items():
         lay = cat.layouts[lid]
@@ -310,7 +310,7 @@ def test_migration_retire_les_variantes_esthetiques(cat):
 
 # ================================================================ 5. profil inconnu
 def test_profil_inconnu_n_herite_jamais_du_piano(cfg):
-    for ident in ("conch", "xylophone"):
+    for ident in ("conch",):
         inst = inst_of(cfg, ident)
         assert inst is not None
         assert inst.status == "unknown"

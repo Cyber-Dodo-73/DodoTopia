@@ -102,11 +102,11 @@ def test_error_and_room_pages_have_their_own_body_class(client):
 
 def test_shots_are_webp_with_png_fallback_in_a_window_frame(client):
     html = client.get("/fr/").text
-    assert html.count('<source type="image/webp" srcset="/static/app-') == 4          # héros + trois activités
+    assert html.count('<source type="image/webp" srcset="/static/app-') == 5          # héros + quatre activités
     assert re.search(r'srcset="/static/app-musique-730\.webp\?v=\w+ 730w, /static/app-musique-1460\.webp\?v=\w+ 1460w"',
                      html)
     assert html.count('fetchpriority="high"') == 1 and html.count('loading="eager"') == 1
-    assert html.count('<figure class="win win--tilt-') == 4
+    assert html.count('<figure class="win win--tilt-') == 5
     for tag in re.findall(r'<img class="shot"[^>]*>', html):
         assert 'width="1460" height="812"' in tag, tag
     assert '<source type="image/webp" srcset="/static/dodo-96.webp?v=' in html
@@ -181,7 +181,7 @@ def test_home_previews_need_three_items(client, user_token, admin_token):
 def test_home_structure(client, publish_headers):
     put_and_publish(client, publish_headers, "2.0.0")
     html = client.get("/fr/").text
-    assert html.count("<section class=\"act theme-") == 3
+    assert html.count("<section class=\"act theme-") == 4          # musique, dessin, cuisine, mes créations
     for theme in ("music", "draw", "cook"):
         assert f'<section class="act theme-{theme} wavy' in html
     assert '<section class="roomsband theme-rooms wavy">' in html

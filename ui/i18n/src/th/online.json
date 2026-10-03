@@ -24,7 +24,7 @@
   "online.account.link_help": "ลิงก์ใช้งานจากโทรศัพท์ได้ด้วย{has_expiry, select, yes { · หมดอายุใน {min} min} other {}} อย่าป้อนรหัสที่มีคนส่งมาให้คุณ",
   "online.account.blocked_server": "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ขณะนี้ยังลงชื่อเข้าใช้ไม่ได้",
   "online.account.blocked_old": "อัปเดต DodoTopia เพื่อลงชื่อเข้าใช้ (เวอร์ชันขั้นต่ำ {version})",
-  "online.account.no_account": "ดนตรี วาดภาพ และทำอาหาร ใช้งานได้<b>โดยไม่ต้องมีบัญชี</b> บัญชี Discord ใช้เฉพาะสำหรับแชร์เพลงและเล่นในห้องกับผู้เล่นคนอื่นเท่านั้น",
+  "online.account.no_account": "ดนตรี วาดภาพ และทำอาหารใช้งานได้<b>โดยไม่ต้องมีบัญชี</b>เช่นกัน",
   "online.account.login": "ลงชื่อเข้าใช้ด้วย Discord",
   "online.account.sign_in": "ลงชื่อเข้าใช้",
   "online.account.link_copied": "คัดลอกลิงก์แล้ว",
@@ -154,5 +154,14 @@
   "online.license.cc": "ครีเอทีฟคอมมอนส์",
   "online.license.cc_help": "ผู้สร้างอนุญาตให้แชร์ ระบุที่มาด้านบน",
   "online.license.unknown": "ไม่ทราบ",
-  "online.license.unknown_help": "ผู้ดูแลจะตรวจสอบ อย่างน้อยระบุว่าไฟล์มาจากไหน"
+  "online.license.unknown_help": "ผู้ดูแลจะตรวจสอบ อย่างน้อยระบุว่าไฟล์มาจากไหน",
+  "online.invite.title": "เข้าร่วมกับผู้เล่นคนอื่นด้วย Discord",
+  "online.invite.text": "แชร์เพลงและภาพวาดของคุณ กดถูกใจผลงานของคนอื่น และเล่นในห้องกับเพื่อน ฟรีและใช้เวลาไม่กี่วินาที",
+  "online.invite.later": "ไว้ทีหลัง",
+  "online.account.benefits_title": "สิ่งที่ได้เมื่อเข้าสู่ระบบ",
+  "online.account.benefit.share": "แชร์เพลงและภาพวาดของคุณกับผู้เล่นคนอื่น",
+  "online.account.benefit.rooms": "เล่นในห้อง: ทุกคนเริ่มพร้อมกัน แต่ละคนใช้เครื่องดนตรีของตัวเอง",
+  "online.account.benefit.like": "กดถูกใจเพลงและภาพวาดที่คุณชอบ",
+  "online.account.benefit.import": "นำเข้าเพลงจากลิงก์ (Online Sequencer, BitMidi…)",
+  "online.account.privacy": "DodoTopia อ่านเพียงชื่อผู้ใช้ รูปประจำตัว และ ID ของ Discord เท่านั้น และไม่สามารถโพสต์อะไรในบัญชีของคุณได้"
 }

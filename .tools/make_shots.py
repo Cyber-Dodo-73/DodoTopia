@@ -19,7 +19,7 @@ from PIL import Image
 
 STATIC = Path(__file__).resolve().parents[1] / "server" / "static"
 ART = STATIC / "art"
-SHOTS = ("musique", "dessin", "cuisine")
+SHOTS = ("musique", "dessin", "cuisine", "creations")
 SHOT_WIDTHS = (730, 1460)
 DODO_SIZES = (96, 512)
 QUALITY = 82

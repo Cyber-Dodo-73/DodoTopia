@@ -1,4 +1,4 @@
-"""Pages d'activité : Musique, Dessin, Cuisine, Jouer ensemble. Même structure, textes différents."""
+"""Pages d'activité : Musique, Dessin, Cuisine, Mes créations, Jouer ensemble. Même structure, textes différents."""
 from __future__ import annotations
 
 from ..i18n import t
@@ -52,4 +52,5 @@ class _Activity:
 Music = _Activity("music", "musique")
 Draw = _Activity("draw", "dessin")
 Cook = _Activity("cook", "cuisine")
+Creations = _Activity("creations", "creations")
 Together = _Activity("together", "musique")

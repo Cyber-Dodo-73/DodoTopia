@@ -24,7 +24,7 @@
   "online.account.link_help": "Der Link funktioniert auch vom Handy{has_expiry, select, yes { · er läuft in {min} min ab} other {}}. Gib nie einen Code ein, den dir jemand geschickt hat.",
   "online.account.blocked_server": "Server nicht erreichbar: Anmelden ist gerade nicht möglich.",
   "online.account.blocked_old": "Aktualisiere DodoTopia, um dich anzumelden (Mindestversion {version}).",
-  "online.account.no_account": "Musik, Zeichnen und Kochen funktionieren <b>ohne Konto</b>. Ein Discord-Konto dient nur zum Teilen deiner Lieder und zum Spielen in Räumen mit anderen.",
+  "online.account.no_account": "Musik, Zeichnen und Kochen funktionieren auch <b>ohne Konto</b>.",
   "online.account.login": "Mit Discord anmelden",
   "online.account.sign_in": "Anmelden",
   "online.account.link_copied": "Link kopiert",
@@ -154,5 +154,14 @@
   "online.license.cc": "Creative Commons",
   "online.license.cc_help": "Der Urheber erlaubt das Teilen: gib oben die Quelle an.",
   "online.license.unknown": "Weiß ich nicht",
-  "online.license.unknown_help": "Ein Moderator prüft es: gib zumindest an, woher die Datei stammt."
+  "online.license.unknown_help": "Ein Moderator prüft es: gib zumindest an, woher die Datei stammt.",
+  "online.invite.title": "Triff die anderen Spieler mit Discord",
+  "online.invite.text": "Teile deine Lieder und Zeichnungen, like die der anderen und spiele mit Freunden in Räumen. Kostenlos und in wenigen Sekunden erledigt.",
+  "online.invite.later": "Später",
+  "online.account.benefits_title": "Was dir die Anmeldung bringt",
+  "online.account.benefit.share": "Deine Lieder und Zeichnungen mit anderen Spielern teilen",
+  "online.account.benefit.rooms": "In Räumen spielen: Alle starten im selben Moment, jeder auf seinem Instrument",
+  "online.account.benefit.like": "Lieder und Zeichnungen liken, die dir gefallen",
+  "online.account.benefit.import": "Ein Lied über einen Link importieren (Online Sequencer, BitMidi …)",
+  "online.account.privacy": "DodoTopia liest nur deinen Discord-Namen, deinen Avatar und deine ID und kann nichts in deinem Konto posten."
 }

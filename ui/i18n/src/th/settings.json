@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "มุมซ้ายล่าง",
   "settings.overlay.corner.opt.bottom-right": "มุมขวาล่าง",
   "settings.multi.room_minimize.label": "ย่อ DodoTopia เมื่อห้องเริ่ม",
-  "settings.multi.room_minimize.help": "ปิด: DodoTopia จะเปิดค้างไว้ตอนเริ่ม ให้คลิกที่ Heartopia ระหว่างนับถอยหลัง (การคลิกนั้นไม่ยกเลิกการเริ่ม)"
+  "settings.multi.room_minimize.help": "ปิด: DodoTopia จะเปิดค้างไว้ตอนเริ่ม ให้คลิกที่ Heartopia ระหว่างนับถอยหลัง (การคลิกนั้นไม่ยกเลิกการเริ่ม)",
+  "settings.creations.show_cache.label": "ผลงานของฉัน: แสดงแคชของเกมด้วย",
+  "settings.creations.show_cache.help": "เพิ่มส่วน “แคชของเกม” ในผลงานของฉัน: รูปและเพลงของผู้เล่นคนอื่น กรอบรูป ปกแผ่นเสียง ประกาศ… ทุกอย่างที่ Heartopia ดาวน์โหลดหรือสร้างขึ้นนอกเหนือจากรูปถ่าย ภาพวาด และเพลงของคุณเอง"
 }

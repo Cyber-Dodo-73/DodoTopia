@@ -24,7 +24,7 @@
   "online.account.link_help": "该链接也可以在手机上使用{has_expiry, select, yes { · {min} 分钟后过期} other {}}。切勿输入别人发给你的代码。",
   "online.account.blocked_server": "无法连接服务器：暂时无法登录。",
   "online.account.blocked_old": "请更新 DodoTopia 后登录（最低版本 {version}）。",
-  "online.account.no_account": "音乐、绘画和烹饪<b>无需账号</b>即可使用。Discord 账号仅用于分享曲目和与其他玩家在房间中演奏。",
+  "online.account.no_account": "音乐、绘画和烹饪<b>无需账号</b>也能使用。",
   "online.account.login": "使用 Discord 登录",
   "online.account.sign_in": "登录",
   "online.account.link_copied": "链接已复制",
@@ -154,5 +154,14 @@
   "online.license.cc": "知识共享（CC）",
   "online.license.cc_help": "作者允许分享：请在上方注明来源。",
   "online.license.unknown": "不确定",
-  "online.license.unknown_help": "管理员会核实：请至少注明文件来源。"
+  "online.license.unknown_help": "管理员会核实：请至少注明文件来源。",
+  "online.invite.title": "用 Discord 加入其他玩家",
+  "online.invite.text": "分享你的曲子和画作，为别人的作品点赞，和朋友在房间里一起演奏。免费，只需几秒钟。",
+  "online.invite.later": "稍后",
+  "online.account.benefits_title": "登录后可以做什么",
+  "online.account.benefit.share": "与其他玩家分享你的曲子和画作",
+  "online.account.benefit.rooms": "在房间里演奏：所有人同时开始，各自使用自己的乐器",
+  "online.account.benefit.like": "为你喜欢的曲子和画作点赞",
+  "online.account.benefit.import": "通过链接导入曲子（Online Sequencer、BitMidi 等）",
+  "online.account.privacy": "DodoTopia 只读取你的 Discord 用户名、头像和 ID，无法在你的账号上发布任何内容。"
 }

@@ -24,7 +24,7 @@
   "online.account.link_help": "Tautannya juga bisa dibuka dari HP{has_expiry, select, yes { · kedaluwarsa dalam {min} mnt} other {}}. Jangan pernah memasukkan kode yang dikirim orang lain.",
   "online.account.blocked_server": "Server tidak terjangkau: belum bisa masuk sekarang.",
   "online.account.blocked_old": "Perbarui DodoTopia untuk masuk (versi minimum {version}).",
-  "online.account.no_account": "Musik, gambar, dan masak bisa dipakai <b>tanpa akun</b>. Akun Discord hanya untuk membagikan lagu dan bermain di room dengan pemain lain.",
+  "online.account.no_account": "Musik, menggambar, dan memasak juga berfungsi <b>tanpa akun</b>.",
   "online.account.login": "Masuk dengan Discord",
   "online.account.sign_in": "Masuk",
   "online.account.link_copied": "Tautan disalin",
@@ -154,5 +154,14 @@
   "online.license.cc": "Creative Commons",
   "online.license.cc_help": "Penciptanya mengizinkan dibagikan: cantumkan sumbernya di atas.",
   "online.license.unknown": "Aku tidak tahu",
-  "online.license.unknown_help": "Moderator akan mengecek: setidaknya sebutkan dari mana file-nya berasal."
+  "online.license.unknown_help": "Moderator akan mengecek: setidaknya sebutkan dari mana file-nya berasal.",
+  "online.invite.title": "Bergabung dengan pemain lain lewat Discord",
+  "online.invite.text": "Bagikan lagu dan gambarmu, sukai karya pemain lain, dan main di room bersama teman. Gratis dan hanya butuh beberapa detik.",
+  "online.invite.later": "Nanti",
+  "online.account.benefits_title": "Yang kamu dapat dengan masuk",
+  "online.account.benefit.share": "Membagikan lagu dan gambarmu ke pemain lain",
+  "online.account.benefit.rooms": "Main di room: semua mulai pada saat yang sama, masing-masing dengan instrumennya",
+  "online.account.benefit.like": "Menyukai lagu dan gambar favoritmu",
+  "online.account.benefit.import": "Mengimpor lagu dari tautan (Online Sequencer, BitMidi…)",
+  "online.account.privacy": "DodoTopia hanya membaca nama pengguna, avatar, dan ID Discord-mu, dan tidak bisa memposting apa pun di akunmu."
 }

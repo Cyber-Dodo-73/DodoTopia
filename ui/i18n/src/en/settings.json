@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "Bottom left",
   "settings.overlay.corner.opt.bottom-right": "Bottom right",
   "settings.multi.room_minimize.label": "Minimize DodoTopia when a room starts",
-  "settings.multi.room_minimize.help": "Off: DodoTopia stays open at the start; click on Heartopia during the countdown (that click doesn’t cancel the start)."
+  "settings.multi.room_minimize.help": "Off: DodoTopia stays open at the start; click on Heartopia during the countdown (that click doesn’t cancel the start).",
+  "settings.creations.show_cache.label": "My creations: also show the game cache",
+  "settings.creations.show_cache.help": "Adds a “Game cache” section to My creations: other players’ images and music, photo frames, record covers, announcements… everything Heartopia downloaded or generated besides your own photos, paintings and music."
 }

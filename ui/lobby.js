@@ -77,7 +77,7 @@ function roomJoinHtml(st, o, logged){
       <button class="btn btn--ghost btn--sm" type="button" data-act="update">${esc(t('lobby.join.see_update'))}</button></div></div>`);
   } else if(!logged){
     out.push(`<div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('user')}</span><div class="notice__text">${esc(t('lobby.join.need_account'))}
-      <button class="btn btn--ghost btn--sm" type="button" data-act="account">${esc(t('lobby.join.sign_in'))}</button></div></div>`);
+      <button class="btn btn--discord btn--sm" type="button" data-act="account">${icon('discord')}<span>${esc(t('lobby.join.sign_in'))}</span></button></div></div>`);
   }
   const dis = blocked ? ' disabled' : '';
   out.push(`<div class="roomjoin">

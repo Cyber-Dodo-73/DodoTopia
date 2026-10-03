@@ -411,7 +411,7 @@ def _code_page(login_id: str, remaining: int, wrong: bool = False, status: int =
 <input class="code" name="code" inputmode="latin" autocapitalize="characters" spellcheck="false"
  maxlength="{USER_CODE_LEN + 2}" pattern="[A-Za-z0-9 -]*" required autofocus aria-label="Code affiché dans DodoTopia">
 {err}
-<div><button type="submit">Continuer avec Discord</button></div>
+<div><button type="submit"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="vertical-align:-4px;margin-right:8px"><path fill="currentColor" d="M19.6 5.3A17 17 0 0 0 15.4 4l-.5 1a15.700 15.700 0 0 0-5.800 0l-.5-1a17 17 0 0 0-4.200 1.300C1.700 9.300 1 13.200 1.300 17a17 17 0 0 0 5.200 2.600l1.100-1.800a11 11 0 0 1-1.700-.8l.4-.3a12.200 12.200 0 0 0 11.400 0l.4.3c-.5.300-1.100.600-1.700.800l1.100 1.800a17 17 0 0 0 5.200-2.600c.4-4.400-.7-8.200-3.100-11.700ZM8.700 14.600c-1 0-1.900-.9-1.900-2.100s.8-2.100 1.900-2.100 1.900.9 1.900 2.100-.800 2.100-1.900 2.100Zm6.600 0c-1 0-1.900-.9-1.900-2.100s.8-2.100 1.900-2.100 1.900.9 1.900 2.100-.800 2.100-1.900 2.100Z"/></svg>Continuer avec Discord</button></div>
 </form>
 <p class="small">Si tu n'as pas lancé de connexion depuis DodoTopia, ferme cet onglet : ne saisis jamais un code
 qu'on t'a envoyé.</p>"""

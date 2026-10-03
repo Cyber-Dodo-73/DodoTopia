@@ -190,5 +190,7 @@
   "settings.overlay.corner.opt.bottom-left": "Kiri bawah",
   "settings.overlay.corner.opt.bottom-right": "Kanan bawah",
   "settings.multi.room_minimize.label": "Perkecil DodoTopia saat ruang dimulai",
-  "settings.multi.room_minimize.help": "Mati: DodoTopia tetap terbuka saat mulai; klik Heartopia selama hitung mundur (klik itu tidak membatalkan mulai)."
+  "settings.multi.room_minimize.help": "Mati: DodoTopia tetap terbuka saat mulai; klik Heartopia selama hitung mundur (klik itu tidak membatalkan mulai).",
+  "settings.creations.show_cache.label": "Kreasiku: tampilkan juga cache game",
+  "settings.creations.show_cache.help": "Menambahkan bagian “Cache game” ke Kreasiku: gambar dan musik pemain lain, bingkai foto, sampul piringan, pengumuman… semua yang diunduh atau dibuat Heartopia selain foto, lukisan, dan musikmu sendiri."
 }

@@ -31,9 +31,9 @@ sys.path.insert(0, str(SERVER))
 from app import i18n  # noqa: E402  (module sans dépendance web)
 
 W, H = 1200, 630
-PAGES = ("home", "music", "draw", "cook", "together", "download", "instruments", "news", "community", "help",
+PAGES = ("home", "music", "draw", "cook", "creations", "together", "download", "instruments", "news", "community", "help",
          "legal", "privacy", "terms", "songs", "gallery")
-SHOTS = {"home": "musique", "music": "musique", "draw": "dessin", "cook": "cuisine", "together": "musique",
+SHOTS = {"home": "musique", "music": "musique", "draw": "dessin", "cook": "cuisine", "creations": "creations", "together": "musique",
          "songs": "musique", "gallery": "dessin"}
 # Mêmes ambiances que `site.THEMES` et les jetons de site.css : (fond, fond 2, accent, encre).
 THEMES = {
@@ -43,7 +43,7 @@ THEMES = {
     "rooms": ((220, 239, 255), (227, 230, 255), (61, 139, 217), (29, 79, 134)),
     "neutral": ((255, 249, 239), (255, 225, 196), (217, 138, 75), (107, 68, 35)),
 }
-PAGE_THEME = {"music": "music", "songs": "music", "draw": "draw", "gallery": "draw", "cook": "cook",
+PAGE_THEME = {"music": "music", "songs": "music", "draw": "draw", "gallery": "draw", "creations": "draw", "cook": "cook",
               "together": "rooms"}
 
 HEAD = (59, 45, 39)

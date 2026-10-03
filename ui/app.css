@@ -552,6 +552,26 @@ header{display:flex;align-items:center;gap:var(--sp-4);flex:none}
   background:var(--c-glass);cursor:pointer;font-weight:600;font-size:var(--fs-sm);color:var(--c-text);white-space:nowrap
 }
 .account img{width:28px;height:28px;border-radius:50%}
+/* non connecté : la pastille devient un bouton aux couleurs de Discord */
+.account--join{background:#5865f2;border-color:#4752c4;color:#fff;padding:4px 14px 4px 12px}
+.account--join .ic{width:20px;height:20px}
+.account--join:hover{background:#4752c4}
+.btn--discord{background:#5865f2;color:#fff;border-color:#4752c4;box-shadow:0 3px 0 #3c45a5}
+.btn--discord:hover{background:#4752c4}
+.btn--discord[disabled]{opacity:.55}
+.account-why__t{margin:0 0 6px;font-size:var(--fs-md);font-weight:700}
+.account-why{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+.account-why li{display:flex;align-items:flex-start;gap:10px;font-size:var(--fs-sm);line-height:1.4}
+.account-why .ic{flex:none;width:18px;height:18px;margin-top:1px;color:#5865f2}
+.dinvite{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0;padding:10px 14px;border-radius:var(--r-lg);
+  border:2px solid color-mix(in srgb,#5865f2 35%,transparent);background:color-mix(in srgb,#5865f2 9%,var(--c-surface))}
+.dinvite{flex:none}
+.dinvite[hidden]{display:none}
+.dinvite__ic{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#5865f2;color:#fff}
+.dinvite__ic .ic{width:22px;height:22px}
+.dinvite__txt{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:var(--fs-sm);line-height:1.35}
+.dinvite__txt b{font-size:var(--fs-md)}
+.dinvite__txt span{color:var(--c-text-2)}
 #btnHelp{white-space:nowrap}
 /* tâche en cours dans une autre activité */
 .runpill{
@@ -1457,3 +1477,37 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .diagfiles .hint{margin-left:6px}
 .diagdone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
 .diagcode{font-size:var(--fs-xl)}
+
+/* ================================================================ Mes créations : grille d'images du jeu */
+#pageCreations.active{grid-template-columns:minmax(0,1fr)}
+.card.creations{min-height:0;align-self:stretch;max-height:100%}
+.card.creations > .card__head{flex-wrap:nowrap;gap:8px}
+.card.creations > .card__head h2{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switch--inline{flex:none;white-space:nowrap}
+.creations-notice{margin:0 16px 10px}
+.creations-how{margin:6px 16px 12px;flex:none}
+#crCats .chip .count{margin-left:4px;font-weight:600;opacity:.75}
+/* fond uni (pas de damier) : les images du jeu sont des photos et des dessins sur toile blanche */
+.crcard .gcard__img{background:var(--c-surface-2);padding:0;height:180px}
+.crcard .gcard__img img{image-rendering:auto;max-height:none;object-fit:cover;border-radius:0}
+.crcard.is-draw .gcard__img{background:#fff}
+.crcard.is-draw .gcard__img img{object-fit:contain;image-rendering:pixelated;max-height:170px;padding:6px}
+.crview__pic.is-pixel{image-rendering:pixelated}
+.crcard .gcard__acts .chip{font-size:var(--fs-xs)}
+.crcard.is-music .gcard__img{height:110px}
+.crcard__disc{display:flex;flex-direction:column;align-items:center;gap:6px}
+.crcard__disc b{font-size:var(--fs-sm);font-weight:600;color:var(--c-text-2);font-variant-numeric:tabular-nums}
+#crSecs .chip .ic{width:16px;height:16px;margin-right:4px}
+/* affichage en grand (panneau générique) */
+.crview{display:flex;flex-direction:column;gap:12px}
+.crview__img{display:grid;place-items:center;min-height:200px;max-height:60vh;padding:10px;border-radius:var(--r-lg);background:var(--c-surface-2)}
+.crview__img.is-draw{background:#fff}
+.crview__img img{max-width:100%;max-height:58vh;width:auto;height:auto;object-fit:contain;border-radius:var(--r-sm)}
+.crview__meta{margin:0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;font-size:var(--fs-sm)}
+.crview__meta dt{font-weight:600;color:var(--c-text-2)}
+.crview__meta dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.crview__files code{font-size:var(--fs-xs)}
+@media (max-width:760px){
+  .card.creations > .card__head{flex-wrap:wrap}
+  .crview__meta{grid-template-columns:minmax(0,1fr)}
+}
