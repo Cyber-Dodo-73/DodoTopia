@@ -31,7 +31,6 @@ ASSOC = 70          # tolerance (px) autour de la position ATTENDUE d'une bulle 
 STILL = 6           # une bulle qui bouge de plus de STILL px entre deux lectures est « en mouvement »
 CAM_WINDOW = 4.5    # la camera ne bouge que dans les secondes qui suivent un clic sur une bulle (le personnage
                     # marche) : hors de cette fenetre, une bulle lointaine est une AUTRE cuisiniere, pas un glissement
-RING_CLICKS_MAX = 40 # clics de suite sur le meme anneau (vert ou rouge) avant de declarer que le feu ne se regle pas
 READY_AGAIN = 3.0   # secondes : des gants recliques au meme endroit dans ce delai sont le meme plat (clic pas pris)
 READY_SOFT = 0.56   # score « gants » qui suffit a la relecture juste avant le clic (le seuil normal est cook.match)
 RING_PENDING = 1.5  # secondes au plus a attendre qu'un anneau vert vu une fois devienne stable avant de faire autre chose
@@ -143,6 +142,9 @@ def green_mask(im, ring_color=None):
     return ImageChops.darker(ImageChops.darker(g.point(_lut(lo=175)), r.point(_lut(hi=150))), b.point(_lut(hi=130)))
 
 
+ICON_BOX, ICON_MIN = 22, 150   # demi-cote (px) de la zone centrale d'une bulle et pixels blancs minimum de son icone
+RING_STUCK = 10     # clics de suite sans effet sur un meme anneau avant de le laisser de cote RING_IGNORE secondes
+RING_IGNORE = 6.0
 WARM_MIN = 120      # pixels minimum d'un arc jaune / orange / rouge (le lisere d'un anneau vert en donne ~70)
 ARC_MIN_DEG = 45    # un arc chaud plus court que ca n'est pas pris pour un anneau (faux positifs du decor)
 RING_LEVELS = ("vert", "jaune", "orange", "rouge")     # urgence croissante de l'anneau de la spatule
@@ -187,6 +189,12 @@ def warm_arcs(im, need):
     out = []
     half = RING_MAX // 2 + 6
     for cx, cy, n in find_arcs(union, need):
+        # Un anneau entoure une bulle, et une bulle a une icone blanche au centre. Releve en jeu (2026-10-04) : le
+        # bord jaune d'une cuisiniere formait un arc « jaune » ; le bot le cliquait en boucle et ne cuisinait plus.
+        # Mesure sur capture : 450 a 720 pixels blancs dans les 44 px du centre d'une vraie bulle, 18 sur la cuisiniere.
+        core = (max(0, cx - ICON_BOX), max(0, cy - ICON_BOX), min(im.size[0], cx + ICON_BOX), min(im.size[1], cy + ICON_BOX))
+        if count(white_mask(im.crop(core))) < ICON_MIN:
+            continue
         box = (max(0, cx - half), max(0, cy - half), min(im.size[0], cx + half), min(im.size[1], cy + half))
         lvl = max(parts, key=lambda p: count(p[1].crop(box)))[0]
         out.append((cx, cy, n, lvl))
@@ -894,6 +902,7 @@ class Cooker(MouseBot):
         last_neutral = time.perf_counter()
         prev, prev_at = [], 0.0          # lecture precedente (stabilite des bulles)
         ring_pos, ring_at, ring_streak = None, 0.0, 0
+        ignored = []                     # [(position, jusqu'a quand)] : anneaux laisses de cote (clics sans effet)
         ready_at, ready_pos = 0.0, None
         pend_at = 0.0                    # anneau vert vu mais pas encore stable : depuis quand
         spat_at, spat_seen = 0.0, 0.0    # spatule sans anneau : debut de l'apparition, derniere lecture
@@ -925,6 +934,10 @@ class Cooker(MouseBot):
             # l'orange, voire le plat cramait. Les anneaux sont donc lus a part, tres vite, et cliques au premier
             # coup d'oeil ; la bulle est de toute facon reverifiee juste avant d'appuyer (_still).
             rings = self._rings_quick()
+            if ignored:
+                t_now = time.perf_counter()
+                ignored = [(q, until) for q, until in ignored if until > t_now]
+                rings = [d for d in rings if not any(near(d["pos"], q, 40) for q, _ in ignored)]
             if rings:
                 for d in rings:
                     d["burner"] = min(self._burners, key=lambda o: (o.pos[0] - d["pos"][0]) ** 2 + (o.pos[1] - d["pos"][1]) ** 2,
@@ -947,7 +960,7 @@ class Cooker(MouseBot):
                 stable = [d for d in dets if fresh and any(near(d["pos"], q["pos"], STILL) and q["state"] == d["state"]
                                                            for q in prev)]
                 prev, prev_at = dets, now
-                rings = [d for d in dets if d["state"] == "spatula"]
+                rings = [d for d in dets if d["state"] == "spatula" and not any(near(d["pos"], q, 40) for q, _ in ignored)]
             # (a) anneau : minute, tout le reste attend
             if rings:
                 if ring_pos is not None and len(rings) > 1:      # deux anneaux : pas deux fois de suite le meme
@@ -962,8 +975,12 @@ class Cooker(MouseBot):
                     continue
                 ring_streak = ring_streak + 1 if now - ring_at < 3.0 else 1
                 # le jeu peut ignorer les clics un moment (personnage occupe) : on insiste longtemps avant d'abandonner
-                if ring_streak > RING_CLICKS_MAX:
-                    raise RuntimeError(f"le feu ne se règle pas ({RING_CLICKS_MAX} clics de suite sur un anneau sans effet)")
+                if ring_streak > RING_STUCK:
+                    # ni un anneau qui ne reagit pas ni un faux anneau ne doivent bloquer le reste de la cuisine
+                    self.log(f"anneau en {d['pos'][0]},{d['pos'][1]} : {RING_STUCK} clics sans effet, laissé de côté {RING_IGNORE:.0f} s")
+                    ignored.append((d["pos"], now + RING_IGNORE))
+                    ring_streak = 0
+                    continue
                 self.phase = "feu"
                 b = d.get("burner")
                 self._acted(b)

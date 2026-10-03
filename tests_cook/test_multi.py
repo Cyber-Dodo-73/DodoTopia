@@ -675,9 +675,11 @@ def test_anneau_sans_icone_reconnue(jeu, souris_rapide):
 def test_anneau_jaune_orange_rouge_et_urgence():
     """L'anneau passé au jaune, à l'orange ou au rouge compte comme l'anneau vert, avec une urgence croissante,
     même réduit à un arc (le temps qui reste) ; une tache pleine (flammes) ou un rouge terne n'en sont pas."""
-    def scene(color, plein=False, arc=None):
+    def scene(color, plein=False, arc=None, icone=True):
         im = Image.new("RGB", (160, 160), (120, 150, 90))
         d = ImageDraw.Draw(im)
+        if icone:
+            d.rectangle((68, 68, 92, 92), fill=(255, 255, 255))          # l'icône blanche au centre de la bulle
         if plein:
             d.ellipse((40, 40, 120, 120), fill=color)
         elif arc:
@@ -694,6 +696,9 @@ def test_anneau_jaune_orange_rouge_et_urgence():
     assert level == 3 and abs(centre[0] - 80) <= 3 and abs(centre[1] - 80) <= 3
     assert cook.ring_read(scene(rouge, plein=True), need=need)[1] == -1                   # tache pleine : pas un anneau
     assert cook.ring_read(scene(rouge), warm=False, need=need)[1] == -1
+    # le bord jaune d'une cuisinière forme un arc, mais n'entoure aucune icône : ce n'est pas un anneau
+    assert cook.ring_read(scene((245, 215, 60), arc=(180, 330), icone=False), need=need)[1] == -1
+    assert cook.ring_read(scene((245, 215, 60), arc=(180, 330)), need=need)[1] == 1
 
 
 def test_le_clic_est_annule_si_la_bulle_a_disparu(jeu):
