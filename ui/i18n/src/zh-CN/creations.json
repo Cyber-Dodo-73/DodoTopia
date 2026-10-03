@@ -125,5 +125,7 @@
   "creations.learn.ok": "学习",
   "creations.learn.learned": "已学习",
   "api.creations.learned": "已学习 {name}：{n, plural, other {# 个按键}}。可在工作室中使用。",
-  "api.creations.studio_no_tracks": "此文件中没有带音符的音轨"
+  "api.creations.studio_no_tracks": "此文件中没有带音符的音轨",
+  "creations.studio.cut_hint": "点击音轨的条带可将其切分成多个段落：每个段落可以使用不同的乐器。",
+  "creations.studio.merge": "与上一段落合并"
 }

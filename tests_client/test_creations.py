@@ -726,3 +726,26 @@ def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
     written = os.path.join(music_tree["record_dir"], out["item"]["variants"][0]["name"])
     assert {e[2] for e in game_music.read(written)["events"]} == {1, 13}
     assert api.creations_delete(out["item"]["id"])["ok"] and not os.path.exists(written)
+
+
+def test_studio_passages_changent_d_instrument_en_cours_de_piste(tmp_path):
+    cfg = core.load_config()
+    insts = {i.id: i for i in instruments.build_instruments(cfg)}
+    tables = {"lute": {"type": 13, "keys": list(range(10071, 10086)), "extra": 3.3}}
+    path = _midi_two_tracks(str(tmp_path / "duo.mid"))
+    listing, duration = studio.describe(path, cfg)
+    assert duration == pytest.approx(1.5, abs=0.05) and all(len(t["bins"]) == studio.BINS for t in listing)
+    assert max(listing[0]["bins"]) == 9 and listing[0]["end"] == pytest.approx(1.5, abs=0.05)
+    start = studio.suggest(listing, duration)
+    assert [p["id"] for p in start] == ["p0", "p1", "p2"] and start[0]["from"] == 0 and start[0]["to"] == duration
+    # piste 1 (do mi sol, une note toutes les 0,5 s) : do au luth, puis mi et sol au piano
+    parts = [{"id": "a", "track": 0, "instrument": "lute", "octave": 0, "from": 0.0, "to": 0.4},
+             {"id": "b", "track": 0, "instrument": "piano", "octave": 0, "from": 0.4, "to": None}]
+    events, report = studio.build(path, cfg, parts, insts, tables, UID, 4.2)
+    assert [(p["id"], p["played"]) for p in report["parts"]] == [("a", 1), ("b", 2)]
+    downs = [(e[2], round(e[0], 2)) for e in events if e[3]]
+    assert downs == [(13, 0.0), (1, 0.5), (1, 1.0)]
+    # un passage vide (aucune note dans sa plage) ne casse rien tant qu'un autre joue
+    parts.append({"id": "c", "track": 1, "instrument": "piano", "octave": 0, "from": 5.0, "to": 9.0})
+    events2, report2 = studio.build(path, cfg, parts, insts, tables, UID, 4.2)
+    assert report2["parts"][2]["played"] == 0 and len(events2) == len(events)

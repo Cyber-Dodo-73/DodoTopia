@@ -125,5 +125,7 @@
   "creations.learn.ok": "Lernen",
   "creations.learn.learned": "gelernt",
   "api.creations.learned": "{name} gelernt: {n, plural, one {# Taste} other {# Tasten}}. Es ist im Studio verfügbar.",
-  "api.creations.studio_no_tracks": "keine Spur mit Noten in dieser Datei"
+  "api.creations.studio_no_tracks": "keine Spur mit Noten in dieser Datei",
+  "creations.studio.cut_hint": "Klicke auf den Streifen einer Spur, um sie in Abschnitte zu teilen: Jeder Abschnitt kann sein eigenes Instrument haben.",
+  "creations.studio.merge": "Mit dem vorherigen Abschnitt zusammenführen"
 }

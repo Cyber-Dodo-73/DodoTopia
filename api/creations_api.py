@@ -472,7 +472,7 @@ class CreationsMixin:
         if not path:
             return {"ok": False, "error": "cancelled"}
         try:
-            listing = studio.tracks(path)
+            listing, duration = studio.describe(path, self._cfg)
         except studio.StudioError as e:
             self._notify(i18n.t("api.creations.failed", error=e), "danger")
             return {"ok": False, "error": str(e)}
@@ -480,8 +480,9 @@ class CreationsMixin:
             self._notify(i18n.t("api.creations.failed", error=i18n.t("api.creations.studio_no_tracks")), "warn")
             return {"ok": False, "error": "no_tracks"}
         title = game_music.safe_title(os.path.splitext(os.path.basename(path))[0])
-        return {"ok": True, "path": path, "title": title, "tracks": listing,
-                "instruments": self.creations_studio_instruments()["instruments"], "parts": studio.suggest(listing)}
+        return {"ok": True, "path": path, "title": title, "tracks": listing, "duration": duration,
+                "instruments": self.creations_studio_instruments()["instruments"],
+                "parts": studio.suggest(listing, duration)}
 
     def _studio_build(self, spec):
         """(événements, rapport) pour la demande de l'interface {path, title, parts:[{track, instrument, octave, on}]}."""

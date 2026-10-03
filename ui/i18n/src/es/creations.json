@@ -125,5 +125,7 @@
   "creations.learn.ok": "Aprender",
   "creations.learn.learned": "aprendido",
   "api.creations.learned": "{name} aprendido: {n, plural, one {# tecla} other {# teclas}}. Ya está disponible en el estudio.",
-  "api.creations.studio_no_tracks": "ninguna pista con notas en este archivo"
+  "api.creations.studio_no_tracks": "ninguna pista con notas en este archivo",
+  "creations.studio.cut_hint": "Haz clic en la banda de una pista para cortarla en pasajes: cada pasaje puede tener su instrumento.",
+  "creations.studio.merge": "Unir con el pasaje anterior"
 }

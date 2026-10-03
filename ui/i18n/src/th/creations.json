@@ -125,5 +125,7 @@
   "creations.learn.ok": "เรียนรู้",
   "creations.learn.learned": "เรียนรู้แล้ว",
   "api.creations.learned": "เรียนรู้ {name} แล้ว: {n, plural, other {# คีย์}} ใช้ได้ในสตูดิโอ",
-  "api.creations.studio_no_tracks": "ไม่มีแทร็กที่มีโน้ตในไฟล์นี้"
+  "api.creations.studio_no_tracks": "ไม่มีแทร็กที่มีโน้ตในไฟล์นี้",
+  "creations.studio.cut_hint": "คลิกที่แถบของแทร็กเพื่อตัดเป็นช่วง ๆ แต่ละช่วงเลือกเครื่องดนตรีของตัวเองได้",
+  "creations.studio.merge": "รวมกับช่วงก่อนหน้า"
 }

@@ -125,5 +125,7 @@
   "creations.learn.ok": "Pag-aralan",
   "creations.learn.learned": "napag-aralan na",
   "api.creations.learned": "Napag-aralan ang {name}: {n, plural, one {# key} other {# key}}. Magagamit na ito sa studio.",
-  "api.creations.studio_no_tracks": "walang track na may nota sa file na ito"
+  "api.creations.studio_no_tracks": "walang track na may nota sa file na ito",
+  "creations.studio.cut_hint": "I-click ang strip ng isang track para hatiin ito sa mga bahagi: maaaring may sariling instrumento ang bawat bahagi.",
+  "creations.studio.merge": "Isama sa naunang bahagi"
 }

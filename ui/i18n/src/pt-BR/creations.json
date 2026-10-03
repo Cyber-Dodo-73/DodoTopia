@@ -125,5 +125,7 @@
   "creations.learn.ok": "Aprender",
   "creations.learn.learned": "aprendido",
   "api.creations.learned": "{name} aprendido: {n, plural, one {# tecla} other {# teclas}}. Ele está disponível no estúdio.",
-  "api.creations.studio_no_tracks": "nenhuma faixa com notas neste arquivo"
+  "api.creations.studio_no_tracks": "nenhuma faixa com notas neste arquivo",
+  "creations.studio.cut_hint": "Clique na faixa de uma trilha para cortá-la em trechos: cada trecho pode ter seu instrumento.",
+  "creations.studio.merge": "Juntar com o trecho anterior"
 }

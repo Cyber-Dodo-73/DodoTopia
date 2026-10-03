@@ -319,26 +319,35 @@ try{
 // et une octave ; creations_studio_check(spec) donne la part de notes jouées à la bonne hauteur, sans rien écrire ;
 // creations_studio_listen(spec) préécoute sur l'ordinateur ; creations_studio_add(spec) écrit la musique dans le jeu.
 // Seul le piano est connu d'avance : les autres instruments s'apprennent depuis une musique du jeu (crLearn).
-const ST = {data: null, parts: [], title: '', timer: null, seq: 0};
+const ST = {data: null, parts: [], title: '', timer: null, seq: 0, n: 0};
 function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts}; }
 function stTrackName(tr){ return tr.name || t('creations.studio.track', {n: tr.index + 1}); }
+function stPartsOf(index){ return ST.parts.filter(p => p.track === index).sort((a, b) => a.from - b.from); }
+// passages : une piste se coupe dans le temps (clic sur sa bande), chaque passage a son instrument et son octave
 function stHtml(){
   const d = ST.data;
   if(!d) return '';
+  const total = d.duration || 1;
   const opts = cur => d.instruments.map(i => `<option value="${esc(i.id)}"${i.id === cur ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
   const octs = cur => [-2, -1, 0, 1, 2].map(o => `<option value="${o}"${o === cur ? ' selected' : ''}>${o > 0 ? '+' + o : o}</option>`).join('');
-  const rows = d.tracks.map(tr => {
-    const p = ST.parts.find(x => x.track === tr.index) || {};
-    return `<tr data-track="${tr.index}"${p.on ? '' : ' class="is-off"'}>
-        <td><label class="switch switch--inline"><input type="checkbox" data-f="on"${p.on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label></td>
+  const body = d.tracks.map(tr => {
+    const parts = stPartsOf(tr.index), on = parts.some(p => p.on);
+    const bins = (tr.bins || []).map(v => `<i data-h="${v}"></i>`).join('');
+    const cuts = parts.slice(1).map(p => `<b class="studio__cut" data-at="${Math.round(1000 * p.from / total)}"></b>`).join('');
+    const lines = parts.map((p, i) => `<tr class="studio__part${on ? '' : ' is-off'}" data-part="${esc(p.id)}">
+        <td class="studio__when">${esc(crDur(p.from))} → ${esc(crDur(p.to == null ? total : p.to))}</td>
         <td><select class="select" data-f="instrument" aria-label="${esc(t('creations.studio.instrument'))}">${opts(p.instrument)}</select></td>
         <td><select class="select" data-f="octave" aria-label="${esc(t('creations.studio.octave'))}">${octs(p.octave || 0)}</select></td>
-        <td class="studio__cov" data-cov="${tr.index}"></td></tr>`;
+        <td><span class="studio__cov" data-cov="${esc(p.id)}"></span>${i ? `<button class="iconbtn iconbtn--sm" type="button" data-merge="${esc(p.id)}" title="${esc(t('creations.studio.merge'))}" aria-label="${esc(t('creations.studio.merge'))}">${icon('close')}</button>` : ''}</td></tr>`).join('');
+    return `<tbody data-track="${tr.index}"><tr class="studio__head">
+        <td><label class="switch switch--inline"><input type="checkbox" data-f="on"${on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label></td>
+        <td colspan="3"><button class="studio__bar" type="button" data-bar="${tr.index}" title="${esc(t('creations.studio.cut_hint'))}" aria-label="${esc(t('creations.studio.cut_hint'))}">${bins}${cuts}</button></td></tr>${lines}</tbody>`;
   }).join('');
   return `<div class="studio">
       <label class="field"><span class="field__label">${esc(t('creations.studio.name'))}</span>
         <input class="input" id="stTitle" type="text" maxlength="24" spellcheck="false" value="${esc(ST.title)}"></label>
-      <div class="table-scroll"><table class="studio__tracks"><thead><tr><th>${esc(t('creations.studio.col_track'))}</th><th>${esc(t('creations.studio.instrument'))}</th><th>${esc(t('creations.studio.octave'))}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint left">${esc(t('creations.studio.cut_hint'))}</p>
+      <div class="table-scroll"><table class="studio__tracks"><thead><tr><th>${esc(t('creations.studio.col_track'))}</th><th>${esc(t('creations.studio.instrument'))}</th><th>${esc(t('creations.studio.octave'))}</th><th></th></tr></thead>${body}</table></div>
       <p class="hint left" id="stStatus" role="status"></p>
       <div class="btnrow">
         <button class="btn btn--secondary" type="button" data-act="listen">${icon('play')}<span>${esc(t('creations.studio.listen'))}</span></button>
@@ -353,29 +362,60 @@ function stCheck(){
     const seq = ++ST.seq;
     api('creations_studio_check', stSpec()).then(r => {
       if(seq !== ST.seq || !PANEL || PANEL.render !== stHtml) return;
-      document.querySelectorAll('.studio__cov').forEach(td => { td.textContent = ''; });
+      document.querySelectorAll('.studio__cov').forEach(el => { el.textContent = ''; });
       const ok = !!(r && r.ok);
       if(ok) for(const p of r.report.parts){
-        const td = document.querySelector(`.studio__cov[data-cov="${p.track}"]`);
-        if(td) td.textContent = t('creations.studio.coverage', {n: p.coverage});
+        const el = document.querySelector(`.studio__cov[data-cov="${CSS.escape(String(p.id))}"]`);
+        if(el) el.textContent = t('creations.studio.coverage', {n: p.coverage});
       }
       txt('stStatus', ok ? t('creations.studio.ready', {duration: crDur(r.report.duration)}) : ((r && r.error) || t('creations.studio.none')));
       document.querySelectorAll('.studio [data-act]').forEach(b => { b.disabled = !ok; });
     });
   }, 250);
 }
+// coupe le passage de la piste qui contient l'instant `at` (deux secondes au moins de chaque côté)
+function stCut(index, at){
+  const total = ST.data.duration || 0;
+  const p = stPartsOf(index).find(x => at > x.from && at < (x.to == null ? total : x.to));
+  if(!p) return false;
+  const end = p.to == null ? total : p.to;
+  if(at - p.from < 2 || end - at < 2) return false;
+  ST.parts.push(Object.assign({}, p, {id: 'p' + index + '_' + (++ST.n), from: at, to: end}));
+  p.to = at;
+  return true;
+}
+function stMerge(id){
+  const p = ST.parts.find(x => x.id === id);
+  if(!p) return;
+  const list = stPartsOf(p.track), prev = list[list.indexOf(p) - 1];
+  if(!prev) return;
+  prev.to = p.to;
+  ST.parts.splice(ST.parts.indexOf(p), 1);
+}
 function stWire(box){
   const title = box.querySelector('#stTitle');
   if(title) title.oninput = () => { ST.title = title.value; };
-  box.querySelectorAll('tr[data-track]').forEach(tr => {
-    const p = ST.parts.find(x => x.track === Number(tr.dataset.track));
-    if(!p) return;
-    tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
-      if(el.dataset.f === 'on'){ p.on = el.checked; tr.classList.toggle('is-off', !p.on); }
-      else if(el.dataset.f === 'octave') p.octave = Number(el.value);
-      else p.instrument = el.value;
-      stCheck();
+  box.querySelectorAll('.studio__bar i').forEach(i => { i.style.height = (10 + 10 * Number(i.dataset.h)) + '%'; });
+  box.querySelectorAll('.studio__cut').forEach(c => { c.style.left = (Number(c.dataset.at) / 10) + '%'; });
+  box.querySelectorAll('tbody[data-track]').forEach(tb => {
+    const index = Number(tb.dataset.track);
+    const sw = tb.querySelector('[data-f="on"]');
+    if(sw) sw.onchange = () => { stPartsOf(index).forEach(p => { p.on = sw.checked; }); tb.querySelectorAll('.studio__part').forEach(r => r.classList.toggle('is-off', !sw.checked)); stCheck(); };
+    const bar = tb.querySelector('.studio__bar');
+    if(bar) bar.onclick = e => {
+      const r = bar.getBoundingClientRect();
+      const at = Math.round((e.clientX - r.left) / Math.max(1, r.width) * (ST.data.duration || 0));
+      if(stCut(index, at)) refreshPanel();
+    };
+    tb.querySelectorAll('tr[data-part]').forEach(row => {
+      const p = ST.parts.find(x => x.id === row.dataset.part);
+      if(!p) return;
+      row.querySelectorAll('select[data-f]').forEach(el => el.onchange = () => {
+        if(el.dataset.f === 'octave') p.octave = Number(el.value); else p.instrument = el.value;
+        stCheck();
+      });
     });
+    tb.querySelectorAll('[data-merge]').forEach(b => b.onclick = () => { stMerge(b.dataset.merge); refreshPanel(); });
   });
   const ls = box.querySelector('[data-act="listen"]');
   if(ls) ls.onclick = () => apiAction(ls, 'creations_studio_listen', stSpec());
@@ -388,7 +428,8 @@ function stWire(box){
 function crStudio(btn){
   apiAction(btn, 'creations_studio_open').then(r => {
     if(!r || !r.ok) return;
-    ST.data = r; ST.title = r.title || ''; ST.parts = (r.parts || []).map(p => Object.assign({}, p));
+    ST.data = r; ST.title = r.title || ''; ST.n = 0;
+    ST.parts = (r.parts || []).map(p => Object.assign({}, p, {from: p.from || 0, to: p.to == null ? r.duration : p.to}));
     openPanel({title: t('creations.studio.title'), wide: true, opener: btn, render: stHtml, html: stHtml(), wire: stWire});
   });
 }

@@ -125,5 +125,7 @@
   "creations.learn.ok": "Apprendre",
   "creations.learn.learned": "appris",
   "api.creations.learned": "{name} appris : {n, plural, one {# touche} other {# touches}}. Il est disponible dans le studio.",
-  "api.creations.studio_no_tracks": "aucune piste avec des notes dans ce fichier"
+  "api.creations.studio_no_tracks": "aucune piste avec des notes dans ce fichier",
+  "creations.studio.cut_hint": "Clique sur la bande d'une piste pour la couper en passages : chaque passage peut avoir son instrument.",
+  "creations.studio.merge": "Fusionner avec le passage précédent"
 }

@@ -22,7 +22,8 @@ import orchestra
 
 PIANO_ID = "piano"
 OCTAVES = (-2, -1, 0, 1, 2)
-MAX_PARTS = 16
+MAX_PARTS = 64               # passages au total (une piste peut être coupée en plusieurs)
+BINS = 48                    # colonnes de la bande de densité d'une piste dans l'interface
 
 
 class StudioError(Exception):
@@ -108,9 +109,42 @@ def tracks(path):
         raise StudioError(str(e)) from e
 
 
-def suggest(track_list):
-    """Répartition de départ : chaque piste mélodique au piano, la batterie laissée de côté."""
-    return [{"track": t["index"], "instrument": PIANO_ID, "octave": 0, "on": not t["drums"]} for t in track_list]
+def describe(path, cfg):
+    """Pistes du MIDI avec de quoi dessiner leur bande : (pistes, durée totale en secondes). Chaque piste reçoit
+    `end` (fin de sa dernière note) et `bins` (densité de notes sur BINS colonnes, 0 à 9)."""
+    listing = tracks(path)
+    all_indices = _all_indices(path, listing)
+    starts = {}
+    total = 0.0
+    for t in listing:
+        try:
+            grouped = _track_notes(path, cfg, t["index"], all_indices)
+        except ValueError as e:
+            raise StudioError(str(e)) from e
+        starts[t["index"]] = [(when, len(ns)) for when, ns in grouped]
+        t["end"] = max((when + max(d for _, d, _ in ns) for when, ns in grouped), default=0.0)
+        total = max(total, t["end"])
+    for t in listing:
+        counts = [0] * BINS
+        for when, n in starts[t["index"]]:
+            counts[min(BINS - 1, int(when / total * BINS)) if total else 0] += n
+        top = max(counts) or 1
+        t["bins"] = [0 if not c else max(1, round(9 * c / top)) for c in counts]
+    return listing, total
+
+
+def suggest(track_list, duration=None):
+    """Répartition de départ : chaque piste mélodique au piano d'un bout à l'autre, la batterie laissée de côté."""
+    return [{"id": f"p{t['index']}", "track": t["index"], "instrument": PIANO_ID, "octave": 0,
+             "on": not t["drums"], "from": 0.0, "to": duration} for t in track_list]
+
+
+def _all_indices(path, listing):
+    try:
+        import mido
+        return list(range(len(mido.MidiFile(path).tracks)))
+    except Exception:  # noqa - la liste des pistes à notes suffit alors
+        return [t["index"] for t in listing]
 
 
 # ---------------------------------------------------------------- fabrication
@@ -120,21 +154,18 @@ def _track_notes(path, cfg, index, all_indices):
 
 
 def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0):
-    """Événements du jeu pour `parts` = [{"track", "instrument", "octave"}] (pistes retenues seulement).
-    `instruments` : {identifiant: objet Instrument de core}. Renvoie (événements, rapport) ; le rapport donne,
-    par piste, la part de notes jouées à leur hauteur exacte, et la durée totale."""
+    """Événements du jeu pour `parts` = [{"track", "instrument", "octave", "from", "to", "id"}] (passages retenus
+    seulement). Un passage est un morceau de piste, de `from` à `to` secondes du fichier (absents : toute la
+    piste) ; une piste peut donc changer d'instrument en cours de route. `instruments` : {identifiant: objet
+    Instrument de core}. Renvoie (événements, rapport) ; le rapport donne, par passage, la part de notes jouées
+    à leur hauteur exacte, et la durée totale."""
     import sync
     if not parts:
         raise StudioError("aucune piste retenue")
     if len(parts) > MAX_PARTS:
         raise StudioError(f"trop de pistes ({len(parts)}, {MAX_PARTS} au plus)")
     listing = tracks(path)
-    all_indices = [t["index"] for t in listing]
-    try:
-        import mido
-        all_indices = list(range(len(mido.MidiFile(path).tracks)))
-    except Exception:  # noqa - la liste des pistes à notes suffit alors
-        pass
+    all_indices = _all_indices(path, listing)
     known = {t["index"] for t in listing}
     grouped_of = {}
     for part in parts:
@@ -157,8 +188,13 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0):
         if inst is None:
             raise StudioError(f"instrument inconnu : {part.get('instrument')}")
         keymap = game_key_map(inst, tables)
-        grouped = grouped_of[index]
-        notes = [n for _, ns in grouped for n, _, _ in ns]
+        whole = grouped_of[index]
+        lo = float(part.get("from") or 0.0)
+        hi = part.get("to")
+        hi = float("inf") if hi is None else float(hi)
+        grouped = [(when, ns) for when, ns in whole if lo <= when < hi]
+        # L'octave se choisit sur toute la piste : le même instrument garde la même hauteur d'un passage à l'autre.
+        notes = [n for _, ns in whole for n, _, _ in ns]
         octave = max(OCTAVES[0], min(OCTAVES[-1], int(part.get("octave") or 0)))
         shift = core.choose_shift(notes, inst, cfg, extra) + 12 * octave
         fitted, info = core.fit_notes(grouped, inst, cfg, extra_fixed=extra, shift=shift)
@@ -168,7 +204,8 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0):
             for note, dur, _vel in played:
                 kind, key = keymap[note]
                 presses.append((t, t + max(0.05, dur), kind, key, value))
-        report.append({"track": index, "instrument": inst.id, "octave": octave, "notes": info.get("notes", 0),
+        report.append({"id": part.get("id"), "track": index, "instrument": inst.id, "octave": octave,
+                       "notes": info.get("notes", 0),
                        "played": sum(len(p) for _, _, p in fitted), "coverage": info.get("coverage", 0)})
     if not presses:
         raise StudioError("aucune note jouable avec ces instruments")

@@ -125,5 +125,7 @@
   "creations.learn.ok": "学習",
   "creations.learn.learned": "学習済み",
   "api.creations.learned": "{name} を学習しました：{n, plural, other {# キー}}。スタジオで使えます。",
-  "api.creations.studio_no_tracks": "このファイルには音のあるトラックがありません"
+  "api.creations.studio_no_tracks": "このファイルには音のあるトラックがありません",
+  "creations.studio.cut_hint": "トラックの帯をクリックすると区間に分けられます。区間ごとに楽器を選べます。",
+  "creations.studio.merge": "前の区間と結合"
 }

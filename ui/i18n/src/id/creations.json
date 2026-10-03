@@ -125,5 +125,7 @@
   "creations.learn.ok": "Pelajari",
   "creations.learn.learned": "dipelajari",
   "api.creations.learned": "{name} dipelajari: {n, plural, other {# tuts}}. Instrumen ini tersedia di studio.",
-  "api.creations.studio_no_tracks": "tidak ada trek dengan nada di file ini"
+  "api.creations.studio_no_tracks": "tidak ada trek dengan nada di file ini",
+  "creations.studio.cut_hint": "Klik bilah sebuah trek untuk memotongnya menjadi beberapa bagian: tiap bagian bisa punya instrumennya sendiri.",
+  "creations.studio.merge": "Gabungkan dengan bagian sebelumnya"
 }

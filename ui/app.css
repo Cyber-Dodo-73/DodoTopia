@@ -1502,6 +1502,17 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .studio__tracks th{text-align:left;font-weight:600;color:var(--c-text-2);padding:4px 8px}
 .studio__tracks td{padding:6px 8px;border-top:1px solid var(--c-line);vertical-align:middle}
 .studio__tracks tr.is-off select{opacity:.45}
+.studio__tracks tbody + tbody .studio__head td{border-top:2px solid var(--c-line)}
+.studio__part td{border-top:0;padding-top:2px}
+.studio__when{color:var(--c-text-2);font-variant-numeric:tabular-nums;padding-left:54px !important;white-space:nowrap}
+/* bande d'une piste : densité des notes, un clic coupe la piste en passages */
+.studio__bar{position:relative;display:flex;align-items:flex-end;gap:1px;width:100%;height:34px;padding:0;border:2px solid var(--c-line);
+  border-radius:var(--r-sm);background:var(--c-surface-2);cursor:col-resize;overflow:hidden}
+.studio__bar i{flex:1;min-width:1px;background:var(--c-deco);opacity:.75}
+.studio__bar i[data-h="0"]{opacity:.15}
+.studio__cut{position:absolute;top:0;bottom:0;width:2px;background:var(--c-warn)}
+.studio__cov{margin-right:6px}
+.studio__part td:last-child{white-space:nowrap}
 .studio__tracks small{display:block;color:var(--c-text-2);font-weight:400}
 .studio__cov{white-space:nowrap;color:var(--c-text-2);font-variant-numeric:tabular-nums}
 .crcard__disc{display:flex;flex-direction:column;align-items:center;gap:6px}

@@ -125,5 +125,7 @@
   "creations.learn.ok": "Learn",
   "creations.learn.learned": "learned",
   "api.creations.learned": "{name} learned: {n, plural, one {# key} other {# keys}}. It is available in the studio.",
-  "api.creations.studio_no_tracks": "no track with notes in this file"
+  "api.creations.studio_no_tracks": "no track with notes in this file",
+  "creations.studio.cut_hint": "Click a track's strip to cut it into passages: each passage can have its own instrument.",
+  "creations.studio.merge": "Merge with the previous passage"
 }
