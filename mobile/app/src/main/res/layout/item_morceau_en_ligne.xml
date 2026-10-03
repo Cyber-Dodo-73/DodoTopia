@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/choix"
+    android:gravity="center_vertical"
+    android:minHeight="62dp"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingEnd="6dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingVertical="9dp">
+
+        <TextView
+            android:id="@+id/titre"
+            style="@style/Libelle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <TextView
+            android:id="@+id/meta"
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/aime"
+        android:layout_width="44dp"
+        android:layout_height="48dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/biblio_aimer"
+        android:focusable="true"
+        android:padding="11dp"
+        android:src="@drawable/ic_coeur"
+        android:tint="@color/c_text_2"
+        tools:ignore="UseAppTint" />
+
+    <ImageView
+        android:id="@+id/action"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/biblio_telecharger"
+        android:focusable="true"
+        android:padding="12dp"
+        android:src="@drawable/ic_telecharger"
+        android:tint="@color/c_cta"
+        tools:ignore="UseAppTint" />
+</LinearLayout>

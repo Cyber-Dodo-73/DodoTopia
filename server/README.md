@@ -114,6 +114,18 @@ manifeste ; une requête entière ou `Range: bytes=0-` compte, une reprise parti
 totaux (cache 60 s).
 Retirer une version : `curl -X DELETE -H "X-Publish-Token: …" https://dodotopia.cyber-dodo.fr/api/admin/releases/<version>`.
 
+**Appli Android : un canal à part** (`app/mobile_releases.py`, table `mobile_releases`). Numérotation propre, un seul
+fichier par version (l'APK), aucun manifeste signé : rien de ce canal n'apparaît dans `/api/releases/*`, donc rien ne
+change pour l'Updater PC. Publication : `py publish_mobile.py` (même `publish.env` ; version par défaut = `versionName`
+de `mobile/app/build.gradle.kts`, fichier par défaut `mobile/dist/DodoTopia-Mobile-<version>.apk` ; `--dry-run`,
+`--force`, `--notes`, `--notes-file`). Le script fait `PUT /api/admin/mobile/releases/{v}/apk` (corps brut, en-têtes
+`X-Publish-Token`, `X-Sha256`, `X-Filename` en `.apk`) puis `POST /api/admin/mobile/releases/{v}/publish {notes}`.
+L'appli interroge `GET /api/mobile/latest?current=<version>` (404 `no_release` tant que rien n'est publié) et l'APK est
+servi par `GET /dl/android/<version>/<fichier>` (`application/vnd.android.package-archive`, `Range`, compteur
+`downloads`) ; le site passe par `/telecharger/go/android`. Fichiers dans `releases/android/<version>/`. Retirer une
+version : `DELETE /api/admin/mobile/releases/<version>`. Les téléchargements Android sont comptés dans les statistiques
+de l'admin (plateforme `android`) mais pas dans `downloads_total` de `GET /api/stats`.
+
 **Manifeste signé (Ed25519).** Le manifeste expose `signed_payload` (JSON canonique, `sort_keys`, sans espace, de
 `{version, assets{platform:{sha256, size, filename}}, mandatory, published_at}`) et `signature` (base64, 64 octets).
 `publish_release.py` construit ce même texte à partir des assets déposés, de `mandatory` et d'un `published_at` qu'il

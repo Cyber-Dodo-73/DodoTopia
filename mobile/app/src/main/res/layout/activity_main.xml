@@ -1,0 +1,831 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/racine"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Écran 1 : bienvenue, les trois étapes. Sur écran large (MainActivity.disposer), l'accroche et le
+         bouton passent dans une colonne à gauche, les étapes à droite. -->
+    <ScrollView
+        android:id="@+id/ecranBienvenue"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/bienvenueColonnes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="24dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="24dp">
+
+            <LinearLayout
+                android:id="@+id/bienvenueGauche"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/logoBienvenue"
+                    android:layout_width="84dp"
+                    android:layout_height="84dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/logo_masque"
+                    android:clipToOutline="true"
+                    android:elevation="6dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/dodo" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:accessibilityHeading="true"
+                    android:gravity="center"
+                    android:text="@string/bienvenue_titre"
+                    android:textSize="26sp"
+                    tools:targetApi="28" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:fontFamily="@font/nunito_bold"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.15"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/bienvenue_texte"
+                    android:textColor="@color/c_text"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/blocEtapes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Étape 1 -->
+                <LinearLayout
+                    android:id="@+id/carteService"
+                    style="@style/Carte"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/Numero"
+                            android:importantForAccessibility="no"
+                            android:text="1"
+                            tools:ignore="HardcodedText" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <TextView
+                                    style="@style/Libelle"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="@string/etape_1_titre"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:id="@+id/pilService"
+                                    style="@style/Pilule"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/pilule_attente"
+                                    android:text="@string/pil_a_activer"
+                                    android:textColor="@color/c_ambre_texte" />
+                            </LinearLayout>
+
+                            <TextView
+                                style="@style/Texte"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/etape_1_texte"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/btnAcces"
+                        style="@style/Bouton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:minHeight="50dp"
+                        android:text="@string/acces_bouton" />
+
+                    <TextView
+                        android:id="@+id/lienRestreint"
+                        style="@style/Texte"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/encart"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:minHeight="48dp"
+                        android:padding="10dp"
+                        android:text="@string/acces_restreint" />
+                </LinearLayout>
+
+                <!-- Étape 2, avec la démonstration animée du calibrage -->
+                <LinearLayout
+                    style="@style/Carte"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/Numero"
+                            android:importantForAccessibility="no"
+                            android:text="2"
+                            tools:ignore="HardcodedText" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                style="@style/Libelle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/etape_2_titre"
+                                android:textSize="15sp" />
+
+                            <TextView
+                                style="@style/Texte"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/etape_2_texte"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <fr.cyberdodo.dodotopia.DemoCalibrageView
+                        android:layout_width="match_parent"
+                        android:layout_height="132dp"
+                        android:layout_marginTop="12dp"
+                        android:contentDescription="@string/demo_calibrage" />
+
+                    <TextView
+                        style="@style/Texte"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:importantForAccessibility="no"
+                        android:text="@string/demo_calibrage_legende" />
+                </LinearLayout>
+
+                <!-- Étape 3 -->
+                <LinearLayout
+                    style="@style/Carte"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Numero"
+                        android:importantForAccessibility="no"
+                        android:text="3"
+                        tools:ignore="HardcodedText" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/etape_3_titre"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="@string/etape_3_texte"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Compte Discord : facultatif, mais c'est lui qui ouvre les salons -->
+                <LinearLayout
+                    style="@style/Carte"
+                    android:background="@drawable/carte_discord"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/compte_invite_titre"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/bienvenueDiscordTexte"
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="@string/compte_invite_texte"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/bienvenueDiscord"
+                        style="@style/Bouton.Petit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:background="@drawable/btn_discord"
+                        android:drawableStart="@drawable/ic_discord"
+                        android:drawablePadding="8dp"
+                        android:minHeight="48dp"
+                        android:text="@string/compte_connexion"
+                        android:textColor="@color/blanc" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="6dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_bouclier"
+                        android:tint="@color/c_ok"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        style="@style/Texte"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:text="@string/confidentialite" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:id="@+id/bienvenueEspace"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:minHeight="16dp" />
+
+            <LinearLayout
+                android:id="@+id/blocContinuer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/btnContinuer"
+                    style="@style/Bouton.Grand"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/btn_creme"
+                    android:text="@string/continuer_sans"
+                    android:textColor="@color/c_text_2" />
+
+                <TextView
+                    android:id="@+id/txtContinuer"
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="@string/continuer_sans_aide" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Écran 2 : l'accueil. En-tête et compte, quatre pages, barre d'onglets. -->
+    <LinearLayout
+        android:id="@+id/ecranAccueil"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Sur écran large, le titre et le compte se partagent une seule ligne (MainActivity.disposer). -->
+        <LinearLayout
+            android:id="@+id/entete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="18dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="8dp">
+
+            <LinearLayout
+                android:id="@+id/enteteTitre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/logoAccueil"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:background="@drawable/logo_masque_petit"
+                    android:clipToOutline="true"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/dodo" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Titre"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:id="@+id/txtVersion"
+                        style="@style/Texte"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/btnAide"
+                    style="@style/BoutonRond"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/aide"
+                    android:focusable="true"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_bouclier"
+                    tools:ignore="UseAppTint" />
+
+                <ImageView
+                    android:id="@+id/btnReglages"
+                    style="@style/BoutonRond"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/reglages_titre"
+                    android:focusable="true"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_reglages"
+                    tools:ignore="UseAppTint" />
+            </LinearLayout>
+
+            <!-- Compte Discord : invitation, code de connexion, puis nom du compte -->
+            <LinearLayout
+                android:id="@+id/bandeauCompte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/carte_discord"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="14dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/compteTitre"
+                        style="@style/Libelle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/compteTexte"
+                        style="@style/Texte"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp" />
+
+                    <TextView
+                        android:id="@+id/compteCode"
+                        style="@style/Titre"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.2"
+                        android:textColor="@color/c_discord_texte"
+                        android:textIsSelectable="true"
+                        android:textSize="28sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:gravity="end"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/compteBouton"
+                        style="@style/Bouton.Petit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/btn_discord"
+                        android:drawableStart="@drawable/ic_discord"
+                        android:drawablePadding="8dp"
+                        android:minHeight="48dp"
+                        android:text="@string/compte_connexion"
+                        android:textColor="@color/blanc" />
+
+                    <TextView
+                        android:id="@+id/compteLien"
+                        style="@style/Texte"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/ligne_appui"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="@font/nunito_extrabold"
+                        android:gravity="center"
+                        android:minWidth="48dp"
+                        android:minHeight="48dp"
+                        android:paddingHorizontal="10dp"
+                        android:textColor="@color/c_discord_texte"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ScrollView
+                android:id="@+id/pageJouer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Trois blocs : l'état, les morceaux, le clavier. Empilés sur un téléphone ;
+                     sur écran large, l'état et le clavier à gauche, les morceaux à droite. -->
+                <LinearLayout
+                    android:id="@+id/jouerColonnes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:paddingBottom="24dp">
+
+                    <LinearLayout
+                        android:id="@+id/colonneEtat"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Jouer dans Heartopia : les trois conditions, puis le jeu -->
+                        <LinearLayout
+                            style="@style/Carte"
+                            android:layout_marginTop="4dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                style="@style/Titre"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:accessibilityHeading="true"
+                                android:text="@string/etat_titre"
+                                android:textSize="18sp"
+                                tools:targetApi="28" />
+
+                            <LinearLayout
+                                android:id="@+id/ligneService"
+                                style="@style/Ligne"
+                                android:minHeight="48dp">
+
+                                <ImageView
+                                    style="@style/Tuile"
+                                    android:background="@drawable/tuile_rose"
+                                    android:src="@drawable/ic_main"
+                                    android:tint="@color/c_rose_encre"
+                                    tools:ignore="UseAppTint" />
+
+                                <LinearLayout style="@style/LigneTextes">
+
+                                    <TextView
+                                        style="@style/Libelle"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/service_titre" />
+
+                                    <TextView
+                                        android:id="@+id/txtService"
+                                        style="@style/Texte"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content" />
+                                </LinearLayout>
+
+                                <TextView
+                                    android:id="@+id/pilServiceAccueil"
+                                    style="@style/Pilule"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                style="@style/Ligne"
+                                android:layout_marginTop="8dp">
+
+                                <ImageView
+                                    style="@style/Tuile"
+                                    android:background="@drawable/tuile_ambre"
+                                    android:src="@drawable/ic_calques"
+                                    android:tint="@color/c_ambre_encre"
+                                    tools:ignore="UseAppTint" />
+
+                                <LinearLayout style="@style/LigneTextes">
+
+                                    <TextView
+                                        style="@style/Libelle"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/bulle_titre" />
+
+                                    <TextView
+                                        android:id="@+id/txtBulle"
+                                        style="@style/Texte"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content" />
+                                </LinearLayout>
+
+                                <View
+                                    android:id="@+id/swBulle"
+                                    android:layout_width="54dp"
+                                    android:layout_height="48dp"
+                                    android:background="@drawable/interrupteur_cible"
+                                    android:clickable="true"
+                                    android:contentDescription="@string/bulle_titre"
+                                    android:focusable="true" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                style="@style/Ligne"
+                                android:layout_marginTop="8dp"
+                                android:minHeight="48dp">
+
+                                <ImageView
+                                    style="@style/Tuile"
+                                    android:background="@drawable/tuile_menthe"
+                                    android:src="@drawable/ic_piano"
+                                    android:tint="@color/c_menthe_encre"
+                                    tools:ignore="UseAppTint" />
+
+                                <LinearLayout style="@style/LigneTextes">
+
+                                    <TextView
+                                        style="@style/Libelle"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/touches_titre" />
+
+                                    <TextView
+                                        android:id="@+id/txtTouches"
+                                        style="@style/Texte"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content" />
+                                </LinearLayout>
+
+                                <TextView
+                                    android:id="@+id/pilTouches"
+                                    style="@style/Pilule"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/btnJeu"
+                                style="@style/Bouton.Teal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:minHeight="52dp"
+                                android:text="@string/jeu_ouvrir"
+                                android:textSize="15sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Mes morceaux -->
+                    <LinearLayout
+                        android:id="@+id/blocMorceaux"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:animateLayoutChanges="true"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                style="@style/Titre"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:accessibilityHeading="true"
+                                android:text="@string/morceaux_titre"
+                                android:textSize="19sp"
+                                tools:targetApi="28" />
+
+                            <TextView
+                                android:id="@+id/btnImporter"
+                                style="@style/Bouton.Petit"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:minHeight="48dp"
+                                android:text="@string/importer" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/morceaux_aide" />
+
+                        <LinearLayout
+                            android:id="@+id/listeMorceaux"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <!-- Clavier -->
+                    <LinearLayout
+                        android:id="@+id/blocClavier"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Titre"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:accessibilityHeading="true"
+                            android:text="@string/clavier_titre"
+                            android:textSize="19sp"
+                            tools:targetApi="28" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/clavier_aide" />
+
+                        <LinearLayout
+                            android:id="@+id/listeDispositions"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- Les autres pages gardent une largeur de lecture sur écran large (640 dp, centrées). -->
+            <include
+                layout="@layout/page_biblio"
+                android:layout_width="@dimen/largeur_page"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_horizontal" />
+
+            <include
+                layout="@layout/page_dessin"
+                android:layout_width="@dimen/largeur_page"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_horizontal" />
+
+            <include
+                layout="@layout/page_salon"
+                android:layout_width="@dimen/largeur_page"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_horizontal" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/barre_bas"
+            android:orientation="horizontal"
+            android:paddingTop="7dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:id="@+id/navJouer"
+                style="@style/OngletBas"
+                android:drawableTop="@drawable/ic_note"
+                android:text="@string/nav_jouer" />
+
+            <TextView
+                android:id="@+id/navDessin"
+                style="@style/OngletBas"
+                android:drawableTop="@drawable/ic_pinceau"
+                android:text="@string/nav_dessin" />
+
+            <TextView
+                android:id="@+id/navBiblio"
+                style="@style/OngletBas"
+                android:drawableTop="@drawable/ic_loupe"
+                android:text="@string/nav_biblio" />
+
+            <TextView
+                android:id="@+id/navSalon"
+                style="@style/OngletBas"
+                android:drawableTop="@drawable/ic_groupe"
+                android:text="@string/nav_salon" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Message bref (ajout, suppression, erreur) : voir Annonce dans Retours.kt. -->
+    <TextView
+        android:id="@+id/annonce"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="84dp"
+        android:accessibilityLiveRegion="polite"
+        android:background="@drawable/annonce"
+        android:drawablePadding="10dp"
+        android:drawableTint="@color/blanc"
+        android:elevation="8dp"
+        android:fontFamily="@font/nunito_extrabold"
+        android:gravity="center_vertical"
+        android:maxWidth="480dp"
+        android:minHeight="48dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:textColor="@color/blanc"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</FrameLayout>

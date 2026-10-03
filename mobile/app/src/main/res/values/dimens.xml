@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Barres système : icônes foncées en thème clair, claires en thème sombre. -->
+    <bool name="barres_claires">true</bool>
+    <!-- Deux colonnes (bienvenue, page Jouer) et largeur de lecture plafonnée à partir de 700 dp de large. -->
+    <bool name="ecran_large">false</bool>
+    <!-- -1 = match_parent : en écran étroit, une page prend toute la largeur. -->
+    <item name="largeur_page" format="integer" type="dimen">-1</item>
+</resources>

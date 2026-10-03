@@ -1,5 +1,6 @@
 """Téléchargement : l'installeur Windows en carte principale, portable et Linux en secondaires, détails techniques
-(fichier, SHA-256, VirusTotal) repliés, notes de version, puis prérequis et questions d'installation en accordéon."""
+(fichier, SHA-256, VirusTotal) repliés, la carte de l'appli Android (canal à part, `ctx.mobile`), notes de version,
+puis prérequis et questions d'installation en accordéon (dont « Installer un APK », ancre `#apk`)."""
 from __future__ import annotations
 
 from .. import site
@@ -40,6 +41,47 @@ def platform_card(lang: str, asset_id: str, go: str, prefix: str, primary: bool,
     </li>"""
 
 
+def android_button(lang: str, mobile: dict, cls: str = "btn btn--cta btn--lg") -> str:
+    """Bouton de téléchargement de l'APK (lien compteur), avec son type et sa taille. Aussi sur la page Android."""
+    return (f'<a class="{cls}" href="/telecharger/go/android" data-platform="android">'
+            f'<span class="btn__ico" aria-hidden="true"></span>'
+            f'<span class="btn__txt"><span>{esc(t(lang, "site.download.android.button"))}</span>'
+            f'<span class="btn__sub">{esc(t(lang, "site.download.android.kind"))} · '
+            f'{esc(human_size(mobile["size"], lang))}</span></span></a>')
+
+
+def android_card(lang: str, mobile: dict | None) -> str:
+    """Carte de l'appli Android, hors de la grille des versions PC : elle a sa propre version et existe même quand
+    aucune version PC n'est publiée. Sans APK publié : état « bientôt », aucun lien de téléchargement."""
+    title = esc(t(lang, "site.download.android.title"))
+    more = (f'<p class="more"><a href="{url_for(lang, "android")}">'
+            f'{esc(t(lang, "site.download.android.more"))}</a></p>')
+    if not mobile:
+        return (f'<div class="dlcard dlcard--none dlcard--android" id="android"><h3>{title}</h3>'
+                f'<p>{t(lang, "site.download.android.soon")}</p>{more}</div>')
+    sha = str(mobile.get("sha256") or "")
+    vt = (f'<a href="https://www.virustotal.com/gui/file/{esc(sha)}" rel="noopener nofollow" target="_blank">'
+          f'{esc(t(lang, "site.download.virustotal"))}</a>') if len(sha) == 64 else ""
+    badges = f'<span class="vbadge">{t(lang, "site.download.version_line", version=mobile["version"])}</span>'
+    date = human_date(mobile.get("published_at"), lang)
+    if date:
+        badges += f' <span class="vbadge vbadge--soft">{t(lang, "site.download.published_on", date=date)}</span>'
+    return f"""<div class="dlcard dlcard--android reveal" id="android">
+      <span class="dlcard__ico" aria-hidden="true"></span>
+      <h3>{title}</h3>
+      <p class="dlcard__desc">{t(lang, "site.download.android.desc")}</p>
+      <p class="vbadges">{badges}</p>
+      <p class="dlcard__go">{android_button(lang, mobile)}</p>
+      <details class="dlcard__tech"><summary>{esc(t(lang, "site.download.tech_details"))}</summary>
+      <dl class="dlmeta">
+        <dt>{esc(t(lang, "site.download.file"))}</dt><dd><code>{esc(mobile["filename"])}</code></dd>
+        <dt>SHA-256</dt><dd><code class="sha">{esc(sha)}</code></dd>
+        <dt>{esc(t(lang, "site.download.check"))}</dt><dd>{vt}</dd>
+      </dl></details>
+      {more}
+    </div>"""
+
+
 NOTES_MAX_LINES = 12                # au-delà : lien « la suite » vers la page Nouveautés
 
 
@@ -56,8 +98,9 @@ def release_notes(lang: str, latest: dict) -> str:
 
 
 def more_section(lang: str) -> str:
-    """Prérequis, mise à jour, portable ou non, SmartScreen : un accordéon (un seul volet ouvert à la fois).
-    L'ancre `#smartscreen` est DANS son volet : un lien vers elle l'ouvre (révélation des <details> par l'ancre)."""
+    """Prérequis, mise à jour, portable ou non, SmartScreen, installation d'un APK : un accordéon (un seul volet
+    ouvert à la fois). Les ancres `#smartscreen` et `#apk` sont DANS leur volet : un lien vers elles l'ouvre
+    (révélation des <details> par l'ancre)."""
     def fold(summary: str, body: str, anchor: str = "", opened: bool = False) -> str:
         ident = f' id="{anchor}"' if anchor else ""
         return (f'<details name="dl-more"{" open" if opened else ""}><summary>{summary}</summary>'
@@ -71,6 +114,9 @@ def more_section(lang: str) -> str:
         fold(esc(t(lang, "site.download.smartscreen_title")),
              f'<p>{t(lang, "site.download.smartscreen_text")}</p><p>{t(lang, "site.download.smartscreen_steps")}</p>',
              anchor="smartscreen"),
+        fold(esc(t(lang, "site.download.apk_title")),
+             "".join(f'<p>{t(lang, f"site.download.apk_{part}")}</p>' for part in ("text", "access", "restricted")),
+             anchor="apk"),
     )
     return f"""<section class="section"><div class="wrap wrap--narrow">
   {section_head(esc(t(lang, "site.download.more_title")))}
@@ -91,17 +137,18 @@ def render(settings, lang: str, ctx) -> str:
         actions = f'<p class="vbadges">{badges}</p>'
         cards = "".join(platform_card(lang, *spec, latest) for spec in PLATFORMS)
         main = f"""<ul class="dlgrid reveal">{cards}</ul>
-  <p class="dl-note center">{t(lang, "site.download.sha_note")}</p>
-  {macos}"""
+  <p class="dl-note center">{t(lang, "site.download.sha_note")}</p>"""
         notes = release_notes(lang, latest)
     else:
         actions = ""
         main = f"""<div class="soon">
     <h2>{esc(t(lang, "site.download.soon_title"))}</h2>
     <p>{t(lang, "site.download.soon_text")}</p>
-  </div>
-  {macos}"""
+  </div>"""
         notes = ""
+    main = f"""{main}
+  {android_card(lang, ctx.mobile)}
+  {macos}"""
     header = page_header(lang, esc(t(lang, "site.download.eyebrow")), t(lang, "site.download.h1"),
                          t(lang, "site.download.lead"), actions)
     return f"""{header}

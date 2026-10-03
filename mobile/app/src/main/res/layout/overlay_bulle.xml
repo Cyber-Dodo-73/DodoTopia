@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bulle de 66 dp dans une fenêtre de 86 dp : la marge laisse la place à l'ombre, à la pastille et à l'anneau de mesure. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="86dp"
+    android:layout_height="86dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:contentDescription="@string/bulle">
+
+    <View
+        android:id="@+id/anneau"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bulle_anneau"
+        android:visibility="gone" />
+
+    <FrameLayout
+        android:id="@+id/cercle"
+        android:layout_width="66dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bulle_fond"
+        android:elevation="8dp">
+
+        <!-- Le logo remplit le cercle jusqu'au liseré, un peu agrandi pour que ses coins arrondis restent hors champ.
+             Le rognage en rond est posé dans le code : l'attribut clipToOutline n'est lu qu'à partir d'Android 12. -->
+        <FrameLayout
+            android:id="@+id/imgBulle"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="center"
+            android:background="@drawable/rond">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:scaleX="1.18"
+                android:scaleY="1.18"
+                android:src="@drawable/dodo" />
+        </FrameLayout>
+
+        <ImageView
+            android:id="@+id/badge"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center"
+            android:background="@drawable/rond_sombre"
+            android:importantForAccessibility="no"
+            android:padding="7dp"
+            android:src="@drawable/ic_fermer"
+            android:tint="@color/c_caramel_ink"
+            android:visibility="gone"
+            tools:ignore="UseAppTint" />
+    </FrameLayout>
+
+    <View
+        android:id="@+id/pastille"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="7dp"
+        android:layout_marginBottom="7dp"
+        android:background="@drawable/bulle_pastille"
+        android:elevation="9dp" />
+</FrameLayout>

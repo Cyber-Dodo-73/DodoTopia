@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jetons repris de ui/tokens.css (thème clair). Même nom que le jeton web, sans le préfixe. -->
+<resources>
+    <color name="c_bg">#F4EAD8</color>
+    <color name="c_bg_glow">#FFFAF1</color>
+    <color name="c_surface">#FFFFFF</color>
+    <color name="c_surface_2">#FBF5EA</color>
+    <color name="c_line">#EFE3CF</color>
+    <color name="c_line_2">#E4D4BA</color>
+    <color name="c_text">#6B5A52</color>
+    <color name="c_text_2">#74625A</color>
+    <color name="c_brand">#B56F3F</color>
+    <color name="c_brand_edge">#7D4826</color>
+    <color name="c_primary">#E8A531</color>
+    <color name="c_primary_edge">#C98A1F</color>
+    <color name="c_primary_ink">#4A3527</color>
+    <color name="c_primary_soft">#FBE7BD</color>
+    <color name="c_cta">#187B75</color>
+    <color name="c_cta_edge">#125E59</color>
+    <color name="c_danger">#C94F5A</color>
+    <color name="c_danger_edge">#A83B46</color>
+    <color name="c_danger_soft">#FDE3E3</color>
+    <color name="c_danger_text">#A83B46</color>
+    <color name="c_ok">#5E6F2B</color>
+    <color name="c_ok_soft">#EEF2DA</color>
+    <color name="c_icone_fond">#F7EEDB</color>
+    <color name="blanc">#FFFFFF</color>
+    <!-- Ébauches « DodoTopia Mobile » : encre forte, pastilles d'activité, bords -->
+    <color name="c_caramel_ink">#FFF8EC</color>
+    <color name="c_ink">#4A3527</color>
+    <color name="c_titre">#9A5A2F</color>
+    <color name="c_bord">#E4D4BA</color>
+    <color name="c_creme">#FFFAF1</color>
+    <color name="c_creme_2">#F8EAD3</color>
+    <color name="c_ambre_fond">#FFE9C7</color>
+    <color name="c_ambre_trait">#E8932F</color>
+    <color name="c_ambre_encre">#7A4310</color>
+    <color name="c_ambre_texte">#8A5F0F</color>
+    <color name="c_ambre_ligne">#F3D79A</color>
+    <color name="c_rose">#D9639A</color>
+    <color name="c_rose_fond">#FFE0EC</color>
+    <color name="c_rose_encre">#7A2F57</color>
+    <color name="c_menthe">#1F9D8F</color>
+    <color name="c_menthe_fond">#D9F7EA</color>
+    <color name="c_menthe_encre">#0F5C55</color>
+    <color name="c_teal_fond">#DFF6F4</color>
+    <color name="c_pastille">#9FB356</color>
+    <color name="c_danger_ligne">#F0B9B9</color>
+    <color name="c_interrupteur_off">#D8CFBE</color>
+    <!-- Discord : le bleu de la marque, pour le bouton de connexion uniquement -->
+    <color name="c_discord">#5865F2</color>
+    <color name="c_discord_bord">#4450C8</color>
+    <color name="c_discord_fond">#EEF0FF</color>
+    <color name="c_discord_ligne">#CDD2FB</color>
+    <!-- Passe UX : couleurs qui ne suivent pas leur voisine en thème sombre (voir values-night). -->
+    <color name="c_sombre">#4A3527</color>
+    <color name="c_nav_actif">#7D4826</color>
+    <color name="c_encart">#99FFFFFF</color>
+    <color name="c_discord_texte">#4450C8</color>
+    <!-- Teal en texte ou en icône (c_cta reste le fond des boutons à texte blanc) -->
+    <color name="c_cta_texte">#187B75</color>
+    <!-- Démonstration du calibrage : touches caramel du jeu sur un fond de prairie -->
+    <color name="c_caramel">#C98644</color>
+    <color name="c_caramel_bord">#A8692F</color>
+    <color name="c_jeu_fond">#CFE9D2</color>
+    <color name="c_jeu_sol">#B5DDB9</color>
+</resources>

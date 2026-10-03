@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barre du calibrage, en haut de l'écran : les touches de l'instrument sont en bas. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/panneau_fond"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp">
+
+    <TextView
+        style="@style/Texte.Petit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:maxWidth="220dp"
+        android:maxLines="3"
+        android:text="@string/calibrage_aide"
+        android:textColor="@color/c_text" />
+
+    <TextView
+        android:id="@+id/btnInverser"
+        style="@style/Bouton.Petit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/btn_contour"
+        android:text="@string/calibrage_inverser"
+        android:textColor="@color/c_text" />
+
+    <TextView
+        android:id="@+id/btnTester"
+        style="@style/Bouton.Petit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:text="@string/calibrage_tester" />
+
+    <TextView
+        android:id="@+id/btnAnnuler"
+        style="@style/Bouton.Petit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/btn_contour"
+        android:text="@string/annuler"
+        android:textColor="@color/c_text" />
+
+    <TextView
+        android:id="@+id/btnOk"
+        style="@style/Bouton.Petit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/btn_teal"
+        android:text="@string/valider"
+        android:textColor="@color/blanc" />
+</LinearLayout>

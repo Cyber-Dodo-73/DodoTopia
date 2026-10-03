@@ -20,7 +20,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.gzip import DEFAULT_EXCLUDED_CONTENT_TYPES, GZipMiddleware
 
-from . import admin, auth, db, diag_reports, gallery, importer, library, notify, og, releases, rooms, site, stats
+from . import (admin, auth, db, diag_reports, gallery, importer, library, mobile_releases, notify, og, releases, rooms,
+               site, stats)
 from .config import SERVER_VERSION, Settings
 from .ratelimit import RateLimiter
 from .rooms import RoomManager
@@ -28,7 +29,7 @@ from .rooms import RoomManager
 log = logging.getLogger("dodo")
 CLEANUP_INTERVAL_S = 60
 # Envoi des binaires de release (jeton de publication) : corps volumineux streamé, exempté du plafond.
-BIG_BODY_PREFIXES = ("/api/admin/releases/",)
+BIG_BODY_PREFIXES = ("/api/admin/releases/", "/api/admin/mobile/releases/")
 # Plafonds propres à un chemin (au lieu du plafond ordinaire) : un rapport de diagnostic dépasse un MIDI.
 PATH_LIMITS = {"/api/diag-reports": lambda s: s.MAX_DIAG_REPORT_BYTES + s.REQUEST_OVERHEAD_BYTES}
 
@@ -223,6 +224,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(gallery.router)
     app.include_router(importer.router)
     app.include_router(og.router)
+    app.include_router(mobile_releases.router)   # avant releases : `/dl/android/…` a un segment de plus que `/dl/…`
     app.include_router(releases.router)
     app.include_router(rooms.router)
     app.include_router(diag_reports.router)

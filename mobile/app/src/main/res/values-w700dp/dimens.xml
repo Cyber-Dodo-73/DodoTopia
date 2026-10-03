@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="ecran_large">true</bool>
+    <dimen name="largeur_page">640dp</dimen>
+</resources>

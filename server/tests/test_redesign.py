@@ -204,7 +204,8 @@ def test_download_page_hierarchy(client, publish_headers):
     primary = html.split('<li class="dlcard dlcard--primary', 1)[1].split("</li>", 1)[0]
     assert i18n.t("fr", "site.download.recommended") in primary and 'href="/telecharger/go/windows"' in primary
     assert html.count('<details class="dlcard__tech">') == 3
-    assert html.count('<details name="dl-more"') == 4 and 'class="faq__body" id="smartscreen"' in html
+    assert html.count('<details name="dl-more"') == 5 and 'class="faq__body" id="smartscreen"' in html
+    assert 'class="faq__body" id="apk"' in html                       # « Installer un APK », pour l'appli Android
     assert '<span class="vbadge">' in html and 'class="pillnote"' in html
     news = client.get("/fr/nouveautes").text
     assert '<ol class="timeline">' in news and '<span class="timeline__v" aria-hidden="true">2.0.0</span>' in news
@@ -226,7 +227,10 @@ def test_new_locale_keys_are_translated_everywhere():
 
 def test_weight_budgets(client, publish_headers, user_token, admin_token):
     css = (site.STATIC_DIR / "site.css").read_bytes()
-    assert len(css) <= 45 * 1024, f"site.css : {len(css)} octets"
+    # 46 Ko depuis la carte Android de la page Téléchargement (trois règles, 150 octets) : à 45 Ko il ne restait
+    # que 65 octets de marge. Compté en fins de ligne LF, comme le fichier est servi en production.
+    css = css.replace(b"\r\n", b"\n")
+    assert len(css) <= 46 * 1024, f"site.css : {len(css)} octets"
     put_and_publish(client, publish_headers, "2.0.0", notes="- une note")
     for i in range(6):
         approved_song(client, user_token, admin_token, n_notes=60 + i, title=f"Morceau numéro {i}", tags="piano")

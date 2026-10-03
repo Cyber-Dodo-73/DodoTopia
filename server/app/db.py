@@ -334,6 +334,19 @@ MIGRATIONS = [
     );
     CREATE INDEX diag_reports_created ON diag_reports(created_at);
     """,
+    # v6 : versions de l'application Android (mobile_releases.py). Canal à part des versions PC : numérotation
+    # propre, un seul fichier (l'APK) par version, hors du manifeste signé que lit le client PC.
+    """
+    CREATE TABLE mobile_releases (
+        version      TEXT PRIMARY KEY,
+        filename     TEXT NOT NULL,
+        sha256       TEXT NOT NULL,
+        size         INTEGER NOT NULL,
+        notes        TEXT,
+        published_at TEXT,                               -- NULL tant que non publiée
+        downloads    INTEGER NOT NULL DEFAULT 0
+    );
+    """,
 ]
 
 # Postgres seulement, hors numérotation : recherche par trigrammes (`LIKE '%mot%'` sur titre/artiste). L'extension
@@ -345,7 +358,7 @@ POSTGRES_OPTIONAL = [
     "CREATE INDEX IF NOT EXISTS songs_artist_trgm ON songs USING GIN (LOWER(artist) gin_trgm_ops)",
 ]
 
-TABLES = ("diag_reports", "stat_daily", "stat_uniques", "admin_settings", "admin_log", "web_logins", "release_assets", "releases", "song_likes", "drawing_likes", "reports", "drawings", "songs", "login_tickets",
+TABLES = ("mobile_releases", "diag_reports","stat_daily", "stat_uniques", "admin_settings", "admin_log", "web_logins", "release_assets", "releases", "song_likes", "drawing_likes", "reports", "drawings", "songs", "login_tickets",
           "sessions", "users", "schema_version")
 
 _DDL_TYPES = {

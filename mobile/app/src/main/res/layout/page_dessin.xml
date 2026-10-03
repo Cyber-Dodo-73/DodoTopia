@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dessin : choisir une image, voir ce qu'elle donnera dans le jeu. La peinture se lance depuis la bulle. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pageDessin"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="18dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="24dp">
+
+        <TextView
+            style="@style/Titre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/dessin_titre"
+            android:textSize="19sp" />
+
+        <TextView
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/dessin_aide" />
+
+        <TextView
+            android:id="@+id/dessinChoisir"
+            style="@style/Bouton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/dessin_choisir" />
+
+        <TextView
+            style="@style/Libelle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/dessin_format" />
+
+        <LinearLayout
+            android:id="@+id/dessinFormats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal" />
+
+        <LinearLayout
+            style="@style/Carte"
+            android:layout_marginTop="14dp"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/dessinApercu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/dessin_apercu"
+                android:maxHeight="320dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/dessinInfos"
+                style="@style/Texte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/dessin_vide"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/encart"
+            android:padding="12dp"
+            android:text="@string/dessin_conseils" />
+    </LinearLayout>
+</ScrollView>

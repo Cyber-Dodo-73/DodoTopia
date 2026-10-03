@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/choix"
+    android:stateListAnimator="@animator/pression"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="56dp"
+    android:orientation="horizontal"
+    android:paddingStart="10dp"
+    android:paddingEnd="14dp"
+    android:paddingVertical="9dp">
+
+    <fr.cyberdodo.dodotopia.MiniClavierView
+        android:id="@+id/schema"
+        android:layout_width="64dp"
+        android:layout_height="44dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/tuile_ambre"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/titre"
+            style="@style/Libelle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/detail"
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/etat"
+        style="@style/Pilule"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/pilule_ok"
+        android:text="@string/pil_calibre"
+        android:textColor="@color/c_ok" />
+</LinearLayout>
