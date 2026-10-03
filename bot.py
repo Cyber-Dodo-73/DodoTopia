@@ -52,6 +52,8 @@ class MouseBot:
         name = (event.name or "").lower()
         if name in self._hotkey_names():
             return
+        # quelle touche : un arret « clavier touché » sans que personne ne tape vient d'un autre programme
+        self.log(f"touche reçue : « {event.name} » (code {getattr(event, 'scan_code', '?')})")
         self.stop("clavier touché")
 
     def _hotkey_names(self):

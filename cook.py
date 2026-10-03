@@ -30,6 +30,7 @@ ASSOC = 70          # tolerance (px) autour de la position ATTENDUE d'une bulle 
 STILL = 6           # une bulle qui bouge de plus de STILL px entre deux lectures est « en mouvement »
 CAM_WINDOW = 4.5    # la camera ne bouge que dans les secondes qui suivent un clic sur une bulle (le personnage
                     # marche) : hors de cette fenetre, une bulle lointaine est une AUTRE cuisiniere, pas un glissement
+RING_PENDING = 1.5  # secondes au plus a attendre qu'un anneau vert vu une fois devienne stable avant de faire autre chose
 CAM_SETTLE = 3.0    # secondes de recherche large forcee apres un clic sur une autre cuisiniere (la camera bouge)
 WIDE_EVERY = 0.7    # secondes entre deux recherches larges quand toutes les bulles sont suivies
 RING_MIN, RING_MAX = 60, 150   # cote (px) plausible de la boite englobante d'un anneau vert en 1080p
@@ -59,6 +60,10 @@ DEFAULT_COOK = {
     # possible, le menu reste ouvert le moins longtemps possible). Reglage sans interface (config.json) a
     # remonter si des plats sont rates pendant un lancement.
     "launch_guard": 0.0,     # secondes de « fenetre de risque » apres un lancement / un feu ajuste (0 = aucune)
+    # Priorite aux spatules (demande du proprietaire, 2026-10-03) : tant qu'une spatule SANS anneau est a l'ecran,
+    # l'anneau vert arrive d'habitude dans les 2 s ; on ne recupere rien et on ne lance rien pendant spatula_wait
+    # secondes au plus (0 = ne pas attendre), pour avoir la souris libre a l'arrivee de l'anneau.
+    "spatula_wait": 5.0,
     "launch_anytime": False, # True : lancer une cuisson meme si une autre cuisiniere est dans sa fenetre
 }
 
@@ -743,6 +748,12 @@ class Cooker(MouseBot):
         prev, prev_at = [], 0.0          # lecture precedente (stabilite des bulles)
         ring_pos, ring_at, ring_streak = None, 0.0, 0
         ready_at = 0.0
+        pend_at = 0.0                    # anneau vert vu mais pas encore stable : depuis quand
+        spat_at, spat_seen = 0.0, 0.0    # spatule sans anneau : debut de l'apparition, derniere lecture
+        try:
+            spat_wait = max(0.0, float(c.get("spatula_wait", 5.0)))
+        except (TypeError, ValueError):
+            spat_wait = 5.0
         self._launched_at = 0.0
 
         def near(a, b, r):
@@ -793,6 +804,7 @@ class Cooker(MouseBot):
                     return
                 ring_pos, ring_at = d["pos"], time.perf_counter()
                 last_action = ring_at
+                pend_at = 0.0
                 if not again:                                     # un re-clic sur le meme anneau n'est pas un 2e feu
                     self.fires += 1
                     if b is not None:
@@ -804,9 +816,27 @@ class Cooker(MouseBot):
                 self.log(f"{who} : feu ajusté en {d['pos'][0]},{d['pos'][1]}" + (" (re-clic)" if again else ""))
                 self.on_change()
                 continue
+            # Priorite aux spatules : un anneau vu mais pas encore stable (il vient d'apparaitre, ou la camera
+            # bouge) passe avant tout le reste -> on relit au lieu de partir recuperer un plat ou ouvrir le menu.
+            if any(x["state"] == "spatula" for x in dets):
+                pend_at = pend_at or now
+                if now - pend_at < RING_PENDING:
+                    self.phase = "feu"
+                    if not self._sleep(poll):
+                        return
+                    continue
+            else:
+                pend_at = 0.0
+            # ... et une spatule sans anneau annonce l'anneau : on garde la souris libre (spatula_wait s au plus)
+            hold = False
+            if spat_wait and any(x["state"] == "cooking" for x in dets):
+                if now - spat_seen > 1.0:
+                    spat_at = now
+                spat_seen = now
+                hold = now - spat_at < spat_wait
             # (b) plat pret. La bulle « gants » reste affichee ~1 s apres le clic (et la camera la deplace) : on
             # ne regarde plus les gants pendant 1,2 s, sinon le 2e clic tombe sur « cuisiner » et ouvre le menu.
-            d = next((x for x in stable if x["state"] == "ready"), None) if now - ready_at >= 1.2 else None
+            d = next((x for x in stable if x["state"] == "ready"), None) if now - ready_at >= 1.2 and not hold else None
             if d is not None:
                 self.phase = "récupération"
                 b = d.get("burner")
@@ -825,7 +855,7 @@ class Cooker(MouseBot):
                 self.on_change()
                 continue
             # (c) cuisiniere au repos
-            d = next((x for x in stable if x["state"] == "cook"), None) if now - ready_at >= 1.0 else None
+            d = next((x for x in stable if x["state"] == "cook"), None) if now - ready_at >= 1.0 and not hold else None
             if d is not None:
                 b = d.get("burner") or Burner(0, d["pos"])
                 b.pos = d["pos"]
