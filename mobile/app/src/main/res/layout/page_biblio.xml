@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bibliothèque en ligne : recherche, tri, téléchargement dans « Mes morceaux ». -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/pageBiblio"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical"
+        android:paddingStart="18dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="24dp">
+
+        <!-- Mise à jour de l'appli : visible seulement quand le serveur annonce une version plus récente -->
+        <LinearLayout
+            android:id="@+id/majCarte"
+            style="@style/Carte"
+            android:layout_marginTop="0dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/encart_ambre"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/majTitre"
+                style="@style/Libelle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/c_ambre_encre" />
+
+            <TextView
+                android:id="@+id/majTexte"
+                style="@style/Texte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="6"
+                android:textColor="@color/c_ambre_encre" />
+
+            <TextView
+                android:id="@+id/majBouton"
+                style="@style/Bouton.Petit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/maj_telecharger" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/Titre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/biblio_titre"
+            android:textSize="19sp" />
+
+        <TextView
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/biblio_aide" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/biblioRecherche"
+                style="@style/Champ"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/biblio_recherche"
+                android:imeOptions="actionSearch"
+                android:importantForAutofill="no"
+                android:inputType="text" />
+
+            <ImageView
+                android:id="@+id/biblioChercher"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/rond_lancer"
+                android:clickable="true"
+                android:contentDescription="@string/biblio_recherche"
+                android:focusable="true"
+                android:paddingStart="12dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="14dp"
+                android:src="@drawable/ic_loupe"
+                android:tint="@color/blanc"
+                tools:ignore="UseAppTint" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/triRecents"
+                style="@style/Onglet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/onglet_ambre"
+                android:text="@string/tri_recents"
+                android:textColor="@color/c_ambre_encre" />
+
+            <TextView
+                android:id="@+id/triPopulaires"
+                style="@style/Onglet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/onglet_ambre"
+                android:text="@string/tri_populaires"
+                android:textColor="@color/c_ambre_encre" />
+
+            <TextView
+                android:id="@+id/triAimes"
+                style="@style/Onglet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/onglet_ambre"
+                android:text="@string/tri_aimes"
+                android:textColor="@color/c_ambre_encre" />
+        </LinearLayout>
+
+        <!-- Filtres : un tag et un instrument, chacun choisi dans une liste -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/filtreTag"
+                style="@style/Onglet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/onglet_neutre"
+                android:ellipsize="end"
+                android:focusable="true"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/c_text" />
+
+            <TextView
+                android:id="@+id/filtreInstrument"
+                style="@style/Onglet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/onglet_neutre"
+                android:ellipsize="end"
+                android:focusable="true"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/c_text" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/biblioEtat"
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+
+        <LinearLayout
+            android:id="@+id/biblioListe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/biblioPlus"
+            style="@style/Bouton.Contour"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/biblio_plus"
+            android:visibility="gone" />
+
+        <!-- Partager un de ses morceaux : il passe par la modération avant d'apparaître ici -->
+        <LinearLayout
+            style="@style/Carte"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Libelle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/partage_titre" />
+
+            <TextView
+                style="@style/Texte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/partage_aide" />
+
+            <TextView
+                android:id="@+id/biblioPartager"
+                style="@style/Bouton.Petit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/partage_bouton" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

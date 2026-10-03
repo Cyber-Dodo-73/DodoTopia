@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Thème sombre : jetons de ui/tokens.css ([data-theme="dark"]) : brun profond, surfaces écorce, texte crème.
+     Écarts voulus avec le web : c_cta, c_danger et c_discord restent foncés, parce que les boutons qui les
+     portent gardent un texte blanc (@color/blanc) fixé dans les mises en page et dans le code. -->
+<resources>
+    <color name="c_bg">#2A211C</color>
+    <color name="c_bg_glow">#3A2C22</color>
+    <color name="c_surface">#3A2F28</color>
+    <color name="c_surface_2">#332923</color>
+    <color name="c_line">#4B3E35</color>
+    <color name="c_line_2">#5D4D41</color>
+    <color name="c_text">#F4EAD8</color>
+    <color name="c_text_2">#CFBFAE</color>
+    <color name="c_brand">#E2A878</color>
+    <color name="c_brand_edge">#97633A</color>
+    <color name="c_primary">#F0B54A</color>
+    <color name="c_primary_edge">#B27E22</color>
+    <color name="c_primary_ink">#2A1D10</color>
+    <color name="c_primary_soft">#4A3A22</color>
+    <color name="c_danger_soft">#4A2B2D</color>
+    <color name="c_danger_text">#F3A2A7</color>
+    <color name="c_ok">#C5D98A</color>
+    <color name="c_ok_soft">#343A24</color>
+    <color name="c_ink">#F4EAD8</color>
+    <color name="c_titre">#E2A878</color>
+    <color name="c_bord">#5D4D41</color>
+    <color name="c_creme">#3A2C22</color>
+    <color name="c_creme_2">#45372D</color>
+    <color name="c_ambre_fond">#4A3A22</color>
+    <color name="c_ambre_encre">#F6CA75</color>
+    <color name="c_ambre_texte">#F2C667</color>
+    <color name="c_ambre_ligne">#6F5526</color>
+    <color name="c_rose_fond">#4A2B3A</color>
+    <color name="c_rose_encre">#F5B5D2</color>
+    <color name="c_menthe_fond">#1F3A38</color>
+    <color name="c_menthe_encre">#8FE0DA</color>
+    <color name="c_teal_fond">#1F3A38</color>
+    <color name="c_pastille">#A9BF5F</color>
+    <color name="c_danger_ligne">#7A3F44</color>
+    <color name="c_interrupteur_off">#6E5D50</color>
+    <color name="c_discord_fond">#2E3152</color>
+    <color name="c_discord_ligne">#454A82</color>
+    <color name="c_sombre">#1C1512</color>
+    <color name="c_nav_actif">#F0B54A</color>
+    <color name="c_encart">#14FFFFFF</color>
+    <color name="c_discord_texte">#B4BAFF</color>
+    <color name="c_cta_texte">#5FCDC5</color>
+    <color name="c_jeu_fond">#2F4A3F</color>
+    <color name="c_jeu_sol">#3A5A4B</color>
+</resources>

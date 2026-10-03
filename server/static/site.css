@@ -413,6 +413,9 @@ details.news{margin-top:18px}
 .dlcard--primary .dlcard__ico{background:var(--cta)}
 .dlcard--primary .dlcard__ico::after{background:var(--cta-ink)}
 .dlcard--none{background:var(--panel-soft);box-shadow:none;color:var(--ink3)}
+.dlcard--android{margin:0 0 28px}
+.dlcard--android :is(.btn,.vbadges){width:auto;margin:0 0 14px}
+.dlcard--android .dlcard__ico::after{--i:url("art/phone.svg?v=1")}
 .dlcard__tech summary{min-height:44px;font-weight:800;font-size:15px;color:var(--ink2)}
 .dlcard__tech summary::after{width:18px;height:18px;background:var(--ink3)}
 .dlmeta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:6px 0 0;font-size:15px}

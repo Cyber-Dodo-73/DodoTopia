@@ -23,16 +23,24 @@
         android:background="@drawable/bulle_fond"
         android:elevation="8dp">
 
-        <ImageView
+        <!-- Le logo remplit le cercle jusqu'au liseré, un peu agrandi pour que ses coins arrondis restent hors champ.
+             Le rognage en rond est posé dans le code : l'attribut clipToOutline n'est lu qu'à partir d'Android 12. -->
+        <FrameLayout
             android:id="@+id/imgBulle"
-            android:layout_width="54dp"
-            android:layout_height="54dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:layout_gravity="center"
-            android:background="@drawable/rond"
-            android:clipToOutline="true"
-            android:importantForAccessibility="no"
-            android:scaleType="centerCrop"
-            android:src="@drawable/dodo" />
+            android:background="@drawable/rond">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:scaleX="1.18"
+                android:scaleY="1.18"
+                android:src="@drawable/dodo" />
+        </FrameLayout>
 
         <ImageView
             android:id="@+id/badge"

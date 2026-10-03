@@ -14,24 +14,43 @@ import androidx.lifecycle.MutableLiveData
 /**
  * Le cœur de l'appli côté système : envoie les gestes, porte la bulle (fenêtre d'accessibilité,
  * donc sans SYSTEM_ALERT_WINDOW), intercepte volume bas et sait faire une capture de secours.
- * Activer le service ne suffit pas à faire apparaître la bulle : il faut aussi l'allumer dans l'appli.
- * Il n'observe aucun contenu d'écran : onAccessibilityEvent reste vide.
+ * Activer le service ne suffit pas à faire apparaître la bulle : il faut aussi l'allumer dans l'appli,
+ * et elle ne se montre que par-dessus Heartopia.
  */
 class DodoAccessibilityService : AccessibilityService() {
 
+    lateinit var lecteur: Lecteur
+        private set
     lateinit var metronome: Metronome
         private set
+    lateinit var traceur: Traceur
+        private set
+    lateinit var peintre: Peintre
+        private set
+
+    /** null avant Android 11 : la capture par le service n'existe pas. */
+    var cuisine: Cuisine? = null
+        private set
     private var overlay: Overlay? = null
+
+    /** Vrai tant qu'Heartopia est la fenêtre au premier plan. */
+    private var jeuDevant = false
 
     /** Après avoir avalé l'appui de volume bas, on avale aussi son relâchement, sinon le volume bouge. */
     private var avalerRelachement = false
 
     override fun onServiceConnected() {
         SpikeLog.init(this)
+        lecteur = Lecteur(this)
         metronome = Metronome(this)
+        traceur = Traceur(this)
+        peintre = Peintre(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cuisine = Cuisine(this)
         overlay = Overlay(this)
         instance = this
         actif.value = true
+        // Dernier état connu (le service redémarre à chaque mise à jour, souvent pendant que le jeu est devant).
+        jeuDevant = Preferences.prefs(this).getBoolean(JEU_DEVANT, true)
         appliquerBulle()
         val e = tailleEcran(this)
         SpikeLog.log(
@@ -43,18 +62,51 @@ class DodoAccessibilityService : AccessibilityService() {
     /** Montre ou retire la bulle selon le choix fait dans l'appli (interrupteur « Bulle dans le jeu »). */
     fun appliquerBulle() {
         val o = overlay ?: return
-        if (Preferences.bulleActive(this)) o.montrerBulle() else o.fermerTout()
+        if (Preferences.bulleActive(this) && jeuDevant) o.montrerBulle() else o.fermerTout()
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    /** Départ synchronisé d'un salon. Faux si la bulle n'est pas prête à jouer (éteinte, occupée, clavier non calibré). */
+    fun jouerSalon(titre: String, code: String, arrangement: Arrangement, delaiMs: Long): Boolean =
+        overlay?.jouerSalon(titre, code, arrangement, delaiMs) ?: false
+
+    fun arreterSalon() {
+        overlay?.arreterSalon()
+    }
+
+    /**
+     * Seul événement écouté : le changement de fenêtre au premier plan, dont on ne lit que le nom du paquet.
+     * La bulle n'existe que par-dessus Heartopia ; quitter le jeu la retire et arrête ce qui jouait, pour
+     * qu'aucun geste ne parte sur une autre appli.
+     */
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val paquet = event.packageName?.toString() ?: return
+        val classe = event.className?.toString().orEmpty()
+        val devant = when {
+            estLeJeu(paquet) -> true
+            // Nos propres fenêtres par-dessus le jeu ne comptent pas ; l'écran de l'appli, si.
+            paquet == packageName -> if (classe.endsWith("MainActivity")) false else return
+            // Clavier, volet des notifications : le jeu est toujours dessous.
+            paquet == "com.android.systemui" || classe.contains("SoftInputWindow") || paquet.contains("inputmethod") -> return
+            else -> false
+        }
+        if (devant != jeuDevant) {
+            jeuDevant = devant
+            Preferences.prefs(this).edit().putBoolean(JEU_DEVANT, devant).apply()
+            appliquerBulle()
+        }
+    }
+
+    private fun estLeJeu(paquet: String): Boolean =
+        paquet.startsWith(PREFIXE_JEU) || (BuildConfig.DEBUG && paquet == "com.android.settings")
 
     override fun onInterrupt() = Unit
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) return false
-        if (event.action == KeyEvent.ACTION_DOWN && metronome.enCours) {
+        if (event.action == KeyEvent.ACTION_DOWN && (lecteur.enCours || metronome.enCours || peintre.enCours || cuisine?.enCours == true)) {
             SpikeLog.log("Volume bas : arrêt")
-            overlay?.arreterMesure()
+            overlay?.arretUrgence()
             avalerRelachement = true
             return true
         }
@@ -62,7 +114,7 @@ class DodoAccessibilityService : AccessibilityService() {
             avalerRelachement = false
             return true
         }
-        // Hors mesure, la touche garde son rôle normal.
+        // Quand rien ne joue, la touche garde son rôle normal.
         return false
     }
 
@@ -86,6 +138,7 @@ class DodoAccessibilityService : AccessibilityService() {
         overlay = null
         instance = null
         o.fermerTout()
+        lecteur.fermer()
         metronome.fermer()
         actif.value = false
         SpikeLog.log("Service d'accessibilité arrêté")
@@ -159,5 +212,9 @@ class DodoAccessibilityService : AccessibilityService() {
             private set
 
         private const val GRILLE = 5
+
+        /** Paquets d'Heartopia : « com.xd.xdtglobal.gp » sur le Play Store ; les versions de test visent aussi les Réglages. */
+        private const val PREFIXE_JEU = "com.xd.xdt"
+        private const val JEU_DEVANT = "jeu_devant"
     }
 }

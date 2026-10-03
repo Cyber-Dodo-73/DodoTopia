@@ -1,76 +1,417 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">DodoTopia</string>
+    <!-- Langue par défaut : anglais. Le français est dans values-fr. -->
+    <string name="app_name" translatable="false">DodoTopia</string>
 
-    <string name="service_resume">Joue les appuis à ta place dans Heartopia</string>
-    <string name="service_description">DodoTopia utilise ce service pour appuyer sur les touches de l\'instrument à ta place, afficher sa bulle par-dessus le jeu et s\'arrêter quand tu presses volume bas. Il ne lit pas le contenu de l\'écran des autres applis.</string>
+    <string name="service_resume">Plays your songs in Heartopia by pressing the keys for you</string>
+    <string name="service_description">DodoTopia uses this service to press the screen for you in Heartopia (instrument, painting, cooking), show its bubble over the game and stop when you press volume down. It only looks at the screen during automatic cooking and drawing, to find the stove bubble and check the canvas, and nothing leaves your phone.</string>
 
-    <!-- Écran « Avant de commencer » -->
-    <string name="avant_titre">Avant de commencer</string>
-    <string name="avant_texte">Pour appuyer sur l\'écran à ta place et lire le jeu, DodoTopia a besoin de trois autorisations. Elles se donnent une fois, dans les réglages d\'Android.</string>
-    <string name="aut_bulle_titre">Afficher par-dessus les autres applis</string>
-    <string name="aut_bulle_texte">C\'est la bulle qui flotte sur le jeu. Elle vient avec le service d\'accessibilité.</string>
-    <string name="aut_service_titre">Service d\'accessibilité</string>
-    <string name="aut_service_texte">Pour appuyer et tracer sur l\'écran à ta place, et pour arrêter avec la touche volume.</string>
-    <string name="aut_capture_titre">Capture de l\'écran</string>
-    <string name="aut_capture_texte">Pour lire le dessin et les bulles de la cuisine. Android la redemande à chaque lancement.</string>
-    <string name="pil_accordee">Accordée</string>
-    <string name="pil_avec_service">Avec le service</string>
-    <string name="pil_active">Activé</string>
-    <string name="pil_a_activer">À activer</string>
-    <string name="pil_au_lancement">Au lancement</string>
-    <string name="acces_bouton">Ouvrir les réglages d\'accessibilité  ›</string>
-    <string name="acces_restreint">Interrupteur grisé (« paramètre restreint ») ? Touche ici pour ouvrir les infos de l\'appli, puis menu ⋮, « Autoriser les paramètres restreints ».</string>
-    <string name="avant_note">DodoTopia Mobile s\'installe depuis dodotopia.cyber-dodo.fr, pas depuis le Play Store. Les mises à jour se font dans l\'appli, comme sur PC.</string>
-    <string name="continuer_pret">C\'est parti</string>
-    <string name="continuer_pret_aide">Tout est prêt, direction les tests</string>
-    <string name="continuer_sans">Continuer sans le service</string>
-    <string name="continuer_sans_aide">Tu pourras lire les résultats, mais pas afficher la bulle ni jouer dans le jeu</string>
-    <string name="autorisations">Autorisations</string>
+    <string-array name="noms_notes">
+        <item>C</item>
+        <item>C♯</item>
+        <item>D</item>
+        <item>D♯</item>
+        <item>E</item>
+        <item>F</item>
+        <item>F♯</item>
+        <item>G</item>
+        <item>G♯</item>
+        <item>A</item>
+        <item>A♯</item>
+        <item>B</item>
+    </string-array>
 
-    <!-- Accueil -->
-    <string name="tester_titre">Tester dans Heartopia</string>
-    <string name="bulle_titre">Bulle dans le jeu</string>
-    <string name="bulle_active">Active : elle flotte par-dessus le jeu</string>
-    <string name="bulle_inactive">Éteinte : rien ne s\'affiche par-dessus le jeu</string>
-    <string name="bulle_sans_service">Active d\'abord le service d\'accessibilité</string>
-    <string name="mode_emploi">1. Active la bulle, puis ouvre Heartopia et un instrument.\n2. Touche la bulle, place un repère sur chaque touche, puis lance le métronome.\n3. Reviens ici pour le test de capture, puis partage le journal.</string>
+    <string name="disp_15_3">15 notes, 3 rows</string>
+    <string name="disp_15_3_detail">Three rows of 5 keys: lute, flute, violin, lyre…</string>
+    <string name="disp_15_2">15 notes, 2 rows</string>
+    <string name="disp_15_2_detail">One row of 7 keys and one of 8</string>
+    <string name="disp_22">22 notes, 3 rows</string>
+    <string name="disp_22_detail">Piano without black keys: 7, 7 and 8 keys</string>
+    <string name="disp_37">37 notes, full piano</string>
+    <string name="disp_37_detail">Every key, black ones included: 12, 12 and 13</string>
 
-    <string name="capture_titre">Capture écran + son</string>
-    <string name="capture_aide">Après ton accord (choisis « Tout l\'écran »), tu as 6 secondes pour revenir sur Heartopia, bouger la caméra et jouer une note. La mesure dure 3 secondes.</string>
-    <string name="capture_bouton">Lancer le test de capture</string>
-    <string name="capture_vide">Pas encore de mesure.</string>
+    <string name="bienvenue_titre">Welcome!</string>
+    <string name="bienvenue_texte">DodoTopia plays your songs in Heartopia: it presses the instrument keys for you. Three steps and you\'re set.</string>
+    <string name="etape_1_titre">Allow DodoTopia</string>
+    <string name="etape_1_texte">Turn on the “DodoTopia” accessibility service: it presses the screen and shows the bubble in the game.</string>
+    <string name="etape_2_titre">Calibrate the keys</string>
+    <string name="etape_2_texte">In the game, open an instrument, tap the bubble and place the dots on the keys. Once per instrument.</string>
+    <string name="etape_3_titre">Play</string>
+    <string name="etape_3_texte">Pick a song in the bubble and press play. Volume down pauses at any time.</string>
+    <string name="pil_active">On</string>
+    <string name="pil_a_activer">To turn on</string>
+    <string name="pil_calibre">Calibrated</string>
+    <string name="pil_a_calibrer">To calibrate</string>
+    <string name="acces_bouton">Open accessibility settings</string>
+    <string name="acces_restreint">Switch greyed out (“restricted setting”)? Tap here to open the app info, then the ⋮ menu, “Allow restricted settings”.</string>
+    <string name="confidentialite">DodoTopia only looks at your screen during automatic cooking and drawing, on your phone. The Internet is only used for the library, rooms and your account.</string>
+    <string name="continuer_pret">Let\'s go</string>
+    <string name="continuer_sans">Later</string>
+    <string name="continuer_sans_aide">You can prepare your songs, but not play in the game</string>
+    <string name="aide">Permissions and help</string>
 
-    <string name="metronome_titre">Dernier métronome</string>
-    <string name="metronome_vide">Lance-le depuis la bulle, par-dessus le jeu.</string>
+    <string name="sous_titre">Mobile · version %1$s</string>
+    <string name="etat_titre">Play in Heartopia</string>
+    <string name="service_titre">Accessibility service</string>
+    <string name="service_actif">Ready to press for you</string>
+    <string name="service_inactif">Tap here to turn it on</string>
+    <string name="bulle_titre">Bubble in the game</string>
+    <string name="bulle_active">On: it floats over the game</string>
+    <string name="bulle_inactive">Off: nothing shows over the game</string>
+    <string name="bulle_sans_service">Turn on the accessibility service first</string>
+    <string name="touches_titre">Instrument keys</string>
+    <string name="touches_calibrees">%1$s: calibrated</string>
+    <string name="touches_a_calibrer">To do in the game, from the bubble</string>
+    <string name="jeu_ouvrir">Open Heartopia</string>
+    <string name="jeu_absent">Heartopia was not found on this phone: open it yourself, the bubble will follow.</string>
 
-    <string name="journal_titre">Journal</string>
-    <string name="journal_partager">Partager le journal</string>
-    <string name="journal_effacer">Effacer</string>
-    <string name="journal_absent">Le journal est vide.</string>
-    <string name="journal_efface">Journal effacé.</string>
+    <string name="morceaux_titre">My songs</string>
+    <string name="importer">Import a MIDI</string>
+    <string name="morceaux_aide">Tap a song to select it: it will be ready in the bubble.</string>
+    <string name="morceau_meta">%1$s · %2$d notes</string>
+    <string name="morceau_meta_compat">%1$s · %2$d notes · %3$d%% exact notes</string>
+    <string name="morceau_exemple">Sample · %1$s</string>
+    <string name="supprimer">Delete</string>
+    <string name="morceau_supprime">“%1$s” deleted.</string>
+    <string name="import_ok">“%1$s” added.</string>
+    <string name="import_refuse">“%1$s” is not a readable MIDI file.</string>
+    <string name="import_erreur">This file could not be read.</string>
 
-    <!-- Par-dessus le jeu -->
-    <string name="bulle">Bulle DodoTopia</string>
-    <string name="bulle_aide">Appuie pour ouvrir DodoTopia</string>
-    <string name="onglet_metronome">Métronome</string>
-    <string name="onglet_reperes">Repères</string>
-    <string name="onglet_capture">Capture</string>
-    <string name="tempo">Tempo</string>
-    <string name="appuis">Appuis</string>
-    <string name="duree">Durée</string>
-    <string name="accord">Accord</string>
-    <string name="lancer">Lancer le métronome</string>
-    <string name="moins">Moins</string>
-    <string name="plus">Plus</string>
-    <string name="reperes_aide">Pose le viseur sur chaque touche de l\'instrument, puis valide. Les repères sont effacés quand l\'écran tourne.</string>
-    <string name="reperes_placer">Placer un repère</string>
-    <string name="reperes_effacer">Effacer</string>
-    <string name="capture_service_aide">Capture de secours par le service d\'accessibilité : temps mis, taille et luminosité de l\'image.</string>
-    <string name="capture_service">Prendre une capture</string>
-    <string name="ouvrir_dodotopia">Ouvrir DodoTopia  ›</string>
-    <string name="rappel_stop">Volume bas = stop</string>
-    <string name="valider">Valider</string>
-    <string name="annuler_dernier">Retirer</string>
-    <string name="terminer">Terminer</string>
+    <string name="clavier_titre">Instrument keyboard</string>
+    <string name="clavier_aide">Pick the one that looks like the keys shown in the game. Each keyboard has its own calibration.</string>
+
+    <string name="diagnostic_titre">Diagnostics</string>
+    <string name="diagnostic_aide">To help sort out a problem: measurements and a log to share.</string>
+    <string name="capture_titre">Screen + sound capture</string>
+    <string name="capture_aide">After you agree (choose “Entire screen”), you have 6 seconds to go back to Heartopia, move the camera and play a note. The measurement lasts 3 seconds.</string>
+    <string name="capture_bouton">Run the capture test</string>
+    <string name="capture_vide">No measurement yet.</string>
+    <string name="metronome_titre">Last latency test</string>
+    <string name="metronome_vide">Run it from the bubble, Tools tab, over the game.</string>
+    <string name="journal_partager">Share the log</string>
+    <string name="journal_effacer">Clear</string>
+    <string name="journal_absent">The log is empty.</string>
+    <string name="journal_efface">Log cleared.</string>
+    <string name="capture_refusee">Capture refused: nothing was measured.</string>
+
+    <!-- Bienvenue : démonstration du calibrage ; accueil : retours -->
+    <string name="demo_calibrage">Animation: a finger drags the orange dots onto the first and last key of each row of the instrument, then the keys play by themselves.</string>
+    <string name="demo_calibrage_legende">Drag the dots onto the keys, then DodoTopia plays for you.</string>
+    <string name="supprimer_morceau">Delete “%1$s”</string>
+    <string name="supprimer_question">Delete “%1$s” from your songs?</string>
+
+    <!-- Réglages -->
+    <string name="reglages_titre">Settings</string>
+    <string name="retour">Back</string>
+    <string name="reglages_lecture">Playing in the game</string>
+    <string name="reglages_langue">Language</string>
+    <string name="reglages_langue_aide">The language of the app and of the bubble in the game.</string>
+    <string name="reglages_systeme">Phone</string>
+    <string name="reglages_apparence">Appearance</string>
+    <string name="reglages_apparence_aide">Cream by day, deep brown by night, or like your phone.</string>
+    <string name="reglages_clair">Light</string>
+    <string name="reglages_sombre">Dark</string>
+    <string name="duree_ms">%1$d ms</string>
+    <string name="reglages_bienvenue">Permissions and walkthrough</string>
+    <string name="reglages_bienvenue_aide">See the three steps and the service status again</string>
+    <string name="reglages_apropos">DodoTopia is an unofficial companion for Heartopia: it is not affiliated with the game\'s publisher.</string>
+    <string name="reglages_site">DodoTopia website</string>
+    <string name="reglages_confidentialite">Privacy</string>
+    <string name="reglages_conditions">Terms of use</string>
+    <string name="reglages_mentions">Legal notice</string>
+    <string name="url_site">https://dodotopia.cyber-dodo.fr/en/</string>
+    <string name="url_confidentialite">https://dodotopia.cyber-dodo.fr/en/privacy</string>
+    <string name="url_conditions">https://dodotopia.cyber-dodo.fr/en/terms</string>
+    <string name="url_mentions">https://dodotopia.cyber-dodo.fr/en/legal-notice</string>
+    <string name="navigateur_absent">No browser to open this page.</string>
+
+    <string name="bulle">DodoTopia bubble</string>
+    <string name="bulle_aide">Tap to open DodoTopia</string>
+    <string name="onglet_musique">Music</string>
+    <string name="onglet_outils">Tools</string>
+    <string name="ouvrir_dodotopia">Open DodoTopia</string>
+    <string name="alerte_calibrer">Before playing: open an instrument in the game, then tap here to place the dots on its keys.</string>
+    <string name="vitesse">Speed</string>
+    <string name="moins">Less</string>
+    <string name="plus">More</string>
+    <string name="jouer">Play</string>
+    <string name="depuis_debut">Restart from the beginning</string>
+    <string name="info_pause">Paused at %1$s of %2$s</string>
+    <string name="info_clavier">Keyboard: %1$s</string>
+    <string name="erreur_morceau">This song can\'t be read. Pick another one.</string>
+    <string name="carte_role">%1$s · speed %2$d%%</string>
+    <string name="carte_pause">Tap the bubble or volume down to pause</string>
+    <string name="carte_stop">Tap the bubble or volume down to stop</string>
+
+    <string name="clavier_calibre">“%1$s” keyboard: calibrated for this screen.</string>
+    <string name="clavier_a_calibrer">“%1$s” keyboard: not calibrated for this screen yet.</string>
+    <string name="calibrer">Calibrate the keys</string>
+    <string name="calibrer_encore">Recalibrate the keys</string>
+    <string name="appui">Press length</string>
+    <string name="appui_aide">Increase if some notes don\'t sound</string>
+    <string name="latence">Latency test</string>
+    <string name="latence_role">Diagnostics · 32 presses at 180 bpm</string>
+    <string name="capture_service">Capture test</string>
+
+    <string name="calibrage_aide">Drag the orange dots onto the first and last key of each row. Adjust the others if needed.</string>
+    <string name="calibrage_inverser">Low ⇅</string>
+    <string name="calibrage_tester">Test</string>
+    <string name="annuler">Cancel</string>
+    <string name="valider">Confirm</string>
+
+    <!-- En ligne : compte, bibliothèque, salons -->
+    <string name="nav_jouer">Play</string>
+    <string name="nav_biblio">Library</string>
+    <string name="nav_salon">Room</string>
+    <string name="onglet_salon">Room</string>
+    <string name="compte_invite_titre">Sign in with Discord</string>
+    <string name="compte_invite_texte">To play in rooms with your friends, on mobile and on PC.</string>
+    <string name="compte_connexion">Sign in</string>
+    <string name="compte_attente_titre">Type this code on the page</string>
+    <string name="compte_attente_texte">The sign-in page opened in your browser. Come back here afterwards.</string>
+    <string name="compte_attente_code">Code to type on the page: %1$s</string>
+    <string name="compte_rouvrir">Reopen the page</string>
+    <string name="compte_connecte">Signed in: %1$s</string>
+    <string name="compte_deconnexion">Sign out</string>
+    <string name="connexion_expiree">The sign-in expired. Try again.</string>
+    <string name="connexion_refusee">Discord refused the sign-in.</string>
+    <string name="erreur_reseau">Server unreachable. Check your Internet connection.</string>
+    <string name="erreur_serveur">The server answered with an error (%1$d).</string>
+    <string name="erreur_trop">Too many requests, wait a minute.</string>
+    <string name="erreur_fichier">The song file is unreadable or incomplete.</string>
+    <string name="biblio_titre">Online library</string>
+    <string name="biblio_aide">Songs shared by players. Tap the arrow to add one to “My songs”.</string>
+    <string name="biblio_recherche">Search for a song</string>
+    <string name="biblio_chargement">Loading…</string>
+    <string name="biblio_vide">No song found.</string>
+    <string name="biblio_plus">Show more songs</string>
+    <string name="biblio_telecharger">Download</string>
+    <string name="biblio_deja">Already in my songs</string>
+    <string name="biblio_aime">♥ %1$d</string>
+    <string name="biblio_telecharge">↓ %1$d</string>
+    <string name="tri_recents">Recent</string>
+    <string name="tri_populaires">Popular</string>
+    <string name="tri_aimes">Most liked</string>
+    <string name="salon_titre">Play together</string>
+    <string name="salon_aide">In a room, everyone plays the same song at the same moment, each on their own instrument, on mobile and on PC.</string>
+    <string name="salon_creer_titre">Open a room</string>
+    <string name="salon_creer_aide">You pick the song and give the start. The others join with the code.</string>
+    <string name="salon_creer">Create a room</string>
+    <string name="salon_rejoindre_titre">Join a room</string>
+    <string name="salon_code">Room code</string>
+    <string name="salon_rejoindre">Join</string>
+    <string name="salon_code_partage">Code to give the others</string>
+    <string name="salon_partager">Share</string>
+    <string name="salon_invitation">Join my DodoTopia room with the code %1$s</string>
+    <string name="salon_morceau">Song</string>
+    <string name="salon_choisir">Pick the song</string>
+    <string name="salon_sans_morceau">The host has not picked a song yet.</string>
+    <string name="salon_sans_morceau_chef">Pick the song everyone will play.</string>
+    <string name="salon_telechargement">Getting “%1$s”…</string>
+    <string name="salon_envoi">Sending the song to the room…</string>
+    <string name="salon_moi">%1$s (you)</string>
+    <string name="salon_pret">I\'m ready</string>
+    <string name="salon_plus_pret">I\'m not ready</string>
+    <string name="salon_lancer">Start the song</string>
+    <string name="salon_arreter">Stop for everyone</string>
+    <string name="salon_astuce">Then open Heartopia with your instrument: the bubble has a Room tab, and the song starts by itself at the signal.</string>
+    <string name="salon_quitter">Leave the room</string>
+    <string name="salon_compte_requis">Rooms need a Discord account: sign in first.</string>
+    <string name="salon_connexion">Connecting to the room…</string>
+    <string name="salon_reconnexion">Connection lost, trying again…</string>
+    <string name="salon_perdu">The connection to the room was lost.</string>
+    <string name="salon_ferme">The room is closed.</string>
+    <string name="salon_exclu">The host removed you from the room.</string>
+    <string name="salon_remplace">This account joined the room from another device.</string>
+    <string name="salon_annule">The host cancelled the start.</string>
+    <string name="salon_arrete">The host stopped the song.</string>
+    <string name="salon_en_cours">A song is being played: wait for the next one.</string>
+    <string name="salon_spectateur">You don\'t have the song yet: you are watching this one.</string>
+    <string name="salon_sans_bulle">Start missed: turn on the bubble, open your instrument in the game and calibrate its keys.</string>
+    <string name="salon_horloge">Start missed: the room clock was not set yet. Try again.</string>
+    <string name="salon_carte">Room %1$s</string>
+    <string name="salon_depart">%1$d s</string>
+    <string name="salon_bulle_titre">Room %1$s · %2$d player(s)</string>
+    <string name="salon_bulle_etat">%1$s · %2$d/%3$d ready</string>
+    <string name="joueur_chef">Room host</string>
+    <string name="joueur_invite">Player</string>
+    <string name="joueur_deconnecte">Disconnected</string>
+    <string name="joueur_joue">Playing</string>
+    <string name="joueur_arme">At the start</string>
+    <string name="joueur_sans_morceau">No song yet</string>
+    <string name="joueur_pret">Ready</string>
+    <string name="joueur_attente">Not ready</string>
+    <plurals name="salon_joueurs">
+        <item quantity="one">%1$d player</item>
+        <item quantity="other">%1$d players</item>
+    </plurals>
+
+    <!-- Musique : notes tenues, arrangeur, pistes d'un morceau -->
+    <string name="reglage_tenues">Held notes</string>
+    <string name="reglage_tenues_aide">Each key stays pressed for the length of its note, instead of a short tap.</string>
+    <string name="reglage_arrangeur">Arranger</string>
+    <string name="reglage_arrangeur_aide">On keyboards without sharps: follows the melody and leaves out the accompaniment notes that have no exact key.</string>
+    <string name="pistes_titre">Tracks to play</string>
+    <string name="pistes_une_seule">This song has a single track.</string>
+    <string name="pistes_garder_une">Keep at least one track.</string>
+    <string name="pistes_detail">%1$s · %2$d notes</string>
+
+    <!-- Salon : rejoindre un morceau en marche, avance/retard, orchestre, exclusion -->
+    <string name="salon_rejoignable">A song is being played: you can join it where the others are.</string>
+    <string name="salon_rejoindre_lecture">Join the song in progress</string>
+    <string name="salon_rejoindre_attente">Open your instrument in the game: you will join the song as soon as the bubble is ready.</string>
+    <string name="salon_rejoindre_annuler">Don\'t join after all</string>
+    <string name="salon_rejoindre_impossible">Too late to join this song: wait for the next one.</string>
+    <string name="salon_avance_retard">Early / late</string>
+    <string name="salon_avance_retard_aide">If you hear yourself ahead of the others, add delay (+). If you are behind, remove some (−).</string>
+    <string name="salon_piste_n">Track %1$d</string>
+    <string name="salon_sans_pistes">This song has no tracks to share out.</string>
+    <string name="salon_exclure">Remove from the room</string>
+    <string name="salon_exclure_question">Remove %1$s from the room?</string>
+    <string name="orchestre_titre">Orchestra</string>
+    <string name="orchestre_inactif">Everyone plays the whole song. Share out the tracks to give each player a part.</string>
+    <string name="orchestre_actif_chef">The tracks are shared out. Tap a player to change their part.</string>
+    <string name="orchestre_actif">The host shared out the tracks. Your part: %1$s</string>
+    <string name="orchestre_tout">the whole song</string>
+    <string name="orchestre_repartir">Share out the tracks</string>
+    <string name="orchestre_arreter">Everyone plays everything</string>
+    <string name="orchestre_partie_de">Part of %1$s</string>
+    <string name="joueur_detail_partie">%1$s · %2$s</string>
+
+    <!-- Bibliothèque : j'aime, filtres, partage -->
+    <string name="biblio_aimer">Like</string>
+    <string name="biblio_aimer_compte">Sign in with Discord to like a song.</string>
+    <string name="filtre_tag">Tag: %1$s</string>
+    <string name="filtre_instrument">Instrument: %1$s</string>
+    <string name="filtre_tous">all</string>
+    <string name="filtre_tag_titre">Filter by tag</string>
+    <string name="filtre_instrument_titre">Filter by instrument</string>
+    <string name="filtre_aucun">No filter</string>
+    <string-array name="tags_noms">
+        <item>Piano</item>
+        <item>Flute</item>
+        <item>Lute</item>
+        <item>Violin</item>
+        <item>Harp</item>
+        <item>Percussion</item>
+        <item>Pop</item>
+        <item>Rock</item>
+        <item>Classical</item>
+        <item>Video game</item>
+        <item>Anime</item>
+        <item>Film</item>
+        <item>Folk</item>
+        <item>Christmas</item>
+        <item>Calm</item>
+        <item>Fast</item>
+        <item>Easy</item>
+        <item>Hard</item>
+    </string-array>
+    <string-array name="instruments_noms">
+        <item>Piano</item>
+        <item>Recorder</item>
+        <item>Bamboo xiao</item>
+        <item>Lute</item>
+        <item>Wooden bass</item>
+        <item>Bagpipe</item>
+        <item>Concertina</item>
+        <item>Mbira</item>
+        <item>Lyre</item>
+        <item>Violin</item>
+        <item>Cello</item>
+        <item>Conga</item>
+        <item>Cajón</item>
+        <item>Xylophone</item>
+        <item>Saxophone</item>
+        <item>Harp</item>
+        <item>Steel tongue drum</item>
+        <item>Ocarina</item>
+        <item>Conch</item>
+    </string-array>
+    <string-array name="licences_noms">
+        <item>My own arrangement</item>
+        <item>Public domain</item>
+        <item>Creative Commons</item>
+        <item>I don\'t know</item>
+    </string-array>
+    <string name="partage_titre">Share one of your songs</string>
+    <string name="partage_aide">A moderator checks it before it appears in the library.</string>
+    <string name="partage_bouton">Share a song</string>
+    <string name="partage_choisir">Which song?</string>
+    <string name="partage_aucun">Import a MIDI file first: only your own songs can be shared.</string>
+    <string name="partage_champ_titre">Title</string>
+    <string name="partage_licence">Where does this file come from?</string>
+    <string name="partage_tags">Tags (%1$d at most)</string>
+    <string name="partage_envoyer">Send</string>
+    <string name="partage_envoi">Sending “%1$s”…</string>
+    <string name="partage_ok">“%1$s” was sent. It will appear once a moderator has approved it.</string>
+    <string name="partage_deja">This song is already in the online library.</string>
+    <string name="partage_compte">Sign in with Discord to share a song.</string>
+    <string name="partage_titre_requis">Give the song a title.</string>
+
+    <!-- Mise à jour de l'appli -->
+    <string name="maj_titre">Version %1$s is available</string>
+    <string name="maj_taille">Download: %1$s MB</string>
+    <string name="maj_telecharger">Download the update</string>
+    <string name="maj_progression">Downloading… %1$d%%</string>
+    <string name="maj_prete">The update is downloaded and checked.</string>
+    <string name="maj_installer">Install the update</string>
+    <string name="maj_fichier_refuse">The downloaded file does not match the published version. Try again later.</string>
+
+    <!-- Dessin -->
+    <string name="nav_dessin">Drawing</string>
+    <string name="onglet_dessin">Draw</string>
+    <string name="dessin_titre">Draw in the game</string>
+    <string name="dessin_aide">Pick an image: DodoTopia fits it to the grid and the colours of the painting tool, then paints it for you from the bubble.</string>
+    <string name="dessin_choisir">Pick an image</string>
+    <string name="dessin_format">Canvas format in the game</string>
+    <string name="dessin_apercu">Drawing preview</string>
+    <string name="dessin_vide">No image yet.</string>
+    <string name="dessin_illisible">This image can\'t be read. Try another file.</string>
+    <string name="dessin_infos">Canvas %1$s · %2$d × %3$d cells · %4$d colours · %5$d strokes to paint</string>
+    <string name="dessin_conseils">In the game, before starting: empty canvas with the same format, pencil tool at thickness 1, finest detail level, default zoom. Shades and the paint bucket are turned on in the bubble, Drawing tab. Long-press a song in “My songs” to pick its tracks.</string>
+    <string name="dessin_sans_image">Pick an image first in the app, Drawing tab.</string>
+    <string name="dessin_a_calibrer">Canvas %1$s: first show DodoTopia where the canvas and the palette are.</string>
+    <string name="dessin_pret">Image ready · canvas %1$s · %2$d × %3$d · %4$d colours</string>
+    <string name="dessin_pause">Drawing paused at %1$d%%</string>
+    <string name="dessin_exemple">Try with the sample drawing</string>
+    <string name="dessin_calibrer">Locate the canvas and the palette</string>
+    <string name="dessin_recalibrer">Move the markers</string>
+    <string name="dessin_vitesse">Time per cell</string>
+    <string name="dessin_lancer">Paint</string>
+    <string name="dessin_carte">Drawing · canvas %1$s · %2$d colours</string>
+    <string name="dessin_verification">Checking the drawing…</string>
+    <string name="dessin_retouches">Touch-ups: %1$d cells</string>
+    <string name="dessin_en_cours">Painting</string>
+    <string name="reperes_aide">Put 1 and 2 on two opposite corners of the canvas (the striped area), 3 on the first colour swatch, 4 on the last one.</string>
+    <string-array name="reperes_dessin">
+        <item>1 · canvas corner</item>
+        <item>2 · opposite corner</item>
+        <item>3 · first colour</item>
+        <item>4 · last colour</item>
+    </string-array>
+
+    <!-- Cuisine -->
+    <string name="onglet_cuisine">Cooking</string>
+    <string name="cuisine_lancer">Cook</string>
+    <string name="cuisine_aide">Stand in front of your stove, with the recipe you want first in “Recently used”. DodoTopia starts the dishes, adjusts the heat and collects them, until you tap the bubble.</string>
+    <string name="cuisine_bilan">%1$d dish(es) cooked · %2$d heat adjustment(s)</string>
+    <string name="cuisine_ingredients">Stopped: the Cook button no longer starts a dish. Out of ingredients?</string>
+    <string name="cuisine_android11">Automatic cooking needs Android 11 or newer.</string>
+    <string name="cuisine_plusieurs">Several stoves</string>
+    <string name="cuisine_perdue">Stopped: no stove bubble on screen for a minute.</string>
+    <string name="cuisine_feu_bloque">Stopped: the heat ring does not go away, after 12 taps.</string>
+
+    <!-- Dessin : nuances, pot de peinture, reprise -->
+    <string name="dessin_nuances">126 shades</string>
+    <string name="dessin_pot">Paint bucket</string>
+    <string name="dessin_reperer_nuances">Locate the shades and the tools</string>
+    <string name="dessin_android11">The shades and the paint bucket need Android 11 or newer.</string>
+    <string name="reperes_nuances_aide">In the game, open the shades first (palette button). 1 palette button · 2 back button · 3 previous arrow · 4 next arrow · 5 first shade · 6 tenth shade · 7 pencil · 8 paint bucket · 9 undo.</string>
+    <string name="dessin_couleur">Colour %1$d of %2$d</string>
+    <string name="dessin_remplissage">Paint bucket: area %1$d</string>
+    <string name="dessin_fini">Drawing finished.</string>
+    <string name="dessin_fini_detail">Drawing finished · %1$d cells touched up · %2$d still missing</string>
+    <string name="dessin_erreur">Drawing stopped: unexpected error. It can be resumed.</string>
+    <string name="dessin_nuances_illisibles">Drawing stopped: the shades page can\'t be read. Move the shade markers, or go back to 16 colours.</string>
 </resources>

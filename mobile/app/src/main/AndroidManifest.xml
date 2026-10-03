@@ -1,27 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Bibliothèque en ligne, salons et compte Discord. Jouer seul n'en a pas besoin. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Mise à jour depuis l'appli : lancer l'installation de l'APK téléchargé et vérifié. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Exigée par AudioPlaybackCapture, même si on n'écoute jamais le micro. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Pour le bouton « Ouvrir Heartopia » : sans cette déclaration, Android 11+ cache le jeu à l'appli. -->
+    <queries>
+        <package android:name="com.xd.xdtglobal.gp" />
+    </queries>
+
     <application
         android:allowBackup="false"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Dodo">
+        android:theme="@style/Theme.Dodo"
+        tools:targetApi="33">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- « Ouvrir avec DodoTopia » sur un fichier MIDI -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="audio/midi" />
+                <data android:mimeType="audio/x-midi" />
+                <data android:mimeType="audio/mid" />
+                <data android:mimeType="application/x-midi" />
+            </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ReglagesActivity"
+            android:exported="false"
+            android:label="@string/reglages_titre" />
+
+        <!-- Avant Android 13, c'est AppCompat qui retient la langue choisie dans les réglages de l'appli. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
 
         <service
             android:name=".DodoAccessibilityService"

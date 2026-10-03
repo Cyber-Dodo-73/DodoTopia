@@ -2,7 +2,7 @@
 <main>). Le gabarit, les routes et le cache sont dans `site.py` ; les textes dans `locales/<lang>.json`."""
 from __future__ import annotations
 
-from . import activities, community, download, errors, gallery, help, home, instruments, legal, news, room, songs
+from . import activities, android, community, download, errors, gallery, help, home, instruments, legal, news, room, songs
 
 # page_id -> module. Les quatre activités partagent un module (même structure, textes différents).
 MODULES = {
@@ -21,6 +21,7 @@ MODULES = {
     "terms": legal.Terms,
     "songs": songs,
     "gallery": gallery,
+    "android": android,
 }
 
 __all__ = ["MODULES", "errors", "room"]

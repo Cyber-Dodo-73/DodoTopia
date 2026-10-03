@@ -1,3 +1,18 @@
+# DodoTopia Mobile 0.2.0 : où en est l'appli
+
+Depuis l'étape 1 décrite plus bas, l'appli de test est devenue un lecteur : import de MIDI, choix du clavier (15, 22 ou 37 notes), calibrage des touches par pastilles, lecture avec pause et reprise depuis la bulle. Les outils de mesure de l'étape 1 existent toujours, mais ont changé de place :
+
+- **Repères** : remplacés par le calibrage (bulle, onglet Outils, « Calibrer les touches »). Le bouton « Tester » joue la gamme touche par touche.
+- **Métronome** : devenu « Test de latence » (bulle, onglet Outils) : 32 appuis à 180 bpm sur les touches calibrées, même résumé et même verdict. Tempo, nombre d'appuis et mode accord ne sont plus réglables.
+- **Durée d'appui** : bulle, onglet Outils (20 à 200 ms). Elle sert aussi à la lecture des morceaux.
+- **Capture écran + son, journal** : dans l'appli, section « Diagnostic » en bas de l'accueil.
+
+Vérifié sur émulateur (Android 15, sans le jeu) : import de vrais MIDI et refus d'un faux, calibrage, test des touches (15 gestes, 0 annulé), lecture d'un morceau de 544 frappes (123 gestes envoyés avant la pause, 0 annulé, 0 refusé), pause par la bulle et reprise. **Rien n'a été vérifié dans Heartopia** : ni que le jeu prend les appuis, ni la disposition réelle des touches sur mobile, ni la pause par volume bas (une touche simulée par `adb` ne passe pas par le filtre d'accessibilité).
+
+Build : `./gradlew assembleRelease` signe avec la clé décrite par `mobile/keystore.properties` (hors dépôt) ; sans ce fichier, c'est la clé debug. Langue par défaut : anglais (`values/`), français dans `values-fr/`.
+
+---
+
 # DodoTopia Mobile, étape 1 : résultats
 
 L'appli de test est écrite et compile. Les mesures sur un vrai téléphone, dans Heartopia, restent à faire : c'est la partie « À mesurer par Dodo » ci-dessous. Rien de l'étape 2 n'est commencé.

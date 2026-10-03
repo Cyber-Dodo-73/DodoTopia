@@ -30,7 +30,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import db, i18n, legal_md, releases
+from . import db, i18n, legal_md, mobile_releases, releases
 from .config import SERVER_VERSION
 from .i18n import DEFAULT_LANG, LANG_INFO, LANGS, t
 
@@ -133,6 +133,8 @@ ROUTES: dict[str, dict[str, str]] = {
               "pt-BR": "termos"},
     "songs": {"fr": "morceaux", "en": "songs", "es": "canciones", "de": "lieder", "pt-BR": "musicas"},
     "gallery": {"fr": "galerie", "en": "gallery", "es": "galeria", "de": "galerie", "pt-BR": "galeria"},
+    # L'appli Android : « android » se dit pareil partout, un seul slug pour toutes les langues.
+    "android": {"fr": "android", "en": "android", "es": "android", "de": "android", "pt-BR": "android"},
 }
 # Pages sans page d'index : lien d'invitation vers un salon (`/{lang}/<slug>/<CODE>`, `noindex`).
 ROOM_SLUGS = {"fr": "salon", "en": "room", "es": "sala", "de": "raum", "pt-BR": "sala"}
@@ -153,22 +155,27 @@ def theme_of(page_id: str) -> str:
 
 
 # Pages dont le contenu vient de la base (dernière version, morceaux, dessins) : TTL court.
-DB_PAGES = frozenset({"home", "download", "news", "songs", "gallery"})
+DB_PAGES = frozenset({"home", "download", "news", "songs", "gallery", "android"})
 # Hints du sitemap (changefreq, priority).
 SITEMAP_HINTS = {"home": ("weekly", "1.0"), "download": ("weekly", "0.9"), "news": ("weekly", "0.6"),
                  "music": ("monthly", "0.8"), "draw": ("monthly", "0.8"), "cook": ("monthly", "0.8"),
                  "together": ("monthly", "0.7"), "instruments": ("monthly", "0.7"), "help": ("monthly", "0.7"),
-                 "community": ("monthly", "0.5"), "songs": ("daily", "0.8"), "gallery": ("daily", "0.7")}
+                 "community": ("monthly", "0.5"), "songs": ("daily", "0.8"), "gallery": ("daily", "0.7"),
+                 "android": ("weekly", "0.8")}
+ANDROID_PAGE_ISO = "2026-10-03"         # mise en ligne de la page Android ; son lastmod suit ensuite les APK publiés
 SITE_CACHE_MAX = 2000               # entrées du cache de pages (fiches de morceaux et de dessins comprises)
 SITEMAP_DEFAULT = ("yearly", "0.3")
 
 # Anciennes URL (site monolingue) : slug français à la racine -> 301 vers /fr/<slug>.
 LEGACY_SLUGS = {slugs["fr"]: page_id for page_id, slugs in ROUTES.items() if slugs["fr"]}
+# Adresses courtes sans langue, nées après le site monolingue : 302 vers la langue du navigateur.
+SHORT_SLUGS = {LEGACY_SLUGS.pop("android"): "android"}
 
 # Plateformes de `/telecharger/go/<platform>` -> identifiants d'asset de releases.PLATFORMS.
 GO_PLATFORMS = {"windows": "windows-setup", "windows-setup": "windows-setup",
                 "portable": "windows-portable", "windows-portable": "windows-portable",
                 "linux": "linux-x64", "linux-x64": "linux-x64"}
+GO_ANDROID = ("android", "apk")         # même lien compteur, mais canal à part (mobile_releases.py)
 
 
 def esc(value) -> str:
@@ -380,6 +387,11 @@ class Ctx:
         return latest_release(self.settings)
 
     @cached_property
+    def mobile(self) -> dict | None:
+        """Dernière version Android publiée (canal à part des versions PC), ou None."""
+        return mobile_releases.latest_release(self.settings)
+
+    @cached_property
     def releases(self) -> list[dict]:
         return published_releases(self.settings, limit=20)
 
@@ -545,6 +557,38 @@ def software_ld(settings, lang: str, latest: dict | None) -> dict:
     return data
 
 
+def android_ld(settings, lang: str, mobile: dict | None) -> dict:
+    """L'appli Android : un `SoftwareApplication` à part de celui du PC (autre système, autre numérotation).
+    Ni note ni avis : il n'y en a pas."""
+    base = settings.public_url
+    data = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": t(lang, "site.android.app_name"),
+        "description": t(lang, "site.meta.android.description"),
+        "url": f"{base}{url_for(lang, 'android')}",
+        "image": f"{base}/static/logo.png",
+        "applicationCategory": "GameApplication",
+        "applicationSubCategory": t(lang, "site.meta.app_subcategory"),
+        "operatingSystem": "Android",
+        "softwareRequirements": "Android 8.0+",
+        "inLanguage": lang,
+        "isAccessibleForFree": True,
+        "author": {"@type": "Organization", "@id": organization_id(settings), "name": EDITEUR_MARQUE,
+                   "url": f"{base}/"},
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+    }
+    if mobile:
+        data["offers"]["availability"] = "https://schema.org/InStock"
+        data["softwareVersion"] = mobile["version"]
+        date = (mobile.get("published_at") or "")[:10]
+        if date:
+            data["datePublished"] = date
+        data["downloadUrl"] = f"{base}{mobile_releases.dl_path(mobile['version'], mobile['filename'])}"
+        data["fileSize"] = str(mobile["size"])
+    return data
+
+
 def faq_ld(items: list[dict]) -> dict:
     return {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
         {"@type": "Question", "name": strip_tags(q["q"]),
@@ -669,7 +713,7 @@ def foot(settings, lang: str, page_id: str, version_line: str, paths: dict[str, 
         return f'<li><a href="{url_for(lang, pid)}">{esc(t(lang, f"site.nav.{pid}"))}</a></li>'
     paths = paths or {code: url_for(code, page_id) for code in LANGS}
     product = "".join(link(p) for p in ("music", "draw", "cook", "together", "songs", "gallery", "download",
-                                        "instruments", "news"))
+                                        "android", "instruments", "news"))
     support = "".join(link(p) for p in ("help", "community"))
     support += f'<li><a href="mailto:{EDITEUR_COURRIEL}">{esc(t(lang, "site.footer.contact"))}</a></li>'
     legal = "".join(link(p) for p in ("legal", "privacy", "terms"))
@@ -821,6 +865,8 @@ def root(request: Request):
 @router.get("/telecharger/go/{platform}", include_in_schema=False)
 def download_go(platform: str, request: Request):
     """Lien de téléchargement de la page : compte le téléchargement puis renvoie vers le fichier (302)."""
+    if platform.lower() in GO_ANDROID:
+        return _download_go_android(request)
     asset_id = GO_PLATFORMS.get(platform.lower())
     settings = request.app.state.settings
     latest = latest_release(settings) if asset_id else None
@@ -835,6 +881,21 @@ def download_go(platform: str, request: Request):
     request.app.state.stats_cache = None
     return RedirectResponse(dl_path(latest["version"], asset["filename"]) + "?via=site", status_code=302,
                             headers={"Cache-Control": "no-store"})
+
+
+def _download_go_android(request: Request) -> Response:
+    """`/telecharger/go/android` : le dernier APK publié, compté dans son propre canal."""
+    settings = request.app.state.settings
+    mobile = mobile_releases.latest_release(settings)
+    if not mobile:
+        return _not_found(request)
+    conn = db.connect(settings)
+    try:
+        mobile_releases.count_download(conn, mobile["version"], request.app, "site")
+    finally:
+        conn.close()
+    return RedirectResponse(mobile_releases.dl_path(mobile["version"], mobile["filename"]) + "?via=site",
+                            status_code=302, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
@@ -868,6 +929,15 @@ def _content_lastmod(app) -> str:
         latest = None
     date = ((latest or {}).get("published_at") or "")[:10]
     return max(date, LAST_UPDATE_ISO) if date else LAST_UPDATE_ISO
+
+
+def _android_lastmod(app) -> str:
+    """Date de dernière modification de la page Android : celle du dernier APK publié."""
+    try:
+        mobile = mobile_releases.latest_release(app.state.settings)
+    except Exception:  # noqa
+        mobile = None
+    return max(((mobile or {}).get("published_at") or "")[:10], ANDROID_PAGE_ISO)
 
 
 XML_MEDIA_TYPE = "application/xml; charset=utf-8"
@@ -974,6 +1044,8 @@ def sitemap_pages(request: Request):
     for page_id in PAGE_IDS:
         freq, prio = SITEMAP_HINTS.get(page_id, SITEMAP_DEFAULT)
         lastmod = db_lastmod if page_id in DB_PAGES else LAST_UPDATE_ISO
+        if page_id == "android":
+            lastmod = _android_lastmod(request.app)
         links = "".join(f'<xhtml:link rel="alternate" hreflang="{code}" href="{esc(base + url_for(code, page_id))}"/>'
                         for code in LANGS)
         links += f'<xhtml:link rel="alternate" hreflang="x-default" href="{esc(base + url_for(DEFAULT_LANG, page_id))}"/>'
@@ -1100,6 +1172,10 @@ def legacy_or_lang(segment: str, request: Request):
     """`/fr` -> `/fr/` ; anciennes URL françaises (`/instruments`, `/conditions`…) -> `/fr/<slug>` (301)."""
     if segment in LANGS:
         return RedirectResponse(f"/{segment}/", status_code=301, headers={"Cache-Control": REDIRECT_CACHE})
+    if segment in SHORT_SLUGS:
+        lang = i18n.negotiate(request.headers.get("accept-language"))
+        return RedirectResponse(url_for(lang, SHORT_SLUGS[segment]), status_code=302,
+                                headers={"Vary": "Accept-Language", "Cache-Control": "no-store"})
     page_id = LEGACY_SLUGS.get(segment)
     if page_id:
         return RedirectResponse(url_for("fr", page_id), status_code=301, headers={"Cache-Control": REDIRECT_CACHE})

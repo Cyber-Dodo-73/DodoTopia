@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ligne à choisir (morceau, clavier) : liseré ambre quand elle est sélectionnée. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true"><shape><solid android:color="@color/c_ambre_fond" /><corners android:radius="16dp" /><stroke android:width="2dp" android:color="@color/c_ambre_trait" /></shape></item>
+    <item android:state_pressed="true"><shape><solid android:color="@color/c_surface_2" /><corners android:radius="16dp" /><stroke android:width="1dp" android:color="@color/c_line_2" /></shape></item>
+    <item><shape><solid android:color="@color/c_surface" /><corners android:radius="16dp" /><stroke android:width="1dp" android:color="@color/c_line" /></shape></item>
+</selector>

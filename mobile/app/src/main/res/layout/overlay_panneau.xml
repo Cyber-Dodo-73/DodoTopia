@@ -1,380 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Menu de la bulle (ébauche « bulle ouverte »), avec les outils de test de l'étape 1 à la place des trois activités. -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Menu de la bulle : Musique (choisir et jouer) et Outils (calibrage, réglage de l'appui, diagnostic). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/panneau_fond"
-    android:scrollbars="none">
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="14dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="-3dp"
-            android:layout_marginBottom="12dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/ongletMetronome"
-                style="@style/Onglet"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="3dp"
-                android:layout_weight="1"
-                android:background="@drawable/onglet_ambre"
-                android:text="@string/onglet_metronome"
-                android:textColor="@color/c_ambre_encre" />
-
-            <TextView
-                android:id="@+id/ongletReperes"
-                style="@style/Onglet"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="3dp"
-                android:layout_weight="1"
-                android:background="@drawable/onglet_rose"
-                android:text="@string/onglet_reperes"
-                android:textColor="@color/c_rose_encre" />
-
-            <TextView
-                android:id="@+id/ongletCapture"
-                style="@style/Onglet"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="3dp"
-                android:layout_weight="1"
-                android:background="@drawable/onglet_menthe"
-                android:text="@string/onglet_capture"
-                android:textColor="@color/c_menthe_encre" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/enteteIcone"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:background="@drawable/rond_ambre"
-                android:importantForAccessibility="no"
-                android:padding="10dp"
-                android:src="@drawable/ic_note"
-                android:tint="@color/blanc"
-                tools:ignore="UseAppTint" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/enteteRole"
-                    style="@style/Texte.Petit"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/c_ambre_texte" />
-
-                <TextView
-                    android:id="@+id/enteteTitre"
-                    style="@style/Titre.Encre"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/enteteCompte"
-                style="@style/Compte"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/pilule_ambre" />
-        </LinearLayout>
-
-        <!-- Métronome : réglages à gauche, gros bouton rond à droite -->
-        <LinearLayout
-            android:id="@+id/pageMetronome"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
-                    android:background="@drawable/encart"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="5dp">
-
-                    <TextView
-                        style="@style/Texte"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/tempo" />
-
-                    <ImageView
-                        android:id="@+id/tempoMoins"
-                        style="@style/BoutonRond"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/moins"
-                        android:src="@drawable/ic_moins"
-                        tools:ignore="UseAppTint" />
-
-                    <TextView
-                        android:id="@+id/tempoValeur"
-                        android:layout_width="56dp"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/fredoka_semibold"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:textColor="@color/c_ink"
-                        android:textSize="15sp" />
-
-                    <ImageView
-                        android:id="@+id/tempoPlus"
-                        style="@style/BoutonRond"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/plus"
-                        android:src="@drawable/ic_plus"
-                        tools:ignore="UseAppTint" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
-                    android:background="@drawable/encart"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="5dp">
-
-                    <TextView
-                        style="@style/Texte"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/appuis" />
-
-                    <ImageView
-                        android:id="@+id/appuisMoins"
-                        style="@style/BoutonRond"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/moins"
-                        android:src="@drawable/ic_moins"
-                        tools:ignore="UseAppTint" />
-
-                    <TextView
-                        android:id="@+id/appuisValeur"
-                        android:layout_width="56dp"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/fredoka_semibold"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:textColor="@color/c_ink"
-                        android:textSize="15sp" />
-
-                    <ImageView
-                        android:id="@+id/appuisPlus"
-                        style="@style/BoutonRond"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/plus"
-                        android:src="@drawable/ic_plus"
-                        tools:ignore="UseAppTint" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
-                    android:background="@drawable/encart"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="5dp">
-
-                    <TextView
-                        style="@style/Texte"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/duree" />
-
-                    <ImageView
-                        android:id="@+id/dureeMoins"
-                        style="@style/BoutonRond"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/moins"
-                        android:src="@drawable/ic_moins"
-                        tools:ignore="UseAppTint" />
-
-                    <TextView
-                        android:id="@+id/dureeValeur"
-                        android:layout_width="56dp"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/fredoka_semibold"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:textColor="@color/c_ink"
-                        android:textSize="15sp" />
-
-                    <ImageView
-                        android:id="@+id/dureePlus"
-                        style="@style/BoutonRond"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/plus"
-                        android:src="@drawable/ic_plus"
-                        tools:ignore="UseAppTint" />
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginBottom="6dp"
-                android:gravity="center_horizontal"
-                android:orientation="vertical">
-
-                <ImageView
-                    android:id="@+id/btnLancer"
-                    android:layout_width="60dp"
-                    android:layout_height="64dp"
-                    android:background="@drawable/rond_lancer"
-                    android:clickable="true"
-                    android:contentDescription="@string/lancer"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="16dp"
-                    android:paddingBottom="20dp"
-                    android:src="@drawable/ic_lecture"
-                    android:tint="@color/blanc"
-                    tools:ignore="UseAppTint" />
-
-                <TextView
-                    android:id="@+id/chipAccord"
-                    style="@style/Onglet"
-                    android:layout_width="72dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/onglet_ambre"
-                    android:minHeight="32dp"
-                    android:text="@string/accord"
-                    android:textColor="@color/c_ambre_encre" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/pageReperes"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                style="@style/Texte"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/encart"
-                android:padding="10dp"
-                android:text="@string/reperes_aide" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/btnPlacer"
-                    style="@style/Bouton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/reperes_placer" />
-
-                <TextView
-                    android:id="@+id/btnEffacerReperes"
-                    style="@style/Bouton.Contour"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/reperes_effacer" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/pageCapture"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                style="@style/Texte"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/encart"
-                android:padding="10dp"
-                android:text="@string/capture_service_aide" />
-
-            <TextView
-                android:id="@+id/btnCaptureService"
-                style="@style/Bouton.Teal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/capture_service" />
-        </LinearLayout>
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/txtResume"
-            style="@style/Texte.Mesure"
+            android:id="@+id/ongletMusique"
+            style="@style/Onglet"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/onglet_ambre"
+            android:text="@string/onglet_musique"
+            android:textColor="@color/c_ambre_encre" />
+
+        <TextView
+            android:id="@+id/ongletDessin"
+            style="@style/Onglet"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/onglet_rose"
+            android:text="@string/onglet_dessin"
+            android:textColor="@color/c_rose_encre" />
+
+        <TextView
+            android:id="@+id/ongletCuisine"
+            style="@style/Onglet"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/onglet_menthe"
+            android:text="@string/onglet_cuisine"
+            android:textColor="@color/c_menthe_encre" />
+
+        <TextView
+            android:id="@+id/ongletOutils"
+            style="@style/Onglet"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/onglet_neutre"
+            android:text="@string/onglet_outils"
+            android:textColor="@color/c_text" />
+
+        <TextView
+            android:id="@+id/ongletSalon"
+            style="@style/Onglet"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/onglet_discord"
+            android:text="@string/onglet_salon"
+            android:textColor="@color/c_rose_encre" />
+
+        <ImageView
+            android:id="@+id/lienOuvrir"
+            style="@style/BoutonRond"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/ouvrir_dodotopia"
+            android:src="@drawable/ic_maison"
+            tools:ignore="UseAppTint" />
+    </LinearLayout>
+
+    <!-- Musique -->
+    <LinearLayout
+        android:id="@+id/pageMusique"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/alerte"
+            style="@style/Texte"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/encart"
-            android:padding="10dp"
-            android:visibility="gone" />
+            android:layout_marginTop="10dp"
+            android:background="@drawable/encart_ambre"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="9dp"
+            android:text="@string/alerte_calibrer"
+            android:textColor="@color/c_ambre_encre" />
+
+        <ScrollView
+            android:id="@+id/defilMorceaux"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_marginTop="10dp"
+            android:fadingEdgeLength="14dp"
+            android:requiresFadingEdge="vertical"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/listeMorceaux"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -383,32 +125,510 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/lienOuvrir"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:clickable="true"
-                android:fontFamily="@font/nunito_extrabold"
-                android:paddingVertical="4dp"
-                android:text="@string/ouvrir_dodotopia"
-                android:textColor="@color/c_cta"
-                android:textSize="12sp" />
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Libelle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="@string/vitesse"
+                        android:textSize="12sp" />
+
+                    <ImageView
+                        android:id="@+id/vitesseMoins"
+                        style="@style/BoutonRond"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:contentDescription="@string/moins"
+                        android:src="@drawable/ic_moins"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        android:id="@+id/vitesseValeur"
+                        style="@style/Libelle"
+                        android:layout_width="54dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:textSize="13sp" />
+
+                    <ImageView
+                        android:id="@+id/vitessePlus"
+                        style="@style/BoutonRond"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:contentDescription="@string/plus"
+                        android:src="@drawable/ic_plus"
+                        tools:ignore="UseAppTint" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtInfo"
+                    style="@style/Texte.Petit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginEnd="8dp"
+                    android:ellipsize="end"
+                    android:maxLines="2" />
+            </LinearLayout>
 
             <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:layout_marginEnd="5dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/ic_volume"
-                android:tint="@color/c_text_2"
+                android:id="@+id/btnDebut"
+                style="@style/BoutonRond"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@string/depuis_debut"
+                android:src="@drawable/ic_debut"
                 tools:ignore="UseAppTint" />
 
-            <TextView
-                style="@style/Texte.Petit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/rappel_stop" />
+            <ImageView
+                android:id="@+id/btnLancer"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:background="@drawable/rond_lancer"
+                android:stateListAnimator="@animator/pression"
+                android:clickable="true"
+                android:contentDescription="@string/jouer"
+                android:focusable="true"
+                android:paddingStart="17dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="15dp"
+                android:paddingBottom="18dp"
+                android:src="@drawable/ic_lecture"
+                android:tint="@color/blanc"
+                tools:ignore="UseAppTint" />
         </LinearLayout>
     </LinearLayout>
-</ScrollView>
+
+    <!-- Dessin : l'image se choisit dans l'appli, elle se peint d'ici. Défile si l'écran est bas. -->
+    <ScrollView
+        android:id="@+id/pageDessin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/dessinEtat"
+                style="@style/Texte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:maxLines="3" />
+
+            <TextView
+                android:id="@+id/dessinCalibrer"
+                style="@style/Bouton.Petit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/btn_contour"
+                android:text="@string/dessin_calibrer"
+                android:textColor="@color/c_text" />
+
+            <!-- Nuances et pot de peinture : éteints tant qu'ils ne sont pas repérés dans le jeu -->
+            <TextView
+                android:id="@+id/dessinReperer"
+                style="@style/Bouton.Petit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/btn_contour"
+                android:text="@string/dessin_reperer_nuances"
+                android:textColor="@color/c_text" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Libelle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/dessin_nuances"
+                    android:textSize="12sp" />
+
+                <View
+                    android:id="@+id/dessinNuances"
+                    android:layout_width="54dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/interrupteur"
+                    android:clickable="true"
+                    android:contentDescription="@string/dessin_nuances"
+                    android:focusable="true" />
+
+                <Space
+                    android:layout_width="10dp"
+                    android:layout_height="1dp" />
+
+                <TextView
+                    style="@style/Libelle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/dessin_pot"
+                    android:textSize="12sp" />
+
+                <View
+                    android:id="@+id/dessinPot"
+                    android:layout_width="54dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/interrupteur"
+                    android:clickable="true"
+                    android:contentDescription="@string/dessin_pot"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Libelle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/dessin_vitesse"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/dessinMoins"
+                            style="@style/BoutonRond"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:contentDescription="@string/moins"
+                            android:src="@drawable/ic_moins"
+                            tools:ignore="UseAppTint" />
+
+                        <TextView
+                            android:id="@+id/dessinValeur"
+                            style="@style/Libelle"
+                            android:layout_width="58dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:textSize="13sp" />
+
+                        <ImageView
+                            android:id="@+id/dessinPlus"
+                            style="@style/BoutonRond"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:contentDescription="@string/plus"
+                            android:src="@drawable/ic_plus"
+                            tools:ignore="UseAppTint" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/dessinDebut"
+                    style="@style/BoutonRond"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="@string/depuis_debut"
+                    android:src="@drawable/ic_debut"
+                    tools:ignore="UseAppTint" />
+
+                <ImageView
+                    android:id="@+id/dessinLancer"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:background="@drawable/rond_lancer"
+                    android:stateListAnimator="@animator/pression"
+                    android:clickable="true"
+                    android:contentDescription="@string/dessin_lancer"
+                    android:focusable="true"
+                    android:paddingStart="17dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="15dp"
+                    android:paddingBottom="18dp"
+                    android:src="@drawable/ic_lecture"
+                    android:tint="@color/blanc"
+                    tools:ignore="UseAppTint" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Cuisine : boucle automatique devant la cuisinière -->
+    <LinearLayout
+        android:id="@+id/pageCuisine"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/cuisineEtat"
+                style="@style/Texte"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:layout_weight="1"
+                android:maxLines="6" />
+
+            <ImageView
+                android:id="@+id/cuisineLancer"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:background="@drawable/rond_lancer"
+                android:stateListAnimator="@animator/pression"
+                android:clickable="true"
+                android:contentDescription="@string/cuisine_lancer"
+                android:focusable="true"
+                android:paddingStart="17dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="15dp"
+                android:paddingBottom="18dp"
+                android:src="@drawable/ic_lecture"
+                android:tint="@color/blanc"
+                tools:ignore="UseAppTint" />
+        </LinearLayout>
+
+        <!-- Une seule cuisinière par défaut -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/Libelle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/cuisine_plusieurs"
+                android:textSize="12sp" />
+
+            <View
+                android:id="@+id/cuisinePlusieurs"
+                android:layout_width="54dp"
+                android:layout_height="32dp"
+                android:background="@drawable/interrupteur"
+                android:clickable="true"
+                android:contentDescription="@string/cuisine_plusieurs"
+                android:focusable="true" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Salon : visible seulement quand on est dans un salon -->
+    <LinearLayout
+        android:id="@+id/pageSalon"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/salonTitre"
+            style="@style/Titre.Encre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/salonEtat"
+            style="@style/Texte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxLines="3" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/salonPret"
+                style="@style/Bouton.Petit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/salon_pret" />
+
+            <TextView
+                android:id="@+id/salonLancer"
+                style="@style/Bouton.Petit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/btn_teal"
+                android:text="@string/salon_lancer"
+                android:textColor="@color/blanc" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/salonRejoindreLecture"
+            style="@style/Bouton.Petit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/btn_contour"
+            android:text="@string/salon_rejoindre_lecture"
+            android:textColor="@color/c_text"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Outils -->
+    <ScrollView
+        android:id="@+id/pageOutils"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/txtClavier"
+                style="@style/Texte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp" />
+
+            <TextView
+                android:id="@+id/btnCalibrer"
+                style="@style/Bouton.Petit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/calibrer" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Libelle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/appui"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        style="@style/Texte.Petit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/appui_aide" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/appuiMoins"
+                    style="@style/BoutonRond"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:contentDescription="@string/moins"
+                    android:src="@drawable/ic_moins"
+                    tools:ignore="UseAppTint" />
+
+                <TextView
+                    android:id="@+id/appuiValeur"
+                    style="@style/Libelle"
+                    android:layout_width="58dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:id="@+id/appuiPlus"
+                    style="@style/BoutonRond"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:contentDescription="@string/plus"
+                    android:src="@drawable/ic_plus"
+                    tools:ignore="UseAppTint" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btnLatence"
+                    style="@style/Bouton.Petit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_contour"
+                    android:text="@string/latence"
+                    android:textColor="@color/c_text" />
+
+                <TextView
+                    android:id="@+id/btnCapture"
+                    style="@style/Bouton.Petit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_contour"
+                    android:text="@string/capture_service"
+                    android:textColor="@color/c_text" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtResume"
+                style="@style/Texte.Mesure"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/encart"
+                android:padding="10dp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

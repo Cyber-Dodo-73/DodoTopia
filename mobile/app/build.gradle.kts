@@ -1,6 +1,16 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Clé de signature : mobile/keystore.properties (hors dépôt) donne storeFile, storePassword, keyAlias, keyPassword.
+// Sans ce fichier, l'APK release part avec la clé debug : installable, mais pas distribuable
+// (une mise à jour signée d'une autre clé est refusée par Android).
+val cle = Properties().apply {
+    val fichier = rootProject.file("keystore.properties")
+    if (fichier.exists()) fichier.inputStream().use { load(it) }
 }
 
 android {
@@ -11,16 +21,29 @@ android {
         applicationId = "fr.cyberdodo.dodotopia"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-etape1"
+        versionCode = 7
+        versionName = "0.7.0"
+    }
+
+    signingConfigs {
+        if (cle.containsKey("storeFile")) {
+            create("release") {
+                storeFile = file(cle.getProperty("storeFile"))
+                storePassword = cle.getProperty("storePassword")
+                keyAlias = cle.getProperty("keyAlias")
+                keyPassword = cle.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Étape 1 : l'APK release part avec la clé debug, le temps des mesures.
-            // La vraie clé arrive avec la distribution (étape 2), sinon les mises à jour casseraient.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -39,4 +62,6 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    testImplementation("junit:junit:4.13.2")
 }

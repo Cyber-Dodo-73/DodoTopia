@@ -1,0 +1,576 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Réglages de l'appli : langue, apparence, durée d'appui, aide, diagnostic, à propos. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/racine"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="@dimen/largeur_page"
+        android:layout_height="match_parent"
+        android:layout_gravity="center_horizontal">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="18dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="28dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/btnRetour"
+                    style="@style/BoutonRond"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/retour"
+                    android:focusable="true"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_retour"
+                    tools:ignore="UseAppTint" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:accessibilityHeading="true"
+                    android:text="@string/reglages_titre"
+                    android:textSize="24sp"
+                    tools:targetApi="28" />
+            </LinearLayout>
+
+            <!-- Langue -->
+            <LinearLayout
+                style="@style/Carte"
+                android:layout_marginTop="14dp"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Libelle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/reglages_langue"
+                    android:textSize="15sp"
+                    tools:targetApi="28" />
+
+                <TextView
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/reglages_langue_aide" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/langueSysteme"
+                        style="@style/Puce"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/reglages_systeme" />
+
+                    <TextView
+                        android:id="@+id/langueFr"
+                        style="@style/Puce"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="Français"
+                        tools:ignore="HardcodedText" />
+
+                    <TextView
+                        android:id="@+id/langueEn"
+                        style="@style/Puce"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="English"
+                        tools:ignore="HardcodedText" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Apparence -->
+            <LinearLayout
+                style="@style/Carte"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Libelle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/reglages_apparence"
+                    android:textSize="15sp"
+                    tools:targetApi="28" />
+
+                <TextView
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/reglages_apparence_aide" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/themeSysteme"
+                        style="@style/Puce"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/reglages_systeme" />
+
+                    <TextView
+                        android:id="@+id/themeClair"
+                        style="@style/Puce"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/reglages_clair" />
+
+                    <TextView
+                        android:id="@+id/themeSombre"
+                        style="@style/Puce"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/reglages_sombre" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Lecture dans le jeu : notes tenues, arrangeur, et la durée d'appui (la même que dans la bulle, onglet Outils) -->
+            <LinearLayout
+                style="@style/Carte"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Libelle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:accessibilityHeading="true"
+                    android:text="@string/reglages_lecture"
+                    android:textColor="@color/c_titre"
+                    android:textSize="15sp"
+                    tools:targetApi="28" />
+
+                <LinearLayout style="@style/Ligne"
+                    android:layout_marginTop="6dp">
+
+                    <LinearLayout style="@style/LigneTextes"
+                        android:layout_marginStart="0dp">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/reglage_tenues" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/reglage_tenues_aide" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/swTenues"
+                        android:layout_width="54dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/interrupteur_cible"
+                        android:clickable="true"
+                        android:contentDescription="@string/reglage_tenues"
+                        android:focusable="true" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/Ligne"
+                    android:layout_marginTop="10dp">
+
+                    <LinearLayout style="@style/LigneTextes"
+                        android:layout_marginStart="0dp">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/reglage_arrangeur" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/reglage_arrangeur_aide" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/swArrangeur"
+                        android:layout_width="54dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/interrupteur_cible"
+                        android:clickable="true"
+                        android:contentDescription="@string/reglage_arrangeur"
+                        android:focusable="true" />
+                </LinearLayout>
+
+              <LinearLayout style="@style/Ligne"
+                  android:layout_marginTop="10dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Libelle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/appui" />
+
+                    <TextView
+                        style="@style/Texte"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/appui_aide" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/reglAppuiMoins"
+                    style="@style/BoutonRond"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/moins"
+                    android:focusable="true"
+                    android:padding="13dp"
+                    android:src="@drawable/ic_moins"
+                    tools:ignore="UseAppTint" />
+
+                <TextView
+                    android:id="@+id/reglAppuiValeur"
+                    style="@style/Libelle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:accessibilityLiveRegion="polite"
+                    android:gravity="center"
+                    android:minWidth="64dp" />
+
+                <ImageView
+                    android:id="@+id/reglAppuiPlus"
+                    style="@style/BoutonRond"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/plus"
+                    android:focusable="true"
+                    android:padding="13dp"
+                    android:src="@drawable/ic_plus"
+                    tools:ignore="UseAppTint" />
+              </LinearLayout>
+            </LinearLayout>
+
+            <!-- Aide et diagnostic -->
+            <LinearLayout
+                style="@style/Carte"
+                android:orientation="vertical"
+                android:paddingStart="8dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:id="@+id/ligneBienvenue"
+                    style="@style/LigneLien"
+                    android:paddingHorizontal="8dp">
+
+                    <LinearLayout style="@style/LigneTextes"
+                        android:layout_marginStart="0dp">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/reglages_bienvenue" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/reglages_bienvenue_aide" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_chevron"
+                        android:tint="@color/c_text_2"
+                        tools:ignore="UseAppTint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/titreDiagnostic"
+                    style="@style/LigneLien"
+                    android:paddingHorizontal="8dp">
+
+                    <LinearLayout style="@style/LigneTextes"
+                        android:layout_marginStart="0dp">
+
+                        <TextView
+                            style="@style/Libelle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/diagnostic_titre" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/diagnostic_aide" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/chevronDiagnostic"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_plus"
+                        android:tint="@color/c_text_2"
+                        tools:ignore="UseAppTint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/blocDiagnostic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="8dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Libelle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/metronome_titre" />
+
+                    <TextView
+                        android:id="@+id/txtMetronome"
+                        style="@style/Texte.Mesure"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/metronome_vide"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        style="@style/Libelle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/capture_titre" />
+
+                    <TextView
+                        style="@style/Texte"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/capture_aide" />
+
+                    <TextView
+                        android:id="@+id/btnCapture"
+                        style="@style/Bouton.Contour"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:minHeight="48dp"
+                        android:text="@string/capture_bouton" />
+
+                    <TextView
+                        android:id="@+id/txtCapture"
+                        style="@style/Texte.Mesure"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/capture_vide"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btnPartager"
+                            style="@style/Bouton.Petit"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:minHeight="48dp"
+                            android:text="@string/journal_partager" />
+
+                        <TextView
+                            android:id="@+id/btnEffacer"
+                            style="@style/Bouton.Petit"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/btn_contour"
+                            android:minHeight="48dp"
+                            android:text="@string/journal_effacer"
+                            android:textColor="@color/c_text" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- À propos -->
+            <LinearLayout
+                style="@style/Carte"
+                android:orientation="vertical"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="8dp">
+
+                    <ImageView
+                        android:id="@+id/logoReglages"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/logo_masque_petit"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/dodo" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Titre"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/app_name"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:id="@+id/txtVersion"
+                            style="@style/Texte"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Texte"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/reglages_apropos" />
+
+                <TextView
+                    android:id="@+id/lienSite"
+                    style="@style/LigneLien"
+                    android:layout_marginTop="8dp"
+                    android:drawableEnd="@drawable/ic_chevron"
+                    android:drawableTint="@color/c_text_2"
+                    android:fontFamily="@font/nunito_extrabold"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/reglages_site"
+                    android:textColor="@color/c_ink"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/lienConfidentialite"
+                    style="@style/LigneLien"
+                    android:drawableEnd="@drawable/ic_chevron"
+                    android:drawableTint="@color/c_text_2"
+                    android:fontFamily="@font/nunito_extrabold"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/reglages_confidentialite"
+                    android:textColor="@color/c_ink"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/lienConditions"
+                    style="@style/LigneLien"
+                    android:drawableEnd="@drawable/ic_chevron"
+                    android:drawableTint="@color/c_text_2"
+                    android:fontFamily="@font/nunito_extrabold"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/reglages_conditions"
+                    android:textColor="@color/c_ink"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/lienMentions"
+                    style="@style/LigneLien"
+                    android:drawableEnd="@drawable/ic_chevron"
+                    android:drawableTint="@color/c_text_2"
+                    android:fontFamily="@font/nunito_extrabold"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/reglages_mentions"
+                    android:textColor="@color/c_ink"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/annonce"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="24dp"
+        android:accessibilityLiveRegion="polite"
+        android:background="@drawable/annonce"
+        android:drawablePadding="10dp"
+        android:drawableTint="@color/blanc"
+        android:elevation="8dp"
+        android:fontFamily="@font/nunito_extrabold"
+        android:gravity="center_vertical"
+        android:maxWidth="480dp"
+        android:minHeight="48dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:textColor="@color/blanc"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</FrameLayout>

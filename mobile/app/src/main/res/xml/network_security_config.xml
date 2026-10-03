@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le serveur DodoTopia présente un certificat Sectigo dont la racine (« Public Server Authentication Root R46 »,
+     2021) est absente des Android antérieurs à la version 14 : sans elle, toute connexion échoue sur ces appareils
+     (« Trust anchor for certification path not found », constaté sur Android 11). Elle est donc livrée avec l'appli,
+     en plus des autorités du système. Empreinte SHA-256 : 7B:B6:47:A6:2A:EE:AC:88:BF:25:7A:A5:22:D0:1F:FE:A3:95:E0:AB:45:C7:3F:93:F6:56:54:EC:38:F2:5A:06 -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/sectigo_r46" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

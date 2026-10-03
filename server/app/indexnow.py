@@ -18,6 +18,7 @@ log = logging.getLogger("dodo.indexnow")
 ENDPOINT = "https://api.indexnow.org/indexnow"
 MAX_URLS = 10_000                       # limite du protocole par requête
 RELEASE_PAGES = ("home", "download", "news")
+MOBILE_PAGES = ("android", "download")
 
 
 def key_location(settings: Settings) -> str:
@@ -50,6 +51,12 @@ def release_urls(settings: Settings) -> list[str]:
     """Pages qui changent à chaque version publiée : accueil, téléchargement et nouveautés, dans toutes les langues."""
     from . import site
     return [f"{settings.public_url}{site.url_for(lang, page_id)}" for page_id in RELEASE_PAGES for lang in site.LANGS]
+
+
+def mobile_urls(settings: Settings) -> list[str]:
+    """Pages qui changent à chaque version Android publiée : la page Android et le téléchargement."""
+    from . import site
+    return [f"{settings.public_url}{site.url_for(lang, page_id)}" for page_id in MOBILE_PAGES for lang in site.LANGS]
 
 
 def song_urls(settings: Settings, song_id: int, title: str) -> list[str]:

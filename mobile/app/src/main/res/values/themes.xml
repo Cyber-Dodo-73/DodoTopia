@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Toujours clair pour l'étape 1 : le crème de l'appli PC, sans gérer le thème sombre d'une appli jetable. -->
-    <style name="Theme.Dodo" parent="Theme.Material3.Light.NoActionBar">
+    <!-- Crème de l'appli PC le jour, brun profond la nuit (values-night) ; le choix se fait dans Réglages. -->
+    <style name="Theme.Dodo" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/c_primary</item>
         <item name="colorOnPrimary">@color/c_primary_ink</item>
         <item name="colorSecondary">@color/c_cta</item>
@@ -9,8 +9,20 @@
         <item name="android:windowBackground">@color/c_bg</item>
         <item name="android:textColorPrimary">@color/c_text</item>
         <item name="android:fontFamily">@font/nunito_bold</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">@bool/barres_claires</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">@bool/barres_claires</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
+        <!-- Boîtes de dialogue : surface et encre de l'appli, boutons en brun (l'ambre serait illisible sur le blanc). -->
+        <item name="colorSurface">@color/c_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/c_surface</item>
+        <item name="colorOnSurface">@color/c_ink</item>
+        <item name="colorOnSurfaceVariant">@color/c_text</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Dodo.Dialogue</item>
+    </style>
+    <style name="ThemeOverlay.Dodo.Dialogue" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorPrimary">@color/c_titre</item>
     </style>
 
     <!-- Les fenêtres par-dessus le jeu sont gonflées depuis le service, sans AppCompat :
@@ -74,8 +86,10 @@
     <!-- Boutons pilule « à tranche » : des TextView, pour que ni AppCompat ni Material ne remplacent le fond.
          Le texte remonte de 3 dp pour rester centré sur la face du bouton, pas sur sa tranche. -->
     <style name="Bouton">
+        <item name="android:stateListAnimator">@animator/pression</item>
         <item name="android:background">@drawable/btn_ambre</item>
-        <item name="android:textColor">@color/c_ink</item>
+        <!-- Encre de l'ambre, pas c_ink : elle reste foncée en thème sombre, où l'ambre reste clair. -->
+        <item name="android:textColor">@color/c_primary_ink</item>
         <item name="android:fontFamily">@font/nunito_extrabold</item>
         <item name="android:textSize">14sp</item>
         <item name="android:gravity">center</item>
@@ -110,6 +124,7 @@
         <item name="android:paddingEnd">14dp</item>
     </style>
     <style name="Onglet">
+        <item name="android:stateListAnimator">@animator/pression</item>
         <item name="android:fontFamily">@font/nunito_bold</item>
         <item name="android:textSize">12sp</item>
         <item name="android:gravity">center</item>
@@ -118,9 +133,99 @@
         <item name="android:clickable">true</item>
     </style>
     <style name="BoutonRond">
+        <item name="android:stateListAnimator">@animator/pression</item>
         <item name="android:background">@drawable/rond_contour</item>
         <item name="android:tint">@color/c_text</item>
         <item name="android:padding">8dp</item>
         <item name="android:clickable">true</item>
+    </style>
+
+    <!-- Briques des écrans de l'appli -->
+    <style name="Carte">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">10dp</item>
+        <item name="android:background">@drawable/carte</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+    </style>
+    <style name="Numero">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:background">@drawable/rond_ambre</item>
+        <item name="android:fontFamily">@font/fredoka_semibold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/blanc</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="Ligne">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">12dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+    </style>
+    <style name="LigneTextes">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">12dp</item>
+        <item name="android:layout_marginEnd">10dp</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+    <style name="Tuile">
+        <item name="android:layout_width">42dp</item>
+        <item name="android:layout_height">42dp</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <!-- Champ de saisie : fond crème arrondi, sans le trait de soulignement du thème -->
+    <style name="Champ">
+        <item name="android:background">@drawable/champ</item>
+        <item name="android:fontFamily">@font/nunito_bold</item>
+        <item name="android:textColor">@color/c_ink</item>
+        <item name="android:textColorHint">@color/c_text_2</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:singleLine">true</item>
+    </style>
+    <!-- Puce à choisir (langue, apparence, format de toile) : un onglet avec une cible tactile de 48 dp. -->
+    <style name="Puce" parent="Onglet">
+        <item name="android:background">@drawable/onglet_ambre</item>
+        <item name="android:textColor">@color/c_ambre_encre</item>
+        <item name="android:fontFamily">@font/nunito_extrabold</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <!-- Ligne cliquable d'une carte de réglages : libellé, détail, chevron. -->
+    <style name="LigneLien" parent="Ligne">
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:background">@drawable/ligne_appui</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <style name="OngletBas">
+        <item name="android:stateListAnimator">@animator/pression</item>
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:fontFamily">@font/nunito_extrabold</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/nav_couleur</item>
+        <item name="android:drawableTint">@color/nav_couleur</item>
+        <item name="android:drawablePadding">2dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
     </style>
 </resources>
