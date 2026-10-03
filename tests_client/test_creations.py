@@ -671,10 +671,11 @@ def test_studio_apprend_un_instrument(tmp_path):
     tables = {"lute": table}
     assert studio.is_available(insts["piano"], {}) and not studio.is_available(insts["lute"], {})
     assert studio.is_available(insts["lute"], tables) and not studio.is_available(insts["conga"], tables)
+    assert studio.is_available(insts["conga"], studio.learned_tables({}))         # la conga joue la batterie
     # tables livrées : tous les instruments à notes du jeu, lus dans ses données ; pas les percussions à frappes
     builtin = studio.learned_tables({})
     assert {"harp", "lute", "lyre", "recorder", "violin", "cello", "xylophone", "conch", "saxophone"} <= set(builtin)
-    assert "conga" not in builtin and "cajon" not in builtin
+    assert builtin["conga"]["type"] == 2 and "cajon" not in builtin
     assert all(studio.is_available(insts[i], builtin) for i in builtin)
     assert studio.game_key_map(insts["violin"], builtin)[sorted(insts["violin"].bindings)[0]] == (20, 11141)
     harp = studio.game_key_map(insts["harp"], builtin)
@@ -693,7 +694,7 @@ def test_studio_fabrique_un_enregistrement_a_deux_instruments(tmp_path):
     path = _midi_two_tracks(str(tmp_path / "duo.mid"))
     listing = studio.tracks(path)
     assert [t["index"] for t in listing] == [0, 1, 2] and listing[2]["drums"] is True
-    assert [p["on"] for p in studio.suggest(listing)] == [True, True, False]
+    assert [(p["on"], p["instrument"]) for p in studio.suggest(listing)] == [(True, "piano"), (True, "piano"), (True, "conga")]
     parts = [{"track": 0, "instrument": "lute", "octave": 0}, {"track": 1, "instrument": "piano", "octave": 0}]
     events, report = studio.build(path, cfg, parts, insts, tables, UID, 4.2)
     assert report["instruments"] == [1, 13] and [p["track"] for p in report["parts"]] == [0, 1]
@@ -718,6 +719,14 @@ def test_studio_fabrique_un_enregistrement_a_deux_instruments(tmp_path):
         studio.build(path, cfg, [], insts, tables, UID)
     with pytest.raises(studio.StudioError):                           # la batterie n'a pas de notes à jouer
         studio.build(path, cfg, [{"track": 2, "instrument": "piano", "octave": 0}], insts, tables, UID)
+    # ... mais la conga joue la batterie : grosse caisse (36) et caisse claire (38) sur leurs pads, sans transposition
+    heard = []
+    ev, rep = studio.build(path, cfg, [{"track": 0, "instrument": "piano", "octave": 0}, {"track": 2, "instrument": "conga", "octave": 0}],
+                           insts, studio.learned_tables(cfg), UID, 4.2, heard=heard)
+    assert rep["instruments"] == [1, 2] and rep["parts"][1]["coverage"] == 100
+    table = studio.learned_tables(cfg)["conga"]
+    pad = dict(zip(table["midis"], table["keys"]))
+    assert [e[4] for e in ev if e[2] == 2 and e[3]] == [pad[36], pad[38]] and sorted(n[2] for n in heard if n[3] == 1) == [36, 38]
 
 
 def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
@@ -727,7 +736,7 @@ def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
     lst = api.creations_studio_instruments()["instruments"]
     assert next(i for i in lst if i["id"] == "piano")["available"] is True
     assert all(i["available"] and not i["learned"] for i in lst)                   # tables livrées pour tous
-    assert all(i["id"] != "conga" for i in lst)
+    assert next(i for i in lst if i["id"] == "conga")["percussive"] is True and all(i["id"] != "cajon" for i in lst)
     # apprendre le luth depuis une musique du jeu où ses 15 touches ont été jouées
     rec = _lute_record(os.path.join(music_tree["record_dir"], "Luth_20261003120000000_4700.bin"))
     assert os.path.isfile(rec)
@@ -761,7 +770,7 @@ def test_studio_passages_changent_d_instrument_en_cours_de_piste(tmp_path):
     path = _midi_two_tracks(str(tmp_path / "duo.mid"))
     listing, duration = studio.describe(path, cfg)
     assert duration == pytest.approx(1.5, abs=0.05) and all(len(t["bins"]) == studio.BINS for t in listing)
-    assert all(len(t["roll"]) == (0 if t["drums"] else t["notes"]) and t["roll"] == sorted(t["roll"], key=lambda n: n[0]) for t in listing)
+    assert all(len(t["roll"]) == t["notes"] and t["roll"] == sorted(t["roll"], key=lambda n: n[0]) for t in listing)
     assert all(t["low"] <= n[2] <= t["high"] and n[1] > 0 for t in listing for n in t["roll"])
     assert max(listing[0]["bins"]) == 9 and listing[0]["end"] == pytest.approx(1.5, abs=0.05)
     start = studio.suggest(listing, duration)

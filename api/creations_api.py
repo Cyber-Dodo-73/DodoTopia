@@ -452,15 +452,17 @@ class CreationsMixin:
 
     # ---------------------------------------------------------- studio : pistes, instruments, enregistrement
     def _studio_instruments(self):
-        """({identifiant: Instrument}, tables apprises) : les instruments à notes de DodoTopia."""
-        insts = {i.id: i for i in self._player.instruments if i.bindings and not i.percussive}
-        return insts, studio.learned_tables(self._cfg)
+        """({identifiant: Instrument}, tables apprises) : les instruments à notes de DodoTopia, et les instruments
+        à frappes dont les numéros du jeu sont connus (la conga, pour les pistes de batterie)."""
+        tables = studio.learned_tables(self._cfg)
+        insts = {i.id: i for i in self._player.instruments if i.bindings and (not i.percussive or i.id in tables)}
+        return insts, tables
 
     def creations_studio_instruments(self):
         """[{id, name, notes, available, learned}] : ce que le studio sait écrire, et ce qui reste à apprendre."""
         insts, tables = self._studio_instruments()
         return {"ok": True, "instruments": [
-            {"id": i.id, "name": i.name, "notes": len(i.bindings),
+            {"id": i.id, "name": i.name, "notes": len(i.bindings), "percussive": bool(i.percussive),
              "learned": i.id in tables and not tables[i.id].get("midis"),
              "available": studio.is_available(i, tables)} for i in insts.values()]}
 

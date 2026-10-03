@@ -85,6 +85,7 @@ GAME_INSTRUMENTS = (
     (22, "conch", _row(11251, 8)),
     (23, "ocarina", _row(11261)),
 )
+_PAD_ORDER = "yuiophjkl;"
 _TABLE = None
 
 
@@ -105,7 +106,12 @@ def game_table():
             layout = cat.layouts.get(t.default_layout_id) if t is not None and t.default_layout_id else None
             if layout is None:
                 continue
-            midis = sorted(layout.bindings())
+            bound = layout.bindings()
+            midis = sorted(bound)
+            if t.percussive:
+                # Pads : pas de hauteur. On suppose que le jeu numérote les pads comme les touches de la conque
+                # (validée) : rangée du haut Y U I O puis rangée du bas H J K L. NON vérifié pad par pad en jeu.
+                midis = sorted(bound, key=lambda m: _PAD_ORDER.index(bound[m]) if bound[m] in _PAD_ORDER else len(_PAD_ORDER))
             if len(midis) != len(keys):
                 continue            # ex. cajón : 8 pads dans le jeu, pas de disposition équivalente ici
             table[cat_id] = {"type": kind, "keys": list(keys), "midis": midis, "program": int(t.preview_program or 0),

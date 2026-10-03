@@ -5,6 +5,9 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.2.2
+- **Studio, batterie** : la piste de batterie d'un fichier MIDI est maintenant jouée à la conga (grosse caisse, caisse claire, charleston ramenés sur ses huit frappes) au lieu d'être laissée de côté. Elle est cochée d'office et s'entend dans la lecture de l'éditeur.
+
 ## 2.2.1
 - **Studio** (Mes créations › Musiques › « Ajouter une musique ») : un éditeur sur une ligne de temps pour faire une musique à plusieurs instruments depuis un fichier MIDI. Chaque piste est une ligne où l'on voit ses notes ; avec les ciseaux tu la coupes en passages, tu tires la limite entre deux passages, et chaque passage a son instrument et son octave (le couplet au violon, le refrain au piano). **Lecture intégrée** : lire, mettre en pause, cliquer sur la règle du temps pour reprendre d'où tu veux (Espace : lecture ou pause), avec un son de synthèse, et ce que tu entends suit tes modifications. Toutes les pistes restent dans la même tonalité et le studio indique la part de notes jouées à la bonne hauteur. **Plusieurs instruments sur le même passage** : le bouton à côté d'une piste la double sur une ligne de plus, avec ses propres passages et instruments. « Ajouter à Heartopia » écrit la musique dans le jeu sans rien remplacer.
 - **Tous les instruments à notes du jeu sont connus d'avance** dans le studio (piano, harpe, luth, flûte à bec, lyre, violon, violoncelle, saxophone, ocarina, xylophone, conque…) : rien à apprendre. L'export en MIDI d'une musique du jeu retrouve aussi les bonnes notes et le bon timbre pour chacun.

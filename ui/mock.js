@@ -272,14 +272,15 @@ function mockMain(){
     creations_studio_instruments: () => later({ok: true, instruments: [
       {id: 'piano', name: 'Piano', notes: 37, available: true, learned: false}, {id: 'lute', name: 'Luth', notes: 15, available: true, learned: false},
       {id: 'violin', name: 'Violon', notes: 15, available: true, learned: false}, {id: 'recorder', name: 'Flûte à bec', notes: 15, available: true, learned: false},
-      {id: 'xylophone', name: 'Xylophone à 8 notes', notes: 8, available: true, learned: false}]}, 100),
+      {id: 'xylophone', name: 'Xylophone à 8 notes', notes: 8, available: true, learned: false},
+      {id: 'conga', name: 'Conga', notes: 8, available: true, learned: false, percussive: true}]}, 100),
     creations_studio_open: () => window.MOCK_API.creations_studio_instruments().then(r => { window.MOCK_ST = {ok: true, path: 'C:\\Users\\dodo\\Music\\Golden Brown.mid', title: 'Golden Brown',
       instruments: r.instruments, duration: 213.5, tracks: [{index: 1, name: 'Clavecin', notes: 1840, drums: false}, {index: 2, name: 'Basse', notes: 612, drums: false},
         {index: 3, name: '', notes: 944, drums: false}, {index: 4, name: 'Batterie', notes: 1220, drums: true}]
         .map((tr, k) => Object.assign(tr, {low: 48 + 5 * k, high: 72 + 5 * k, bins: [],
           roll: Array.from({length: 420 - 60 * k}, (_, i) => [Math.round((4 * k + i * (0.5 + 0.1 * k)) * 100) / 100, 0.4, 48 + 5 * k + [0, 4, 7, 12, 7, 4, 2, 9][(i + k) % 8] + (i % 16 < 8 ? 0 : 5)]).filter(n => n[0] < 213)})),
       parts: [{id: 'p1', track: 1, instrument: 'piano', octave: 0, on: true, from: 0, to: 213.5}, {id: 'p2', track: 2, instrument: 'lute', octave: -1, on: true, from: 0, to: 213.5},
-        {id: 'p3', track: 3, instrument: 'violin', octave: 0, on: true, from: 0, to: 213.5}, {id: 'p4', track: 4, instrument: 'piano', octave: 0, on: false, from: 0, to: 213.5}]};
+        {id: 'p3', track: 3, instrument: 'violin', octave: 0, on: true, from: 0, to: 213.5}, {id: 'p4', track: 4, instrument: 'conga', octave: 0, on: true, from: 0, to: 213.5}]};
       return window.MOCK_ST; }),
     creations_studio_check: spec => { const on = (spec.parts || []).filter(p => p.on), notes = [];
       on.forEach((p, k) => { const tr = window.MOCK_ST.tracks.find(x => x.index === p.track);

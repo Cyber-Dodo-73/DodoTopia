@@ -325,7 +325,7 @@ const ST = {data: null, parts: [], title: '', timer: null, seq: 0, n: 0, sel: nu
   report: null, ok: false, error: '',
   au: {ctx: null, out: null, bus: null, notes: [], kinds: [], pos: 0, base: 0, idx: 0, playing: false, timer: null}};
 const ST_HEAD_W = 230, ST_MIN = 0.5, ST_MAX_W = 16000, ST_LANE_H = 52;
-const ST_FAMILY = {recorder: 'wind', xiao: 'wind', ocarina: 'wind', conch: 'wind', saxophone: 'reed', bagpipe: 'reed', concertina: 'reed',
+const ST_FAMILY = {conga: 'drum', recorder: 'wind', xiao: 'wind', ocarina: 'wind', conch: 'wind', saxophone: 'reed', bagpipe: 'reed', concertina: 'reed',
   violin: 'bow', cello: 'bow', 'wooden-bass': 'bow'};
 function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts}; }
 function stDur(){ return (ST.data && ST.data.duration) || 1; }
@@ -337,7 +337,9 @@ function stPartsOf(index, layer){ return ST.parts.filter(p => p.track === index 
 function stLayers(index){ return [...new Set(ST.parts.filter(p => p.track === index).map(p => p.layer || 0).concat(0))].sort((a, b) => a - b); }
 function stAddLayer(index){
   const used = ST.parts.filter(p => p.track === index).map(p => p.instrument);
-  const inst = ST.data.instruments.find(i => i.available && !used.includes(i.id)) || ST.data.instruments.find(i => i.available);
+  const drums = !!ST.data.tracks.find(x => x.index === index).drums, list = ST.data.instruments.filter(i => i.available && !!i.percussive === drums);
+  const inst = list.find(i => !used.includes(i.id)) || list[0];
+  if(!inst) return;
   const p = {id: 'p' + index + '_' + (++ST.n), track: index, layer: Math.max(...stLayers(index)) + 1, instrument: inst.id, octave: 0, on: true, from: 0, to: stDur()};
   ST.parts.push(p);
   ST.sel = p.id;
@@ -354,7 +356,7 @@ function stInspHtml(){
   const d = ST.data, p = ST.parts.find(x => x.id === ST.sel);
   if(!p) return `<p class="hint left">${esc(t('creations.studio.cut_hint'))}</p>`;
   const tr = d.tracks.find(x => x.index === p.track), first = stPartsOf(p.track, p.layer)[0] === p;
-  const opts = d.instruments.map(i => `<option value="${esc(i.id)}"${i.id === p.instrument ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
+  const opts = d.instruments.filter(i => !!i.percussive === !!tr.drums).map(i => `<option value="${esc(i.id)}"${i.id === p.instrument ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
   const octs = [-2, -1, 0, 1, 2].map(o => `<option value="${o}"${o === (p.octave || 0) ? ' selected' : ''}>${o > 0 ? '+' + o : o}</option>`).join('');
   return `<div class="studio__sel"><b>${esc(stTrackName(tr))}${p.layer ? ' · ' + (p.layer + 1) : ''}</b><span>${esc(crDur(p.from))} → ${esc(crDur(stEnd(p)))}</span><span class="studio__cov" id="stSelCov"></span></div>
       <label class="field"><span class="field__label">${esc(t('creations.studio.instrument'))}</span><select class="select" data-f="instrument">${opts}</select></label>
@@ -414,7 +416,15 @@ function stVoice(a, when, dur, midi, fam){
   let end;
   o.frequency.value = f;
   g.gain.setValueAtTime(0.0001, when);
-  if(fam === 'pluck'){
+  if(fam === 'drum'){                                    // frappe : un coup bref dont la hauteur chute, plus aigu pour les pads aigus
+    const top = 110 + 9 * Math.max(0, midi - 36);
+    o.type = 'sine';
+    end = when + 0.16;
+    o.frequency.setValueAtTime(top, when);
+    o.frequency.exponentialRampToValueAtTime(top / 2.2, end);
+    g.gain.exponentialRampToValueAtTime(0.5, when + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+  }else if(fam === 'pluck'){
     o.type = 'triangle';
     end = when + Math.min(1.8, Math.max(0.35, dur + 0.5));
     g.gain.exponentialRampToValueAtTime(0.22, when + 0.006);

@@ -22,6 +22,7 @@ import game_music
 import orchestra
 
 PIANO_ID = "piano"
+DRUMS_ID = "conga"           # l'instrument à frappes qui joue les pistes de batterie
 OCTAVES = (-2, -1, 0, 1, 2)
 MAX_PARTS = 64               # passages au total (une piste peut être coupée en plusieurs)
 BINS = 48                    # colonnes de la bande de densité d'une piste dans l'interface
@@ -33,9 +34,10 @@ class StudioError(Exception):
 
 def builtin_tables():
     """Tables livrées : tous les instruments à notes du jeu (game_music.GAME_INSTRUMENTS), avec la note MIDI de
-    chaque touche d'après la disposition par défaut de DodoTopia. Les percussions à frappes n'y sont pas."""
+    chaque touche d'après la disposition par défaut de DodoTopia. La conga y est aussi : elle joue la batterie
+    du fichier (voir build)."""
     return {cat_id: {"type": t["type"], "keys": list(t["keys"]), "midis": list(t["midis"]), "extra": 0.0}
-            for cat_id, t in game_music.game_table().items() if not t["percussive"]}
+            for cat_id, t in game_music.game_table().items()}
 
 
 # ---------------------------------------------------------------- tables des instruments du jeu
@@ -54,7 +56,7 @@ def learned_tables(cfg):
 
 def is_available(inst, tables):
     """Vrai si on sait écrire cet instrument dans un enregistrement du jeu."""
-    if inst is None or not inst.bindings or getattr(inst, "percussive", False):
+    if inst is None or not inst.bindings:
         return False
     if game_key_map(inst, tables, strict=False):
         return True
@@ -135,7 +137,7 @@ def describe(path, cfg):
     total = 0.0
     for t in listing:
         try:
-            grouped = _track_notes(path, cfg, t["index"], all_indices)
+            grouped = _track_notes(path, cfg, t["index"], all_indices, drums=t["drums"])
         except ValueError as e:
             raise StudioError(str(e)) from e
         starts[t["index"]] = [(when, len(ns)) for when, ns in grouped]
@@ -152,9 +154,9 @@ def describe(path, cfg):
 
 
 def suggest(track_list, duration=None):
-    """Répartition de départ : chaque piste mélodique au piano d'un bout à l'autre, la batterie laissée de côté."""
-    return [{"id": f"p{t['index']}", "track": t["index"], "instrument": PIANO_ID, "octave": 0,
-             "on": not t["drums"], "from": 0.0, "to": duration} for t in track_list]
+    """Répartition de départ : chaque piste mélodique au piano d'un bout à l'autre, la batterie à la conga."""
+    return [{"id": f"p{t['index']}", "track": t["index"], "instrument": DRUMS_ID if t["drums"] else PIANO_ID, "octave": 0,
+             "on": True, "from": 0.0, "to": duration} for t in track_list]
 
 
 def _all_indices(path, listing):
@@ -166,9 +168,10 @@ def _all_indices(path, listing):
 
 
 # ---------------------------------------------------------------- fabrication
-def _track_notes(path, cfg, index, all_indices):
+def _track_notes(path, cfg, index, all_indices, drums=False):
+    """Notes de la piste `index` seule ; `drums` : sa batterie (canal 10) au lieu de ses notes mélodiques."""
     others = [i for i in all_indices if i != index]
-    return core.parse_midi(path, cfg, skip_tracks=others)
+    return core.parse_midi(path, cfg, skip_tracks=others, drums_only=drums)
 
 
 def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=None):
@@ -176,8 +179,10 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=N
     seulement). Un passage est un morceau de piste, de `from` à `to` secondes du fichier (absents : toute la
     piste) ; une piste peut donc changer d'instrument en cours de route. `instruments` : {identifiant: objet
     Instrument de core}. Renvoie (événements, rapport) ; le rapport donne, par passage, la part de notes jouées
-    à leur hauteur exacte, et la durée totale. `heard` : liste facultative qui reçoit les notes jouées
+    à leur hauteur exacte, et la durée totale. Un instrument à frappes (conga) joue la batterie de la piste,
+    ramenée sur ses pads (percussion.fit), ou à défaut le rythme de ses notes ; il n'est pas transposé. `heard` : liste facultative qui reçoit les notes jouées
     [début dans le fichier, durée, note MIDI, rang du passage dans le rapport], pour les faire entendre."""
+    import percussion
     import sync
     if not parts:
         raise StudioError("aucune piste retenue")
@@ -186,19 +191,23 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=N
     listing = tracks(path)
     all_indices = _all_indices(path, listing)
     known = {t["index"] for t in listing}
-    grouped_of = {}
+    grouped_of, drums_of = {}, {}
     for part in parts:
         index = int(part["track"])
         if index not in known:
             raise StudioError(f"piste {index + 1} introuvable dans ce fichier")
+        inst = instruments.get(str(part.get("instrument") or ""))
         try:
-            grouped_of[index] = _track_notes(path, cfg, index, all_indices)
+            if index not in grouped_of:
+                grouped_of[index] = _track_notes(path, cfg, index, all_indices)
+            if inst is not None and inst.percussive and index not in drums_of:
+                drums_of[index] = _track_notes(path, cfg, index, all_indices, drums=True)
         except ValueError as e:
             raise StudioError(str(e)) from e
     every = [n for g in grouped_of.values() for _, ns in g for n, _, _ in ns]
-    if not every:
+    if not every and not any(ns for g in drums_of.values() for _, ns in g):
         raise StudioError("aucune note dans les pistes retenues")
-    extra = sync.choose_common_extra(every)     # la même tonalité pour toutes les pistes
+    extra = sync.choose_common_extra(every) if every else 0     # la même tonalité pour toutes les pistes
 
     presses, report = [], []
     for part in parts:
@@ -215,8 +224,12 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=N
         # L'octave se choisit sur toute la piste : le même instrument garde la même hauteur d'un passage à l'autre.
         notes = [n for _, ns in whole for n, _, _ in ns]
         octave = max(OCTAVES[0], min(OCTAVES[-1], int(part.get("octave") or 0)))
-        shift = core.choose_shift(notes, inst, cfg, extra) + 12 * octave
-        fitted, info = core.fit_notes(grouped, inst, cfg, extra_fixed=extra, shift=shift)
+        if inst.percussive:
+            drums = [(when, ns) for when, ns in drums_of[index] if lo <= when < hi]
+            fitted, info = percussion.fit(drums, grouped, inst)
+        else:
+            shift = core.choose_shift(notes, inst, cfg, extra) + 12 * octave
+            fitted, info = core.fit_notes(grouped, inst, cfg, extra_fixed=extra, shift=shift)
         table = tables.get(inst.id) or {}
         value = float(table.get("extra") or extra_default)
         for t, _keys, played in fitted:
