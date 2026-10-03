@@ -49,7 +49,7 @@ DEFAULT_COOK = {
     "cook_timeout": 240.0,   # secondes max pour qu'un plat soit pret
     "poll": 0.1,             # secondes entre deux lectures de l'ecran
     "match": 0.62,           # score minimal (Jaccard) pour reconnaitre une icone
-    "red_ring": True,        # l'anneau devenu rouge (clic pas pris a temps) se clique aussi
+    "red_ring": True,        # l'anneau passe au jaune, a l'orange ou au rouge se clique aussi, le plus rouge d'abord
     "green_px": 60,          # pixels verts minimum pour l'anneau de la spatule
     "click_delay": 0.3,      # secondes apres un clic
     # --- ordonnanceur multi-cuisinieres (voir Cooker._may_launch)
@@ -140,20 +140,40 @@ def green_mask(im, ring_color=None):
     return ImageChops.darker(ImageChops.darker(g.point(_lut(lo=175)), r.point(_lut(hi=150))), b.point(_lut(hi=130)))
 
 
-def red_mask(im):
-    """Pixels d'un anneau rouge vif (rouge fort, vert et bleu faibles : les flammes orangees n'en sont pas)."""
+RING_LEVELS = ("vert", "jaune", "orange", "rouge")     # urgence croissante de l'anneau de la spatule
+
+
+def warm_masks(im):
+    """[(urgence, masque)] des anneaux jaune (1), orange (2) et rouge (3). Releve en jeu (2026-10-04,
+    proprietaire) : l'anneau de la spatule passe du vert au jaune, a l'orange puis au rouge tant que le feu n'est
+    pas regle (clic pas pris a temps, personnage occupe a ramasser un plat...) ; plus il est rouge, plus c'est
+    urgent. Les couleurs exactes n'ont pas ete mesurees : seuils de couleurs vives, a ajuster sur capture."""
     from PIL import ImageChops
     r, g, b = im.split()
-    return ImageChops.darker(ImageChops.darker(r.point(_lut(lo=195)), g.point(_lut(hi=105))), b.point(_lut(hi=105)))
+
+    def both(*parts):
+        m = parts[0]
+        for p in parts[1:]:
+            m = ImageChops.darker(m, p)
+        return m
+    return [(1, both(r.point(_lut(lo=205)), g.point(_lut(lo=175)), b.point(_lut(hi=120)))),
+            (2, both(r.point(_lut(lo=215)), g.point(_lut(lo=104, hi=176)), b.point(_lut(hi=110)))),
+            (3, both(r.point(_lut(lo=195)), g.point(_lut(hi=105)), b.point(_lut(hi=105))))]
 
 
-def ring_mask(im, ring_color=None, red=True):
-    """Anneau de la spatule, vert OU rouge. Releve en jeu (2026-10-04, proprietaire) : quand le clic sur l'anneau
-    vert n'est pas pris a temps (le personnage est occupe a ramasser un plat...), l'anneau passe au rouge et il
-    faut continuer de cliquer. La couleur exacte du rouge n'a pas ete mesuree : seuils d'un rouge vif."""
-    from PIL import ImageChops
+def ring_read(im, ring_color=None, warm=True, need=60):
+    """(pixels, urgence, masque) de l'anneau de la spatule dans `im` ; urgence -1 s'il n'y en a pas, sinon 0 (vert)
+    a 3 (rouge). Le vert se compte comme avant. Les couleurs chaudes doivent en plus avoir la FORME d'un anneau
+    (find_rings) : des flammes ou un plat orange pres de la bulle ne sont pas une spatule a cliquer."""
     gm = green_mask(im, ring_color)
-    return ImageChops.lighter(gm, red_mask(im)) if red else gm
+    n = count(gm)
+    level, mask = (0 if n >= need else -1), gm
+    if warm:
+        for lvl, m in warm_masks(im):
+            k = count(m)
+            if k >= need and find_rings(m, need):
+                n, level, mask = max(n, k), lvl, m
+    return n, level, mask
 
 
 def find_rings(gm, need):
@@ -806,6 +826,8 @@ class Cooker(MouseBot):
             if rings:
                 if ring_pos is not None and len(rings) > 1:      # deux anneaux : pas deux fois de suite le meme
                     rings.sort(key=lambda d: -((d["pos"][0] - ring_pos[0]) ** 2 + (d["pos"][1] - ring_pos[1]) ** 2))
+                # le plus urgent d'abord : rouge, puis orange, puis jaune, puis vert (tri stable)
+                rings.sort(key=lambda d: -d["scores"].get("urgence", 0))
                 d = rings[0]
                 again = ring_pos is not None and near(d["pos"], ring_pos, 40) and now - ring_at < 3.0
                 if again and now - ring_at < 0.7:
@@ -819,8 +841,14 @@ class Cooker(MouseBot):
                 self.phase = "feu"
                 b = d.get("burner")
                 self._acted(b)
-                if not self._click(*d["pos"], delay=0.3):
+                if not self._click(*d["pos"], delay=0.3, confirm=lambda: self._still(d["pos"], "spatula")):
                     return
+                if self._click_skipped:
+                    # l'anneau a disparu pendant le deplacement de la souris : un clic ici tomberait sur la
+                    # cuisiniere en pleine cuisson et retirerait le plat pas fini (releve en jeu, 2026-10-04)
+                    self.log(f"anneau disparu avant le clic en {d['pos'][0]},{d['pos'][1]} : pas de clic")
+                    prev = []
+                    continue
                 ring_pos, ring_at = d["pos"], time.perf_counter()
                 last_action = ring_at
                 pend_at = 0.0
@@ -832,7 +860,9 @@ class Cooker(MouseBot):
                     b.clicks += 1
                     b.fired = ring_at
                 who = f"bulle {b.index}" if b is not None else "anneau sans cuisinière suivie"
-                self.log(f"{who} : feu ajusté en {d['pos'][0]},{d['pos'][1]}" + (" (re-clic)" if again else ""))
+                level = d["scores"].get("urgence", 0)
+                self.log(f"{who} : feu ajusté en {d['pos'][0]},{d['pos'][1]}" + (" (re-clic)" if again else "")
+                         + (f" (anneau {RING_LEVELS[level]})" if level else ""))
                 self.on_change()
                 continue
             # Priorite aux spatules : un anneau vu mais pas encore stable (il vient d'apparaitre, ou la camera
@@ -860,8 +890,12 @@ class Cooker(MouseBot):
                 self.phase = "récupération"
                 b = d.get("burner")
                 self._acted(b)
-                if not self._click(*d["pos"], delay=0.6):
+                if not self._click(*d["pos"], delay=0.6, confirm=lambda: self._still(d["pos"], "ready")):
                     return
+                if self._click_skipped:
+                    self.log(f"bulle « récupérer » disparue avant le clic en {d['pos'][0]},{d['pos'][1]} : pas de clic")
+                    prev = []
+                    continue
                 ready_at = last_action = time.perf_counter()
                 self.dishes += 1
                 if b is not None:
@@ -923,8 +957,11 @@ class Cooker(MouseBot):
         suivant)."""
         p = self.cook_cfg["points"]
         self._acted(b)
-        if not self._click(*b.pos, delay=0.3):
+        if not self._click(*b.pos, delay=0.3, confirm=lambda: self._still(b.pos, "cook")):
             return False
+        if self._click_skipped:
+            self.log(f"bulle « cuisiner » disparue avant le clic en {b.pos[0]},{b.pos[1]} : pas de clic")
+            return True
         if not self._wait_menu(True, 4.0):
             self.log(f"bulle {b.index} : le menu ne s'est pas ouvert après le clic sur la bulle")
             return not self._stop.is_set()
@@ -1259,10 +1296,12 @@ class Cooker(MouseBot):
                 ring = grab((pos[0] - RING, pos[1] - RING, pos[0] + RING, pos[1] + RING))
             else:
                 ring = im.crop((gx - RING, gy - RING, gx + RING, gy + RING))
+            level = -1
             if ring is not None:
-                green = count(ring_mask(ring, c.get("ring_color"), c.get("red_ring", True)))
-            if green >= int(c.get("green_px", 60)):
+                green, level, _ = ring_read(ring, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))
+            if level >= 0:
                 state = "spatula"
+                scores["urgence"] = level
         scores["vert"] = green
         if state != self._last_state:
             self._last_state = state
@@ -1319,10 +1358,13 @@ class Cooker(MouseBot):
                 ring = im.crop((gx - RING, gy - RING, gx + RING, gy + RING))
         if ring is None:
             ring = grab((x - RING, y - RING, x + RING, y + RING))
-        green = count(ring_mask(ring, c.get("ring_color"), c.get("red_ring", True))) if ring is not None else 0
+        green, level = 0, -1
+        if ring is not None:
+            green, level, _ = ring_read(ring, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))
         det["scores"]["vert"] = green
-        if green >= int(c.get("green_px", 60)):
+        if level >= 0:
             det["state"] = "spatula"
+            det["scores"]["urgence"] = level
         return green
 
     def _scan_wide(self):
@@ -1358,14 +1400,19 @@ class Cooker(MouseBot):
             out.append(det)
         # anneaux verts de TOUTE la zone : pendant « Ajuste le feu » l'icone est animee et souvent pas
         # reconnue ; l'anneau, lui, se voit toujours. Il ne depend donc plus de la position suivie des bulles.
-        for cx, cy, n in find_rings(ring_mask(im, c.get("ring_color"), c.get("red_ring", True)), int(c.get("green_px", 60))):
+        need = int(c.get("green_px", 60))
+        found = [(cx, cy, n, 0) for cx, cy, n in find_rings(green_mask(im, c.get("ring_color")), need)]
+        if c.get("red_ring", True):                      # anneau passe au jaune, a l'orange ou au rouge
+            found += [(cx, cy, n, lvl) for lvl, m in warm_masks(im) for cx, cy, n in find_rings(m, need)]
+        for cx, cy, n, lvl in found:
             pos = (rect[0] + cx, rect[1] + cy)
             near = next((d for d in out if (pos[0] - d["pos"][0]) ** 2 + (pos[1] - d["pos"][1]) ** 2 < SEP * SEP), None)
             if near is not None:
                 near["state"] = "spatula"
                 near["scores"]["vert"] = max(n, near["scores"].get("vert", 0))
+                near["scores"]["urgence"] = max(lvl, near["scores"].get("urgence", 0))
             else:
-                out.append({"pos": pos, "state": "spatula", "scores": {"vert": n}})
+                out.append({"pos": pos, "state": "spatula", "scores": {"vert": n, "urgence": lvl}})
         out.sort(key=lambda d: (d["pos"][0], d["pos"][1]))
         self._debug_frame(im, rect, out)
         return out
@@ -1431,6 +1478,23 @@ class Cooker(MouseBot):
         self._add_green(det, im, ox, oy)
         return det
 
+    def _still(self, pos, state):
+        """Vrai si la bulle en `pos` est encore dans l'etat `state` : relecture locale juste avant d'appuyer. Entre
+        la lecture de l'ecran et l'arrivee de la souris il se passe plus d'une seconde ; cliquer une spatule ou
+        des gants qui ont disparu touche la cuisiniere elle-meme. En cas de doute (capture impossible) : vrai."""
+        try:
+            if state == "spatula":
+                c = self.cook_cfg
+                span = RING + 8
+                part = grab((pos[0] - span, pos[1] - span, pos[0] + span, pos[1] + span))
+                if part is None:
+                    return True
+                return ring_read(part, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))[1] >= 0
+            det = self._scan_local(Burner(0, pos))
+            return det is not None and det["state"] == state
+        except Exception:  # noqa - la relecture ne doit jamais arreter la cuisine
+            return True
+
     def _ring_only(self, burner, im=None, ox=0, oy=0):
         """Icone non reconnue (spatule animee, recouverte, bulle qui vient de glisser...) : s'il y a un anneau
         vert pres de la derniere position connue, c'est quand meme une spatule a cliquer. La position renvoyee
@@ -1452,13 +1516,12 @@ class Cooker(MouseBot):
                 part, px, py = grab(box), box[0], box[1]
             if part is None:
                 return None
-            gm = ring_mask(part, c.get("ring_color"), c.get("red_ring", True))
-            green = count(gm)
+            green, level, gm = ring_read(part, c.get("ring_color"), c.get("red_ring", True), need)
             bb = gm.getbbox()
-            if green < need or not bb:
+            if level < 0 or not bb:
                 return None
             x, y = px + (bb[0] + bb[2]) // 2, py + (bb[1] + bb[3]) // 2
-        return {"pos": (x, y), "state": "spatula", "scores": {"vert": green}}
+        return {"pos": (x, y), "state": "spatula", "scores": {"vert": green, "urgence": level}}
 
     def _scan(self, wide=False):
         """Met a jour les cuisinieres suivies. Suivi local tant que toutes les bulles sont retrouvees ;

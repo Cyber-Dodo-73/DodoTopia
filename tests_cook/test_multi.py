@@ -220,8 +220,8 @@ def souris_rapide(monkeypatch):
     la vraie mécanique de clic, mais en quelques dixièmes de seconde."""
     vrai = cook.Cooker._click
 
-    def rapide(self, x, y, delay=None):
-        return vrai(self, x, y, delay=0.01 if delay is None else float(delay) / 10.0)
+    def rapide(self, x, y, delay=None, confirm=None):
+        return vrai(self, x, y, delay=0.01 if delay is None else float(delay) / 10.0, confirm=confirm)
     monkeypatch.setattr(cook.Cooker, "_click", rapide)
 
 
@@ -671,15 +671,30 @@ def test_anneau_sans_icone_reconnue(jeu, souris_rapide):
     assert {i for e, i in ecran.events if e == "anneau"} == {1, 2}, ecran.events
 
 
-def test_anneau_rouge_reconnu_comme_un_anneau():
-    """L'anneau passé au rouge compte comme l'anneau vert ; une flamme orangée ou un rouge terne n'en sont pas."""
-    def ring(color):
+def test_anneau_jaune_orange_rouge_et_urgence():
+    """L'anneau passé au jaune, à l'orange ou au rouge compte comme l'anneau vert, avec une urgence croissante ;
+    une tache orange pleine (flammes) ou un rouge terne n'en sont pas."""
+    def scene(color, plein=False):
         im = Image.new("RGB", (160, 160), (120, 150, 90))
-        ImageDraw.Draw(im).ellipse((40, 40, 120, 120), outline=color, width=6)
+        d = ImageDraw.Draw(im)
+        if plein:
+            d.ellipse((40, 40, 120, 120), fill=color)
+        else:
+            d.ellipse((40, 40, 120, 120), outline=color, width=6)
         return im
     need = cook.DEFAULT_COOK["green_px"]
-    for color, seen in (((235, 40, 45), True), ((60, 220, 90), True), ((250, 150, 40), False), ((150, 60, 60), False)):
-        m = cook.ring_mask(ring(color))
-        assert (cook.count(m) >= need) is seen, color
-        assert bool(cook.find_rings(m, need)) is seen, color
-    assert cook.count(cook.ring_mask(ring((235, 40, 45)), red=False)) == 0
+    for color, level in (((60, 220, 90), 0), ((245, 215, 60), 1), ((250, 150, 40), 2), ((235, 40, 45), 3), ((150, 60, 60), -1)):
+        assert cook.ring_read(scene(color), need=need)[1] == level, color
+    assert cook.ring_read(scene((250, 150, 40), plein=True), need=need)[1] == -1        # flammes : pas un anneau
+    assert cook.ring_read(scene((235, 40, 45)), warm=False, need=need)[1] == -1
+
+
+def test_le_clic_est_annule_si_la_bulle_a_disparu(jeu):
+    """La souris met plus d'une seconde à arriver : si la bulle n'est plus là, on n'appuie pas."""
+    ecran, c = jeu(phases=("pret",))
+    d = c._scan_wide()[0]
+    assert d["state"] == "ready" and c._still(d["pos"], "ready") and not c._still(d["pos"], "spatula")
+    assert c._click(*d["pos"], delay=0.01, confirm=lambda: False) is True
+    assert c._click_skipped is True and ecran.clics == []
+    assert c._click(*d["pos"], delay=0.01, confirm=lambda: c._still(d["pos"], "ready")) is True
+    assert c._click_skipped is False and len(ecran.clics) == 1

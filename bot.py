@@ -171,7 +171,11 @@ class MouseBot:
     SETTLE = (0.012, 0.045)      # secondes entre l'arrivee de la souris et l'appui
     HOLD = (0.02, 0.06)          # duree de l'appui
 
-    def _click(self, x, y, delay=None):
+    def _click(self, x, y, delay=None, confirm=None):
+        """Clic en (x, y). `confirm` : fonction appelee une fois la souris arrivee, juste avant d'appuyer ; si elle
+        renvoie faux, on n'appuie pas (la cible a change pendant le deplacement) et `_click_skipped` passe a vrai.
+        Renvoie False seulement si l'action doit s'arreter."""
+        self._click_skipped = False
         if self._user_moved():
             self.stop("souris bougée")
             return False
@@ -182,6 +186,9 @@ class MouseBot:
         # temps de pose, d'appui et d'attente irreguliers (jamais plus courts qu'avant)
         if not self._sleep(random.uniform(*self.SETTLE)):
             return False
+        if confirm is not None and not confirm():
+            self._click_skipped = True
+            return True
         mouse_down()
         if not self._sleep(random.uniform(*self.HOLD)):
             mouse_up()
