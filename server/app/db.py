@@ -353,6 +353,11 @@ MIGRATIONS = [
     ALTER TABLE login_tickets ADD COLUMN loopback_port INTEGER;
     ALTER TABLE login_tickets ADD COLUMN grant_hash TEXT;
     """,
+    # v8 : connexion à l'espace admin confirmée dans un autre navigateur que celui de départ (admin.py) : la ligne
+    # « c<empreinte du jeton> » porte l'utilisateur identifié par Discord, en attente du clic de confirmation.
+    """
+    ALTER TABLE web_logins ADD COLUMN user_id INTEGER;
+    """,
 ]
 
 # Postgres seulement, hors numérotation : recherche par trigrammes (`LIKE '%mot%'` sur titre/artiste). L'extension

@@ -21,7 +21,7 @@ import sys
 import time
 from html import escape
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel
 
@@ -34,6 +34,8 @@ log = logging.getLogger("dodo.admin")
 router = APIRouter()
 
 STATE_COOKIE = "dodo_admin_state"
+CONFIRM_COOKIE = "dodo_admin_confirm"      # confirmation dans un autre navigateur : voir web_callback
+CONFIRM_MAX_AGE = 300
 STATE_MAX_AGE = 600
 NO_STORE = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 
@@ -141,9 +143,10 @@ def web_callback(request: Request, conn: db.Connection, state: str, code: str, e
         return r
 
     cookie = request.cookies.get(STATE_COOKIE, "")
-    if row is None or row["created_at"] < db.iso_in(-STATE_MAX_AGE) or not secrets.compare_digest(
-            cookie, sha256_hex(state)):
+    if row is None or row["created_at"] < db.iso_in(-STATE_MAX_AGE):
         return back("expired")
+    # Même navigateur qu'au départ : le cookie posé par POST /admin/login est revenu avec la navigation.
+    same_browser = secrets.compare_digest(cookie, sha256_hex(state))
     if error or not code:
         return back("denied")
     try:
@@ -159,16 +162,80 @@ def web_callback(request: Request, conn: db.Connection, state: str, code: str, e
     if not is_admin(user, settings):
         log.warning("espace admin : connexion refusée pour %s (%s)", user["username"], user["discord_id"])
         return back("forbidden")
+    if not same_browser:
+        # Le retour arrive dans un autre navigateur que celui du départ : sur mobile, l'appli Discord autorise puis
+        # rouvre le lien dans le navigateur par défaut, qui n'a pas le cookie. Aucune session ici : une page nomme
+        # le compte et demande un clic. Un lien de retour envoyé par un tiers ne connecte donc personne en
+        # silence, et le POST de confirmation exige un cookie SameSite=Strict posé par cette page (un formulaire
+        # soumis depuis un autre site ne l'emporte pas).
+        confirm = secrets.token_urlsafe(24)
+        conn.execute("INSERT INTO web_logins (state, created_at, user_id) VALUES (?, ?, ?)",
+                     ("c" + sha256_hex(confirm), db.now_iso(), user["id"]))
+        conn.commit()
+        return _confirm_page(request, user["username"], confirm)
+    return _open_admin_session(request, conn, user)
+
+
+def _open_admin_session(request: Request, conn: db.Connection, user: db.Row, status: int = 302) -> Response:
+    settings = settings_of(request)
     token = create_session(conn, settings, user["id"], kind="web")
     conn.commit()
     stats.hit(request.app, "login", "web")
     notify.emit(request.app, "login_web", f"{user['username']} s'est connecté à l'espace admin",
                 thumbnail=user["avatar_url"])
-    resp = RedirectResponse("/admin", status_code=302, headers=NO_STORE)
+    resp = RedirectResponse("/admin", status_code=status, headers=NO_STORE)
     resp.delete_cookie(STATE_COOKIE, path="/auth/discord/callback")
+    resp.delete_cookie(CONFIRM_COOKIE, path="/admin/login")
     resp.set_cookie(settings.admin_cookie, token, max_age=settings.ADMIN_SESSION_DAYS * 86400, httponly=True,
                     secure=settings.secure_cookies, samesite="lax", path="/")
     return resp
+
+
+def _confirm_page(request: Request, username: str, confirm: str) -> Response:
+    settings = settings_of(request)
+    name = escape(username or "Discord")
+    body = f"""<main class="login">
+<img src="/static/logo.png" width="72" height="72" alt="">
+<h1>Continuer ici ?</h1>
+<p class="muted">Discord t'a renvoyé dans un autre navigateur que celui où tu as commencé (c'est courant sur
+téléphone, quand l'appli Discord ouvre le lien). Tu peux terminer la connexion à l'espace admin dans celui-ci.</p>
+<form method="post" action="/admin/login/confirm"><input type="hidden" name="token" value="{escape(confirm, quote=True)}">
+<button class="btn btn-discord" type="submit">Continuer en tant que {name}</button></form>
+<p class="small">Si tu n'as pas lancé cette connexion toi-même, ferme cette page.</p>
+<p class="small"><a href="/admin/login">Annuler</a></p>
+</main>"""
+    resp = _page(request, "Confirmer la connexion", body)
+    resp.delete_cookie(STATE_COOKIE, path="/auth/discord/callback")
+    resp.set_cookie(CONFIRM_COOKIE, sha256_hex(confirm), max_age=CONFIRM_MAX_AGE, httponly=True,
+                    secure=settings.secure_cookies, samesite="strict", path="/admin/login")
+    return resp
+
+
+@router.post("/admin/login/confirm", include_in_schema=False)
+def login_confirm(request: Request, token: str = Form(""), conn: db.Connection = Depends(db.get_db)):
+    """Clic « Continuer en tant que … » de la page de confirmation : ouvre la session dans CE navigateur."""
+    settings = settings_of(request)
+    token = (token or "")[:128]
+    key = "c" + sha256_hex(token)
+    row = conn.execute("SELECT * FROM web_logins WHERE state=?", (key,)).fetchone() if token else None
+    conn.execute("DELETE FROM web_logins WHERE state=?", (key,))
+    conn.commit()
+
+    def back(reason: str) -> Response:
+        r = RedirectResponse(f"/admin/login?error={reason}", status_code=303, headers=NO_STORE)
+        r.delete_cookie(CONFIRM_COOKIE, path="/admin/login")
+        return r
+
+    cookie = request.cookies.get(CONFIRM_COOKIE, "")
+    if (row is None or row["created_at"] < db.iso_in(-CONFIRM_MAX_AGE) or not row["user_id"]
+            or not secrets.compare_digest(cookie, sha256_hex(token))):
+        return back("expired")
+    user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+    if user is None or user["banned"]:
+        return back("banned")
+    if not is_admin(user, settings):
+        return back("forbidden")
+    return _open_admin_session(request, conn, user, status=303)
 
 
 @router.post("/admin/logout", include_in_schema=False)

@@ -82,13 +82,51 @@ def test_web_login_refused_for_non_admin(client):
         assert conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
 
 
-def test_web_login_needs_the_state_cookie_of_the_same_browser(client):
+def _confirm_token(html):
+    import re
+    return re.search(r'name="token" value="([^"]+)"', html).group(1)
+
+
+def test_web_login_in_another_browser_asks_for_a_click_and_never_logs_in_silently(client):
     r = client.post("/admin/login")
     state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
-    client.cookies.clear()     # un tiers qui enverrait son lien de callback à la victime
+    client.cookies.clear()     # autre navigateur (appli Discord sur mobile), ou lien de retour envoyé par un tiers
     r = client.get(f"/auth/discord/callback?code=999&state={state}")
-    assert r.headers["location"] == "/admin/login?error=expired"
+    # aucune session : une page nomme le compte et demande un clic
+    assert r.status_code == 200 and "Continuer en tant que" in r.text and "dodo_admin=" not in r.headers["set-cookie"]
+    assert "dodo_admin_confirm=" in r.headers["set-cookie"] and "SameSite=strict" in r.headers["set-cookie"]
     assert client.get("/admin").status_code == 302
+    token = _confirm_token(r.text)
+
+    # un formulaire soumis depuis un autre site n'emporte pas le cookie Strict : refusé, et le jeton est consommé
+    saved = dict(client.cookies)
+    client.cookies.clear()
+    r2 = client.post("/admin/login/confirm", data={"token": token})
+    assert r2.status_code == 303 and r2.headers["location"] == "/admin/login?error=expired"
+    for k, v in saved.items():
+        client.cookies.set(k, v)
+    r2 = client.post("/admin/login/confirm", data={"token": token})
+    assert r2.headers["location"] == "/admin/login?error=expired"          # usage unique
+    assert client.get("/admin").status_code == 302
+
+
+def test_web_login_in_another_browser_completes_after_the_click(client):
+    r = client.post("/admin/login")
+    state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+    client.cookies.clear()
+    page = client.get(f"/auth/discord/callback?code=999&state={state}")
+    r = client.post("/admin/login/confirm", data={"token": _confirm_token(page.text)})
+    assert r.status_code == 303 and r.headers["location"] == "/admin" and "dodo_admin=" in r.headers["set-cookie"]
+    assert client.get("/admin").status_code == 200
+    assert client.post("/admin/login/confirm", data={"token": "inconnu"}).headers["location"] == "/admin/login?error=expired"
+
+
+def test_web_login_in_another_browser_still_refuses_a_non_admin(client):
+    r = client.post("/admin/login")
+    state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+    client.cookies.clear()
+    r = client.get(f"/auth/discord/callback?code=111&state={state}")
+    assert r.headers["location"] == "/admin/login?error=forbidden"
 
 
 def test_cookie_needs_admin_header_to_write(client):
