@@ -10,6 +10,14 @@ tiers de faire connecter quelqu'un d'autre sur SON ticket en lui envoyant l'URL)
 
 Le ticket ne porte jamais de jeton de session : la session naît au `poll`, après vérification du `verifier`.
 
+Variante sans code (« retour local », comme la RFC 8252 pour les applis installées) : l'appli écoute sur 127.0.0.1 et
+donne son port à `/api/auth/start` (`loopback_port`). La page de départ envoie alors tout de suite vers Discord, et
+le callback renvoie le navigateur vers `http://127.0.0.1:<port>/dodotopia/login?login_id&grant` avec un bon à usage
+unique ; `poll` ne livre la session que contre ce bon. La protection est la même que celle du code, sans rien à
+recopier : si un tiers envoie l'URL de SON ticket à quelqu'un, le bon arrive sur l'ordinateur de la victime, où
+personne ne l'attend, et le tiers ne l'obtient jamais. Un ticket de ce type n'a pas de code et ne peut pas passer
+par `/auth/discord/confirm`.
+
 Espace admin du site (navigateur seul, pas d'app) : `POST /admin/login` crée un `web_logins(state)` et pose le même
 `state` dans un cookie, puis renvoie vers Discord ; le callback partagé reconnaît ce `state`, vérifie le cookie (pas de
 connexion imposée par un tiers), et n'ouvre une session `kind='web'` (cookie HttpOnly, SameSite=Lax, 7 jours
@@ -232,11 +240,12 @@ def auth_start(body: AuthStart, request: Request, conn: db.Connection = Depends(
     settings = settings_of(request)
     login_id = secrets.token_urlsafe(16)
     state = secrets.token_urlsafe(24)
-    user_code = new_user_code()
+    loopback = body.loopback_port
+    user_code = None if loopback else new_user_code()
     conn.execute(
-        """INSERT INTO login_tickets (id, verifier_hash, state, status, user_code, attempts, created_at)
-           VALUES (?, ?, ?, 'pending', ?, 0, ?)""",
-        (login_id, body.verifier_hash, state, user_code, db.now_iso()),
+        """INSERT INTO login_tickets (id, verifier_hash, state, status, user_code, attempts, created_at, loopback_port)
+           VALUES (?, ?, ?, 'pending', ?, 0, ?, ?)""",
+        (login_id, body.verifier_hash, state, user_code, db.now_iso(), loopback),
     )
     conn.commit()
     return {
@@ -244,7 +253,13 @@ def auth_start(body: AuthStart, request: Request, conn: db.Connection = Depends(
         "url": f"{settings.public_url}/auth/discord/start?login_id={login_id}",
         "expires_in": settings.LOGIN_TICKET_S,
         "user_code": user_code,
+        "mode": "loopback" if loopback else "code",
     }
+
+
+def _loopback_port(t: db.Row) -> int | None:
+    port = t["loopback_port"]
+    return int(port) if port else None
 
 
 def _live_ticket(conn: db.Connection, settings: Settings, login_id: str) -> db.Row | None:
@@ -273,6 +288,11 @@ def discord_start(login_id: str, request: Request, conn: db.Connection = Depends
     t = _live_ticket(conn, settings, login_id)
     if t is None or t["status"] not in ("pending", "confirmed"):
         return _done_page("expired", status=404)
+    if _loopback_port(t):
+        # Retour local : pas de code à recopier, la preuve viendra du bon rapporté à l'appli après Discord.
+        conn.execute("UPDATE login_tickets SET status='confirmed' WHERE id=?", (t["id"],))
+        conn.commit()
+        return RedirectResponse(_discord_authorize_url(settings, t["state"]), status_code=303)
     return _code_page(login_id, remaining=settings.LOGIN_CODE_ATTEMPTS - int(t["attempts"] or 0))
 
 
@@ -283,7 +303,7 @@ def discord_confirm(request: Request, login_id: str = Form(""), code: str = Form
     settings = settings_of(request)
     login_id = (login_id or "")[:64]
     t = _live_ticket(conn, settings, login_id)
-    if t is None or t["status"] not in ("pending", "confirmed"):
+    if t is None or t["status"] not in ("pending", "confirmed") or _loopback_port(t):
         return _done_page("expired", status=404)
     attempts = int(t["attempts"] or 0)
     if attempts >= settings.LOGIN_CODE_ATTEMPTS:
@@ -334,6 +354,16 @@ def discord_callback(request: Request, state: str = "", code: str = "", error: s
     if user["just_created"]:
         announce_new_user(request, user)
     # Aucune session ici : le ticket ne porte que l'identité ; le jeton naît au poll, contre le vérifieur.
+    port = _loopback_port(t)
+    if port:
+        # Le bon ne voyage que vers 127.0.0.1 du navigateur qui vient d'autoriser : seule l'appli de CET
+        # ordinateur peut le présenter au poll. Son empreinte seule est gardée.
+        grant = secrets.token_urlsafe(32)
+        conn.execute("UPDATE login_tickets SET status='ok', user_id=?, grant_hash=? WHERE id=?",
+                     (user["id"], sha256_hex(grant), t["id"]))
+        conn.commit()
+        query = urlencode({"login_id": t["id"], "grant": grant})
+        return RedirectResponse(f"http://127.0.0.1:{port}/dodotopia/login?{query}", status_code=302)
     conn.execute("UPDATE login_tickets SET status='ok', user_id=? WHERE id=?", (user["id"], t["id"]))
     conn.commit()
     return RedirectResponse("/auth/discord/done", status_code=302)
@@ -437,6 +467,12 @@ def auth_poll(body: AuthPoll, request: Request, conn: db.Connection = Depends(db
         return {"status": "error", "error": t["error"]}
     if t["status"] == "used":
         raise api_error(410, "consumed", "Cette connexion a déjà été récupérée.")
+    if _loopback_port(t):
+        # Retour local : sans le bon rapporté par le navigateur, la connexion reste « en attente » pour l'appli.
+        if not body.grant:
+            return {"status": "pending"}
+        if not hmac.compare_digest(sha256_hex(body.grant), t["grant_hash"] or ""):
+            raise api_error(403, "bad_grant", "Bon de connexion incorrect.")
     # ok : la session est créée maintenant, contre le vérifieur, et livrée une seule fois
     conn.execute("UPDATE login_tickets SET status='used', user_id=NULL WHERE id=?", (t["id"],))
     user = conn.execute("SELECT * FROM users WHERE id=?", (t["user_id"],)).fetchone() if t["user_id"] else None

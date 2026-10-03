@@ -105,6 +105,18 @@ function accountHtml(st){
   if(lg.state === 'waiting'){
     const url = lg.url || ONL.loginUrl || '';
     const code = lg.user_code || '';
+    // sans code : le navigateur revient tout seul vers DodoTopia après l'autorisation (rien à recopier)
+    if(lg.mode === 'loopback' && !code){
+      return `<div class="account-wait">
+        <div class="account-wait__top"><span class="spinner" aria-hidden="true"></span>
+          <span><b>${esc(t('online.account.waiting'))}</b> ${esc(t('online.account.waiting_browser'))}</span></div>
+        <div class="btnrow">
+          <button class="btn btn--discord btn--sm" type="button" data-act="openbrowser">${icon('discord')}<span>${esc(t('online.account.open_browser'))}</span></button>
+          <button class="btn btn--ghost btn--sm" type="button" data-act="logincancel">${esc(t('common.cancel'))}</button>
+        </div>
+        <button class="btn btn--ghost btn--sm" type="button" data-act="usecode">${esc(t('online.account.use_code'))}</button>
+      </div>${foot}`;
+    }
     const left = lg.expires_in != null ? Math.max(0, Math.ceil(lg.expires_in / 60)) : null;
     // Le code est la protection anti-hameçonnage : la page web le demande avant d'envoyer vers Discord, donc
     // un lien reçu de quelqu'un d'autre ne peut pas connecter ce compte sur SON ticket.
@@ -156,6 +168,8 @@ function accountWire(box){
         case 'logincancel': ONL.loginUrl = ''; api('online_login_cancel'); break;
         // pendant l'attente, online_login rouvre le navigateur sur le même ticket (même code)
         case 'openbrowser': api('online_login'); break;
+        // autre appareil (téléphone) : on repart sur un ticket avec un code à recopier et un lien à copier
+        case 'usecode': api('online_login', true).then(r => { if(r && r.url){ ONL.loginUrl = r.url; refreshPanel(); } }); break;
         case 'copy': {
           const inp = box.querySelector('.login-url');
           if(inp){ inp.select(); copyText(inp.value, t('online.account.link_copied')); }

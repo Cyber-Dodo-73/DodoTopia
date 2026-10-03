@@ -51,7 +51,13 @@ class DodoAccessibilityService : AccessibilityService() {
         actif.value = true
         // Dernier état connu (le service redémarre à chaque mise à jour, souvent pendant que le jeu est devant).
         jeuDevant = Preferences.prefs(this).getBoolean(JEU_DEVANT, true)
-        appliquerBulle()
+        try {
+            appliquerBulle()
+        } catch (e: RuntimeException) {
+            // Une bulle qui ne s'affiche pas ne doit pas tuer le service : Android le laisserait « activé »
+            // dans ses réglages mais mort, et l'appli resterait bloquée sur « à activer ».
+            SpikeLog.log("Bulle impossible à la connexion du service : ${e.javaClass.simpleName} ${e.message.orEmpty()}")
+        }
         val e = tailleEcran(this)
         SpikeLog.log(
             "Service d'accessibilité connecté · ${Build.MANUFACTURER} ${Build.MODEL} · " +
@@ -205,6 +211,20 @@ class DodoAccessibilityService : AccessibilityService() {
     companion object {
         /** Vrai tant que le service est connecté : l'activité s'y abonne pour son état. */
         val actif = MutableLiveData(false)
+
+        /**
+         * Vrai si le service est coché dans les réglages d'accessibilité d'Android, qu'il soit connecté ou non.
+         * Quand l'appli a été arrêtée de force (ou tuée par l'économie de batterie de certains téléphones),
+         * Android peut le laisser coché sans le relancer : [actif] reste faux, et seul un arrêt puis une
+         * réactivation du service dans les réglages le fait repartir.
+         */
+        fun activeDansAndroid(context: android.content.Context): Boolean {
+            val liste = android.provider.Settings.Secure.getString(
+                context.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: return false
+            val moi = android.content.ComponentName(context, DodoAccessibilityService::class.java)
+            return liste.split(':').any { android.content.ComponentName.unflattenFromString(it) == moi }
+        }
 
         /** Le service connecté, pour que l'activité lui demande de montrer ou retirer la bulle. */
         @Volatile

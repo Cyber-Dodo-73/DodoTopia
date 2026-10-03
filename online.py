@@ -622,13 +622,69 @@ class Account:
 
 
 # ---------------------------------------------------------------- connexion Discord
+class LoopbackListener:
+    """Petit serveur HTTP sur 127.0.0.1 (port libre choisi par le systeme) qui attend le retour du navigateur
+    apres l'autorisation Discord : GET /dodotopia/login?login_id=<ticket>&grant=<bon>. Il ne repond qu'au ticket
+    en cours, garde le bon, puis renvoie le navigateur sur la page « Connecte » du serveur. Tout le reste : 404.
+    Rien n'est ecoute sur le reseau : l'adresse 127.0.0.1 n'est joignable que depuis cet ordinateur."""
+
+    PATH = "/dodotopia/login"
+
+    def __init__(self, done_url):
+        import http.server
+        self.login_id = None            # renseigne des que le serveur a cree le ticket
+        self.grant = None
+        self.event = threading.Event()
+        outer = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):   # noqa: N802 (nom impose par http.server)
+                parts = urllib.parse.urlsplit(self.path)
+                q = urllib.parse.parse_qs(parts.query)
+                login_id = (q.get("login_id") or [""])[0]
+                grant = (q.get("grant") or [""])[0]
+                if (parts.path != outer.PATH or not outer.login_id or login_id != outer.login_id
+                        or not grant or len(grant) > 128):
+                    self.send_response(404)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                outer.grant = grant
+                outer.event.set()
+                self.send_response(302)
+                self.send_header("Location", done_url)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def log_message(self, *args):   # pas de journal sur stderr (le bon est dans l'adresse)
+                pass
+
+        self._server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self._server.daemon_threads = True
+        self.port = self._server.server_address[1]
+        threading.Thread(target=self._server.serve_forever, name="login-loopback", daemon=True).start()
+
+    def close(self):
+        try:
+            self._server.shutdown()
+            self._server.server_close()
+        except Exception:  # noqa
+            pass
+
+
 class LoginFlow:
     """Ticket + navigateur + interrogation : POST /api/auth/start, ouverture de l'URL, POST /api/auth/poll
     toutes les 1,5 s pendant 10 min au plus.
 
-    `user_code` (5 caracteres, ex. K7PQ2) est affiche dans l'app : la page ouverte le demande avant de rediriger
-    vers Discord, ce qui empeche un tiers de faire connecter quelqu'un d'autre sur son ticket en lui envoyant
-    le lien."""
+    Par defaut, rien a recopier (mode « loopback ») : l'appli ecoute sur 127.0.0.1 (LoopbackListener), donne son
+    port au serveur, et le navigateur lui rapporte un bon a usage unique apres l'autorisation Discord ; le serveur
+    ne livre la session que contre ce bon. Un lien envoye par un tiers ne peut donc connecter personne sur SON
+    ticket : le bon arriverait sur l'ordinateur de la victime.
+
+    En secours (`with_code=True`, ecoute impossible, ou serveur plus ancien) : mode « code ». `user_code`
+    (5 caracteres, ex. K7PQ2) est affiche dans l'app et la page ouverte le demande avant de rediriger vers
+    Discord ; ce mode sert aussi a se connecter depuis un autre appareil (telephone)."""
 
     def __init__(self, client, account, open_url, log=None, notify=None, on_done=None):
         self.client = client
@@ -639,7 +695,8 @@ class LoginFlow:
         self.on_done = on_done
         self.state = "idle"         # idle | waiting | ok | error
         self.url = None
-        self.user_code = None       # code a recopier sur la page de connexion (tant que state == waiting)
+        self.user_code = None       # code a recopier sur la page de connexion (mode « code », state == waiting)
+        self.mode = None            # loopback | code (tant que state == waiting)
         self.error = ""
         self.expires_at = 0.0
         self.poll_s = LOGIN_POLL_S
@@ -647,33 +704,59 @@ class LoginFlow:
         self._thread = None
         self._lock = threading.Lock()
 
-    def start(self):
+    def start(self, with_code=False):
         """Demande un ticket, ouvre le navigateur, lance l'interrogation. Renvoie l'URL (a afficher aussi
         dans l'interface avec un bouton Copier) ; leve OnlineError si le serveur refuse. Rappele pendant
-        l'attente, rouvre simplement le navigateur sur le meme ticket (bouton « Ouvrir le navigateur »)."""
+        l'attente, rouvre simplement le navigateur sur le meme ticket (bouton « Ouvrir le navigateur »).
+        `with_code` : mode « code » demande (connexion depuis un autre appareil) ; un ticket sans code en
+        attente est alors abandonne."""
         with self._lock:
-            if self.state == "waiting" and self._thread and self._thread.is_alive():
+            waiting = self.state == "waiting" and self._thread and self._thread.is_alive()
+            if waiting and with_code and self.mode == "loopback":
+                self._cancel.set()          # on repart sur un ticket a code
+                waiting = False
+            if waiting:
                 url = self.url
             else:
                 verifier = secrets.token_urlsafe(32)
                 vh = hashlib.sha256(verifier.encode("ascii")).hexdigest()
+                listener = None
+                if not with_code:
+                    try:
+                        listener = LoopbackListener(self.client.url("/auth/discord/done"))
+                    except OSError as e:    # ecoute locale impossible : on retombe sur le code
+                        self.log(f"connexion : écoute locale impossible ({e})")
+                payload = {"verifier_hash": vh}
+                if listener is not None:
+                    payload["loopback_port"] = listener.port
                 try:
-                    r = self.client.post("/api/auth/start", {"verifier_hash": vh}, auth=False)
+                    r = self.client.post("/api/auth/start", payload, auth=False)
                 except OnlineError as e:
+                    if listener is not None:
+                        listener.close()
                     self.state, self.error = "error", str(e)
                     raise
                 login_id, url = r.get("login_id"), r.get("url")
                 if not login_id or not url:
+                    if listener is not None:
+                        listener.close()
                     self.state, self.error = "error", i18n.t("online.error.unexpected_response")
                     raise OnlineError(self.error)
+                if listener is not None and r.get("mode") != "loopback":
+                    listener.close()        # serveur plus ancien : il a ignore le port, il attend le code
+                    listener = None
+                if listener is not None:
+                    listener.login_id = str(login_id)
+                self.mode = "loopback" if listener is not None else "code"
                 expires_in = float(r.get("expires_in") or LOGIN_MAX_S)
                 self.expires_at = time.time() + min(expires_in, LOGIN_MAX_S)
                 code = str(r.get("user_code") or "").strip().upper()
                 self.user_code = code[:16] or None
                 self.url, self.error, self.state = url, "", "waiting"
-                self._cancel.clear()
-                self._thread = threading.Thread(target=self._poll, args=(login_id, verifier), name="login",
-                                                daemon=True)
+                # un evenement d'annulation par ticket : l'ancien fil s'arrete meme si un nouveau demarre aussitot
+                self._cancel = threading.Event()
+                self._thread = threading.Thread(target=self._poll, args=(login_id, verifier, listener, self._cancel),
+                                                name="login", daemon=True)
                 self._thread.start()
         try:
             if not self.open_url(url):
@@ -688,14 +771,26 @@ class LoginFlow:
             self.state = "idle"
         self.url = None
         self.user_code = None
+        self.mode = None
 
-    def _poll(self, login_id, verifier):
-        while not self._cancel.is_set():
+    def _poll(self, login_id, verifier, listener=None, cancel=None):
+        cancel = cancel or self._cancel
+        try:
+            self._poll_loop(login_id, verifier, listener, cancel)
+        finally:
+            if listener is not None:
+                listener.close()
+
+    def _poll_loop(self, login_id, verifier, listener, cancel):
+        while not cancel.is_set():
             if time.time() > self.expires_at:
                 self.state, self.error = "error", i18n.t("login.error.expired")
                 break
+            body = {"login_id": login_id, "verifier": verifier}
+            if listener is not None and listener.grant:
+                body["grant"] = listener.grant      # le bon rapporte par le navigateur : la session suit
             try:
-                r = self.client.post("/api/auth/poll", {"login_id": login_id, "verifier": verifier}, auth=False)
+                r = self.client.post("/api/auth/poll", body, auth=False)
             except OnlineError as e:
                 if e.code in (404, 410):
                     self.state, self.error = "error", i18n.t("login.error.expired")
@@ -708,7 +803,7 @@ class LoginFlow:
             st = r.get("status")
             if st == "ok" and r.get("token"):
                 self.account.save(str(r["token"]), r.get("user"))
-                self.state, self.url, self.user_code = "ok", None, None
+                self.state, self.url, self.user_code, self.mode = "ok", None, None, None
                 name = (r.get("user") or {}).get("username") or "Discord"
                 self.notify(i18n.t("login.connected", name=name), "ok")
                 self.log(f"connecté : {name}")
@@ -723,12 +818,19 @@ class LoginFlow:
                 self.state, self.error = "error", login_error_text(key)
                 self.log(f"connexion refusée ({key or 'sans motif'})")
                 break
-            if self._cancel.wait(self.poll_s):
+            if listener is not None and not listener.grant:
+                listener.event.wait(self.poll_s)    # reveille des que le navigateur revient
+                if cancel.is_set():
+                    return
+            elif cancel.wait(self.poll_s):
                 return
+        if cancel.is_set():
+            return
         if self.state == "error":
             self.notify(self.error, "warn")
             self.url = None
             self.user_code = None
+            self.mode = None
             if self.on_done:
                 try:
                     self.on_done(False)
@@ -738,7 +840,7 @@ class LoginFlow:
     def status(self):
         left = max(0, int(self.expires_at - time.time())) if self.state == "waiting" else None
         return {"state": self.state, "url": self.url, "user_code": self.user_code if self.state == "waiting" else None,
-                "error": self.error, "expires_in": left}
+                "mode": self.mode if self.state == "waiting" else None, "error": self.error, "expires_in": left}
 
 
 # ---------------------------------------------------------------- mise a jour
@@ -1348,9 +1450,10 @@ class OnlineService:
             self.log(f"salon : {e}")
 
     # ---- compte
-    def login(self):
-        """Renvoie l'URL de connexion (aussi affichee dans l'interface). OnlineError si serveur injoignable."""
-        return self.login_flow.start()
+    def login(self, with_code=False):
+        """Renvoie l'URL de connexion (aussi affichee dans l'interface). OnlineError si serveur injoignable.
+        `with_code` : connexion par code a recopier (depuis un autre appareil) au lieu du retour automatique."""
+        return self.login_flow.start(with_code=bool(with_code))
 
     def login_cancel(self):
         self.login_flow.cancel()

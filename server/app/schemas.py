@@ -67,11 +67,14 @@ class Lenient(BaseModel):
 
 class AuthStart(Lenient):
     verifier_hash: str = Field(pattern=SHA256_RE)
+    # Port où l'appli écoute sur 127.0.0.1 : connexion sans code à recopier (voir auth.py). Absent : code à saisir.
+    loopback_port: int | None = Field(default=None, ge=1024, le=65535)
 
 
 class AuthPoll(Lenient):
     login_id: str = Field(min_length=1, max_length=64)
     verifier: str = Field(min_length=1, max_length=256)
+    grant: str | None = Field(default=None, max_length=128)      # bon rapporté par le navigateur (retour local)
 
 
 # --- Métadonnées de la bibliothèque (tags, licence, source) ----------------------------

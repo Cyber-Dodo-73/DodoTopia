@@ -953,3 +953,88 @@ def test_decode_png_data_url():
         with pytest.raises(ValueError) as e:
             online.decode_png_data_url(bad, 10 if bad == ok else 1024)
         assert str(e.value) == why
+
+
+# ---------------------------------------------------------------- connexion sans code (retour local)
+class _LoopbackFake:
+    """Serveur factice du mode « loopback » : la session n'est livree que contre le bon rapporte a l'appli."""
+
+    def __init__(self, mode="loopback"):
+        self.mode, self.grant, self.starts, self.polls = mode, "BON-123", [], []
+
+    def url(self, path, params=None):
+        return "http://example" + path
+
+    def post(self, path, body=None, auth=True, **kw):
+        if path == "/api/auth/start":
+            self.starts.append(dict(body))
+            loop = self.mode == "loopback" and body.get("loopback_port")
+            return {"login_id": "L1", "url": "http://example/auth/discord/start?login_id=L1", "expires_in": 600,
+                    "user_code": None if loop else "K7PQ2", "mode": "loopback" if loop else "code"}
+        self.polls.append(dict(body))
+        if body.get("grant") == self.grant:
+            return {"status": "ok", "token": "tok", "user": {"username": "Dodo"}}
+        return {"status": "pending"}
+
+
+def _get_no_redirect(url):
+    import urllib.error
+    import urllib.request
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):
+            return None
+    try:
+        return urllib.request.build_opener(NoRedirect).open(url, timeout=5).status, None
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers.get("Location")
+
+
+def test_login_sans_code_par_retour_local(tmp_path):
+    fake = _LoopbackFake()
+    acc = Account(str(tmp_path / "account.json"))
+    flow = LoginFlow(fake, acc, lambda url: True)
+    flow.poll_s = 0.05
+    flow.start()
+    st = flow.status()
+    assert st["state"] == "waiting" and st["mode"] == "loopback" and st["user_code"] is None
+    port = fake.starts[0]["loopback_port"]
+    assert 1024 <= port <= 65535
+    base = f"http://127.0.0.1:{port}"
+    # ni un autre ticket, ni un autre chemin, ni un bon vide ne sont acceptes
+    assert _get_no_redirect(base + "/dodotopia/login?login_id=AUTRE&grant=x")[0] == 404
+    assert _get_no_redirect(base + "/autre?login_id=L1&grant=x")[0] == 404
+    assert _get_no_redirect(base + "/dodotopia/login?login_id=L1")[0] == 404
+    time.sleep(0.2)
+    assert flow.status()["state"] == "waiting" and not acc.logged_in()
+    assert all("grant" not in p for p in fake.polls)
+    # le navigateur revient avec le bon : la session arrive, le navigateur part sur la page « Connecte »
+    assert _get_no_redirect(base + f"/dodotopia/login?login_id=L1&grant={fake.grant}") == \
+        (302, "http://example/auth/discord/done")
+    for _ in range(100):
+        if flow.status()["state"] == "ok":
+            break
+        time.sleep(0.05)
+    assert flow.status()["state"] == "ok" and acc.logged_in() and flow.status()["mode"] is None
+    assert fake.polls[-1]["grant"] == fake.grant
+
+
+def test_login_code_en_secours(tmp_path):
+    # serveur plus ancien : il ignore le port et renvoie un code -> l'appli affiche le code comme avant
+    old = _LoopbackFake(mode="code")
+    flow = LoginFlow(old, Account(str(tmp_path / "a.json")), lambda url: True)
+    flow.poll_s = 0.05
+    flow.start()
+    assert flow.status()["mode"] == "code" and flow.status()["user_code"] == "K7PQ2"
+    flow.cancel()
+    # « depuis un autre appareil » : pas de port envoye, code affiche ; un ticket sans code en attente est abandonne
+    fake = _LoopbackFake()
+    flow = LoginFlow(fake, Account(str(tmp_path / "b.json")), lambda url: True)
+    flow.poll_s = 0.05
+    flow.start()
+    assert flow.status()["mode"] == "loopback"
+    flow.start(with_code=True)
+    st = flow.status()
+    assert st["mode"] == "code" and st["user_code"] == "K7PQ2" and "loopback_port" not in fake.starts[-1]
+    flow.cancel()
+    assert flow.status()["state"] == "idle" and flow.status()["mode"] is None

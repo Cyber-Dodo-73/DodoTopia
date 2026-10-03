@@ -56,6 +56,9 @@
     <string name="service_titre">Service d\'accessibilité</string>
     <string name="service_actif">Prêt à appuyer pour toi</string>
     <string name="service_inactif">Touche ici pour l\'activer</string>
+    <string name="service_muet">Activé dans Android mais il ne répond plus : touche ici, désactive-le puis réactive-le</string>
+    <string name="pil_a_relancer">À relancer</string>
+    <string name="bulle_service_muet">Le service d\'accessibilité ne répond plus : désactive-le puis réactive-le dans les réglages d\'Android</string>
     <string name="bulle_titre">Bulle dans le jeu</string>
     <string name="bulle_active">Allumée : elle flotte par-dessus le jeu</string>
     <string name="bulle_inactive">Éteinte : rien ne s\'affiche par-dessus le jeu</string>

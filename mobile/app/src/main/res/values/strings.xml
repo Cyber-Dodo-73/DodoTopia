@@ -55,6 +55,9 @@
     <string name="service_titre">Accessibility service</string>
     <string name="service_actif">Ready to press for you</string>
     <string name="service_inactif">Tap here to turn it on</string>
+    <string name="service_muet">On in Android but not responding: tap here, turn it off, then on again</string>
+    <string name="pil_a_relancer">Restart it</string>
+    <string name="bulle_service_muet">The accessibility service is not responding: turn it off, then on again in Android settings</string>
     <string name="bulle_titre">Bubble in the game</string>
     <string name="bulle_active">On: it floats over the game</string>
     <string name="bulle_inactive">Off: nothing shows over the game</string>

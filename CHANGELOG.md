@@ -5,6 +5,9 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.2.1
+- **Connexion Discord sans code à recopier** : après « Se connecter avec Discord », tu autorises DodoTopia dans le navigateur et tu es connecté dans l'application, sans rien saisir. Le navigateur rapporte la connexion directement à DodoTopia sur ton ordinateur, ce qui garde la protection contre les liens piégés. Le code reste disponible pour se connecter depuis un autre appareil (« Me connecter depuis un autre appareil »).
+
 ## 2.2.0
 - **Mes créations**, nouvelle activité : tes photos, tes peintures et tes musiques enregistrées dans Heartopia, lues directement dans les fichiers que le jeu garde sur ton ordinateur, rangées en trois onglets (Photos, Peintures, Musiques) et triées par date.
 - **Importer dans le jeu** : « Ajouter une photo » met ton image dans l'album d'Heartopia (aux quatre tailles que le jeu garde, chiffrée comme les siennes, avec sa fiche) et « Ajouter une musique » convertit un fichier MIDI en enregistrement du jeu joué au piano, sans rien remplacer. « Supprimer cet ajout » retire ce que DodoTopia a ajouté, jamais ce que le jeu a créé. Fonction récente : relance Heartopia pour voir l'ajout.

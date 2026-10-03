@@ -163,5 +163,7 @@
   "online.account.benefit.rooms": "Tumugtog sa room: sabay-sabay na nagsisimula ang lahat, bawat isa sa sarili niyang instrumento",
   "online.account.benefit.like": "I-like ang mga kanta at drawing na gusto mo",
   "online.account.benefit.import": "Mag-import ng kanta mula sa link (Online Sequencer, BitMidi…)",
-  "online.account.privacy": "Binabasa lang ng DodoTopia ang Discord username, avatar, at ID mo, at hindi ito makakapag-post ng anuman sa account mo."
+  "online.account.privacy": "Binabasa lang ng DodoTopia ang Discord username, avatar, at ID mo, at hindi ito makakapag-post ng anuman sa account mo.",
+  "online.account.waiting_browser": "payagan ang DodoTopia sa browser na kabubukas lang. Awtomatiko kang masa-sign in dito, nang walang kinokopya.",
+  "online.account.use_code": "Mag-sign in mula sa ibang device (gamit ang code)"
 }

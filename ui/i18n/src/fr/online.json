@@ -163,5 +163,7 @@
   "online.account.benefit.rooms": "Jouer en salon : tout le monde démarre au même instant, chacun sur son instrument",
   "online.account.benefit.like": "Aimer les morceaux et les dessins que tu préfères",
   "online.account.benefit.import": "Importer un morceau depuis un lien (Online Sequencer, BitMidi…)",
-  "online.account.privacy": "DodoTopia ne lit que ton pseudo, ton avatar et ton identifiant Discord, et ne peut rien publier sur ton compte."
+  "online.account.privacy": "DodoTopia ne lit que ton pseudo, ton avatar et ton identifiant Discord, et ne peut rien publier sur ton compte.",
+  "online.account.waiting_browser": "autorise DodoTopia dans le navigateur qui vient de s’ouvrir. Tu seras connecté ici tout seul, sans rien recopier.",
+  "online.account.use_code": "Me connecter depuis un autre appareil (avec un code)"
 }

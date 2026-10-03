@@ -93,7 +93,12 @@ class MainActivity : AppCompatActivity() {
             reglages.launch(Intent(this, ReglagesActivity::class.java))
         }
         findViewById<View>(R.id.ligneService).setOnClickListener {
-            if (DodoAccessibilityService.actif.value != true) montrer(accueil = false)
+            when {
+                DodoAccessibilityService.actif.value == true -> Unit
+                // Coché dans Android mais muet : on va droit aux réglages, où il faut l'éteindre puis le rallumer.
+                DodoAccessibilityService.activeDansAndroid(this) -> reglagesAccessibilite.onClick(it)
+                else -> montrer(accueil = false)
+            }
         }
         findViewById<View>(R.id.swBulle).apply {
             setOnClickListener { interrupteur ->
@@ -172,6 +177,8 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // Le calibrage et le morceau choisi ont pu changer dans la bulle pendant qu'on était dans le jeu.
         majListes()
+        // Au retour des réglages d'Android : le service a pu être coché, décoché ou rester muet.
+        majService(DodoAccessibilityService.actif.value == true)
     }
 
     override fun onDestroy() {
@@ -266,9 +273,18 @@ class MainActivity : AppCompatActivity() {
 
     /** Reflète l'état du service sur les deux écrans (« À activer » puis « Activé »). */
     private fun majService(actif: Boolean) {
-        pilule(R.id.pilService, if (actif) R.string.pil_active else R.string.pil_a_activer, actif)
-        pilule(R.id.pilServiceAccueil, if (actif) R.string.pil_active else R.string.pil_a_activer, actif)
-        findViewById<TextView>(R.id.txtService).setText(if (actif) R.string.service_actif else R.string.service_inactif)
+        // Coché dans les réglages d'Android mais pas connecté à l'appli : il faut l'éteindre puis le rallumer.
+        val muet = !actif && DodoAccessibilityService.activeDansAndroid(this)
+        val attente = if (muet) R.string.pil_a_relancer else R.string.pil_a_activer
+        pilule(R.id.pilService, if (actif) R.string.pil_active else attente, actif)
+        pilule(R.id.pilServiceAccueil, if (actif) R.string.pil_active else attente, actif)
+        findViewById<TextView>(R.id.txtService).setText(
+            when {
+                actif -> R.string.service_actif
+                muet -> R.string.service_muet
+                else -> R.string.service_inactif
+            }
+        )
         findViewById<View>(R.id.carteService).setBackgroundResource(if (actif) R.drawable.carte else R.drawable.carte_attente)
         findViewById<View>(R.id.btnAcces).visibility = if (actif) View.GONE else View.VISIBLE
         findViewById<View>(R.id.lienRestreint).visibility = if (actif) View.GONE else View.VISIBLE
@@ -294,6 +310,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.txtBulle).setText(
             when {
+                !service && DodoAccessibilityService.activeDansAndroid(this) -> R.string.bulle_service_muet
                 !service -> R.string.bulle_sans_service
                 active -> R.string.bulle_active
                 else -> R.string.bulle_inactive

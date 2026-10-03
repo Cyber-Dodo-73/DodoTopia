@@ -163,5 +163,7 @@
   "online.account.benefit.rooms": "ルームで演奏する：全員が同じ瞬間に、それぞれの楽器で始められます",
   "online.account.benefit.like": "気に入った曲や絵に「いいね」を付ける",
   "online.account.benefit.import": "リンクから曲を取り込む（Online Sequencer、BitMidi など）",
-  "online.account.privacy": "DodoTopia が読み取るのは Discord のユーザー名、アバター、ID だけで、あなたのアカウントに投稿することはできません。"
+  "online.account.privacy": "DodoTopia が読み取るのは Discord のユーザー名、アバター、ID だけで、あなたのアカウントに投稿することはできません。",
+  "online.account.waiting_browser": "開いたブラウザーで DodoTopia を許可してください。何も入力せずに、ここで自動的にログインされます。",
+  "online.account.use_code": "別の端末からログインする（コードを使用）"
 }

@@ -347,6 +347,12 @@ MIGRATIONS = [
         downloads    INTEGER NOT NULL DEFAULT 0
     );
     """,
+    # v7 : connexion sans code (auth.py, « retour local ») : port d'écoute de l'appli sur 127.0.0.1 et empreinte
+    # du bon à usage unique que le navigateur lui rapporte après l'autorisation Discord.
+    """
+    ALTER TABLE login_tickets ADD COLUMN loopback_port INTEGER;
+    ALTER TABLE login_tickets ADD COLUMN grant_hash TEXT;
+    """,
 ]
 
 # Postgres seulement, hors numérotation : recherche par trigrammes (`LIKE '%mot%'` sur titre/artiste). L'extension

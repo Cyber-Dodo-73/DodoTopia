@@ -45,9 +45,10 @@ class OnlineMixin:
         self._online_call(self._online.refresh)
         return self.get_state()
 
-    def online_login(self):
-        """Ouvre la page de connexion Discord ; renvoie aussi l'URL (bouton Copier de l'interface)."""
-        ok, url = self._online_call(self._online.login)
+    def online_login(self, with_code=False):
+        """Ouvre la page de connexion Discord ; renvoie aussi l'URL (bouton Copier de l'interface).
+        Sans `with_code`, rien n'est a recopier : le navigateur revient tout seul vers DodoTopia."""
+        ok, url = self._online_call(self._online.login, bool(with_code))
         return {"url": url if ok else None, "state": self.get_state()}
 
     def online_login_cancel(self):

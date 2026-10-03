@@ -243,3 +243,75 @@ def test_delete_account_anonymises_approved_songs(client, user_token, other_toke
     # le même Discord se reconnecte : nouveau compte, vierge
     token, user = login(client, "111")
     assert user["id"] not in (1,) and client.get("/api/me", headers=bearer(token)).status_code == 200
+
+
+# ---------------------------------------------------------------- connexion sans code (retour local)
+def sha256_hex(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _start_loopback(client, port=54321, verifier="v1"):
+    r = client.post("/api/auth/start", json={"verifier_hash": sha256_hex(verifier), "loopback_port": port})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["mode"] == "loopback" and body["user_code"] is None
+    return body["login_id"]
+
+
+def test_loopback_flow_needs_no_code_and_delivers_only_with_the_grant(client):
+    login_id = _start_loopback(client)
+    # la page de départ part tout de suite chez Discord : rien à recopier
+    r = client.get(f"/auth/discord/start?login_id={login_id}")
+    assert r.status_code == 303 and urlparse(r.headers["location"]).netloc == "discord.com"
+    state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+
+    r = client.get(f"/auth/discord/callback?code=111&state={state}")
+    loc = urlparse(r.headers["location"])
+    assert r.status_code == 302 and loc.scheme == "http" and loc.netloc == "127.0.0.1:54321"
+    assert loc.path == "/dodotopia/login"
+    q = parse_qs(loc.query)
+    assert q["login_id"] == [login_id] and len(q["grant"][0]) >= 32
+
+    # sans le bon (celui qui a créé le ticket mais n'a pas reçu le retour local) : toujours « en attente »
+    assert _poll(client, login_id, "v1").json() == {"status": "pending"}
+    r = client.post("/api/auth/poll", json={"login_id": login_id, "verifier": "v1", "grant": "faux"})
+    assert r.status_code == 403 and r.json()["detail"]["code"] == "bad_grant"
+    r = client.post("/api/auth/poll", json={"login_id": login_id, "verifier": "autre", "grant": q["grant"][0]})
+    assert r.status_code == 403 and r.json()["detail"]["code"] == "bad_verifier"
+
+    r = client.post("/api/auth/poll", json={"login_id": login_id, "verifier": "v1", "grant": q["grant"][0]})
+    body = r.json()
+    assert body["status"] == "ok" and body["user"]["discord_id"] == "111"
+    assert client.get("/api/me", headers=bearer(body["token"])).status_code == 200
+    r = client.post("/api/auth/poll", json={"login_id": login_id, "verifier": "v1", "grant": q["grant"][0]})
+    assert r.status_code == 410                                    # livré une seule fois
+
+
+def test_loopback_ticket_cannot_use_the_code_form_and_port_is_bounded(client, settings):
+    login_id = _start_loopback(client)
+    assert _confirm(client, login_id, "").status_code == 404         # pas de code : la page de saisie est fermée
+    assert _confirm(client, login_id, "AAAAA").status_code == 404
+    for port in (80, 1023, 70000, 0):
+        r = client.post("/api/auth/start", json={"verifier_hash": sha256_hex("v"), "loopback_port": port})
+        assert r.status_code == 422 or r.json().get("mode") == "code", port
+    # le bon n'est jamais stocké en clair
+    conn = db.connect(settings)
+    try:
+        r = client.get(f"/auth/discord/start?login_id={login_id}")
+        state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+        loc = client.get(f"/auth/discord/callback?code=111&state={state}").headers["location"]
+        grant = parse_qs(urlparse(loc).query)["grant"][0]
+        row = conn.execute("SELECT grant_hash, user_code FROM login_tickets WHERE id=?", (login_id,)).fetchone()
+        assert row["grant_hash"] == sha256_hex(grant) and grant not in str(dict(row)) and row["user_code"] is None
+    finally:
+        conn.close()
+
+
+def test_code_flow_is_unchanged_and_ignores_a_grant(client):
+    login_id, user_code = _start(client)
+    assert client.get(f"/auth/discord/start?login_id={login_id}").status_code == 200      # page du code
+    r = _confirm(client, login_id, user_code)
+    state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+    r = client.get(f"/auth/discord/callback?code=111&state={state}")
+    assert r.headers["location"] == "/auth/discord/done"
+    assert _poll(client, login_id, "v1").json()["status"] == "ok"
