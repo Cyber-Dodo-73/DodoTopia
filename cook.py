@@ -31,6 +31,8 @@ STILL = 6           # une bulle qui bouge de plus de STILL px entre deux lecture
 CAM_WINDOW = 4.5    # la camera ne bouge que dans les secondes qui suivent un clic sur une bulle (le personnage
                     # marche) : hors de cette fenetre, une bulle lointaine est une AUTRE cuisiniere, pas un glissement
 RING_CLICKS_MAX = 40 # clics de suite sur le meme anneau (vert ou rouge) avant de declarer que le feu ne se regle pas
+READY_AGAIN = 3.0   # secondes : des gants recliques au meme endroit dans ce delai sont le meme plat (clic pas pris)
+READY_SOFT = 0.56   # score « gants » qui suffit a la relecture juste avant le clic (le seuil normal est cook.match)
 RING_PENDING = 1.5  # secondes au plus a attendre qu'un anneau vert vu une fois devienne stable avant de faire autre chose
 CAM_SETTLE = 3.0    # secondes de recherche large forcee apres un clic sur une autre cuisiniere (la camera bouge)
 WIDE_EVERY = 0.7    # secondes entre deux recherches larges quand toutes les bulles sont suivies
@@ -147,7 +149,9 @@ def warm_masks(im):
     """[(urgence, masque)] des anneaux jaune (1), orange (2) et rouge (3). Releve en jeu (2026-10-04,
     proprietaire) : l'anneau de la spatule passe du vert au jaune, a l'orange puis au rouge tant que le feu n'est
     pas regle (clic pas pris a temps, personnage occupe a ramasser un plat...) ; plus il est rouge, plus c'est
-    urgent. Les couleurs exactes n'ont pas ete mesurees : seuils de couleurs vives, a ajuster sur capture."""
+    urgent. Le « rouge » est MESURE sur une capture du proprietaire : un rouge saumon (251, 130, 96), en arc
+    (il ne reste qu'une part de l'anneau), entoure d'un halo brun-orange (149, 95, 60) qui, lui, n'est pas pris.
+    Le jaune et l'orange ne sont pas mesures : seuils de couleurs vives, a ajuster sur capture."""
     from PIL import ImageChops
     r, g, b = im.split()
 
@@ -156,24 +160,100 @@ def warm_masks(im):
         for p in parts[1:]:
             m = ImageChops.darker(m, p)
         return m
-    return [(1, both(r.point(_lut(lo=205)), g.point(_lut(lo=175)), b.point(_lut(hi=120)))),
-            (2, both(r.point(_lut(lo=215)), g.point(_lut(lo=104, hi=176)), b.point(_lut(hi=110)))),
-            (3, both(r.point(_lut(lo=195)), g.point(_lut(hi=105)), b.point(_lut(hi=105))))]
+    red = ImageChops.lighter(both(r.point(_lut(lo=215)), g.point(_lut(lo=89, hi=151)), b.point(_lut(lo=55, hi=135))),
+                             both(r.point(_lut(lo=195)), g.point(_lut(hi=90)), b.point(_lut(hi=105))))
+    return [(1, both(r.point(_lut(lo=205)), g.point(_lut(lo=190)), b.point(_lut(hi=120)))),
+            (2, both(r.point(_lut(lo=220)), g.point(_lut(lo=150, hi=191)), b.point(_lut(hi=110)))),
+            (3, red)]
+
+
+def _fit_circle(pts):
+    """Cercle des moindres carres (Kasa) passant au mieux par `pts` : (cx, cy, rayon) ou None."""
+    n = len(pts)
+    if n < 12:
+        return None
+    mx = sum(p[0] for p in pts) / n
+    my = sum(p[1] for p in pts) / n
+    suu = suv = svv = suuu = svvv = suvv = svuu = 0.0
+    for x, y in pts:
+        u, v = x - mx, y - my
+        suu += u * u
+        suv += u * v
+        svv += v * v
+        suuu += u * u * u
+        svvv += v * v * v
+        suvv += u * v * v
+        svuu += v * u * u
+    det = suu * svv - suv * suv
+    if abs(det) < 1e-6:
+        return None
+    bu, bv = 0.5 * (suuu + suvv), 0.5 * (svvv + svuu)
+    uc, vc = (bu * svv - bv * suv) / det, (bv * suu - bu * suv) / det
+    return mx + uc, my + vc, (uc * uc + vc * vc + (suu + svv) / n) ** 0.5
+
+
+def find_arcs(gm, need):
+    """Arcs d'anneau d'un masque (image « L » 0/255) : liste de (cx, cy, pixels), (cx, cy) etant le CENTRE du
+    cercle, donc de la bulle. Un anneau chaud n'est plus entier (il se vide avec le temps) : on ne peut pas exiger
+    une boite carree comme find_rings. On regroupe les pixels sur la grille de CELL px, puis on garde les groupes
+    dont les pixels tiennent sur un cercle du rayon d'un anneau (a 12 % pres pour 80 % d'entre eux). Une tache
+    pleine (flammes, plat orange) ne tient pas sur un cercle."""
+    W, H = gm.size
+    gw, gh = max(1, W // CELL), max(1, H // CELL)
+    small = gm.resize((gw, gh), 4).point(lambda v: 255 if v >= 16 else 0)
+    if not small.getbbox():
+        return []
+    px, full = small.load(), gm.load()
+    seen, out = set(), []
+    for y0 in range(gh):
+        for x0 in range(gw):
+            if not px[x0, y0] or (x0, y0) in seen:
+                continue
+            stack, cells = [(x0, y0)], []
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                cells.append((x, y))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < gw and 0 <= ny < gh and (nx, ny) not in seen and px[nx, ny]:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+            pts = [(x, y) for cx, cy in cells for y in range(cy * CELL, min(H, (cy + 1) * CELL))
+                   for x in range(cx * CELL, min(W, (cx + 1) * CELL)) if full[x, y]]
+            if len(pts) < need:
+                continue
+            fit = _fit_circle(pts[::max(1, len(pts) // 1500)])
+            if fit is None:
+                continue
+            cx, cy, rad = fit
+            if not (RING_MIN / 2.0 - 4 <= rad <= RING_MAX / 2.0 + 4):
+                continue
+            tol = max(3.0, 0.12 * rad)
+            good = sum(1 for x, y in pts if abs(((x - cx) ** 2 + (y - cy) ** 2) ** 0.5 - rad) <= tol)
+            if good < 0.8 * len(pts):
+                continue
+            out.append((int(round(cx)), int(round(cy)), len(pts)))
+    return out
 
 
 def ring_read(im, ring_color=None, warm=True, need=60):
-    """(pixels, urgence, masque) de l'anneau de la spatule dans `im` ; urgence -1 s'il n'y en a pas, sinon 0 (vert)
-    a 3 (rouge). Le vert se compte comme avant. Les couleurs chaudes doivent en plus avoir la FORME d'un anneau
-    (find_rings) : des flammes ou un plat orange pres de la bulle ne sont pas une spatule a cliquer."""
+    """(pixels, urgence, masque, centre) de l'anneau de la spatule dans `im` ; urgence -1 s'il n'y en a pas, sinon
+    0 (vert) a 3 (rouge). Le vert se compte comme avant (centre None). Les couleurs chaudes doivent former un arc
+    de cercle (find_arcs) : `centre` est alors le centre de la bulle dans `im`."""
     gm = green_mask(im, ring_color)
     n = count(gm)
-    level, mask = (0 if n >= need else -1), gm
+    level, mask, centre = (0 if n >= need else -1), gm, None
     if warm:
         for lvl, m in warm_masks(im):
-            k = count(m)
-            if k >= need and find_rings(m, need):
-                n, level, mask = max(n, k), lvl, m
-    return n, level, mask
+            if count(m) < need:
+                continue
+            arcs = find_arcs(m, need)
+            if arcs:
+                cx, cy, k = max(arcs, key=lambda t: t[2])
+                n, level, mask, centre = max(n, k), lvl, m, (cx, cy)
+    return n, level, mask, centre
 
 
 def find_rings(gm, need):
@@ -785,7 +865,7 @@ class Cooker(MouseBot):
         last_neutral = time.perf_counter()
         prev, prev_at = [], 0.0          # lecture precedente (stabilite des bulles)
         ring_pos, ring_at, ring_streak = None, 0.0, 0
-        ready_at = 0.0
+        ready_at, ready_pos = 0.0, None
         pend_at = 0.0                    # anneau vert vu mais pas encore stable : depuis quand
         spat_at, spat_seen = 0.0, 0.0    # spatule sans anneau : debut de l'apparition, derniere lecture
         try:
@@ -890,20 +970,29 @@ class Cooker(MouseBot):
                 self.phase = "récupération"
                 b = d.get("burner")
                 self._acted(b)
-                if not self._click(*d["pos"], delay=0.6, confirm=lambda: self._still(d["pos"], "ready")):
+                # Releve en jeu (2026-10-04) : le jeu ne prend pas toujours le clic sur les gants ; la bulle reste et
+                # il fallait recliquer, ce qui comptait deux plats. Le clic est donc plus pose (survol et appui deux
+                # fois plus longs), et un re-clic au meme endroit dans les READY_AGAIN secondes est le MEME plat.
+                again = ready_pos is not None and near(d["pos"], ready_pos, 40) and now - ready_at < READY_AGAIN
+                if not self._click(*d["pos"], delay=0.6, slow=2.0, confirm=lambda: self._still(d["pos"], "ready")):
                     return
                 if self._click_skipped:
                     self.log(f"bulle « récupérer » disparue avant le clic en {d['pos'][0]},{d['pos'][1]} : pas de clic")
                     prev = []
                     continue
                 ready_at = last_action = time.perf_counter()
+                ready_pos = d["pos"]
+                who = f"bulle {b.index}" if b is not None else "bulle sans cuisinière suivie"
+                if again:
+                    self.log(f"{who} : gants recliqués en {d['pos'][0]},{d['pos'][1]} (le premier clic n'avait pas pris)")
+                    self.on_change()
+                    continue
                 self.dishes += 1
                 if b is not None:
                     b.dishes += 1
                     b.clicks = 0
                     b.launched = b.fired = 0.0
                     b.collected = ready_at
-                who = f"bulle {b.index}" if b is not None else "bulle sans cuisinière suivie"
                 self.log(f"{who} : plat récupéré en {d['pos'][0]},{d['pos'][1]} ({self.dishes} en tout)")
                 self.on_change()
                 continue
@@ -1298,7 +1387,7 @@ class Cooker(MouseBot):
                 ring = im.crop((gx - RING, gy - RING, gx + RING, gy + RING))
             level = -1
             if ring is not None:
-                green, level, _ = ring_read(ring, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))
+                green, level, _, _ = ring_read(ring, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))
             if level >= 0:
                 state = "spatula"
                 scores["urgence"] = level
@@ -1360,7 +1449,7 @@ class Cooker(MouseBot):
             ring = grab((x - RING, y - RING, x + RING, y + RING))
         green, level = 0, -1
         if ring is not None:
-            green, level, _ = ring_read(ring, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))
+            green, level, _, _ = ring_read(ring, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))
         det["scores"]["vert"] = green
         if level >= 0:
             det["state"] = "spatula"
@@ -1403,7 +1492,7 @@ class Cooker(MouseBot):
         need = int(c.get("green_px", 60))
         found = [(cx, cy, n, 0) for cx, cy, n in find_rings(green_mask(im, c.get("ring_color")), need)]
         if c.get("red_ring", True):                      # anneau passe au jaune, a l'orange ou au rouge
-            found += [(cx, cy, n, lvl) for lvl, m in warm_masks(im) for cx, cy, n in find_rings(m, need)]
+            found += [(cx, cy, n, lvl) for lvl, m in warm_masks(im) for cx, cy, n in find_arcs(m, need)]
         for cx, cy, n, lvl in found:
             pos = (rect[0] + cx, rect[1] + cy)
             near = next((d for d in out if (pos[0] - d["pos"][0]) ** 2 + (pos[1] - d["pos"][1]) ** 2 < SEP * SEP), None)
@@ -1491,7 +1580,12 @@ class Cooker(MouseBot):
                     return True
                 return ring_read(part, c.get("ring_color"), c.get("red_ring", True), int(c.get("green_px", 60)))[1] >= 0
             det = self._scan_local(Burner(0, pos))
-            return det is not None and det["state"] == state
+            if det is None:
+                return False
+            if state == "ready":
+                # tolerant : un clic de trop sur des gants ne casse rien, un plat pret non ramasse bloque la cuisiniere
+                return det["state"] == "ready" or float(det["scores"].get("ready", 0)) >= READY_SOFT
+            return det["state"] == state
         except Exception:  # noqa - la relecture ne doit jamais arreter la cuisine
             return True
 
@@ -1516,10 +1610,13 @@ class Cooker(MouseBot):
                 part, px, py = grab(box), box[0], box[1]
             if part is None:
                 return None
-            green, level, gm = ring_read(part, c.get("ring_color"), c.get("red_ring", True), need)
+            green, level, gm, centre = ring_read(part, c.get("ring_color"), c.get("red_ring", True), need)
             bb = gm.getbbox()
             if level < 0 or not bb:
                 return None
+            if centre is not None:                       # arc chaud : le centre du cercle, pas celui de l'arc
+                x, y = px + centre[0], py + centre[1]
+                continue
             x, y = px + (bb[0] + bb[2]) // 2, py + (bb[1] + bb[3]) // 2
         return {"pos": (x, y), "state": "spatula", "scores": {"vert": green, "urgence": level}}
 
