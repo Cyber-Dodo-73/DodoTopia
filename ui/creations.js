@@ -324,14 +324,28 @@ try{
 const ST = {data: null, parts: [], title: '', timer: null, seq: 0, n: 0, sel: null, tool: 'select', pps: 0, scroll: 0,
   report: null, ok: false, error: '',
   au: {ctx: null, out: null, bus: null, notes: [], kinds: [], pos: 0, base: 0, idx: 0, playing: false, timer: null}};
-const ST_HEAD_W = 190, ST_MIN = 0.5, ST_MAX_W = 16000, ST_LANE_H = 52;
+const ST_HEAD_W = 230, ST_MIN = 0.5, ST_MAX_W = 16000, ST_LANE_H = 52;
 const ST_FAMILY = {recorder: 'wind', xiao: 'wind', ocarina: 'wind', conch: 'wind', saxophone: 'reed', bagpipe: 'reed', concertina: 'reed',
   violin: 'bow', cello: 'bow', 'wooden-bass': 'bow'};
 function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts}; }
 function stDur(){ return (ST.data && ST.data.duration) || 1; }
 function stEnd(p){ return p.to == null ? stDur() : p.to; }
 function stTrackName(tr){ return tr.name || t('creations.studio.track', {n: tr.index + 1}); }
-function stPartsOf(index){ return ST.parts.filter(p => p.track === index).sort((a, b) => a.from - b.from); }
+// Une piste peut être doublée : chaque « couche » (layer) est une ligne de plus qui rejoue la même piste avec ses
+// propres passages et instruments. C'est ainsi que plusieurs instruments jouent le même passage.
+function stPartsOf(index, layer){ return ST.parts.filter(p => p.track === index && (p.layer || 0) === (layer || 0)).sort((a, b) => a.from - b.from); }
+function stLayers(index){ return [...new Set(ST.parts.filter(p => p.track === index).map(p => p.layer || 0).concat(0))].sort((a, b) => a - b); }
+function stAddLayer(index){
+  const used = ST.parts.filter(p => p.track === index).map(p => p.instrument);
+  const inst = ST.data.instruments.find(i => i.available && !used.includes(i.id)) || ST.data.instruments.find(i => i.available);
+  const p = {id: 'p' + index + '_' + (++ST.n), track: index, layer: Math.max(...stLayers(index)) + 1, instrument: inst.id, octave: 0, on: true, from: 0, to: stDur()};
+  ST.parts.push(p);
+  ST.sel = p.id;
+}
+function stDelLayer(index, layer){
+  ST.parts = ST.parts.filter(p => !(p.track === index && (p.layer || 0) === layer));
+  if(!ST.parts.some(p => p.id === ST.sel)) ST.sel = null;
+}
 function stInst(id){ return ST.data.instruments.find(i => i.id === id); }
 function stHue(id){ return (Math.max(0, ST.data.instruments.findIndex(i => i.id === id)) * 47 + 28) % 360; }
 function stEditorOpen(){ return !!(PANEL && PANEL.render === stHtml); }
@@ -339,10 +353,10 @@ function stEditorOpen(){ return !!(PANEL && PANEL.render === stHtml); }
 function stInspHtml(){
   const d = ST.data, p = ST.parts.find(x => x.id === ST.sel);
   if(!p) return `<p class="hint left">${esc(t('creations.studio.cut_hint'))}</p>`;
-  const tr = d.tracks.find(x => x.index === p.track), first = stPartsOf(p.track)[0] === p;
+  const tr = d.tracks.find(x => x.index === p.track), first = stPartsOf(p.track, p.layer)[0] === p;
   const opts = d.instruments.map(i => `<option value="${esc(i.id)}"${i.id === p.instrument ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
   const octs = [-2, -1, 0, 1, 2].map(o => `<option value="${o}"${o === (p.octave || 0) ? ' selected' : ''}>${o > 0 ? '+' + o : o}</option>`).join('');
-  return `<div class="studio__sel"><b>${esc(stTrackName(tr))}</b><span>${esc(crDur(p.from))} → ${esc(crDur(stEnd(p)))}</span><span class="studio__cov" id="stSelCov"></span></div>
+  return `<div class="studio__sel"><b>${esc(stTrackName(tr))}${p.layer ? ' · ' + (p.layer + 1) : ''}</b><span>${esc(crDur(p.from))} → ${esc(crDur(stEnd(p)))}</span><span class="studio__cov" id="stSelCov"></span></div>
       <label class="field"><span class="field__label">${esc(t('creations.studio.instrument'))}</span><select class="select" data-f="instrument">${opts}</select></label>
       <label class="field"><span class="field__label">${esc(t('creations.studio.octave'))}</span><select class="select" data-f="octave">${octs}</select></label>
       <label class="switch switch--inline"><input type="checkbox" data-f="clip_on"${p.on ? ' checked' : ''}><span class="switch__track"></span><span>${esc(t('creations.studio.clip_on'))}</span></label>
@@ -353,14 +367,17 @@ function stHtml(){
   const d = ST.data;
   if(!d) return '';
   const cut = ST.tool === 'cut';
-  const rows = d.tracks.map(tr => {
-    const parts = stPartsOf(tr.index), on = parts.some(p => p.on);
+  const rows = d.tracks.map(tr => stLayers(tr.index).map(layer => {
+    const parts = stPartsOf(tr.index, layer), on = parts.some(p => p.on);
     const clips = parts.map((p, i) => `<div class="studio__clip${p.on ? '' : ' is-off'}${p.id === ST.sel ? ' is-sel' : ''}" data-clip="${esc(p.id)}" role="button" tabindex="0">
           <span class="studio__tag">${esc((stInst(p.instrument) || {name: p.instrument}).name)}${p.octave ? ' ' + (p.octave > 0 ? '+' : '') + p.octave : ''}</span>${i ? `<i class="studio__grip" data-grip="${esc(p.id)}"></i>` : ''}</div>`).join('');
-    return `<div class="studio__row" data-track="${tr.index}">
-        <div class="studio__th"><label class="switch switch--inline"><input type="checkbox" data-f="on"${on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label></div>
+    const more = layer
+      ? `<button class="iconbtn iconbtn--sm" type="button" data-layer-del title="${esc(t('creations.studio.layer_del'))}" aria-label="${esc(t('creations.studio.layer_del'))}">${icon('trash')}</button>`
+      : `<button class="iconbtn iconbtn--sm" type="button" data-layer-add title="${esc(t('creations.studio.layer_add'))}" aria-label="${esc(t('creations.studio.layer_add'))}">${icon('copy')}</button>`;
+    return `<div class="studio__row${layer ? ' studio__row--layer' : ''}" data-track="${tr.index}" data-layer="${layer}">
+        <div class="studio__th"><label class="switch switch--inline"><input type="checkbox" data-f="on"${on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}${layer ? ' · ' + (layer + 1) : ''}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label>${more}</div>
         <div class="studio__lane"><canvas height="${ST_LANE_H}"></canvas>${clips}</div></div>`;
-  }).join('');
+  }).join('')).join('');
   return `<div class="studio">
       <div class="studio__top">
         <label class="field studio__name"><span class="field__label">${esc(t('creations.studio.name'))}</span>
@@ -515,9 +532,9 @@ function stCheck(){
 
 // ---- passages
 // coupe le passage de la piste qui contient l'instant `at` (une demi-seconde au moins de chaque côté)
-function stCut(index, at){
+function stCut(index, layer, at){
   at = Math.round(at * 100) / 100;
-  const p = stPartsOf(index).find(x => at > x.from && at < stEnd(x));
+  const p = stPartsOf(index, layer).find(x => at > x.from && at < stEnd(x));
   if(!p) return null;
   const end = stEnd(p);
   if(at - p.from < ST_MIN || end - at < ST_MIN) return null;
@@ -529,7 +546,7 @@ function stCut(index, at){
 function stMerge(id){
   const p = ST.parts.find(x => x.id === id);
   if(!p) return;
-  const list = stPartsOf(p.track), prev = list[list.indexOf(p) - 1];
+  const list = stPartsOf(p.track, p.layer), prev = list[list.indexOf(p) - 1];
   if(!prev) return;
   prev.to = p.to;
   ST.parts.splice(ST.parts.indexOf(p), 1);
@@ -538,8 +555,8 @@ function stMerge(id){
 function stEdited(){ refreshPanel(); stCheck(); }
 
 // ---- mise en place : largeurs, graduations, notes et passages suivent l'échelle ST.pps (pixels par seconde)
-function stDraw(canvas, tr, W){
-  const g = canvas.getContext('2d'), parts = stPartsOf(tr.index);
+function stDraw(canvas, tr, W, layer){
+  const g = canvas.getContext('2d'), parts = stPartsOf(tr.index, layer);
   const lo = tr.low == null ? 48 : tr.low, span = Math.max(12, (tr.high == null ? 84 : tr.high) - lo);
   canvas.width = W;
   g.clearRect(0, 0, W, ST_LANE_H);
@@ -576,7 +593,7 @@ function stLayout(){
   ed.querySelectorAll('.studio__row[data-track]').forEach(row => {
     const tr = ST.data.tracks.find(x => x.index === Number(row.dataset.track)), lane = row.querySelector('.studio__lane');
     lane.style.width = W + 'px';
-    stDraw(lane.querySelector('canvas'), tr, W);
+    stDraw(lane.querySelector('canvas'), tr, W, Number(row.dataset.layer));
     lane.querySelectorAll('.studio__clip').forEach(el => { const p = ST.parts.find(x => x.id === el.dataset.clip); if(p) stPlace(el, p); });
   });
   $('stHead').style.height = ed.scrollHeight + 'px';
@@ -604,13 +621,16 @@ function stWire(box){
     ruler.onpointerup = ruler.onpointercancel = () => { ruler.onpointermove = null; };
   };
   box.querySelectorAll('.studio__row[data-track]').forEach(row => {
-    const index = Number(row.dataset.track), lane = row.querySelector('.studio__lane');
+    const index = Number(row.dataset.track), layer = Number(row.dataset.layer), lane = row.querySelector('.studio__lane');
     const sw = row.querySelector('[data-f="on"]');
-    if(sw) sw.onchange = () => { stPartsOf(index).forEach(p => { p.on = sw.checked; }); stEdited(); };
+    if(sw) sw.onchange = () => { stPartsOf(index, layer).forEach(p => { p.on = sw.checked; }); stEdited(); };
+    const add = row.querySelector('[data-layer-add]'), del = row.querySelector('[data-layer-del]');
+    if(add) add.onclick = () => { stAddLayer(index); stEdited(); };
+    if(del) del.onclick = () => { stDelLayer(index, layer); stEdited(); };
     lane.querySelectorAll('.studio__clip').forEach(el => {
       const pick = e => {
         if(ST.tool === 'cut' && e.clientX != null){
-          const q = stCut(index, laneTime(lane, e));
+          const q = stCut(index, layer, laneTime(lane, e));
           if(q){ ST.sel = q.id; stEdited(); }
           return;
         }
@@ -624,7 +644,7 @@ function stWire(box){
     lane.querySelectorAll('.studio__grip').forEach(grip => {
       grip.onclick = e => e.stopPropagation();
       grip.onpointerdown = e => {
-        const p = ST.parts.find(x => x.id === grip.dataset.grip), list = stPartsOf(index), prev = list[list.indexOf(p) - 1];
+        const p = ST.parts.find(x => x.id === grip.dataset.grip), list = stPartsOf(index, layer), prev = list[list.indexOf(p) - 1];
         if(!p || !prev) return;
         e.stopPropagation(); e.preventDefault();
         grip.setPointerCapture(e.pointerId);
@@ -648,7 +668,7 @@ function stWire(box){
     const on = insp.querySelector('[data-f="clip_on"]');
     if(on) on.onchange = () => { sel.on = on.checked; stEdited(); };
     const whole = insp.querySelector('[data-act="whole"]');
-    if(whole) whole.onclick = () => { stPartsOf(sel.track).forEach(p => { p.instrument = sel.instrument; p.octave = sel.octave; }); stEdited(); };
+    if(whole) whole.onclick = () => { stPartsOf(sel.track, sel.layer).forEach(p => { p.instrument = sel.instrument; p.octave = sel.octave; }); stEdited(); };
     const merge = insp.querySelector('[data-act="merge"]');
     if(merge) merge.onclick = () => { stMerge(sel.id); stEdited(); };
   }

@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "放大",
   "creations.studio.zoom_out": "缩小",
   "creations.studio.clip_on": "演奏这个段落",
-  "creations.studio.whole_track": "应用到整条音轨"
+  "creations.studio.whole_track": "应用到整条音轨",
+  "creations.studio.layer_add": "再添加一种乐器同时演奏这条音轨",
+  "creations.studio.layer_del": "移除这个额外的乐器"
 }

@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "拡大",
   "creations.studio.zoom_out": "縮小",
   "creations.studio.clip_on": "このパッセージを演奏する",
-  "creations.studio.whole_track": "トラック全体に適用"
+  "creations.studio.whole_track": "トラック全体に適用",
+  "creations.studio.layer_add": "このトラックを一緒に演奏する楽器を追加",
+  "creations.studio.layer_del": "この追加の楽器を外す"
 }

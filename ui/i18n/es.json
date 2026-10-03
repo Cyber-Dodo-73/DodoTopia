@@ -227,6 +227,8 @@
   "creations.studio.drums": "batería",
   "creations.studio.hint_html": "<p>Cada pasaje lo toca su instrumento, todos en la misma tonalidad. La reproducción se hace en el ordenador con un sonido sintetizado: las notas y el ritmo son los que tocará el juego, no el timbre. Haz clic en la regla de tiempo para reproducir desde ese punto (Espacio: reproducir o pausar). «Añadir a Heartopia» escribe la música en tus músicas del juego sin reemplazar ninguna.</p>",
   "creations.studio.instrument": "Instrumento",
+  "creations.studio.layer_add": "Añadir otro instrumento que también toque esta pista",
+  "creations.studio.layer_del": "Quitar este instrumento adicional",
   "creations.studio.merge": "Unir con el pasaje anterior",
   "creations.studio.name": "Título en el juego",
   "creations.studio.none": "Marca al menos una pista.",

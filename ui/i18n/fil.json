@@ -227,6 +227,8 @@
   "creations.studio.drums": "drums",
   "creations.studio.hint_html": "<p>Tinutugtog ang bawat bahagi ng sarili nitong instrumento, lahat sa iisang key. Sa computer nagaganap ang pag-play gamit ang synthesized na tunog: ang mga nota at ritmo ay ang tutugtugin ng laro, hindi ang timbre. I-click ang ruler ng oras para mag-play mula sa puntong iyon (Space: play o pause). Isinusulat ng “Idagdag sa Heartopia” ang musika sa mga musika mo sa laro nang walang pinapalitan.</p>",
   "creations.studio.instrument": "Instrumento",
+  "creations.studio.layer_add": "Magdagdag ng isa pang instrumentong tutugtog din ng track na ito",
+  "creations.studio.layer_del": "Alisin ang dagdag na instrumentong ito",
   "creations.studio.merge": "Isama sa naunang bahagi",
   "creations.studio.name": "Pamagat sa laro",
   "creations.studio.none": "Pumili ng kahit isang track.",

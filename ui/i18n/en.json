@@ -227,6 +227,8 @@
   "creations.studio.drums": "drums",
   "creations.studio.hint_html": "<p>Each passage is played by its instrument, all in the same key. Playback happens on this computer with a synthesised sound: the notes and rhythm are what the game will play, not the timbre. Click the time ruler to play from that point (Space: play or pause). “Add to Heartopia” writes the piece to your in-game music without replacing anything.</p>",
   "creations.studio.instrument": "Instrument",
+  "creations.studio.layer_add": "Add another instrument playing this track too",
+  "creations.studio.layer_del": "Remove this extra instrument",
   "creations.studio.merge": "Merge with the previous passage",
   "creations.studio.name": "Title in the game",
   "creations.studio.none": "Tick at least one track.",

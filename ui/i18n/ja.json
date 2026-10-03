@@ -227,6 +227,8 @@
   "creations.studio.drums": "ドラム",
   "creations.studio.hint_html": "<p>各パッセージはそれぞれの楽器で、すべて同じ調で演奏されます。再生はこのパソコン上の合成音で行われます。音程とリズムはゲームで鳴るものと同じですが、音色は異なります。時間ルーラーをクリックするとその位置から再生します（スペース：再生／一時停止）。「Heartopia に追加」は、既存の曲を置き換えずにゲームの曲に書き込みます。</p>",
   "creations.studio.instrument": "楽器",
+  "creations.studio.layer_add": "このトラックを一緒に演奏する楽器を追加",
+  "creations.studio.layer_del": "この追加の楽器を外す",
   "creations.studio.merge": "前の区間と結合",
   "creations.studio.name": "ゲーム内のタイトル",
   "creations.studio.none": "トラックを 1 つ以上選んでください。",

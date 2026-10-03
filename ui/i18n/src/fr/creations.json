@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "Zoomer",
   "creations.studio.zoom_out": "Dézoomer",
   "creations.studio.clip_on": "Jouer ce passage",
-  "creations.studio.whole_track": "Appliquer à toute la piste"
+  "creations.studio.whole_track": "Appliquer à toute la piste",
+  "creations.studio.layer_add": "Ajouter un instrument qui joue aussi cette piste",
+  "creations.studio.layer_del": "Retirer cet instrument en plus"
 }

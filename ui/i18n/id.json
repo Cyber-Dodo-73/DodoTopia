@@ -227,6 +227,8 @@
   "creations.studio.drums": "drum",
   "creations.studio.hint_html": "<p>Setiap bagian dimainkan oleh instrumennya, semuanya dalam nada dasar yang sama. Pemutaran dilakukan di komputer dengan suara sintetis: not dan ritmenya sama dengan yang akan dimainkan game, tetapi warna suaranya tidak. Klik penggaris waktu untuk memutar dari titik itu (Spasi: putar atau jeda). “Tambahkan ke Heartopia” menulis musik ke musik game-mu tanpa mengganti apa pun.</p>",
   "creations.studio.instrument": "Instrumen",
+  "creations.studio.layer_add": "Tambahkan instrumen lain yang juga memainkan trek ini",
+  "creations.studio.layer_del": "Hapus instrumen tambahan ini",
   "creations.studio.merge": "Gabungkan dengan bagian sebelumnya",
   "creations.studio.name": "Judul di dalam game",
   "creations.studio.none": "Centang setidaknya satu trek.",

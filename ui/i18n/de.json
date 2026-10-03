@@ -227,6 +227,8 @@
   "creations.studio.drums": "Schlagzeug",
   "creations.studio.hint_html": "<p>Jeder Abschnitt wird von seinem Instrument gespielt, alle in derselben Tonart. Die Wiedergabe läuft auf dem Computer mit einem synthetischen Klang: Noten und Rhythmus entsprechen dem, was das Spiel spielt, die Klangfarbe nicht. Klicke auf das Zeitlineal, um ab dieser Stelle abzuspielen (Leertaste: Wiedergabe oder Pause). „Zu Heartopia hinzufügen“ schreibt das Stück in deine Spielmusik, ohne etwas zu ersetzen.</p>",
   "creations.studio.instrument": "Instrument",
+  "creations.studio.layer_add": "Ein weiteres Instrument hinzufügen, das diese Spur mitspielt",
+  "creations.studio.layer_del": "Dieses zusätzliche Instrument entfernen",
   "creations.studio.merge": "Mit dem vorherigen Abschnitt zusammenführen",
   "creations.studio.name": "Titel im Spiel",
   "creations.studio.none": "Wähle mindestens eine Spur.",

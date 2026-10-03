@@ -777,3 +777,19 @@ def test_studio_passages_changent_d_instrument_en_cours_de_piste(tmp_path):
     parts.append({"id": "c", "track": 1, "instrument": "piano", "octave": 0, "from": 5.0, "to": 9.0})
     events2, report2 = studio.build(path, cfg, parts, insts, tables, UID, 4.2)
     assert report2["parts"][2]["played"] == 0 and len(events2) == len(events)
+
+
+def test_studio_deux_instruments_jouent_le_meme_passage(tmp_path):
+    """Une piste doublée dans l'éditeur : deux passages sur la même piste, au même moment, chacun son instrument."""
+    cfg = core.load_config()
+    insts = {i.id: i for i in instruments.build_instruments(cfg)}
+    tables = studio.learned_tables(cfg)
+    path = _midi_two_tracks(str(tmp_path / "duo.mid"))
+    one = [{"id": "a", "track": 0, "instrument": "piano", "octave": 0}]
+    two = one + [{"id": "b", "track": 0, "layer": 1, "instrument": "lyre", "octave": 0}]
+    ev1, _ = studio.build(path, cfg, one, insts, tables, UID, 4.2)
+    heard = []
+    ev2, rep = studio.build(path, cfg, two, insts, tables, UID, 4.2, heard=heard)
+    assert rep["instruments"] == [1, 17] and [p["id"] for p in rep["parts"]] == ["a", "b"]
+    assert len(ev2) == 2 * len(ev1) and {n[3] for n in heard} == {0, 1}
+    assert sorted({e[0] for e in ev2 if e[2] == 1 and e[3]}) == sorted({e[0] for e in ev2 if e[2] == 17 and e[3]})

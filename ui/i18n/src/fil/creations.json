@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "Palakihin",
   "creations.studio.zoom_out": "Paliitin",
   "creations.studio.clip_on": "Tugtugin ang bahaging ito",
-  "creations.studio.whole_track": "Ilapat sa buong track"
+  "creations.studio.whole_track": "Ilapat sa buong track",
+  "creations.studio.layer_add": "Magdagdag ng isa pang instrumentong tutugtog din ng track na ito",
+  "creations.studio.layer_del": "Alisin ang dagdag na instrumentong ito"
 }

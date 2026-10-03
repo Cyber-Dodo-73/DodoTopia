@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "Aproximar",
   "creations.studio.zoom_out": "Afastar",
   "creations.studio.clip_on": "Tocar este trecho",
-  "creations.studio.whole_track": "Aplicar à faixa inteira"
+  "creations.studio.whole_track": "Aplicar à faixa inteira",
+  "creations.studio.layer_add": "Adicionar outro instrumento tocando esta faixa também",
+  "creations.studio.layer_del": "Remover este instrumento extra"
 }

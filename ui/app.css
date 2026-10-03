@@ -1508,8 +1508,10 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .studio .iconbtn.is-on{background:var(--c-warn-soft);border-color:var(--c-warn);color:var(--c-warn)}
 .studio__ed{position:relative;overflow:auto;flex:0 1 auto;min-height:120px;border:2px solid var(--c-line);border-radius:var(--r-md);background:var(--c-surface-2)}
 .studio__row{display:flex;width:max-content;min-width:100%;border-top:1px solid var(--c-line)}
+.studio__th .switch{flex:1;min-width:0}
+.studio__row--layer{border-top-style:dashed}
 .studio__row--ruler{position:sticky;top:0;z-index:4;border-top:0;background:var(--c-surface)}
-.studio__th{position:sticky;left:0;z-index:3;flex:none;width:190px;box-sizing:border-box;padding:6px 10px;background:var(--c-surface);
+.studio__th{position:sticky;left:0;z-index:3;flex:none;width:230px;gap:6px;box-sizing:border-box;padding:6px 10px;background:var(--c-surface);
   border-right:1px solid var(--c-line);display:flex;align-items:center;overflow:hidden;font-size:var(--fs-sm)}
 .studio__th small{display:block;color:var(--c-text-2);font-weight:400}
 .studio__th b{display:block;max-width:108px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1527,7 +1529,7 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .studio__tag{position:absolute;left:0;top:0;max-width:100%;box-sizing:border-box;padding:0 6px;border-radius:0 0 6px 0;color:#fff;
   font-size:11px;line-height:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .studio__grip{position:absolute;left:-2px;top:0;bottom:0;width:9px;cursor:ew-resize;touch-action:none}
-.studio__playhead{position:absolute;top:0;left:190px;width:2px;margin-left:-1px;background:var(--c-danger,#c0392b);z-index:2;pointer-events:none}
+.studio__playhead{position:absolute;top:0;left:230px;width:2px;margin-left:-1px;background:var(--c-danger,#c0392b);z-index:2;pointer-events:none}
 .studio__insp{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;min-height:62px}
 .studio__insp .field{margin:0}
 .studio__sel{display:flex;flex-direction:column;min-width:150px;font-size:var(--fs-sm)}

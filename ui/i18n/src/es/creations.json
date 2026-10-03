@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "Acercar",
   "creations.studio.zoom_out": "Alejar",
   "creations.studio.clip_on": "Tocar este pasaje",
-  "creations.studio.whole_track": "Aplicar a toda la pista"
+  "creations.studio.whole_track": "Aplicar a toda la pista",
+  "creations.studio.layer_add": "Añadir otro instrumento que también toque esta pista",
+  "creations.studio.layer_del": "Quitar este instrumento adicional"
 }

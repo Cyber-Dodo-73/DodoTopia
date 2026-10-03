@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "Vergrößern",
   "creations.studio.zoom_out": "Verkleinern",
   "creations.studio.clip_on": "Diesen Abschnitt spielen",
-  "creations.studio.whole_track": "Auf die ganze Spur anwenden"
+  "creations.studio.whole_track": "Auf die ganze Spur anwenden",
+  "creations.studio.layer_add": "Ein weiteres Instrument hinzufügen, das diese Spur mitspielt",
+  "creations.studio.layer_del": "Dieses zusätzliche Instrument entfernen"
 }

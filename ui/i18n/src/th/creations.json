@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "ขยาย",
   "creations.studio.zoom_out": "ย่อ",
   "creations.studio.clip_on": "เล่นช่วงนี้",
-  "creations.studio.whole_track": "ใช้กับทั้งแทร็ก"
+  "creations.studio.whole_track": "ใช้กับทั้งแทร็ก",
+  "creations.studio.layer_add": "เพิ่มเครื่องดนตรีอีกชิ้นให้เล่นแทร็กนี้ด้วย",
+  "creations.studio.layer_del": "เอาเครื่องดนตรีที่เพิ่มนี้ออก"
 }

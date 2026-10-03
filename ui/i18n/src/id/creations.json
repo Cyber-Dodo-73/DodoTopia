@@ -133,5 +133,7 @@
   "creations.studio.zoom_in": "Perbesar",
   "creations.studio.zoom_out": "Perkecil",
   "creations.studio.clip_on": "Mainkan bagian ini",
-  "creations.studio.whole_track": "Terapkan ke seluruh trek"
+  "creations.studio.whole_track": "Terapkan ke seluruh trek",
+  "creations.studio.layer_add": "Tambahkan instrumen lain yang juga memainkan trek ini",
+  "creations.studio.layer_del": "Hapus instrumen tambahan ini"
 }
