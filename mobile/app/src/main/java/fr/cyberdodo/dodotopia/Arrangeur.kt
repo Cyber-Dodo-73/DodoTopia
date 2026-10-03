@@ -38,6 +38,8 @@ object Dispositions {
         Disposition("37", R.string.disp_37, R.string.disp_37_detail, intArrayOf(12, 12, 13), IntArray(37) { 48 + it }, false, "piano"),
         // Xylophone : huit lames sur une rangée, de do à do (relevé dans le jeu sur PC le 2026-10-03).
         Disposition("8", R.string.disp_8, R.string.disp_8_detail, intArrayOf(8), diatonique(60, 8), true, "xylophone"),
+        // Conque : huit notes de do à do sur deux rangées de quatre (relevé dans le jeu sur PC le 2026-10-03).
+        Disposition("8-2", R.string.disp_8_2, R.string.disp_8_2_detail, intArrayOf(4, 4), diatonique(60, 8), true, "conch"),
     )
 
     fun parId(id: String?): Disposition = toutes.firstOrNull { it.id == id } ?: toutes[0]
@@ -47,11 +49,11 @@ object Dispositions {
  * Les instruments du jeu que l'appli sait jouer (identifiants du catalogue PC, assets/instruments) et le clavier
  * de chacun. Choisir un instrument sélectionne son clavier et dit aux autres joueurs d'un salon ce qu'on tient :
  * la répartition des pistes de l'orchestre s'en sert. Le clavier reste modifiable à la main (le piano du jeu
- * existe en plusieurs tailles). Les percussions à frappes (conga, cajón) et la conque ne sont pas jouables ici.
+ * existe en plusieurs tailles). Les percussions à frappes (conga, cajón) ne sont pas jouables ici.
  */
 object Instruments {
-    private val CLAVIER = mapOf("piano" to "37", "harp" to "37", "xylophone" to "8")
-    private val SANS_CLAVIER = setOf("conga", "cajon", "conch")
+    private val CLAVIER = mapOf("piano" to "37", "harp" to "37", "xylophone" to "8", "conch" to "8-2")
+    private val SANS_CLAVIER = setOf("conga", "cajon")
 
     val jouables: List<String> = Serveur.INSTRUMENTS.filter { it !in SANS_CLAVIER }
 

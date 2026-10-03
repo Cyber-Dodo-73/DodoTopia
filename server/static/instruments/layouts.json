@@ -973,6 +973,79 @@
           "position": "KeyK"
         }
       ]
+    },
+    {
+      "layoutId": "conch-8",
+      "labelFr": "Conque : 8 notes, 2 rangées",
+      "descriptionFr": "Do à Do, une octave de la gamme de do majeur, sur deux rangées de quatre (Y U I O / H J K L).",
+      "noteCount": 8,
+      "rows": [
+        4,
+        4
+      ],
+      "autoTranspose": "key",
+      "keyboardReference": "QWERTY US",
+      "status": "owner-confirmed-in-game",
+      "sourceUrls": [],
+      "inGameLayoutMustMatch": true,
+      "notes": [
+        {
+          "midi": 60,
+          "note": "C4",
+          "solfege": "Do4",
+          "key": "y",
+          "position": "KeyY"
+        },
+        {
+          "midi": 62,
+          "note": "D4",
+          "solfege": "Ré4",
+          "key": "u",
+          "position": "KeyU"
+        },
+        {
+          "midi": 64,
+          "note": "E4",
+          "solfege": "Mi4",
+          "key": "i",
+          "position": "KeyI"
+        },
+        {
+          "midi": 65,
+          "note": "F4",
+          "solfege": "Fa4",
+          "key": "o",
+          "position": "KeyO"
+        },
+        {
+          "midi": 67,
+          "note": "G4",
+          "solfege": "Sol4",
+          "key": "h",
+          "position": "KeyH"
+        },
+        {
+          "midi": 69,
+          "note": "A4",
+          "solfege": "La4",
+          "key": "j",
+          "position": "KeyJ"
+        },
+        {
+          "midi": 71,
+          "note": "B4",
+          "solfege": "Si4",
+          "key": "k",
+          "position": "KeyK"
+        },
+        {
+          "midi": 72,
+          "note": "C5",
+          "solfege": "Do5",
+          "key": "l",
+          "position": "KeyL"
+        }
+      ]
     }
   ]
 }

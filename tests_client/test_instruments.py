@@ -72,6 +72,18 @@ def cat():
 
 
 @pytest.fixture
+def a_relever(monkeypatch):
+    """Tous les types du catalogue ont maintenant une disposition (la conque a été relevée dans le jeu le
+    2026-10-03). Les garde-fous d'un type « à relever » restent testés : cette fixture remet la conque dans cet
+    état le temps du test. À demander AVANT `cfg`, `player` ou `api_stub`, qui construisent les instruments."""
+    t = next(t for t in instruments.load_catalogue(ROOT).types if t.id == "conch")
+    monkeypatch.setattr(t, "supported_layout_ids", [])
+    monkeypatch.setattr(t, "default_layout_id", None)
+    monkeypatch.setattr(t, "mapping_status", "unknown")
+    return t.id
+
+
+@pytest.fixture
 def cfg():
     """Config utilisateur neuve (config.default.json copiée dans le dossier temporaire, puis migrée)."""
     return core.load_config()
@@ -145,7 +157,7 @@ def test_catalogue_provenance_sans_pretendre_avoir_teste(cat):
             assert t.mapping_status == "unknown"
             assert t.default_layout_id is None
     a_relever = {t.id for t in cat.types if not t.supported_layout_ids}
-    assert a_relever == {"conch"}
+    assert a_relever == set(), "plus aucun type à relever : xylophone et conque ont été relevés dans le jeu"
     percussifs = {t.id for t in cat.types if t.percussive}
     assert percussifs == {"conga", "cajon"}
 
@@ -153,7 +165,7 @@ def test_catalogue_provenance_sans_pretendre_avoir_teste(cat):
 # ================================================================ 2. dispositions
 def test_dispositions_quinze_quinze_vingt_deux_trente_sept(cat):
     attendu = {"lute-15-3row": 15, "diatonic-15-2row": 15, "diatonic-15-3row": 15,
-               "piano-diatonic-22": 22, "piano-chromatic-37": 37, "conga-8": 8, "xylophone-8": 8}
+               "piano-diatonic-22": 22, "piano-chromatic-37": 37, "conga-8": 8, "xylophone-8": 8, "conch-8": 8}
     assert set(cat.layouts) == set(attendu)
     for lid, n in attendu.items():
         lay = cat.layouts[lid]
@@ -309,7 +321,7 @@ def test_migration_retire_les_variantes_esthetiques(cat):
 
 
 # ================================================================ 5. profil inconnu
-def test_profil_inconnu_n_herite_jamais_du_piano(cfg):
+def test_profil_inconnu_n_herite_jamais_du_piano(a_relever, cfg):
     for ident in ("conch",):
         inst = inst_of(cfg, ident)
         assert inst is not None
@@ -324,7 +336,7 @@ def test_profil_inconnu_n_herite_jamais_du_piano(cfg):
         assert inst.keys != piano.keys, f"{ident} a hérité du mapping du piano"
 
 
-def test_profil_inconnu_ne_lance_pas_de_lecture(cfg, player, no_real_keys, tmp_path):
+def test_profil_inconnu_ne_lance_pas_de_lecture(a_relever, cfg, player, no_real_keys, tmp_path):
     add_song(player, "essai.mid")
     player.refresh_songs()
     ok, msg = player.set_instrument("conch")
@@ -336,7 +348,7 @@ def test_profil_inconnu_ne_lance_pas_de_lecture(cfg, player, no_real_keys, tmp_p
     assert no_real_keys == [], "des touches ont été envoyées avec un profil inconnu"
 
 
-def test_fit_notes_sur_profil_sans_touche_ne_devine_rien(cfg):
+def test_fit_notes_sur_profil_sans_touche_ne_devine_rien(a_relever, cfg):
     inst = inst_of(cfg, "conch")
     grouped = [(0.0, [(60, 0.5, 90)]), (0.5, [(62, 0.5, 90)])]
     events, info = core.fit_notes(grouped, inst, cfg)
@@ -604,7 +616,7 @@ def test_changement_d_instrument_refuse_pendant_la_lecture(cfg, player, no_real_
     assert cfg["instrument"] == "recorder"
 
 
-def test_next_instrument_ne_passe_que_sur_des_profils_prets(cfg, player):
+def test_next_instrument_ne_passe_que_sur_des_profils_prets(a_relever, cfg, player):
     assert player.set_instrument("piano")[0]
     vus = set()
     for _ in range(len(player.instruments) + 2):
@@ -762,7 +774,7 @@ def api_stub(cfg, no_real_keys):
     api._player.stop(join=True)
 
 
-def test_assistant_ne_devine_aucune_touche_pour_un_type_a_relever(api_stub):
+def test_assistant_ne_devine_aucune_touche_pour_un_type_a_relever(a_relever, api_stub):
     api, cfg = api_stub
     api.instrument_wizard_start("conch", "setup")
     w = api._wizard
@@ -990,7 +1002,7 @@ def test_une_vitesse_illisible_ne_fait_pas_mourir_le_fil(cfg):
 
 
 # ---- défaut 4 : sortie anticipée de _start (instrument non prêt armé par un salon)
-def test_un_instrument_non_pret_ne_fige_pas_le_lecteur_en_sync(cfg):
+def test_un_instrument_non_pret_ne_fige_pas_le_lecteur_en_sync(a_relever, cfg):
     p = core.Player(cfg, log=lambda m: None)
     ids = [i.id for i in p.instruments]
     p.inst_index = ids.index("conch")

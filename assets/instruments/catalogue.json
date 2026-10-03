@@ -687,9 +687,11 @@
       ],
       "category": "winds",
       "image": "instruments/conch.png",
-      "supportedLayoutIds": [],
-      "defaultLayoutId": null,
-      "mappingStatus": "unknown",
+      "supportedLayoutIds": [
+        "conch-8"
+      ],
+      "defaultLayoutId": "conch-8",
+      "mappingStatus": "owner-confirmed-in-game",
       "percussive": false,
       "previewProgram": 60,
       "polyphony": null,

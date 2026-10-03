@@ -27,7 +27,7 @@ object Orchestre {
         "lute" to LUTH, "recorder" to LUTH, "xiao" to LUTH, "concertina" to LUTH, "lyre" to LUTH, "violin" to LUTH,
         "cello" to LUTH, "saxophone" to LUTH, "steel-tongue-drum" to LUTH, "ocarina" to LUTH,
         "wooden-bass" to AIGU, "bagpipe" to AIGU, "mbira" to AIGU,
-        "xylophone" to Registre(60, 72),
+        "xylophone" to Registre(60, 72), "conch" to Registre(60, 72),
         "conga" to Registre(48, 84, true), "cajon" to Registre(60, 84, true),
     )
 

@@ -29,6 +29,8 @@
     <string name="disp_37">37 notes, piano complet</string>
     <string name="disp_8">8 notes, 1 rangée</string>
     <string name="disp_8_detail">Une rangée de 8 lames : xylophone</string>
+    <string name="disp_8_2">8 notes, 2 rangées</string>
+    <string name="disp_8_2_detail">Deux rangées de 4 touches : conque</string>
     <string name="instrument_titre">Instrument</string>
     <string name="instrument_aide">Choisis l\'instrument que tu tiens dans le jeu : son clavier est sélectionné ci-dessous, et c\'est lui qui est annoncé aux autres joueurs en salon. Chaque instrument a son propre calibrage.</string>
     <string name="barre_deplacer">Glisse cette barre si elle gêne</string>
