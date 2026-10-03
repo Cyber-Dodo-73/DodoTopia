@@ -30,6 +30,7 @@ class MouseBot:
     une frappe clavier arrete le module."""
 
     ACTIVE_STATES = ()
+    KEY_CONFIRM = 2.0          # secondes : deux frappes dans ce delai arretent, une frappe isolee est ignoree
 
     def _mouse_cfg(self):
         """Dictionnaire de reglages avec mouse_glide, glide_speed, click_delay."""
@@ -46,13 +47,22 @@ class MouseBot:
                 pass
 
     def on_key_event(self, event):
-        """Hook clavier global : toute frappe pendant l'action l'arrete (sauf raccourcis de l'appli)."""
+        """Hook clavier global : le clavier arrete l'action (sauf raccourcis de l'appli). Échap arrete tout de
+        suite ; une autre touche n'arrete que si une deuxieme frappe suit dans les KEY_CONFIRM secondes (une touche
+        maintenue se repete, donc arrete aussi). Releve en jeu (2026-10-04) : une frappe isolee (« g ») arrivait
+        sans que personne ne touche le clavier et coupait la cuisine ; une frappe seule est donc ignoree."""
         if self.state not in self.ACTIVE_STATES or event.event_type != "down":
             return
         name = (event.name or "").lower()
         if name in self._hotkey_names():
             return
-        # quelle touche : un arret « clavier touché » sans que personne ne tape vient d'un autre programme
+        # quelle touche : une frappe sans que personne ne tape vient d'un autre programme
+        now = time.perf_counter()
+        last, self._key_at = getattr(self, "_key_at", 0.0), now
+        if name not in ("esc", "escape", "échap") and not (last and now - last <= self.KEY_CONFIRM):
+            self.log(f"touche reçue : « {event.name} » (code {getattr(event, 'scan_code', '?')}) — frappe isolée, ignorée "
+                     f"(Échap, ou deux frappes en {self.KEY_CONFIRM:.0f} s, arrêtent)")
+            return
         self.log(f"touche reçue : « {event.name} » (code {getattr(event, 'scan_code', '?')})")
         self.stop("clavier touché")
 

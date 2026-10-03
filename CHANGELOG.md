@@ -5,6 +5,9 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
+## 2.2.3
+- **Cuisine et dessin** : une frappe isolée au clavier n'arrête plus l'action (une touche envoyée par un autre programme coupait la cuisine sans que personne ne touche le clavier). Échap arrête tout de suite ; une autre touche arrête si une deuxième frappe suit dans les 2 secondes. Le raccourci d'arrêt ne change pas.
+
 ## 2.2.2
 - **Modifier une musique dans le studio** : dans le menu d'une musique (Mes créations › Musiques), « Modifier dans le studio » la rouvre dans l'éditeur. Une musique faite au studio revient avec ses pistes, ses passages et ses instruments ; une musique enregistrée dans le jeu est découpée en une piste par joueur et par instrument, sans changer ses notes. Tu changes les instruments, tu coupes, tu doubles, puis « Remplacer cette musique » (l'original est sauvegardé) ou « Ajouter comme nouvelle musique ».
 - **Studio, batterie** : la piste de batterie d'un fichier MIDI est maintenant jouée à la conga (grosse caisse, caisse claire, charleston ramenés sur ses huit frappes) au lieu d'être laissée de côté. Elle est cochée d'office et s'entend dans la lecture de l'éditeur.
