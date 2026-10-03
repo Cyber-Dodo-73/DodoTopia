@@ -11,9 +11,10 @@ Format relevé le 2026-10-03 sur 24 fichiers (non chiffré, petit-boutiste) :
               enfoncée / 0 = relâchée · u32 touche · f32 valeur propre au joueur et à la séance (sens inconnu,
               recopiée telle quelle)
     fin       f32 durée totale (= instant du dernier événement)
-Touches du piano (instrument 1) : 10001-10022 = les 22 touches blanches de Do3 à Do6, 10201-10215 = les 15
-touches noires. Les autres instruments (15 touches numérotées à la suite) sont rendus en gamme de do majeur :
-c'est une approximation, seul le piano a été recoupé avec la disposition connue de DodoTopia.
+Numéros d'instrument et de touches : table `GAME_INSTRUMENTS`, lue le 2026-10-03 dans les données du jeu (table
+des types d'instrument du fichier de configuration « oversea »). Piano et harpe : 22 touches blanches à la suite
+puis 15 noires ; les autres : 15 ou 8 touches à la suite. Recoupé avec les enregistrements réels et à l'écoute
+par le propriétaire pour le piano, la harpe, le luth, la flûte à bec, la lyre, le concertina et le xylophone.
 
 Dépendances : mido (export / import MIDI), core.parse_midi pour lire un MIDI comme le lecteur."""
 import collections
@@ -40,6 +41,89 @@ PIANO_BLACK = [48 + 12 * o + s for o in range(3) for s in _BLACK]             # 
 _MIDI_TO_PIANO = {m: 10001 + i for i, m in enumerate(PIANO_WHITE)}
 _MIDI_TO_PIANO.update({m: 10201 + i for i, m in enumerate(PIANO_BLACK)})
 DIATONIC = [60 + 12 * o + s for o in range(3) for s in _WHITE]                # Do4 et au-dessus, gamme de do
+
+
+
+def _white_then_black(white, black, notes=37, low=48):
+    """Touches d'un clavier à 37 notes dans l'ordre des hauteurs : les blanches sont numérotées à partir de
+    `white`, les noires à partir de `black`."""
+    w = k = 0
+    out = []
+    for m in range(low, low + notes):
+        if m % 12 in _BLACK:
+            out.append(black + k)
+            k += 1
+        else:
+            out.append(white + w)
+            w += 1
+    return out
+
+
+def _row(first, count=15):
+    return list(range(first, first + count))
+
+
+# (numéro d'instrument du jeu, identifiant du catalogue DodoTopia, touches de la plus grave à la plus aiguë)
+GAME_INSTRUMENTS = (
+    (1, "piano", _white_then_black(10001, 10201)),
+    (2, "conga", _row(10031, 8)),
+    (3, "cajon", _row(10111, 8)),
+    (4, "xylophone", _row(10119, 8)),
+    (5, "steel-tongue-drum", _row(11161)),
+    (6, "harp", _white_then_black(11201, 11223)),
+    (11, "lute", _row(11001)),
+    (12, "wooden-bass", _row(10051)),
+    (13, "recorder", _row(10071)),
+    (14, "concertina", _row(10086)),
+    (15, "xiao", _row(11051)),
+    (16, "mbira", _row(11071)),
+    (17, "lyre", _row(11086)),
+    (18, "bagpipe", _row(11101)),
+    (19, "cello", _row(11121)),
+    (20, "violin", _row(11141)),
+    (21, "saxophone", _row(11176)),
+    (22, "conch", _row(11251, 8)),
+    (23, "ocarina", _row(11261)),
+)
+_TABLE = None
+
+
+def game_table():
+    """{identifiant du catalogue: {"type", "keys", "midis", "program", "name"}} pour les instruments dont la
+    disposition par défaut de DodoTopia a autant de notes que l'instrument du jeu (les notes viennent de cette
+    disposition, dans l'ordre des hauteurs). Calculé une fois ; {} si le catalogue est illisible."""
+    global _TABLE
+    if _TABLE is not None:
+        return _TABLE
+    table = {}
+    try:
+        import instruments
+        cat = instruments.load_catalogue()
+        types = {t.id: t for t in cat.types}
+        for kind, cat_id, keys in GAME_INSTRUMENTS:
+            t = types.get(cat_id)
+            layout = cat.layouts.get(t.default_layout_id) if t is not None and t.default_layout_id else None
+            if layout is None:
+                continue
+            midis = sorted(layout.bindings())
+            if len(midis) != len(keys):
+                continue            # ex. cajón : 8 pads dans le jeu, pas de disposition équivalente ici
+            table[cat_id] = {"type": kind, "keys": list(keys), "midis": midis, "program": int(t.preview_program or 0),
+                             "name": t.label_en or t.label_fr, "percussive": bool(t.percussive)}
+    except Exception:  # noqa - catalogue absent : on garde le piano en dur (key_to_midi)
+        table = {}
+    _TABLE = table
+    return table
+
+
+def _key_notes():
+    """{touche du jeu: (note MIDI, identifiant du catalogue)}."""
+    out = {}
+    for cat_id, t in game_table().items():
+        for key, midi in zip(t["keys"], t["midis"]):
+            out[key] = (midi, cat_id)
+    return out
+
 
 _NAME = re.compile(r"^(?P<name>.*)_(?P<stamp>\d{17})_(?P<ms>\d{1,9})\.bin$", re.IGNORECASE)
 
@@ -155,8 +239,11 @@ def build(events):
 
 # ---------------------------------------------------------------- touches <-> notes
 def key_to_midi(key, low_key=None):
-    """Note MIDI d'une touche du jeu. Piano : exact. Autres instruments : gamme de do à partir de la touche la
-    plus grave rencontrée (`low_key`), approximation."""
+    """Note MIDI d'une touche du jeu d'après la table des instruments ; pour une touche hors table, gamme de do
+    à partir de la touche la plus grave rencontrée (`low_key`), approximation."""
+    hit = _key_notes().get(key)
+    if hit is not None:
+        return hit[0]
     if 10001 <= key <= 10022:
         return PIANO_WHITE[key - 10001]
     if 10201 <= key <= 10215:
@@ -188,8 +275,15 @@ def to_midi(rec, dest):
         mid.tracks.append(track)
         if n == 0:
             track.append(mido.MetaMessage("set_tempo", tempo=tempo, time=0))
-        track.append(mido.MetaMessage("track_name", name=f"Heartopia {inst}", time=0))
-        ch = channels[n % len(channels)]
+        # nom et timbre de la piste d'après l'instrument du jeu (reconnu à ses touches)
+        notes_of = _key_notes()
+        ids = collections.Counter(notes_of[e[4]][1] for e in evs if e[4] in notes_of)
+        info = game_table().get(ids.most_common(1)[0][0]) if ids else None
+        track.append(mido.MetaMessage("track_name", name=info["name"] if info else f"Heartopia {inst}", time=0))
+        percussion = bool(info and info["percussive"])
+        ch = 9 if percussion else channels[n % len(channels)]
+        if info and not percussion:
+            track.append(mido.Message("program_change", program=max(0, min(127, info["program"])), channel=ch, time=0))
         low = None if inst == PIANO else min(e[4] for e in evs)
         last, held = 0, set()
         for t, _, _, down, key, _ in evs:

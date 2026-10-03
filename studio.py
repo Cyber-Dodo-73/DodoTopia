@@ -6,7 +6,8 @@ de `sync.choose_common_extra`, comme en salon), puis chaque piste est ramenée s
 par `core.fit_notes`, le même code que la lecture dans le jeu. Le résultat est une suite d'événements au
 format de `game_music` (touche enfoncée / relâchée, numéro d'instrument du jeu, numéro de touche du jeu).
 
-Les numéros du jeu ne sont connus d'avance que pour le piano. Les autres instruments s'« apprennent » :
+Les numéros du jeu de tous les instruments à notes sont livrés (game_music.GAME_INSTRUMENTS, lus dans les données
+du jeu). Un instrument peut aussi s'« apprendre », ce qui remplace sa table livrée :
 `learn()` lit un enregistrement fait dans le jeu où toutes les touches d'un instrument ont été jouées, et en tire
 son numéro et la liste de ses touches, de la plus grave à la plus aiguë (hypothèse : le jeu numérote les touches
 dans l'ordre des hauteurs, comme pour les touches blanches du piano). Les tables apprises vivent dans
@@ -30,39 +31,18 @@ class StudioError(Exception):
     """Erreur lisible : instrument non appris, piste absente, aucune note jouable…"""
 
 
-def _white_then_black(first, notes=37, low=48):
-    """Touches d'un clavier à 37 notes numéroté comme la harpe du jeu : les 22 blanches à la suite, puis les 15
-    noires. Renvoie les numéros dans l'ordre des hauteurs (do grave -> do aigu)."""
-    whites = blacks = 0
-    out = []
-    for m in range(low, low + notes):
-        if m % 12 in (1, 3, 6, 8, 10):
-            out.append(first + 22 + blacks)
-            blacks += 1
-        else:
-            out.append(first + whites)
-            whites += 1
-    return out
-
-
-# Numéros du jeu relevés dans les enregistrements du propriétaire et identifiés par lui à l'écoute (2026-10-03,
-# musiques d'essai « Test instrument N ») : 6 = harpe, 11 = luth, 13 = flûte, 17 = lyre. Les 15 notes sont
-# numérotées à la suite. La harpe range ses blanches puis ses noires : les 21 touches d'un enregistrement réel
-# forment alors exactement une gamme de la majeur, alors qu'une numérotation chromatique donnait onze notes
-# différentes. `extra` absent : la valeur du joueur est reprise. Une table apprise remplace celle-ci.
-BUILTIN_TABLES = {
-    "harp": {"type": 6, "keys": _white_then_black(11201), "extra": 0.0},
-    "lute": {"type": 11, "keys": list(range(11001, 11016)), "extra": 0.0},
-    "recorder": {"type": 13, "keys": list(range(10071, 10086)), "extra": 0.0},
-    "lyre": {"type": 17, "keys": list(range(11086, 11101)), "extra": 0.0},
-}
+def builtin_tables():
+    """Tables livrées : tous les instruments à notes du jeu (game_music.GAME_INSTRUMENTS), avec la note MIDI de
+    chaque touche d'après la disposition par défaut de DodoTopia. Les percussions à frappes n'y sont pas."""
+    return {cat_id: {"type": t["type"], "keys": list(t["keys"]), "midis": list(t["midis"]), "extra": 0.0}
+            for cat_id, t in game_music.game_table().items() if not t["percussive"]}
 
 
 # ---------------------------------------------------------------- tables des instruments du jeu
 def learned_tables(cfg):
     node = cfg.get("creations") if isinstance(cfg.get("creations"), dict) else {}
     tables = node.get("game_instruments") if isinstance(node.get("game_instruments"), dict) else {}
-    out = {k: dict(v) for k, v in BUILTIN_TABLES.items()}
+    out = builtin_tables()
     for inst_id, t in tables.items():
         try:
             keys = [int(k) for k in t["keys"]]
@@ -85,6 +65,14 @@ def game_key_map(inst, tables, strict=True):
     """{note MIDI de l'instrument: (numéro d'instrument du jeu, numéro de touche du jeu)}."""
     notes = sorted(inst.bindings)
     t = tables.get(inst.id)
+    if t is not None and t.get("midis"):
+        # table livrée : chaque touche du jeu a sa note ; un profil qui n'utilise qu'une partie des notes passe aussi
+        by_note = dict(zip(t["midis"], t["keys"]))
+        if all(m in by_note for m in notes):
+            return {m: (t["type"], by_note[m]) for m in notes}
+        if strict:
+            raise StudioError(f"{inst.name} : des notes du profil n'existent pas sur l'instrument du jeu")
+        return {}
     if t is not None:
         if len(t["keys"]) != len(notes):
             if strict:

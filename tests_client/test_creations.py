@@ -437,6 +437,7 @@ def test_config_livree_sans_dossier_perso():
 import base64
 
 import game_music
+import instruments
 
 UID = 176436626679
 
@@ -491,7 +492,15 @@ def test_musique_format_aller_retour():
 
 def test_musique_touches_et_noms():
     assert [game_music.key_to_midi(k) for k in (10001, 10008, 10022, 10201, 10215)] == [48, 60, 84, 49, 82]
-    assert game_music.key_to_midi(11088, 11086) == 64                  # 3e touche d'un instrument à 15 notes
+    assert game_music.key_to_midi(12088, 12086) == 64                  # touche hors table : gamme de do depuis la plus grave
+    # table du jeu : lyre (17) et luth (11) do3-do5, basse en bois (12) do4-do6, harpe blanches puis noires, conque
+    assert [game_music.key_to_midi(k) for k in (11086, 11100, 11001, 10051, 10065)] == [48, 72, 48, 60, 84]
+    assert [game_music.key_to_midi(k) for k in (11201, 11223, 11202, 11222, 11237)] == [48, 49, 50, 84, 82]
+    assert [game_music.key_to_midi(k) for k in (10119, 10126, 11251, 11258)] == [60, 72, 60, 72]
+    table = game_music.game_table()
+    assert {t["type"] for t in table.values()} >= {1, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}
+    assert table["violin"]["type"] == 20 and table["cello"]["type"] == 19 and "cajon" not in table
+    assert len({k for _, _, keys in game_music.GAME_INSTRUMENTS for k in keys}) == sum(len(k) for _, _, k in game_music.GAME_INSTRUMENTS)
     info = game_music.parse_name("Young nd Beautiful_20260908221633739_223794.bin")
     assert info["name"] == "Young nd Beautiful" and info["ms"] == 223794 and info["created"]
     assert game_music.parse_name("notes.txt") is None
@@ -505,6 +514,8 @@ def test_musique_midi_dans_les_deux_sens(tmp_path):
     out = game_music.to_midi(game_music.parse(game_music.build(_record_events())), str(tmp_path / "x.mid"))
     notes = [m.note for tr in mido.MidiFile(out).tracks for m in tr if m.type == "note_on" and m.velocity]
     assert notes == [48, 49, 84]
+    programs = [m.program for tr in mido.MidiFile(out).tracks for m in tr if m.type == "program_change"]
+    assert programs == [instruments.load_catalogue().types[0].preview_program]      # timbre du piano
     ev = game_music.from_midi(_midi(str(tmp_path / "in.mid")), core.load_config(), UID, 4.2)
     assert all(e[1] == UID and e[2] == 1 and e[5] == pytest.approx(4.2) for e in ev)
     assert [e[0] for e in ev] == sorted(e[0] for e in ev) and ev[0][0] == 0
@@ -660,10 +671,12 @@ def test_studio_apprend_un_instrument(tmp_path):
     tables = {"lute": table}
     assert studio.is_available(insts["piano"], {}) and not studio.is_available(insts["lute"], {})
     assert studio.is_available(insts["lute"], tables) and not studio.is_available(insts["conga"], tables)
-    # tables livrées : harpe, luth, flûte et lyre, identifiées dans le jeu par le propriétaire
+    # tables livrées : tous les instruments à notes du jeu, lus dans ses données ; pas les percussions à frappes
     builtin = studio.learned_tables({})
-    assert sorted(builtin) == ["harp", "lute", "lyre", "recorder"]
-    assert all(studio.is_available(insts[i], builtin) for i in builtin) and not studio.is_available(insts["violin"], builtin)
+    assert {"harp", "lute", "lyre", "recorder", "violin", "cello", "xylophone", "conch", "saxophone"} <= set(builtin)
+    assert "conga" not in builtin and "cajon" not in builtin
+    assert all(studio.is_available(insts[i], builtin) for i in builtin)
+    assert studio.game_key_map(insts["violin"], builtin)[sorted(insts["violin"].bindings)[0]] == (20, 11141)
     harp = studio.game_key_map(insts["harp"], builtin)
     assert harp[48] == (6, 11201) and harp[49] == (6, 11223) and harp[50] == (6, 11202) and harp[84] == (6, 11222)
     assert len({k for _, k in harp.values()}) == 37 and max(k for _, k in harp.values()) == 11237
@@ -696,7 +709,7 @@ def test_studio_fabrique_un_enregistrement_a_deux_instruments(tmp_path):
     assert [k - downs[0] for k in downs] == [0, 2, 4]
     assert game_music.parse(game_music.build(events))["events"] == [
         (pytest.approx(e[0], abs=1e-4),) + e[1:5] + (pytest.approx(e[5]),) for e in events]
-    with pytest.raises(studio.StudioError):                           # violon pas appris
+    with pytest.raises(studio.StudioError):                           # violon absent des tables fournies
         studio.build(path, cfg, [{"track": 0, "instrument": "violin", "octave": 0}], insts, tables, UID)
     # avec les tables livrées : la lyre (instrument 17 du jeu) sans rien apprendre
     ev, rep = studio.build(path, cfg, [{"track": 0, "instrument": "lyre", "octave": 0}], insts, studio.learned_tables(cfg), UID, 4.2)
@@ -713,8 +726,7 @@ def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
     path = _midi_two_tracks(str(tmp_path / "Mon duo.mid"))
     lst = api.creations_studio_instruments()["instruments"]
     assert next(i for i in lst if i["id"] == "piano")["available"] is True
-    assert next(i for i in lst if i["id"] == "lute")["available"] is True          # table livrée
-    assert next(i for i in lst if i["id"] == "violin")["available"] is False
+    assert all(i["available"] and not i["learned"] for i in lst)                   # tables livrées pour tous
     assert all(i["id"] != "conga" for i in lst)
     # apprendre le luth depuis une musique du jeu où ses 15 touches ont été jouées
     rec = _lute_record(os.path.join(music_tree["record_dir"], "Luth_20261003120000000_4700.bin"))
