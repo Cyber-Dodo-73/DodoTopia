@@ -108,7 +108,7 @@ object Salon {
             return
         }
         premier = message.put("token", jeton).put("name", "")
-            .put("instrument", Preferences.disposition(contexte).instrument)
+            .put("instrument", Preferences.instrument(contexte))
             .put("version", Serveur.VERSION_PROTOCOLE)
         siege = null
         essais = 0

@@ -884,9 +884,54 @@ class Overlay(private val service: DodoAccessibilityService) {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = px(10)
         }
+        rendreDeplacable(commandes, q)
         fenetres.addView(commandes, q)
         barre = commandes
         etatBulle(Etat.OUVERT)
+    }
+
+    /**
+     * La barre du calibrage du dessin se déplace au doigt : en haut au centre, elle peut cacher la toile ou un
+     * repère. Sa place est retenue pour la fois suivante. Les boutons gardent leurs appuis ; on la saisit par
+     * son texte ou sa poignée.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun rendreDeplacable(barre: View, q: WindowManager.LayoutParams) {
+        val ecran = tailleEcran(service)
+        fun borner() {
+            q.x = q.x.coerceIn(-ecran.x / 2, ecran.x / 2)
+            q.y = q.y.coerceIn(0, (ecran.y - barre.measuredHeight).coerceAtLeast(0))
+        }
+        q.x = prefs.getInt("barre_reperes_x", q.x)
+        q.y = prefs.getInt("barre_reperes_y", q.y)
+        borner()
+        var doigtX = 0f
+        var doigtY = 0f
+        var departX = 0
+        var departY = 0
+        barre.setOnTouchListener { _, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    doigtX = e.rawX
+                    doigtY = e.rawY
+                    departX = q.x
+                    departY = q.y
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    q.x = departX + (e.rawX - doigtX).toInt()
+                    q.y = departY + (e.rawY - doigtY).toInt()
+                    borner()
+                    try {
+                        fenetres.updateViewLayout(barre, q)
+                    } catch (ex: IllegalArgumentException) {
+                        // La barre vient d'être retirée (validation ou annulation pendant le geste).
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    prefs.edit().putInt("barre_reperes_x", q.x).putInt("barre_reperes_y", q.y).apply()
+            }
+            true
+        }
     }
 
     /** Ce qui a demandé les repères des nuances et des outils : une fois validés, on allume ce que l'utilisateur voulait. */
@@ -942,6 +987,7 @@ class Overlay(private val service: DodoAccessibilityService) {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = px(10)
         }
+        rendreDeplacable(commandes, q)
         fenetres.addView(commandes, q)
         barre = commandes
         etatBulle(Etat.OUVERT)
@@ -1187,6 +1233,7 @@ class Overlay(private val service: DodoAccessibilityService) {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = px(10)
         }
+        rendreDeplacable(commandes, q)
         fenetres.addView(commandes, q)
         barre = commandes
         etatBulle(Etat.OUVERT)

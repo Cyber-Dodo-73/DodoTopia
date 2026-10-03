@@ -28,6 +28,11 @@
     <string name="disp_22">22 notes, 3 rows</string>
     <string name="disp_22_detail">Piano without black keys: 7, 7 and 8 keys</string>
     <string name="disp_37">37 notes, full piano</string>
+    <string name="disp_8">8 notes, 1 row</string>
+    <string name="disp_8_detail">One row of 8 bars: xylophone</string>
+    <string name="instrument_titre">Instrument</string>
+    <string name="instrument_aide">Pick the instrument you hold in the game: its keyboard is selected below, and it is the one announced to other players in a room.</string>
+    <string name="barre_deplacer">Drag this bar if it is in the way</string>
     <string name="disp_37_detail">Every key, black ones included: 12, 12 and 13</string>
 
     <string name="bienvenue_titre">Welcome!</string>

@@ -327,6 +327,25 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.txtTouches).text =
             if (calibre) getString(R.string.touches_calibrees, getString(d.nom)) else getString(R.string.touches_a_calibrer)
 
+        // L'instrument tenu dans le jeu : il choisit le clavier et s'annonce aux autres joueurs d'un salon.
+        val instrument = Preferences.instrument(this)
+        findViewById<TextView>(R.id.btnInstrument).apply {
+            text = Instruments.nom(this@MainActivity, instrument)
+            setOnClickListener {
+                val ids = Instruments.jouables
+                val noms = ids.map { Instruments.nom(this@MainActivity, it) }.toTypedArray()
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle(R.string.instrument_titre)
+                    .setSingleChoiceItems(noms, ids.indexOf(instrument)) { dialogue, i ->
+                        dialogue.dismiss()
+                        Preferences.definirInstrument(this@MainActivity, ids[i])
+                        majListes()
+                    }
+                    .setNegativeButton(R.string.annuler, null)
+                    .show()
+            }
+        }
+
         val claviers = findViewById<ViewGroup>(R.id.listeDispositions)
         claviers.removeAllViews()
         for (c in Dispositions.toutes) {

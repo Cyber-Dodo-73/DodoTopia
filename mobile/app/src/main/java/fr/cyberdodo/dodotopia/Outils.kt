@@ -24,6 +24,7 @@ object Preferences {
     private const val BULLE = "bulle_active"
     private const val CONFIG = "config_faite"
     private const val DISPOSITION = "disposition"
+    private const val INSTRUMENT = "instrument"
 
     fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(FICHIER, Context.MODE_PRIVATE)
 
@@ -40,6 +41,16 @@ object Preferences {
     fun disposition(context: Context): Disposition = Dispositions.parId(prefs(context).getString(DISPOSITION, null))
 
     fun definirDisposition(context: Context, d: Disposition) = prefs(context).edit().putString(DISPOSITION, d.id).apply()
+
+    /** L'instrument tenu dans le jeu ; tant qu'aucun n'a été choisi, celui que suggère le clavier retenu. */
+    fun instrument(context: Context): String {
+        val id = prefs(context).getString(INSTRUMENT, null)
+        return if (id != null && id in Instruments.jouables) id else disposition(context).instrument
+    }
+
+    /** Retient l'instrument et sélectionne son clavier par défaut. */
+    fun definirInstrument(context: Context, id: String) = prefs(context).edit()
+        .putString(INSTRUMENT, id).putString(DISPOSITION, Instruments.clavier(id).id).apply()
 
     /** Vrai (par défaut) : rangée grave en bas de l'écran, comme le piano du jeu. « Graves ⇅ » du calibrage l'inverse. */
     fun inverse(context: Context, d: Disposition): Boolean = prefs(context).getBoolean("inverse_${d.id}", true)

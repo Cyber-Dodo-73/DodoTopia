@@ -727,6 +727,32 @@
                         android:layout_marginTop="20dp"
                         android:orientation="vertical">
 
+                        <!-- Instrument tenu dans le jeu : choisit le clavier, annoncé aux autres en salon -->
+                        <TextView
+                            style="@style/Titre"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:accessibilityHeading="true"
+                            android:text="@string/instrument_titre"
+                            android:textSize="19sp"
+                            tools:targetApi="28" />
+
+                        <TextView
+                            style="@style/Texte"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/instrument_aide" />
+
+                        <TextView
+                            android:id="@+id/btnInstrument"
+                            style="@style/Bouton.Petit"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="18dp"
+                            android:minHeight="48dp" />
+
                         <TextView
                             style="@style/Titre"
                             android:layout_width="match_parent"

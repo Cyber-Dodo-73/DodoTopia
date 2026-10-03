@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Barre du calibrage du dessin : quatre repères à poser, puis valider. -->
+<!-- Barre du calibrage du dessin : quatre repères à poser, puis valider. Elle se déplace au doigt
+     (Overlay.rendreDeplacable) : posée en haut au centre, elle peut cacher la toile. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
@@ -8,6 +9,16 @@
     android:orientation="horizontal"
     android:paddingHorizontal="12dp"
     android:paddingVertical="8dp">
+
+    <TextView
+        style="@style/Texte.Petit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="@string/barre_deplacer"
+        android:text="⋮⋮"
+        android:textColor="@color/c_text_2"
+        android:textSize="20sp" />
 
     <TextView
         android:id="@+id/reperesAide"
