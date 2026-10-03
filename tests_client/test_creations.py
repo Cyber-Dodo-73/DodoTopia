@@ -610,3 +610,119 @@ def test_api_ecoute_une_musique_du_jeu_sans_doublon(api, music_tree, monkeypatch
     assert notes == [48, 49, 84]
     photo = next(x for x in api.creations_list()["items"] if x["section"] == "photo")
     assert api.creations_listen(photo["id"])["ok"] is False           # une image ne s'écoute pas
+
+
+# ---------------------------------------------------------------- studio (studio.py)
+import instruments
+import studio
+
+
+def _midi_two_tracks(path):
+    """Piste 1 : do mi sol (60 64 67) ; piste 2 : do grave tenu (48) ; piste 3 : batterie (canal 10)."""
+    import mido
+    mid = mido.MidiFile(ticks_per_beat=480)
+    for notes, channel in (((60, 64, 67), 0), ((48,), 1), ((36, 38), 9)):
+        tr = mido.MidiTrack()
+        mid.tracks.append(tr)
+        for n in notes:
+            tr.append(mido.Message("note_on", note=n, velocity=90, channel=channel, time=0))
+            tr.append(mido.Message("note_off", note=n, velocity=0, channel=channel, time=480))
+    mid.save(path)
+    return path
+
+
+def _lute_record(path, kind=13, first=10071, count=15, uid=UID):
+    """Enregistrement du jeu où les `count` touches d'un instrument ont été jouées de la plus grave à la plus aiguë."""
+    ev = []
+    for i in range(count):
+        ev.append((i * 0.3, uid, kind, 1, first + i, 3.3))
+        ev.append((i * 0.3 + 0.2, uid, kind, 0, first + i, 3.3))
+    with open(path, "wb") as f:
+        f.write(game_music.build(ev))
+    return path
+
+
+def test_studio_apprend_un_instrument(tmp_path):
+    cfg = core.load_config()
+    insts = {i.id: i for i in instruments.build_instruments(cfg)}
+    rec = _lute_record(str(tmp_path / "luth.bin"))
+    table = studio.learn(rec, insts["lute"], UID)
+    assert table == {"type": 13, "keys": list(range(10071, 10086)), "extra": pytest.approx(3.3)}
+    with pytest.raises(studio.StudioError):                           # 15 touches jouées, le piano en a 37
+        studio.learn(rec, insts["piano"], UID)
+    with pytest.raises(studio.StudioError):
+        studio.learn(_lute_record(str(tmp_path / "court.bin"), count=9), insts["lute"], UID)
+    # une touche du milieu jamais jouée : la plus grave et la plus aiguë suffisent, la suite se déduit
+    ev = [e for e in game_music.read(rec)["events"] if e[4] != 10078]
+    with open(str(tmp_path / "troue.bin"), "wb") as f:
+        f.write(game_music.build(ev))
+    assert studio.learn(str(tmp_path / "troue.bin"), insts["lute"], UID)["keys"] == list(range(10071, 10086))
+    tables = {"lute": table}
+    assert studio.is_available(insts["piano"], {}) and not studio.is_available(insts["lute"], {})
+    assert studio.is_available(insts["lute"], tables) and not studio.is_available(insts["conga"], tables)
+    keymap = studio.game_key_map(insts["lute"], tables)
+    notes = sorted(insts["lute"].bindings)
+    assert keymap[notes[0]] == (13, 10071) and keymap[notes[-1]] == (13, 10085)
+
+
+def test_studio_fabrique_un_enregistrement_a_deux_instruments(tmp_path):
+    cfg = core.load_config()
+    insts = {i.id: i for i in instruments.build_instruments(cfg)}
+    tables = {"lute": {"type": 13, "keys": list(range(10071, 10086)), "extra": 3.3}}
+    path = _midi_two_tracks(str(tmp_path / "duo.mid"))
+    listing = studio.tracks(path)
+    assert [t["index"] for t in listing] == [0, 1, 2] and listing[2]["drums"] is True
+    assert [p["on"] for p in studio.suggest(listing)] == [True, True, False]
+    parts = [{"track": 0, "instrument": "lute", "octave": 0}, {"track": 1, "instrument": "piano", "octave": 0}]
+    events, report = studio.build(path, cfg, parts, insts, tables, UID, 4.2)
+    assert report["instruments"] == [1, 13] and [p["track"] for p in report["parts"]] == [0, 1]
+    assert all(p["coverage"] == 100 and p["played"] == p["notes"] for p in report["parts"])
+    lute = [e for e in events if e[2] == 13]
+    piano = [e for e in events if e[2] == 1]
+    assert len([e for e in lute if e[3]]) == 3 and len([e for e in piano if e[3]]) == 1
+    assert all(10071 <= e[4] <= 10085 and e[5] == pytest.approx(3.3) for e in lute)
+    assert all(e[5] == pytest.approx(4.2) and e[1] == UID for e in piano)
+    assert events[0][0] == 0 and [e[0] for e in events] == sorted(e[0] for e in events)
+    # do-mi-sol garde ses intervalles sur le luth (gamme de do : touches 1, 3 et 5 d'une octave)
+    downs = [e[4] for e in lute if e[3]]
+    assert [k - downs[0] for k in downs] == [0, 2, 4]
+    assert game_music.parse(game_music.build(events))["events"] == [
+        (pytest.approx(e[0], abs=1e-4),) + e[1:5] + (pytest.approx(e[5]),) for e in events]
+    with pytest.raises(studio.StudioError):                           # violon pas appris
+        studio.build(path, cfg, [{"track": 0, "instrument": "violin", "octave": 0}], insts, tables, UID)
+    with pytest.raises(studio.StudioError):
+        studio.build(path, cfg, [], insts, tables, UID)
+    with pytest.raises(studio.StudioError):                           # la batterie n'a pas de notes à jouer
+        studio.build(path, cfg, [{"track": 2, "instrument": "piano", "octave": 0}], insts, tables, UID)
+
+
+def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
+    import app as app_module
+    api._player = type("P", (), {"instruments": instruments.build_instruments(api._cfg)})()
+    path = _midi_two_tracks(str(tmp_path / "Mon duo.mid"))
+    lst = api.creations_studio_instruments()["instruments"]
+    assert next(i for i in lst if i["id"] == "piano")["available"] is True
+    assert next(i for i in lst if i["id"] == "lute")["available"] is False
+    assert all(i["id"] != "conga" for i in lst)
+    # apprendre le luth depuis une musique du jeu où ses 15 touches ont été jouées
+    rec = _lute_record(os.path.join(music_tree["record_dir"], "Luth_20261003120000000_4700.bin"))
+    assert os.path.isfile(rec)
+    item = next(x for x in api.creations_list(refresh=True)["items"] if x.get("name") == "Luth")
+    assert api.creations_learn(item["id"], "piano")["ok"] is False
+    out = api.creations_learn(item["id"], "lute")
+    assert out == {"ok": True, "instrument": "lute", "type": 13, "keys": 15}
+    assert api._cfg["creations"]["game_instruments"]["lute"]["keys"][0] == 10071
+    assert next(i for i in api.creations_studio_instruments()["instruments"] if i["id"] == "lute")["learned"] is True
+
+    spec = {"path": path, "title": "Mon duo", "parts": [
+        {"track": 0, "instrument": "lute", "octave": 0, "on": True},
+        {"track": 1, "instrument": "piano", "octave": 0, "on": True},
+        {"track": 2, "instrument": "piano", "octave": 0, "on": False}]}
+    chk = api.creations_studio_check(spec)
+    assert chk["ok"] and len(chk["report"]["parts"]) == 2
+    assert api.creations_studio_check({"path": path, "parts": []})["ok"] is False
+    out = api.creations_studio_add(spec)
+    assert out["ok"] and out["item"]["name"] == "Mon duo" and out["item"]["added"] is True
+    written = os.path.join(music_tree["record_dir"], out["item"]["variants"][0]["name"])
+    assert {e[2] for e in game_music.read(written)["events"]} == {1, 13}
+    assert api.creations_delete(out["item"]["id"])["ok"] and not os.path.exists(written)

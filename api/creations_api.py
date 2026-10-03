@@ -18,6 +18,7 @@ import creations
 import game_music
 import i18n
 import platform_io
+import studio
 
 from ._common import log
 
@@ -419,12 +420,22 @@ class CreationsMixin:
         if it is None or it["cat"] != "music":
             self._notify(i18n.t("api.creations.unknown"), "warn")
             return {"ok": False, "error": "unknown"}
+        try:
+            rec = game_music.read(it["path"])
+        except game_music.MusicError as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "danger")
+            return {"ok": False, "error": str(e)}
+        return self._creations_preview(rec, it["name"])
+
+    def _creations_preview(self, rec, title):
+        """Range `rec` (événements du jeu) en MIDI dans la bibliothèque sous « Heartopia - <titre> » et lance la
+        préécoute. Le fichier est réécrit s'il existe déjà."""
         p = self._player
         try:
-            dst = core.safe_join(p.songs_folder, "Heartopia - " + game_music.safe_title(it["name"]))
+            dst = core.safe_join(p.songs_folder, "Heartopia - " + game_music.safe_title(title))
             if p.state != "stopped":
                 p.stop(join=True)
-            game_music.to_midi(game_music.read(it["path"]), dst)
+            game_music.to_midi(rec, dst)
         except (ValueError, game_music.MusicError) as e:
             self._notify(i18n.t("api.creations.failed", error=e), "danger")
             return {"ok": False, "error": str(e)}
@@ -436,5 +447,115 @@ class CreationsMixin:
             return {"ok": False, "error": "not_listed"}
         p.select(names.index(sid))
         p.play("preview")
-        self._notify(i18n.t("api.creations.listening", name=it["name"]), "ok")
+        self._notify(i18n.t("api.creations.listening", name=title), "ok")
         return {"ok": True, "song": sid, "state": self.get_state()}
+
+    # ---------------------------------------------------------- studio : pistes, instruments, enregistrement
+    def _studio_instruments(self):
+        """({identifiant: Instrument}, tables apprises) : les instruments à notes de DodoTopia."""
+        insts = {i.id: i for i in self._player.instruments if i.bindings and not i.percussive}
+        return insts, studio.learned_tables(self._cfg)
+
+    def creations_studio_instruments(self):
+        """[{id, name, notes, available, learned}] : ce que le studio sait écrire, et ce qui reste à apprendre."""
+        insts, tables = self._studio_instruments()
+        return {"ok": True, "instruments": [
+            {"id": i.id, "name": i.name, "notes": len(i.bindings), "learned": i.id in tables,
+             "available": studio.is_available(i, tables)} for i in insts.values()]}
+
+    def creations_studio_open(self):
+        """Choisit un fichier MIDI et renvoie de quoi ouvrir le studio : {ok, path, title, tracks, instruments,
+        parts (répartition de départ)}."""
+        if not self._window:
+            return {"ok": False, "error": "no_window"}
+        path = self._creations_pick("music")
+        if not path:
+            return {"ok": False, "error": "cancelled"}
+        try:
+            listing = studio.tracks(path)
+        except studio.StudioError as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "danger")
+            return {"ok": False, "error": str(e)}
+        if not listing:
+            self._notify(i18n.t("api.creations.failed", error=i18n.t("api.creations.studio_no_tracks")), "warn")
+            return {"ok": False, "error": "no_tracks"}
+        title = game_music.safe_title(os.path.splitext(os.path.basename(path))[0])
+        return {"ok": True, "path": path, "title": title, "tracks": listing,
+                "instruments": self.creations_studio_instruments()["instruments"], "parts": studio.suggest(listing)}
+
+    def _studio_build(self, spec):
+        """(événements, rapport) pour la demande de l'interface {path, title, parts:[{track, instrument, octave, on}]}."""
+        spec = spec if isinstance(spec, dict) else {}
+        path = str(spec.get("path") or "")
+        if not os.path.isfile(path):
+            raise studio.StudioError(i18n.t("api.image.not_image", name=os.path.basename(path)))
+        parts = [p for p in (spec.get("parts") or []) if isinstance(p, dict) and p.get("on", True)]
+        st = self._creations_scan()
+        uid, extra = self._creations_music_refs(st)
+        insts, tables = self._studio_instruments()
+        return studio.build(path, self._cfg, parts, insts, tables, uid, extra)
+
+    def creations_studio_check(self, spec):
+        """Rapport sans rien écrire : {ok, report:{parts:[{track, coverage, played, notes}], duration}}."""
+        try:
+            _events, report = self._studio_build(spec)
+        except (studio.StudioError, game_music.MusicError) as e:
+            return {"ok": False, "error": str(e)}
+        return {"ok": True, "report": report}
+
+    def creations_studio_listen(self, spec):
+        """Préécoute de la répartition du studio sur cet ordinateur (rien n'est écrit dans le jeu)."""
+        try:
+            events, _report = self._studio_build(spec)
+        except (studio.StudioError, game_music.MusicError) as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "danger")
+            return {"ok": False, "error": str(e)}
+        title = "Studio " + game_music.safe_title((spec or {}).get("title"))
+        return self._creations_preview({"events": events, "duration": events[-1][0]}, title)
+
+    def creations_studio_add(self, spec):
+        """Écrit la répartition du studio comme une nouvelle musique d'Heartopia (rien n'est remplacé)."""
+        st = self._creations_scan()
+        folder, my_id = st["folder"], st["my_id"]
+        if not folder or not my_id:
+            self._notify(i18n.t("api.creations.folder_missing" if not folder else "api.creations.no_player"), "warn")
+            return {"ok": False, "error": "no_folder"}
+        try:
+            events, report = self._studio_build(spec)
+            data = game_music.build(events)
+            d = os.path.join(creations.game_root(folder), "record", my_id)
+            base = game_music.file_name((spec or {}).get("title"), events[-1][0])
+            os.makedirs(d, exist_ok=True)
+            creations._write_atomic(os.path.join(d, base), data)
+        except (studio.StudioError, game_music.MusicError, OSError) as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "danger")
+            return {"ok": False, "error": str(e)}
+        backup_dir = self._creations_backup_dir()
+        creations.added_record(backup_dir, [os.path.join(d, base)])
+        st = self._creations_scan(refresh=True)
+        with st["lock"]:
+            it = next((x for x in st["items"] if x["base"] == base), None)
+        self._notify(i18n.t("api.creations.added", name=game_music.parse_name(base)["name"]), "ok")
+        return {"ok": True, "report": report, "item": self._creations_public(it, backup_dir) if it else None}
+
+    def creations_learn(self, item_id, instrument_id):
+        """Apprend les numéros du jeu d'un instrument à partir d'une musique où toutes ses touches ont été jouées."""
+        it = self._creations_item(item_id)
+        insts, _tables = self._studio_instruments()
+        inst = insts.get(str(instrument_id or ""))
+        if it is None or it["cat"] != "music" or inst is None:
+            self._notify(i18n.t("api.creations.unknown"), "warn")
+            return {"ok": False, "error": "unknown"}
+        st = self._creations_state()
+        try:
+            table = studio.learn(it["path"], inst, game_music.my_uid(st["folder"]))
+        except studio.StudioError as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "warn")
+            return {"ok": False, "error": str(e)}
+        node = self._cfg.get("creations")
+        if not isinstance(node, dict):
+            node = self._cfg["creations"] = {}
+        node.setdefault("game_instruments", {})[inst.id] = table
+        core.save_config(self._cfg)
+        self._notify(i18n.t("api.creations.learned", name=inst.name, n=len(table["keys"])), "ok")
+        return {"ok": True, "instrument": inst.id, "type": table["type"], "keys": len(table["keys"])}

@@ -14,6 +14,7 @@
 // t('creations.cat.announcement') t('creations.cat.music') t('creations.cat.other') t('creations.add.photo')
 // t('creations.add.music') t('creations.intro.photo') t('creations.intro.painting') t('creations.intro.music')
 // t('creations.intro.cache') t('creations.add_photo.title') t('creations.add_photo.body_html') t('creations.add_music.title')
+// t('creations.studio.none')
 // t('creations.add_music.body_html') t('creations.card.details') t('creations.card.export') t('creations.card.export_midi') t('creations.card.export_short') t('creations.card.listen')
 const CR = {items: [], cats: {}, sections: {}, folder: '', found: null, available: true, my_id: null, error: '', show_cache: false,
   sec: 'photo', cat: 'all', sort: 'recent', loading: false, loaded: false, at: 0, seq: 0, thumbs: new Map(), pending: new Set()};
@@ -219,7 +220,8 @@ function crReplace(it, btn){
 // ajout : une photo dans l'album, ou une musique (MIDI converti) ; rien d'existant n'est remplacé
 function crAdd(btn){
   const sec = CR.sec;
-  if(sec !== 'photo' && sec !== 'music') return;
+  if(sec === 'music'){ crStudio(btn); return; }      // une musique passe par le studio (pistes, instruments)
+  if(sec !== 'photo') return;
   const photo = sec === 'photo';
   const p = dialog({title: t(photo ? 'creations.add_photo.title' : 'creations.add_music.title'), icon: photo ? 'image' : 'music',
           ok: t('creations.add.ok'), cancel: t('common.cancel'),
@@ -255,6 +257,7 @@ function crMore(anchor, it){
     {label: t('creations.card.restore'), icon: 'undo', disabled: !it.backup, help: it.backup ? '' : t('creations.card.no_backup'), fn: () => crRestore(it)},
   ];
   if(crIsMusic(it)) items.unshift({label: t('creations.card.listen'), icon: 'play', fn: () => crListen(it)});
+  if(crIsMusic(it)) items.push({label: t('creations.learn.menu'), icon: 'music', fn: () => crLearn(it)});
   if(it.added) items.push({label: t('creations.card.delete'), icon: 'trash', fn: () => crDelete(it)});
   items.push({label: t('creations.open_folder'), icon: 'folder', fn: () => api('creations_open_folder')});
   menu(anchor, items);
@@ -311,5 +314,96 @@ try{
   const c0 = localStorage.getItem('creations.cat'); if(c0 && (c0 === 'all' || CR_CATS.includes(c0))) CR.cat = c0;
   const s0 = localStorage.getItem('creations.sort'); if(['recent', 'oldest', 'size'].includes(s0)) CR.sort = s0;
 }catch(e){}
+// ------------------------------------------------ studio : une musique à plusieurs instruments depuis un MIDI
+// creations_studio_open() -> {path, title, tracks, instruments, parts} ; chaque piste cochée reçoit un instrument
+// et une octave ; creations_studio_check(spec) donne la part de notes jouées à la bonne hauteur, sans rien écrire ;
+// creations_studio_listen(spec) préécoute sur l'ordinateur ; creations_studio_add(spec) écrit la musique dans le jeu.
+// Seul le piano est connu d'avance : les autres instruments s'apprennent depuis une musique du jeu (crLearn).
+const ST = {data: null, parts: [], title: '', timer: null, seq: 0};
+function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts}; }
+function stTrackName(tr){ return tr.name || t('creations.studio.track', {n: tr.index + 1}); }
+function stHtml(){
+  const d = ST.data;
+  if(!d) return '';
+  const opts = cur => d.instruments.map(i => `<option value="${esc(i.id)}"${i.id === cur ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
+  const octs = cur => [-2, -1, 0, 1, 2].map(o => `<option value="${o}"${o === cur ? ' selected' : ''}>${o > 0 ? '+' + o : o}</option>`).join('');
+  const rows = d.tracks.map(tr => {
+    const p = ST.parts.find(x => x.track === tr.index) || {};
+    return `<tr data-track="${tr.index}"${p.on ? '' : ' class="is-off"'}>
+        <td><label class="switch switch--inline"><input type="checkbox" data-f="on"${p.on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label></td>
+        <td><select class="select" data-f="instrument" aria-label="${esc(t('creations.studio.instrument'))}">${opts(p.instrument)}</select></td>
+        <td><select class="select" data-f="octave" aria-label="${esc(t('creations.studio.octave'))}">${octs(p.octave || 0)}</select></td>
+        <td class="studio__cov" data-cov="${tr.index}"></td></tr>`;
+  }).join('');
+  return `<div class="studio">
+      <label class="field"><span class="field__label">${esc(t('creations.studio.name'))}</span>
+        <input class="input" id="stTitle" type="text" maxlength="24" spellcheck="false" value="${esc(ST.title)}"></label>
+      <div class="table-scroll"><table class="studio__tracks"><thead><tr><th>${esc(t('creations.studio.col_track'))}</th><th>${esc(t('creations.studio.instrument'))}</th><th>${esc(t('creations.studio.octave'))}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint left" id="stStatus" role="status"></p>
+      <div class="btnrow">
+        <button class="btn btn--secondary" type="button" data-act="listen">${icon('play')}<span>${esc(t('creations.studio.listen'))}</span></button>
+        <button class="btn btn--cta" type="button" data-act="add">${icon('plus')}<span>${esc(t('creations.studio.add'))}</span></button>
+      </div>
+      <div class="hint left">${t('creations.studio.hint_html')}</div>
+    </div>`;
+}
+function stCheck(){
+  clearTimeout(ST.timer);
+  ST.timer = setTimeout(() => {
+    const seq = ++ST.seq;
+    api('creations_studio_check', stSpec()).then(r => {
+      if(seq !== ST.seq || !PANEL || PANEL.render !== stHtml) return;
+      document.querySelectorAll('.studio__cov').forEach(td => { td.textContent = ''; });
+      const ok = !!(r && r.ok);
+      if(ok) for(const p of r.report.parts){
+        const td = document.querySelector(`.studio__cov[data-cov="${p.track}"]`);
+        if(td) td.textContent = t('creations.studio.coverage', {n: p.coverage});
+      }
+      txt('stStatus', ok ? t('creations.studio.ready', {duration: crDur(r.report.duration)}) : ((r && r.error) || t('creations.studio.none')));
+      document.querySelectorAll('.studio [data-act]').forEach(b => { b.disabled = !ok; });
+    });
+  }, 250);
+}
+function stWire(box){
+  const title = box.querySelector('#stTitle');
+  if(title) title.oninput = () => { ST.title = title.value; };
+  box.querySelectorAll('tr[data-track]').forEach(tr => {
+    const p = ST.parts.find(x => x.track === Number(tr.dataset.track));
+    if(!p) return;
+    tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
+      if(el.dataset.f === 'on'){ p.on = el.checked; tr.classList.toggle('is-off', !p.on); }
+      else if(el.dataset.f === 'octave') p.octave = Number(el.value);
+      else p.instrument = el.value;
+      stCheck();
+    });
+  });
+  const ls = box.querySelector('[data-act="listen"]');
+  if(ls) ls.onclick = () => apiAction(ls, 'creations_studio_listen', stSpec());
+  const ad = box.querySelector('[data-act="add"]');
+  if(ad) ad.onclick = () => apiAction(ad, 'creations_studio_add', stSpec()).then(r => {
+    if(r && r.ok){ closePanel(); CR.sort = 'recent'; $('crSort').value = 'recent'; loadCreations(true); }
+  });
+  stCheck();
+}
+function crStudio(btn){
+  apiAction(btn, 'creations_studio_open').then(r => {
+    if(!r || !r.ok) return;
+    ST.data = r; ST.title = r.title || ''; ST.parts = (r.parts || []).map(p => Object.assign({}, p));
+    openPanel({title: t('creations.studio.title'), wide: true, opener: btn, render: stHtml, html: stHtml(), wire: stWire});
+  });
+}
+// apprendre un instrument : une musique du jeu où toutes ses touches ont été jouées, de la plus grave à la plus aiguë
+function crLearn(it){
+  api('creations_studio_instruments').then(r => {
+    const list = (r && r.instruments) || [];
+    if(!list.length) return;
+    const html = `<p>${esc(t('creations.learn.body'))}</p>
+      <label class="field"><span class="field__label">${esc(t('creations.studio.instrument'))}</span>
+        <select class="select" id="crLearnSel">${list.filter(i => i.id !== 'piano').map(i => `<option value="${esc(i.id)}">${esc(i.name)} · ${esc(t('creations.card.notes', {n: i.notes}))}${i.learned ? ' · ' + esc(t('creations.learn.learned')) : ''}</option>`).join('')}</select></label>`;
+    const p = dialog({title: t('creations.learn.title'), icon: 'music', ok: t('creations.learn.ok'), cancel: t('common.cancel'), html});
+    const sel = $('crLearnSel');
+    p.then(yes => { if(yes && sel) api('creations_learn', it.id, sel.value); });
+  });
+}
 // redessinée quand l'onglet, la langue ou les données changent (CR.seq) ; jamais à chaque tick d'état
 view('creations', {sig: st => TAB + '|' + I18N.lang + '|' + CR.seq, draw: renderCreations});

@@ -1495,6 +1495,15 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .crview__pic.is-pixel{image-rendering:pixelated}
 .crcard .gcard__acts .chip{font-size:var(--fs-xs)}
 .crcard.is-music .gcard__img{height:110px}
+/* studio : une ligne par piste du MIDI */
+.studio{display:flex;flex-direction:column;gap:12px}
+.studio .table-scroll{overflow-x:auto}
+.studio__tracks{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.studio__tracks th{text-align:left;font-weight:600;color:var(--c-text-2);padding:4px 8px}
+.studio__tracks td{padding:6px 8px;border-top:1px solid var(--c-line);vertical-align:middle}
+.studio__tracks tr.is-off select{opacity:.45}
+.studio__tracks small{display:block;color:var(--c-text-2);font-weight:400}
+.studio__cov{white-space:nowrap;color:var(--c-text-2);font-variant-numeric:tabular-nums}
 .crcard__disc{display:flex;flex-direction:column;align-items:center;gap:6px}
 .crcard__disc b{font-size:var(--fs-sm);font-weight:600;color:var(--c-text-2);font-variant-numeric:tabular-nums}
 #crSecs .chip .ic{width:16px;height:16px;margin-right:4px}
