@@ -265,11 +265,13 @@ def test_android_page_in_every_language(client, publish_headers):
     assert "/telecharger/go/android" not in client.get("/fr/android").text      # cache invalidé
 
 
-def test_android_page_promises_only_music(client):
-    """Dessin et cuisine ne sont pas sur mobile : la page le dit, et ne propose pas de les télécharger."""
+def test_android_page_says_what_the_app_does(client):
+    """L'appli fait musique, dessin et cuisine ; « Mes créations » reste sur PC et la page le dit."""
     html = client.get("/fr/android").text
     main = html.split("<main", 1)[1].split("</main>", 1)[0]
-    assert "Le dessin et la cuisine ne sont pas encore dans l'appli Android" in main
+    assert "<strong>Dessin</strong>" in main and "<strong>Cuisine</strong>" in main
+    assert "Mes créations" in main and "émulateur" in main and "Android 11" in main
+    assert "pas encore dans l'appli" not in main
     assert "Play Store" in main and "Confidentialité" in main and "Android 8.0" in main
     assert 'href="/fr/telecharger#apk"' in main and 'href="/fr/confidentialite"' in main
     en = client.get("/en/android").text.split("<main", 1)[1].split("</main>", 1)[0]

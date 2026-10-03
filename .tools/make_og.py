@@ -31,7 +31,7 @@ sys.path.insert(0, str(SERVER))
 from app import i18n  # noqa: E402  (module sans dépendance web)
 
 W, H = 1200, 630
-PAGES = ("home", "music", "draw", "cook", "creations", "together", "download", "instruments", "news", "community", "help",
+PAGES = ("home", "music", "draw", "cook", "creations", "android", "together", "download", "instruments", "news", "community", "help",
          "legal", "privacy", "terms", "songs", "gallery")
 SHOTS = {"home": "musique", "music": "musique", "draw": "dessin", "cook": "cuisine", "creations": "creations", "together": "musique",
          "songs": "musique", "gallery": "dessin"}

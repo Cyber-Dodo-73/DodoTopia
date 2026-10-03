@@ -1,5 +1,5 @@
-"""Android : l'application mobile (musique seulement pour l'instant). Ce qu'elle fait, les trois étapes (autoriser,
-calibrer, jouer), ce qui arrive plus tard, prérequis, confidentialité, pourquoi pas le Play Store, téléchargement.
+"""Android : l'application mobile (musique, dessin, cuisine ; « Mes créations » reste sur PC). Ce qu'elle fait, les
+trois étapes (autoriser, calibrer, jouer), ce qui reste sur PC, prérequis, confidentialité, pourquoi pas le Play Store, téléchargement.
 
 Canal de publication à part des versions PC (`mobile_releases.py`, `ctx.mobile`) : sans APK publié, la page reste
 servie, sans aucun lien de téléchargement."""
