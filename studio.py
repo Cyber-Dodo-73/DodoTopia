@@ -126,8 +126,9 @@ def tracks(path):
 
 
 def describe(path, cfg):
-    """Pistes du MIDI avec de quoi dessiner leur bande : (pistes, durée totale en secondes). Chaque piste reçoit
-    `end` (fin de sa dernière note) et `bins` (densité de notes sur BINS colonnes, 0 à 9)."""
+    """Pistes du MIDI avec de quoi dessiner leur ligne : (pistes, durée totale en secondes). Chaque piste reçoit
+    `end` (fin de sa dernière note), `bins` (densité de notes sur BINS colonnes, 0 à 9) et `roll` (ses notes
+    [début, durée, note MIDI], triées par début)."""
     listing = tracks(path)
     all_indices = _all_indices(path, listing)
     starts = {}
@@ -138,6 +139,7 @@ def describe(path, cfg):
         except ValueError as e:
             raise StudioError(str(e)) from e
         starts[t["index"]] = [(when, len(ns)) for when, ns in grouped]
+        t["roll"] = [[round(when, 3), round(d, 3), n] for when, ns in grouped for n, d, _ in ns]
         t["end"] = max((when + max(d for _, d, _ in ns) for when, ns in grouped), default=0.0)
         total = max(total, t["end"])
     for t in listing:
@@ -169,12 +171,13 @@ def _track_notes(path, cfg, index, all_indices):
     return core.parse_midi(path, cfg, skip_tracks=others)
 
 
-def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0):
+def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=None):
     """Événements du jeu pour `parts` = [{"track", "instrument", "octave", "from", "to", "id"}] (passages retenus
     seulement). Un passage est un morceau de piste, de `from` à `to` secondes du fichier (absents : toute la
     piste) ; une piste peut donc changer d'instrument en cours de route. `instruments` : {identifiant: objet
     Instrument de core}. Renvoie (événements, rapport) ; le rapport donne, par passage, la part de notes jouées
-    à leur hauteur exacte, et la durée totale."""
+    à leur hauteur exacte, et la durée totale. `heard` : liste facultative qui reçoit les notes jouées
+    [début dans le fichier, durée, note MIDI, rang du passage dans le rapport], pour les faire entendre."""
     import sync
     if not parts:
         raise StudioError("aucune piste retenue")
@@ -220,6 +223,8 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0):
             for note, dur, _vel in played:
                 kind, key = keymap[note]
                 presses.append((t, t + max(0.05, dur), kind, key, value))
+                if heard is not None:
+                    heard.append([round(t, 3), round(max(0.05, dur), 3), note, len(report)])
         report.append({"id": part.get("id"), "track": index, "instrument": inst.id, "octave": octave,
                        "notes": info.get("notes", 0),
                        "played": sum(len(p) for _, _, p in fitted), "coverage": info.get("coverage", 0)})

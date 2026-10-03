@@ -59,7 +59,7 @@
   "online.import.done": "已导入：{title}",
   "online.import.failed": "从链接导入失败：{error}",
   "online.import.error.https_required": "链接必须以 https:// 开头",
-  "online.import.error.bad_url": "链接无效：请粘贴 Online Sequencer、BitMidi 或 .mid 文件的完整地址。",
+  "online.import.error.bad_url": "链接无效：请粘贴 BitMidi 或 .mid 文件的完整地址。",
   "online.import.error.host_not_allowed": "不支持从该网站通过链接导入。",
   "online.import.error.unsupported_url": "此链接不是曲目：请打开曲目页面或 .mid 文件。",
   "online.import.error.invalid_midi": "获取到的文件不是有效的 MIDI。",

@@ -314,75 +314,217 @@ try{
   const c0 = localStorage.getItem('creations.cat'); if(c0 && (c0 === 'all' || CR_CATS.includes(c0))) CR.cat = c0;
   const s0 = localStorage.getItem('creations.sort'); if(['recent', 'oldest', 'size'].includes(s0)) CR.sort = s0;
 }catch(e){}
-// ------------------------------------------------ studio : une musique à plusieurs instruments depuis un MIDI
-// creations_studio_open() -> {path, title, tracks, instruments, parts} ; chaque piste cochée reçoit un instrument
-// et une octave ; creations_studio_check(spec) donne la part de notes jouées à la bonne hauteur, sans rien écrire ;
-// creations_studio_listen(spec) préécoute sur l'ordinateur ; creations_studio_add(spec) écrit la musique dans le jeu.
-// Seul le piano est connu d'avance : les autres instruments s'apprennent depuis une musique du jeu (crLearn).
-const ST = {data: null, parts: [], title: '', timer: null, seq: 0, n: 0};
+// ------------------------------------------------ studio : éditeur d'une musique à plusieurs instruments
+// creations_studio_open() -> {path, title, duration, tracks:[{index, name, notes, low, high, roll:[[début, durée,
+// note]]}], instruments, parts}. Chaque piste est une ligne sur la ligne de temps ; elle se coupe en passages (ciseaux)
+// et chaque passage a son instrument et son octave. creations_studio_check(spec) -> {report, notes:[[début, durée,
+// note, k]]} : ce que le jeu jouera (k = rang dans report.parts). L'éditeur le fait entendre lui-même (Web Audio,
+// son de synthèse) : lecture, pause, reprise où l'on clique sur la règle. creations_studio_add(spec) écrit la musique
+// dans le jeu.
+const ST = {data: null, parts: [], title: '', timer: null, seq: 0, n: 0, sel: null, tool: 'select', pps: 0, scroll: 0,
+  report: null, ok: false, error: '',
+  au: {ctx: null, out: null, bus: null, notes: [], kinds: [], pos: 0, base: 0, idx: 0, playing: false, timer: null}};
+const ST_HEAD_W = 190, ST_MIN = 0.5, ST_MAX_W = 16000, ST_LANE_H = 52;
+const ST_FAMILY = {recorder: 'wind', xiao: 'wind', ocarina: 'wind', conch: 'wind', saxophone: 'reed', bagpipe: 'reed', concertina: 'reed',
+  violin: 'bow', cello: 'bow', 'wooden-bass': 'bow'};
 function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts}; }
+function stDur(){ return (ST.data && ST.data.duration) || 1; }
+function stEnd(p){ return p.to == null ? stDur() : p.to; }
 function stTrackName(tr){ return tr.name || t('creations.studio.track', {n: tr.index + 1}); }
 function stPartsOf(index){ return ST.parts.filter(p => p.track === index).sort((a, b) => a.from - b.from); }
-// passages : une piste se coupe dans le temps (clic sur sa bande), chaque passage a son instrument et son octave
+function stInst(id){ return ST.data.instruments.find(i => i.id === id); }
+function stHue(id){ return (Math.max(0, ST.data.instruments.findIndex(i => i.id === id)) * 47 + 28) % 360; }
+function stEditorOpen(){ return !!(PANEL && PANEL.render === stHtml); }
+
+function stInspHtml(){
+  const d = ST.data, p = ST.parts.find(x => x.id === ST.sel);
+  if(!p) return `<p class="hint left">${esc(t('creations.studio.cut_hint'))}</p>`;
+  const tr = d.tracks.find(x => x.index === p.track), first = stPartsOf(p.track)[0] === p;
+  const opts = d.instruments.map(i => `<option value="${esc(i.id)}"${i.id === p.instrument ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
+  const octs = [-2, -1, 0, 1, 2].map(o => `<option value="${o}"${o === (p.octave || 0) ? ' selected' : ''}>${o > 0 ? '+' + o : o}</option>`).join('');
+  return `<div class="studio__sel"><b>${esc(stTrackName(tr))}</b><span>${esc(crDur(p.from))} → ${esc(crDur(stEnd(p)))}</span><span class="studio__cov" id="stSelCov"></span></div>
+      <label class="field"><span class="field__label">${esc(t('creations.studio.instrument'))}</span><select class="select" data-f="instrument">${opts}</select></label>
+      <label class="field"><span class="field__label">${esc(t('creations.studio.octave'))}</span><select class="select" data-f="octave">${octs}</select></label>
+      <label class="switch switch--inline"><input type="checkbox" data-f="clip_on"${p.on ? ' checked' : ''}><span class="switch__track"></span><span>${esc(t('creations.studio.clip_on'))}</span></label>
+      <button class="btn btn--secondary btn--sm" type="button" data-act="whole">${esc(t('creations.studio.whole_track'))}</button>
+      ${first ? '' : `<button class="btn btn--secondary btn--sm" type="button" data-act="merge">${esc(t('creations.studio.merge'))}</button>`}`;
+}
 function stHtml(){
   const d = ST.data;
   if(!d) return '';
-  const total = d.duration || 1;
-  const opts = cur => d.instruments.map(i => `<option value="${esc(i.id)}"${i.id === cur ? ' selected' : ''}${i.available ? '' : ' disabled'}>${esc(i.available ? i.name : t('creations.studio.to_learn', {name: i.name}))}</option>`).join('');
-  const octs = cur => [-2, -1, 0, 1, 2].map(o => `<option value="${o}"${o === cur ? ' selected' : ''}>${o > 0 ? '+' + o : o}</option>`).join('');
-  const body = d.tracks.map(tr => {
+  const cut = ST.tool === 'cut';
+  const rows = d.tracks.map(tr => {
     const parts = stPartsOf(tr.index), on = parts.some(p => p.on);
-    const bins = (tr.bins || []).map(v => `<i data-h="${v}"></i>`).join('');
-    const cuts = parts.slice(1).map(p => `<b class="studio__cut" data-at="${Math.round(1000 * p.from / total)}"></b>`).join('');
-    const lines = parts.map((p, i) => `<tr class="studio__part${on ? '' : ' is-off'}" data-part="${esc(p.id)}">
-        <td class="studio__when">${esc(crDur(p.from))} → ${esc(crDur(p.to == null ? total : p.to))}</td>
-        <td><select class="select" data-f="instrument" aria-label="${esc(t('creations.studio.instrument'))}">${opts(p.instrument)}</select></td>
-        <td><select class="select" data-f="octave" aria-label="${esc(t('creations.studio.octave'))}">${octs(p.octave || 0)}</select></td>
-        <td><span class="studio__cov" data-cov="${esc(p.id)}"></span>${i ? `<button class="iconbtn iconbtn--sm" type="button" data-merge="${esc(p.id)}" title="${esc(t('creations.studio.merge'))}" aria-label="${esc(t('creations.studio.merge'))}">${icon('close')}</button>` : ''}</td></tr>`).join('');
-    return `<tbody data-track="${tr.index}"><tr class="studio__head">
-        <td><label class="switch switch--inline"><input type="checkbox" data-f="on"${on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label></td>
-        <td colspan="3"><button class="studio__bar" type="button" data-bar="${tr.index}" title="${esc(t('creations.studio.cut_hint'))}" aria-label="${esc(t('creations.studio.cut_hint'))}">${bins}${cuts}</button></td></tr>${lines}</tbody>`;
+    const clips = parts.map((p, i) => `<div class="studio__clip${p.on ? '' : ' is-off'}${p.id === ST.sel ? ' is-sel' : ''}" data-clip="${esc(p.id)}" role="button" tabindex="0">
+          <span class="studio__tag">${esc((stInst(p.instrument) || {name: p.instrument}).name)}${p.octave ? ' ' + (p.octave > 0 ? '+' : '') + p.octave : ''}</span>${i ? `<i class="studio__grip" data-grip="${esc(p.id)}"></i>` : ''}</div>`).join('');
+    return `<div class="studio__row" data-track="${tr.index}">
+        <div class="studio__th"><label class="switch switch--inline"><input type="checkbox" data-f="on"${on ? ' checked' : ''}><span class="switch__track"></span><span><b>${esc(stTrackName(tr))}</b><small>${esc(t('creations.card.notes', {n: tr.notes}))}${tr.drums ? ' · ' + esc(t('creations.studio.drums')) : ''}</small></span></label></div>
+        <div class="studio__lane"><canvas height="${ST_LANE_H}"></canvas>${clips}</div></div>`;
   }).join('');
   return `<div class="studio">
-      <label class="field"><span class="field__label">${esc(t('creations.studio.name'))}</span>
-        <input class="input" id="stTitle" type="text" maxlength="24" spellcheck="false" value="${esc(ST.title)}"></label>
-      <p class="hint left">${esc(t('creations.studio.cut_hint'))}</p>
-      <div class="table-scroll"><table class="studio__tracks"><thead><tr><th>${esc(t('creations.studio.col_track'))}</th><th>${esc(t('creations.studio.instrument'))}</th><th>${esc(t('creations.studio.octave'))}</th><th></th></tr></thead>${body}</table></div>
-      <p class="hint left" id="stStatus" role="status"></p>
-      <div class="btnrow">
-        <button class="btn btn--secondary" type="button" data-act="listen">${icon('play')}<span>${esc(t('creations.studio.listen'))}</span></button>
+      <div class="studio__top">
+        <label class="field studio__name"><span class="field__label">${esc(t('creations.studio.name'))}</span>
+          <input class="input" id="stTitle" type="text" maxlength="24" spellcheck="false" value="${esc(ST.title)}"></label>
+        <div class="studio__transport">
+          <button class="btn btn--cta" type="button" id="stPlay"></button>
+          <button class="iconbtn iconbtn--sm" type="button" id="stRewind" title="${esc(t('creations.studio.rewind'))}" aria-label="${esc(t('creations.studio.rewind'))}">${icon('prev')}</button>
+          <output class="studio__clock" id="stClock"></output>
+        </div>
+        <div class="studio__tools">
+          <button class="iconbtn iconbtn--sm${cut ? ' is-on' : ''}" type="button" id="stCutTool" aria-pressed="${cut}" title="${esc(t('creations.studio.scissors'))}" aria-label="${esc(t('creations.studio.scissors'))}">${icon('scissors')}</button>
+          <button class="iconbtn iconbtn--sm" type="button" id="stZoomOut" title="${esc(t('creations.studio.zoom_out'))}" aria-label="${esc(t('creations.studio.zoom_out'))}">${icon('minus')}</button>
+          <button class="iconbtn iconbtn--sm" type="button" id="stZoomIn" title="${esc(t('creations.studio.zoom_in'))}" aria-label="${esc(t('creations.studio.zoom_in'))}">${icon('plus')}</button>
+        </div>
+      </div>
+      <div class="studio__ed${cut ? ' is-cut' : ''}" id="stEd">
+        <div class="studio__row studio__row--ruler"><div class="studio__th"></div><div class="studio__ruler" id="stRuler"></div></div>
+        ${rows}
+        <div class="studio__playhead" id="stHead"></div>
+      </div>
+      <div class="studio__insp" id="stInsp">${stInspHtml()}</div>
+      <div class="studio__foot">
+        <p class="hint left" id="stStatus" role="status"></p>
         <button class="btn btn--cta" type="button" data-act="add">${icon('plus')}<span>${esc(t('creations.studio.add'))}</span></button>
       </div>
       <div class="hint left">${t('creations.studio.hint_html')}</div>
     </div>`;
+}
+
+// ---- lecture : petit synthétiseur, les notes sont programmées un tiers de seconde à l'avance
+function stNow(){ const a = ST.au; return a.playing ? Math.min(stDur(), Math.max(0, a.ctx.currentTime - a.base)) : a.pos; }
+function stVoice(a, when, dur, midi, fam){
+  const c = a.ctx, o = c.createOscillator(), g = c.createGain(), f = 440 * Math.pow(2, (midi - 69) / 12);
+  let end;
+  o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, when);
+  if(fam === 'pluck'){
+    o.type = 'triangle';
+    end = when + Math.min(1.8, Math.max(0.35, dur + 0.5));
+    g.gain.exponentialRampToValueAtTime(0.22, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+  }else{
+    const peak = fam === 'wind' ? 0.15 : 0.07, att = fam === 'bow' ? 0.06 : 0.03;
+    o.type = fam === 'wind' ? 'sine' : fam === 'bow' ? 'sawtooth' : 'square';
+    end = when + Math.max(0.12, dur) + 0.09;
+    g.gain.linearRampToValueAtTime(peak, when + att);
+    g.gain.setValueAtTime(peak, Math.max(when + att, end - 0.09));
+    g.gain.linearRampToValueAtTime(0.0001, end);
+  }
+  o.connect(g);
+  if(fam === 'bow' || fam === 'reed'){
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = Math.min(6000, f * 4);
+    g.connect(lp); lp.connect(a.bus);
+  }else g.connect(a.bus);
+  o.start(when); o.stop(end + 0.02);
+}
+function stIndexAt(at){ const n = ST.au.notes; let i = 0; while(i < n.length && n[i][0] < at - 0.001) i++; return i; }
+function stPump(){
+  const a = ST.au;
+  if(!a.playing) return;
+  if(!stEditorOpen()){ stPause(); return; }
+  const now = a.ctx.currentTime - a.base;
+  while(a.idx < a.notes.length && a.notes[a.idx][0] < now + 0.3){
+    const n = a.notes[a.idx++];
+    if(n[0] >= now - 0.05) stVoice(a, a.base + n[0], n[1], n[2], a.kinds[n[3]] || 'pluck');
+  }
+  if(now >= stDur() + 0.4){ stPause(); a.pos = 0; stHeadPaint(false); }
+}
+function stPlay(){
+  const a = ST.au, AC = window.AudioContext || window.webkitAudioContext;
+  if(a.playing || !a.notes.length || !AC) return;
+  if(!a.ctx){ a.ctx = new AC(); a.out = a.ctx.createDynamicsCompressor(); a.out.connect(a.ctx.destination); }
+  if(a.ctx.state === 'suspended') a.ctx.resume();
+  a.bus = a.ctx.createGain(); a.bus.gain.value = 0.7; a.bus.connect(a.out);
+  if(a.pos >= stDur() - 0.05) a.pos = 0;
+  a.base = a.ctx.currentTime + 0.08 - a.pos;
+  a.idx = stIndexAt(a.pos);
+  a.playing = true;
+  a.timer = setInterval(stPump, 50);
+  stPump(); stTransport();
+  requestAnimationFrame(stTick);
+}
+function stPause(){
+  const a = ST.au;
+  if(!a.playing) return;
+  a.pos = stNow();
+  a.playing = false;
+  clearInterval(a.timer);
+  const bus = a.bus;
+  bus.gain.setTargetAtTime(0, a.ctx.currentTime, 0.015);
+  setTimeout(() => bus.disconnect(), 250);
+  stTransport();
+}
+function stSeek(at){
+  const a = ST.au, was = a.playing;
+  if(was) stPause();
+  a.pos = Math.max(0, Math.min(stDur(), at));
+  if(was) stPlay();
+  stHeadPaint(false);
+}
+function stTick(){
+  if(!ST.au.playing || !stEditorOpen()) return;
+  stHeadPaint(true);
+  requestAnimationFrame(stTick);
+}
+function stHeadPaint(follow){
+  const head = $('stHead'), ed = $('stEd');
+  if(!head || !ed) return;
+  const now = stNow(), x = ST_HEAD_W + now * ST.pps;
+  head.style.left = x + 'px';
+  txt('stClock', crDur(now) + ' / ' + crDur(stDur()));
+  if(follow && (x > ed.scrollLeft + ed.clientWidth - 30 || x < ed.scrollLeft + ST_HEAD_W)) ed.scrollLeft = x - ST_HEAD_W - 30;
+}
+function stTransport(){
+  const b = $('stPlay'), on = ST.au.playing;
+  if(!b) return;
+  b.innerHTML = icon(on ? 'pause' : 'play') + `<span>${esc(on ? t('creations.studio.pause') : t('creations.studio.play'))}</span>`;
+  b.disabled = !ST.au.notes.length;
+}
+
+// ---- contrôle : part de notes à la bonne hauteur par passage, et les notes à faire entendre
+function stReport(){
+  const r = ST.report;
+  document.querySelectorAll('.studio__clip').forEach(el => { el.title = ''; });
+  if(ST.ok) for(const p of r.parts){
+    const el = document.querySelector(`.studio__clip[data-clip="${CSS.escape(String(p.id))}"]`);
+    if(el) el.title = t('creations.studio.coverage', {n: p.coverage});
+    if(p.id === ST.sel) txt('stSelCov', t('creations.studio.coverage', {n: p.coverage}));
+  }
+  txt('stStatus', ST.ok ? t('creations.studio.ready', {duration: crDur(r.duration)}) : (ST.error || t('creations.studio.none')));
+  document.querySelectorAll('.studio [data-act="add"]').forEach(b => { b.disabled = !ST.ok; });
+  stTransport();
 }
 function stCheck(){
   clearTimeout(ST.timer);
   ST.timer = setTimeout(() => {
     const seq = ++ST.seq;
     api('creations_studio_check', stSpec()).then(r => {
-      if(seq !== ST.seq || !PANEL || PANEL.render !== stHtml) return;
-      document.querySelectorAll('.studio__cov').forEach(el => { el.textContent = ''; });
-      const ok = !!(r && r.ok);
-      if(ok) for(const p of r.report.parts){
-        const el = document.querySelector(`.studio__cov[data-cov="${CSS.escape(String(p.id))}"]`);
-        if(el) el.textContent = t('creations.studio.coverage', {n: p.coverage});
-      }
-      txt('stStatus', ok ? t('creations.studio.ready', {duration: crDur(r.report.duration)}) : ((r && r.error) || t('creations.studio.none')));
-      document.querySelectorAll('.studio [data-act]').forEach(b => { b.disabled = !ok; });
+      if(seq !== ST.seq || !stEditorOpen()) return;
+      const a = ST.au;
+      ST.ok = !!(r && r.ok);
+      ST.report = ST.ok ? r.report : null;
+      ST.error = ST.ok ? '' : ((r && r.error) || '');
+      a.notes = ST.ok ? (r.notes || []) : [];
+      a.kinds = ST.ok ? r.report.parts.map(p => ST_FAMILY[p.instrument] || 'pluck') : [];
+      if(a.playing){ if(a.notes.length) a.idx = stIndexAt(stNow() + 0.3); else stPause(); }
+      stReport();
     });
-  }, 250);
+  }, 200);
 }
-// coupe le passage de la piste qui contient l'instant `at` (deux secondes au moins de chaque côté)
+
+// ---- passages
+// coupe le passage de la piste qui contient l'instant `at` (une demi-seconde au moins de chaque côté)
 function stCut(index, at){
-  const total = ST.data.duration || 0;
-  const p = stPartsOf(index).find(x => at > x.from && at < (x.to == null ? total : x.to));
-  if(!p) return false;
-  const end = p.to == null ? total : p.to;
-  if(at - p.from < 2 || end - at < 2) return false;
-  ST.parts.push(Object.assign({}, p, {id: 'p' + index + '_' + (++ST.n), from: at, to: end}));
+  at = Math.round(at * 100) / 100;
+  const p = stPartsOf(index).find(x => at > x.from && at < stEnd(x));
+  if(!p) return null;
+  const end = stEnd(p);
+  if(at - p.from < ST_MIN || end - at < ST_MIN) return null;
+  const q = Object.assign({}, p, {id: 'p' + index + '_' + (++ST.n), from: at, to: end});
+  ST.parts.push(q);
   p.to = at;
-  return true;
+  return q;
 }
 function stMerge(id){
   const p = ST.parts.find(x => x.id === id);
@@ -391,46 +533,152 @@ function stMerge(id){
   if(!prev) return;
   prev.to = p.to;
   ST.parts.splice(ST.parts.indexOf(p), 1);
+  ST.sel = prev.id;
+}
+function stEdited(){ refreshPanel(); stCheck(); }
+
+// ---- mise en place : largeurs, graduations, notes et passages suivent l'échelle ST.pps (pixels par seconde)
+function stDraw(canvas, tr, W){
+  const g = canvas.getContext('2d'), parts = stPartsOf(tr.index);
+  const lo = tr.low == null ? 48 : tr.low, span = Math.max(12, (tr.high == null ? 84 : tr.high) - lo);
+  canvas.width = W;
+  g.clearRect(0, 0, W, ST_LANE_H);
+  let k = 0;
+  for(const n of tr.roll || []){
+    while(k < parts.length - 1 && n[0] >= stEnd(parts[k])) k++;
+    const p = parts[k];
+    g.fillStyle = p && p.on ? `hsl(${stHue(p.instrument)} 62% 52%)` : 'rgba(128,128,128,.45)';
+    g.fillRect(n[0] * ST.pps, 5 + (1 - (n[2] - lo) / span) * (ST_LANE_H - 13), Math.max(2, n[1] * ST.pps - 1), 3);
+  }
+}
+function stPlace(el, p){
+  const hue = stHue(p.instrument);
+  el.style.left = (p.from * ST.pps) + 'px';
+  el.style.width = Math.max(4, (stEnd(p) - p.from) * ST.pps) + 'px';
+  el.style.borderColor = `hsl(${hue} 55% 42%)`;
+  el.style.background = `hsla(${hue}, 62%, 52%, .14)`;
+  const tag = el.querySelector('.studio__tag');
+  if(tag) tag.style.background = `hsl(${hue} 50% 32%)`;
+}
+function stLayout(){
+  const ed = $('stEd'), ruler = $('stRuler'), total = stDur();
+  if(!ed || !ruler) return;
+  if(!ed.clientWidth) return;                       // panneau pas encore affiché : rien à mesurer
+  const fit = Math.max(0.5, (ed.clientWidth - ST_HEAD_W - 6) / total);
+  ST.pps = Math.max(fit, Math.min(ST.pps || fit, 160, Math.max(fit, ST_MAX_W / total)));
+  const W = Math.round(total * ST.pps);
+  const step = [1, 2, 5, 10, 15, 30, 60, 120, 300].find(s => s * ST.pps >= 64) || 600;
+  let ticks = '';
+  for(let s = 0; s < total; s += step) ticks += `<span data-at="${s}">${esc(crDur(s))}</span>`;
+  ruler.innerHTML = ticks;
+  ruler.style.width = W + 'px';
+  ruler.querySelectorAll('span').forEach(sp => { sp.style.left = (Number(sp.dataset.at) * ST.pps) + 'px'; });
+  ed.querySelectorAll('.studio__row[data-track]').forEach(row => {
+    const tr = ST.data.tracks.find(x => x.index === Number(row.dataset.track)), lane = row.querySelector('.studio__lane');
+    lane.style.width = W + 'px';
+    stDraw(lane.querySelector('canvas'), tr, W);
+    lane.querySelectorAll('.studio__clip').forEach(el => { const p = ST.parts.find(x => x.id === el.dataset.clip); if(p) stPlace(el, p); });
+  });
+  $('stHead').style.height = ed.scrollHeight + 'px';
+  stHeadPaint(false);
+}
+function stZoom(k){
+  const ed = $('stEd'), at = stNow();
+  ST.pps *= k;
+  stLayout();
+  ed.scrollLeft = Math.max(0, at * ST.pps - (ed.clientWidth - ST_HEAD_W) / 2);
 }
 function stWire(box){
+  const ed = $('stEd'), ruler = $('stRuler');
+  const laneTime = (lane, e) => (e.clientX - lane.getBoundingClientRect().left) / ST.pps;
   const title = box.querySelector('#stTitle');
   if(title) title.oninput = () => { ST.title = title.value; };
-  box.querySelectorAll('.studio__bar i').forEach(i => { i.style.height = (10 + 10 * Number(i.dataset.h)) + '%'; });
-  box.querySelectorAll('.studio__cut').forEach(c => { c.style.left = (Number(c.dataset.at) / 10) + '%'; });
-  box.querySelectorAll('tbody[data-track]').forEach(tb => {
-    const index = Number(tb.dataset.track);
-    const sw = tb.querySelector('[data-f="on"]');
-    if(sw) sw.onchange = () => { stPartsOf(index).forEach(p => { p.on = sw.checked; }); tb.querySelectorAll('.studio__part').forEach(r => r.classList.toggle('is-off', !sw.checked)); stCheck(); };
-    const bar = tb.querySelector('.studio__bar');
-    if(bar) bar.onclick = e => {
-      const r = bar.getBoundingClientRect();
-      const at = Math.round((e.clientX - r.left) / Math.max(1, r.width) * (ST.data.duration || 0));
-      if(stCut(index, at)) refreshPanel();
-    };
-    tb.querySelectorAll('tr[data-part]').forEach(row => {
-      const p = ST.parts.find(x => x.id === row.dataset.part);
-      if(!p) return;
-      row.querySelectorAll('select[data-f]').forEach(el => el.onchange = () => {
-        if(el.dataset.f === 'octave') p.octave = Number(el.value); else p.instrument = el.value;
-        stCheck();
-      });
+  stLayout();
+  ed.scrollLeft = ST.scroll;
+  ed.onscroll = () => { ST.scroll = ed.scrollLeft; };
+  // règle : un clic ou un glissé place la tête de lecture, lecture en cours ou non
+  ruler.onpointerdown = e => {
+    ruler.setPointerCapture(e.pointerId);
+    stSeek(laneTime(ruler, e));
+    ruler.onpointermove = ev => stSeek(laneTime(ruler, ev));
+    ruler.onpointerup = ruler.onpointercancel = () => { ruler.onpointermove = null; };
+  };
+  box.querySelectorAll('.studio__row[data-track]').forEach(row => {
+    const index = Number(row.dataset.track), lane = row.querySelector('.studio__lane');
+    const sw = row.querySelector('[data-f="on"]');
+    if(sw) sw.onchange = () => { stPartsOf(index).forEach(p => { p.on = sw.checked; }); stEdited(); };
+    lane.querySelectorAll('.studio__clip').forEach(el => {
+      const pick = e => {
+        if(ST.tool === 'cut' && e.clientX != null){
+          const q = stCut(index, laneTime(lane, e));
+          if(q){ ST.sel = q.id; stEdited(); }
+          return;
+        }
+        ST.sel = el.dataset.clip;
+        refreshPanel();
+      };
+      el.onclick = pick;
+      el.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); ST.sel = el.dataset.clip; refreshPanel(); } };
     });
-    tb.querySelectorAll('[data-merge]').forEach(b => b.onclick = () => { stMerge(b.dataset.merge); refreshPanel(); });
+    // limite entre deux passages : se tire à la souris
+    lane.querySelectorAll('.studio__grip').forEach(grip => {
+      grip.onclick = e => e.stopPropagation();
+      grip.onpointerdown = e => {
+        const p = ST.parts.find(x => x.id === grip.dataset.grip), list = stPartsOf(index), prev = list[list.indexOf(p) - 1];
+        if(!p || !prev) return;
+        e.stopPropagation(); e.preventDefault();
+        grip.setPointerCapture(e.pointerId);
+        grip.onpointermove = ev => {
+          const at = Math.round(Math.max(prev.from + ST_MIN, Math.min(stEnd(p) - ST_MIN, laneTime(lane, ev))) * 100) / 100;
+          prev.to = p.from = at;
+          stPlace(grip.parentElement, p);
+          const pe = lane.querySelector(`.studio__clip[data-clip="${CSS.escape(prev.id)}"]`);
+          if(pe) stPlace(pe, prev);
+        };
+        grip.onpointerup = grip.onpointercancel = () => { grip.onpointermove = null; stEdited(); };
+      };
+    });
   });
-  const ls = box.querySelector('[data-act="listen"]');
-  if(ls) ls.onclick = () => apiAction(ls, 'creations_studio_listen', stSpec());
+  const insp = $('stInsp'), sel = ST.parts.find(x => x.id === ST.sel);
+  if(insp && sel){
+    insp.querySelectorAll('select[data-f]').forEach(el => el.onchange = () => {
+      if(el.dataset.f === 'octave') sel.octave = Number(el.value); else sel.instrument = el.value;
+      stEdited();
+    });
+    const on = insp.querySelector('[data-f="clip_on"]');
+    if(on) on.onchange = () => { sel.on = on.checked; stEdited(); };
+    const whole = insp.querySelector('[data-act="whole"]');
+    if(whole) whole.onclick = () => { stPartsOf(sel.track).forEach(p => { p.instrument = sel.instrument; p.octave = sel.octave; }); stEdited(); };
+    const merge = insp.querySelector('[data-act="merge"]');
+    if(merge) merge.onclick = () => { stMerge(sel.id); stEdited(); };
+  }
+  $('stPlay').onclick = () => { if(ST.au.playing) stPause(); else stPlay(); };
+  $('stRewind').onclick = () => stSeek(0);
+  $('stCutTool').onclick = () => { ST.tool = ST.tool === 'cut' ? 'select' : 'cut'; refreshPanel(); };
+  $('stZoomIn').onclick = () => stZoom(1.6);
+  $('stZoomOut').onclick = () => stZoom(1 / 1.6);
+  // Espace : lecture ou pause, sauf dans un champ ou sur un bouton
+  box.onkeydown = e => {
+    if(e.code !== 'Space' || e.target.closest('input, select, button, textarea')) return;
+    e.preventDefault();
+    if(ST.au.playing) stPause(); else stPlay();
+  };
   const ad = box.querySelector('[data-act="add"]');
   if(ad) ad.onclick = () => apiAction(ad, 'creations_studio_add', stSpec()).then(r => {
     if(r && r.ok){ closePanel(); CR.sort = 'recent'; $('crSort').value = 'recent'; loadCreations(true); }
   });
-  stCheck();
+  stReport();
 }
 function crStudio(btn){
   apiAction(btn, 'creations_studio_open').then(r => {
     if(!r || !r.ok) return;
-    ST.data = r; ST.title = r.title || ''; ST.n = 0;
+    stPause();
+    Object.assign(ST, {data: r, title: r.title || '', n: 0, sel: null, tool: 'select', pps: 0, scroll: 0, report: null, ok: false, error: ''});
+    Object.assign(ST.au, {notes: [], kinds: [], pos: 0, idx: 0});
     ST.parts = (r.parts || []).map(p => Object.assign({}, p, {from: p.from || 0, to: p.to == null ? r.duration : p.to}));
-    openPanel({title: t('creations.studio.title'), wide: true, opener: btn, render: stHtml, html: stHtml(), wire: stWire});
+    openPanel({title: t('creations.studio.title'), full: true, opener: btn, render: stHtml, html: stHtml(), wire: stWire, closed: stPause});
+    refreshPanel();                                      // le panneau est maintenant affiché : l'échelle se mesure
+    stCheck();
   });
 }
 // apprendre un instrument : une musique du jeu où toutes ses touches ont été jouées, de la plus grave à la plus aiguë

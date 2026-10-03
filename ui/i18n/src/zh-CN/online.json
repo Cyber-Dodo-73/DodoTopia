@@ -162,7 +162,7 @@
   "online.account.benefit.share": "与其他玩家分享你的曲子和画作",
   "online.account.benefit.rooms": "在房间里演奏：所有人同时开始，各自使用自己的乐器",
   "online.account.benefit.like": "为你喜欢的曲子和画作点赞",
-  "online.account.benefit.import": "通过链接导入曲子（Online Sequencer、BitMidi 等）",
+  "online.account.benefit.import": "通过链接导入曲子（BitMidi 等）",
   "online.account.privacy": "DodoTopia 只读取你的 Discord 用户名、头像和 ID，无法在你的账号上发布任何内容。",
   "online.account.waiting_browser": "请在刚打开的浏览器中授权 DodoTopia。无需抄写任何内容，这里会自动登录。",
   "online.account.use_code": "从其他设备登录（使用验证码）"

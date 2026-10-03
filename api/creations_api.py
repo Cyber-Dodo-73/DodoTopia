@@ -485,8 +485,9 @@ class CreationsMixin:
                 "instruments": self.creations_studio_instruments()["instruments"],
                 "parts": studio.suggest(listing, duration)}
 
-    def _studio_build(self, spec):
-        """(événements, rapport) pour la demande de l'interface {path, title, parts:[{track, instrument, octave, on}]}."""
+    def _studio_build(self, spec, heard=None):
+        """(événements, rapport) pour la demande de l'interface {path, title, parts:[{track, instrument, octave, on,
+        from, to}]}. `heard` : liste facultative qui reçoit les notes jouées (voir studio.build)."""
         spec = spec if isinstance(spec, dict) else {}
         path = str(spec.get("path") or "")
         if not os.path.isfile(path):
@@ -495,15 +496,19 @@ class CreationsMixin:
         st = self._creations_scan()
         uid, extra = self._creations_music_refs(st)
         insts, tables = self._studio_instruments()
-        return studio.build(path, self._cfg, parts, insts, tables, uid, extra)
+        return studio.build(path, self._cfg, parts, insts, tables, uid, extra, heard=heard)
 
     def creations_studio_check(self, spec):
-        """Rapport sans rien écrire : {ok, report:{parts:[{track, coverage, played, notes}], duration}}."""
+        """Rapport sans rien écrire : {ok, report:{parts:[{id, track, instrument, coverage, played, notes}], duration},
+        notes:[[début, durée, note MIDI, rang dans report.parts]]}. `notes` est ce que le jeu jouera, aux instants
+        du fichier : l'éditeur le fait entendre lui-même (lecture, pause, reprise où l'on veut)."""
+        heard = []
         try:
-            _events, report = self._studio_build(spec)
+            _events, report = self._studio_build(spec, heard)
         except (studio.StudioError, game_music.MusicError) as e:
             return {"ok": False, "error": str(e)}
-        return {"ok": True, "report": report}
+        heard.sort(key=lambda n: n[0])
+        return {"ok": True, "report": report, "notes": heard}
 
     def creations_studio_listen(self, spec):
         """Préécoute de la répartition du studio sur cet ordinateur (rien n'est écrit dans le jeu)."""

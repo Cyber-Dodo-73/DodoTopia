@@ -743,6 +743,8 @@ def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
         {"track": 1, "instrument": "piano", "octave": 0, "on": True},
         {"track": 2, "instrument": "piano", "octave": 0, "on": False}]}
     chk = api.creations_studio_check(spec)
+    assert chk["notes"] == sorted(chk["notes"], key=lambda n: n[0]) and len(chk["notes"]) == sum(p["played"] for p in chk["report"]["parts"])
+    assert {n[3] for n in chk["notes"]} == set(range(len(chk["report"]["parts"])))
     assert chk["ok"] and len(chk["report"]["parts"]) == 2
     assert api.creations_studio_check({"path": path, "parts": []})["ok"] is False
     out = api.creations_studio_add(spec)
@@ -759,6 +761,8 @@ def test_studio_passages_changent_d_instrument_en_cours_de_piste(tmp_path):
     path = _midi_two_tracks(str(tmp_path / "duo.mid"))
     listing, duration = studio.describe(path, cfg)
     assert duration == pytest.approx(1.5, abs=0.05) and all(len(t["bins"]) == studio.BINS for t in listing)
+    assert all(len(t["roll"]) == (0 if t["drums"] else t["notes"]) and t["roll"] == sorted(t["roll"], key=lambda n: n[0]) for t in listing)
+    assert all(t["low"] <= n[2] <= t["high"] and n[1] > 0 for t in listing for n in t["roll"])
     assert max(listing[0]["bins"]) == 9 and listing[0]["end"] == pytest.approx(1.5, abs=0.05)
     start = studio.suggest(listing, duration)
     assert [p["id"] for p in start] == ["p0", "p1", "p2"] and start[0]["from"] == 0 and start[0]["to"] == duration

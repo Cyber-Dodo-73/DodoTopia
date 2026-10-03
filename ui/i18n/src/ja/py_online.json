@@ -59,7 +59,7 @@
   "online.import.done": "読み込みました：{title}",
   "online.import.failed": "リンクから読み込めません：{error}",
   "online.import.error.https_required": "リンクは https:// で始まる必要があります",
-  "online.import.error.bad_url": "無効なリンクです。Online Sequencer、BitMidi、または .mid ファイルの完全なアドレスを貼り付けてください。",
+  "online.import.error.bad_url": "無効なリンクです。BitMidi または .mid ファイルの完全なアドレスを貼り付けてください。",
   "online.import.error.host_not_allowed": "このサイトはリンクからの読み込みに対応していません。",
   "online.import.error.unsupported_url": "このリンクは曲ではありません。曲のページか .mid ファイルを開いてください。",
   "online.import.error.invalid_midi": "取得したファイルは有効な MIDI ではありません。",

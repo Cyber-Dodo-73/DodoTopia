@@ -162,7 +162,7 @@
   "online.account.benefit.share": "Compartir tus canciones y dibujos con otros jugadores",
   "online.account.benefit.rooms": "Tocar en salas: todos empiezan en el mismo instante, cada uno con su instrumento",
   "online.account.benefit.like": "Dar me gusta a las canciones y dibujos que prefieras",
-  "online.account.benefit.import": "Importar una canción desde un enlace (Online Sequencer, BitMidi…)",
+  "online.account.benefit.import": "Importar una canción desde un enlace (BitMidi…)",
   "online.account.privacy": "DodoTopia solo lee tu nombre de usuario, tu avatar y tu ID de Discord, y no puede publicar nada en tu cuenta.",
   "online.account.waiting_browser": "autoriza DodoTopia en el navegador que se acaba de abrir. Iniciarás sesión aquí automáticamente, sin copiar nada.",
   "online.account.use_code": "Iniciar sesión desde otro dispositivo (con un código)"

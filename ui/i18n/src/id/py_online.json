@@ -59,7 +59,7 @@
   "online.import.done": "Diimpor: {title}",
   "online.import.failed": "Gagal mengimpor dari tautan: {error}",
   "online.import.error.https_required": "Tautan harus diawali https://",
-  "online.import.error.bad_url": "Tautan tidak valid: tempel alamat lengkap dari Online Sequencer, BitMidi, atau file .mid.",
+  "online.import.error.bad_url": "Tautan tidak valid: tempel alamat lengkap dari BitMidi atau file .mid.",
   "online.import.error.host_not_allowed": "Situs ini tidak diterima untuk impor tautan.",
   "online.import.error.unsupported_url": "Tautan ini tidak mengarah ke lagu: buka halaman lagunya atau file .mid.",
   "online.import.error.invalid_midi": "File yang diunduh bukan MIDI yang valid.",

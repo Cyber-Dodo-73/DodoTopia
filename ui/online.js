@@ -596,7 +596,7 @@ function onlineSearchNow(page){
 }
 
 // ------------------------------------------------ import par lien (bouton « Lien » de la bibliothèque)
-// Le serveur va chercher le fichier (Online Sequencer, BitMidi, lien direct .mid) ; le client le vérifie comme tout
+// Le serveur va chercher le fichier (BitMidi, lien direct .mid) ; le client le vérifie comme tout
 // téléchargement. À la fin, le morceau est ouvert dans la bibliothèque (voir la vue importWatch).
 function importUrlDialog(prefill, error){
   const o = onlineOf(S);
@@ -605,10 +605,9 @@ function importUrlDialog(prefill, error){
     ${logged ? '' : `<div class="notice notice--info"><span class="notice__ic" aria-hidden="true">${icon('user')}</span><div class="notice__text">${esc(t('online.import.need_account'))}</div></div>`}
     <label class="field"><span class="field__label">${esc(t('online.import.label'))}</span>
       <input class="input dlg-input importurl__in" type="url" inputmode="url" spellcheck="false" autocomplete="off" maxlength="2000"
-             placeholder="https://onlinesequencer.net/1234567" value="${esc(prefill || '')}"${error ? ' aria-invalid="true"' : ''}></label>
+             placeholder="https://bitmidi.com/…-mid" value="${esc(prefill || '')}"${error ? ' aria-invalid="true"' : ''}></label>
     ${error ? `<p class="field__error" role="alert">${esc(error)}</p>` : ''}
     <ul class="importurl__ex">
-      <li><b>Online Sequencer</b> · <code>https://onlinesequencer.net/1234567</code></li>
       <li><b>BitMidi</b> · <code>https://bitmidi.com/…-mid</code></li>
       <li><b>${esc(t('online.import.direct'))}</b> · <code>https://…/morceau.mid</code></li>
     </ul>

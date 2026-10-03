@@ -162,7 +162,7 @@
   "online.account.benefit.share": "แชร์เพลงและภาพวาดของคุณกับผู้เล่นคนอื่น",
   "online.account.benefit.rooms": "เล่นในห้อง: ทุกคนเริ่มพร้อมกัน แต่ละคนใช้เครื่องดนตรีของตัวเอง",
   "online.account.benefit.like": "กดถูกใจเพลงและภาพวาดที่คุณชอบ",
-  "online.account.benefit.import": "นำเข้าเพลงจากลิงก์ (Online Sequencer, BitMidi…)",
+  "online.account.benefit.import": "นำเข้าเพลงจากลิงก์ (BitMidi…)",
   "online.account.privacy": "DodoTopia อ่านเพียงชื่อผู้ใช้ รูปประจำตัว และ ID ของ Discord เท่านั้น และไม่สามารถโพสต์อะไรในบัญชีของคุณได้",
   "online.account.waiting_browser": "อนุญาต DodoTopia ในเบราว์เซอร์ที่เพิ่งเปิดขึ้น คุณจะเข้าสู่ระบบที่นี่โดยอัตโนมัติ ไม่ต้องคัดลอกอะไร",
   "online.account.use_code": "เข้าสู่ระบบจากอุปกรณ์อื่น (ใช้รหัส)"

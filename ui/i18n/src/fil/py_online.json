@@ -59,7 +59,7 @@
   "online.import.done": "Na-import: {title}",
   "online.import.failed": "Hindi na-import mula sa link: {error}",
   "online.import.error.https_required": "Dapat magsimula ang link sa https://",
-  "online.import.error.bad_url": "Invalid na link: i-paste ang buong address mula sa Online Sequencer, BitMidi o ng isang .mid file.",
+  "online.import.error.bad_url": "Invalid na link: i-paste ang buong address mula sa BitMidi o ng isang .mid file.",
   "online.import.error.host_not_allowed": "Hindi tinatanggap ang site na ito para sa pag-import mula sa link.",
   "online.import.error.unsupported_url": "Hindi papunta sa kanta ang link na ito: buksan ang page ng kanta o isang .mid file.",
   "online.import.error.invalid_midi": "Hindi valid na MIDI ang na-download na file.",

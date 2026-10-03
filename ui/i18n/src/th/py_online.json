@@ -59,7 +59,7 @@
   "online.import.done": "นำเข้าแล้ว: {title}",
   "online.import.failed": "นำเข้าจากลิงก์ไม่สำเร็จ: {error}",
   "online.import.error.https_required": "ลิงก์ต้องขึ้นต้นด้วย https://",
-  "online.import.error.bad_url": "ลิงก์ไม่ถูกต้อง วางที่อยู่เต็มจาก Online Sequencer, BitMidi หรือไฟล์ .mid",
+  "online.import.error.bad_url": "ลิงก์ไม่ถูกต้อง วางที่อยู่เต็มจาก BitMidi หรือไฟล์ .mid",
   "online.import.error.host_not_allowed": "ไม่รองรับการนำเข้าผ่านลิงก์จากเว็บนี้",
   "online.import.error.unsupported_url": "ลิงก์นี้ไม่ใช่เพลง เปิดหน้าเพลงหรือไฟล์ .mid",
   "online.import.error.invalid_midi": "ไฟล์ที่ได้ไม่ใช่ MIDI ที่ถูกต้อง",

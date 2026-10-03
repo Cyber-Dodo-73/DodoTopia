@@ -59,7 +59,7 @@
   "online.import.done": "Importiert: {title}",
   "online.import.failed": "Import über Link fehlgeschlagen: {error}",
   "online.import.error.https_required": "Der Link muss mit https:// beginnen",
-  "online.import.error.bad_url": "Ungültiger Link: füge die vollständige Adresse von Online Sequencer, BitMidi oder einer .mid-Datei ein.",
+  "online.import.error.bad_url": "Ungültiger Link: füge die vollständige Adresse von BitMidi oder einer .mid-Datei ein.",
   "online.import.error.host_not_allowed": "Diese Seite wird für den Import per Link nicht akzeptiert.",
   "online.import.error.unsupported_url": "Dieser Link führt zu keinem Lied: öffne die Seite des Lieds oder eine .mid-Datei.",
   "online.import.error.invalid_midi": "Die abgerufene Datei ist keine gültige MIDI-Datei.",

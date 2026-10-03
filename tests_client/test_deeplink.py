@@ -23,8 +23,6 @@ import terms
     ("dodotopia://room/K7P2QD", {"action": "room", "code": "K7P2QD"}),
     ("dodotopia://room/k7p2qd", {"action": "room", "code": "K7P2QD"}),
     ("dodotopia://drawing/3", {"action": "drawing", "id": 3}),
-    ("dodotopia://import?url=https%3A%2F%2Fonlinesequencer.net%2F123456",
-     {"action": "import", "url": "https://onlinesequencer.net/123456", "host": "onlinesequencer.net"}),
     ("dodotopia://import?url=https://bitmidi.com/toto-mid",
      {"action": "import", "url": "https://bitmidi.com/toto-mid", "host": "bitmidi.com"}),
     ("dodotopia://import/?url=https%3A%2F%2Fwww.bitmidi.com%2Fuploads%2F1.mid",
@@ -215,11 +213,11 @@ def test_libelles_traduits(api):
     _accept(api._cfg)
     assert api.handle_deeplink("dodotopia://song/12")["deeplink"]["label"] == \
         "Ouvrir le morceau n° 12 de la bibliothèque partagée ?"
-    assert api.handle_deeplink("dodotopia://import?url=https%3A%2F%2Fonlinesequencer.net%2F1")["deeplink"]["label"] == \
-        "Importer un fichier MIDI depuis onlinesequencer.net ?"
+    assert api.handle_deeplink("dodotopia://import?url=https%3A%2F%2Fbitmidi.com%2Fa-mid")["deeplink"]["label"] == \
+        "Importer un fichier MIDI depuis bitmidi.com ?"
     import i18n
     i18n.set_lang("en")
-    assert api.get_state()["deeplink"]["label"] == "Import a MIDI file from onlinesequencer.net?"
+    assert api.get_state()["deeplink"]["label"] == "Import a MIDI file from bitmidi.com?"
 
 
 def test_refus(api):

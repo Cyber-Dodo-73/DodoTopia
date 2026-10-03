@@ -84,7 +84,7 @@ class OnlineMixin:
         return out
 
     def online_import_url(self, url):
-        """Import d'un MIDI par lien (Online Sequencer, BitMidi, lien .mid) : le travail tourne dans un fil,
+        """Import d'un MIDI par lien (BitMidi, lien .mid) : le travail tourne dans un fil,
         son etat est dans get_state()["online"]["jobs"]["imports"][key]. Renvoie {ok, key, error, state}."""
         try:
             key = self._online.import_url(url)

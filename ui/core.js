@@ -628,13 +628,13 @@ function openPanel(spec){
   PANEL = spec;
   $('panelTitle').textContent = spec.title || '';
   $('panelBody').innerHTML = spec.html || '';
-  $('panelOverlay').querySelector('.modal').className = 'modal panel' + (spec.wide ? ' panel--wide' : '');
+  $('panelOverlay').querySelector('.modal').className = 'modal panel' + (spec.full ? ' panel--full' : spec.wide ? ' panel--wide' : '');
   if(spec.wire) spec.wire($('panelBody'));
   $('panelBody').scrollTop = 0;
   openModal($('panelOverlay'), spec.opener, null, closePanel);
   setTimeout(() => { $('panelBody').scrollTop = 0; $('panelBody').focus(); }, 30);
 }
-function closePanel(){ PANEL = null; closeModal($('panelOverlay')); }
+function closePanel(){ const p = PANEL; PANEL = null; closeModal($('panelOverlay')); if(p && p.closed) p.closed(); }
 function panelOpen(){ return $('panelOverlay').classList.contains('open'); }
 // repeint le panneau ouvert quand l'etat change (compte, administration)
 function refreshPanel(){ if(PANEL && PANEL.render) { $('panelBody').innerHTML = PANEL.render(S); if(PANEL.wire) PANEL.wire($('panelBody')); } }

@@ -1495,26 +1495,46 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .crview__pic.is-pixel{image-rendering:pixelated}
 .crcard .gcard__acts .chip{font-size:var(--fs-xs)}
 .crcard.is-music .gcard__img{height:110px}
-/* studio : une ligne par piste du MIDI */
-.studio{display:flex;flex-direction:column;gap:12px}
-.studio .table-scroll{overflow-x:auto}
-.studio__tracks{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
-.studio__tracks th{text-align:left;font-weight:600;color:var(--c-text-2);padding:4px 8px}
-.studio__tracks td{padding:6px 8px;border-top:1px solid var(--c-line);vertical-align:middle}
-.studio__tracks tr.is-off select{opacity:.45}
-.studio__tracks tbody + tbody .studio__head td{border-top:2px solid var(--c-line)}
-.studio__part td{border-top:0;padding-top:2px}
-.studio__when{color:var(--c-text-2);font-variant-numeric:tabular-nums;padding-left:54px !important;white-space:nowrap}
-/* bande d'une piste : densité des notes, un clic coupe la piste en passages */
-.studio__bar{position:relative;display:flex;align-items:flex-end;gap:1px;width:100%;height:34px;padding:0;border:2px solid var(--c-line);
-  border-radius:var(--r-sm);background:var(--c-surface-2);cursor:col-resize;overflow:hidden}
-.studio__bar i{flex:1;min-width:1px;background:var(--c-deco);opacity:.75}
-.studio__bar i[data-h="0"]{opacity:.15}
-.studio__cut{position:absolute;top:0;bottom:0;width:2px;background:var(--c-warn)}
-.studio__cov{margin-right:6px}
-.studio__part td:last-child{white-space:nowrap}
-.studio__tracks small{display:block;color:var(--c-text-2);font-weight:400}
-.studio__cov{white-space:nowrap;color:var(--c-text-2);font-variant-numeric:tabular-nums}
+/* studio : éditeur sur une ligne de temps (une ligne par piste, des passages colorés par instrument) */
+.modal.panel--full{width:1240px;height:calc(100dvh - 32px);max-height:calc(100dvh - 32px)}
+.modal.panel--full .panel__body{flex:1;min-height:0}
+.studio{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.studio > *{flex:none}
+.studio__top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 18px}
+.studio__name{flex:1 1 220px;max-width:340px}
+.studio__transport,.studio__tools{display:flex;align-items:center;gap:8px}
+.studio__tools{margin-left:auto}
+.studio__clock{font-variant-numeric:tabular-nums;font-weight:600;min-width:96px}
+.studio .iconbtn.is-on{background:var(--c-warn-soft);border-color:var(--c-warn);color:var(--c-warn)}
+.studio__ed{position:relative;overflow:auto;flex:0 1 auto;min-height:120px;border:2px solid var(--c-line);border-radius:var(--r-md);background:var(--c-surface-2)}
+.studio__row{display:flex;width:max-content;min-width:100%;border-top:1px solid var(--c-line)}
+.studio__row--ruler{position:sticky;top:0;z-index:4;border-top:0;background:var(--c-surface)}
+.studio__th{position:sticky;left:0;z-index:3;flex:none;width:190px;box-sizing:border-box;padding:6px 10px;background:var(--c-surface);
+  border-right:1px solid var(--c-line);display:flex;align-items:center;overflow:hidden;font-size:var(--fs-sm)}
+.studio__th small{display:block;color:var(--c-text-2);font-weight:400}
+.studio__th b{display:block;max-width:108px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.studio__ruler{position:relative;height:26px;cursor:pointer;touch-action:none;user-select:none}
+.studio__ruler span{position:absolute;top:0;bottom:0;padding:5px 0 0 5px;border-left:1px solid var(--c-deco);color:var(--c-text-2);
+  font-size:var(--fs-xs,12px);font-variant-numeric:tabular-nums;pointer-events:none}
+.studio__lane{position:relative;height:52px;flex:none}
+.studio__lane canvas{position:absolute;inset:0;height:52px;pointer-events:none}
+.studio__clip{position:absolute;top:2px;bottom:2px;box-sizing:border-box;border:2px solid var(--c-deco);border-radius:6px;cursor:pointer;overflow:hidden}
+.studio__clip.is-sel{outline:2px solid var(--c-text);outline-offset:-1px;z-index:1}
+.studio__clip.is-off{opacity:.5}
+.studio__clip.is-off .studio__tag{text-decoration:line-through}
+.studio__clip:focus-visible{outline:2px solid var(--c-text)}
+.studio__ed.is-cut .studio__clip{cursor:crosshair}
+.studio__tag{position:absolute;left:0;top:0;max-width:100%;box-sizing:border-box;padding:0 6px;border-radius:0 0 6px 0;color:#fff;
+  font-size:11px;line-height:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.studio__grip{position:absolute;left:-2px;top:0;bottom:0;width:9px;cursor:ew-resize;touch-action:none}
+.studio__playhead{position:absolute;top:0;left:190px;width:2px;margin-left:-1px;background:var(--c-danger,#c0392b);z-index:2;pointer-events:none}
+.studio__insp{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;min-height:62px}
+.studio__insp .field{margin:0}
+.studio__sel{display:flex;flex-direction:column;min-width:150px;font-size:var(--fs-sm)}
+.studio__sel span{color:var(--c-text-2);font-variant-numeric:tabular-nums}
+.studio__foot{display:flex;align-items:center;gap:12px}
+.studio__foot .hint{flex:1;margin:0}
+.studio__foot .btn{margin-left:auto}
 .crcard__disc{display:flex;flex-direction:column;align-items:center;gap:6px}
 .crcard__disc b{font-size:var(--fs-sm);font-weight:600;color:var(--c-text-2);font-variant-numeric:tabular-nums}
 #crSecs .chip .ic{width:16px;height:16px;margin-right:4px}
