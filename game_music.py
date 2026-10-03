@@ -14,7 +14,7 @@ Format relevé le 2026-10-03 sur 24 fichiers (non chiffré, petit-boutiste) :
 Numéros d'instrument et de touches : table `GAME_INSTRUMENTS`, lue le 2026-10-03 dans les données du jeu (table
 des types d'instrument du fichier de configuration « oversea »). Piano et harpe : 22 touches blanches à la suite
 puis 15 noires ; les autres : 15 ou 8 touches à la suite. Recoupé avec les enregistrements réels et à l'écoute
-par le propriétaire pour le piano, la harpe, le luth, la flûte à bec, la lyre, le concertina et le xylophone.
+par le propriétaire pour les 19 instruments (une gamme d'essai par instrument, validée dans le jeu le 2026-10-03).
 
 Dépendances : mido (export / import MIDI), core.parse_midi pour lire un MIDI comme le lecteur."""
 import collections
