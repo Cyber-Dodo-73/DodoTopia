@@ -16,6 +16,9 @@ dans l'ordre des hauteurs, comme pour les touches blanches du piano). Les tables
 NON VÉRIFIÉ dans le jeu au 2026-10-03 : qu'Heartopia rejoue un enregistrement où UN joueur tient plusieurs
 instruments à la fois. Les duos enregistrés dans le jeu ont deux joueurs, un instrument chacun."""
 import collections
+import json
+import os
+import shutil
 
 import core
 import game_music
@@ -118,6 +121,57 @@ def learn(record_path, inst, uid=None):
     return {"type": int(kind), "keys": keys, "extra": float(extra)}
 
 
+# ---------------------------------------------------------------- rouvrir une musique du jeu
+def arrangement_paths(backup_dir, base):
+    """(fiche .json, copie du MIDI source) de l'arrangement mémorisé pour la musique `base` (nom du fichier du jeu)."""
+    d = os.path.join(backup_dir, "studio")
+    return os.path.join(d, base + ".json"), os.path.join(d, base + ".mid")
+
+
+def save_arrangement(backup_dir, base, source, title, parts, exact=False):
+    """Mémorise l'arrangement d'une musique écrite par le studio (pistes, passages, instruments) et une copie de
+    son MIDI source, pour pouvoir la rouvrir et la modifier. Sans effet si l'écriture échoue."""
+    sheet, midi = arrangement_paths(backup_dir, base)
+    try:
+        os.makedirs(os.path.dirname(sheet), exist_ok=True)
+        if os.path.abspath(source) != os.path.abspath(midi):
+            shutil.copyfile(source, midi)
+        with open(sheet, "w", encoding="utf-8") as f:
+            json.dump({"title": str(title or ""), "parts": parts, "exact": bool(exact)}, f, ensure_ascii=False)
+    except OSError:
+        pass
+
+
+def load_arrangement(backup_dir, base):
+    """{"source", "title", "parts"} de la musique `base`, ou None si elle n'a pas été faite au studio."""
+    sheet, midi = arrangement_paths(backup_dir, base)
+    try:
+        with open(sheet, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("parts"), list) or not os.path.isfile(midi):
+        return None
+    return {"source": midi, "title": str(data.get("title") or ""), "exact": bool(data.get("exact")),
+            "parts": [p for p in data["parts"] if isinstance(p, dict)]}
+
+
+def from_record(record_path, dest):
+    """Convertit un enregistrement du jeu en MIDI (une piste par joueur et par instrument) pour l'ouvrir dans le
+    studio. Renvoie {index de piste: identifiant d'instrument du catalogue} (instrument reconnu à ses touches)."""
+    try:
+        rec = game_music.read(record_path)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        game_music.to_midi(rec, dest)
+    except (game_music.MusicError, OSError) as e:
+        raise StudioError(str(e)) from e
+    notes_of = game_music._key_notes()
+    groups = {}
+    for e in rec["events"]:
+        groups.setdefault((e[1], e[2]), collections.Counter())[notes_of.get(e[4], (0, None))[1]] += 1
+    return {i: c.most_common(1)[0][0] for i, c in enumerate(groups.values())}
+
+
 # ---------------------------------------------------------------- pistes
 def tracks(path):
     """Pistes du MIDI qui ont des notes : [{index, name, notes, low, high, mean, drums}]."""
@@ -174,13 +228,15 @@ def _track_notes(path, cfg, index, all_indices, drums=False):
     return core.parse_midi(path, cfg, skip_tracks=others, drums_only=drums)
 
 
-def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=None):
+def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=None, exact=False):
     """Événements du jeu pour `parts` = [{"track", "instrument", "octave", "from", "to", "id"}] (passages retenus
     seulement). Un passage est un morceau de piste, de `from` à `to` secondes du fichier (absents : toute la
     piste) ; une piste peut donc changer d'instrument en cours de route. `instruments` : {identifiant: objet
     Instrument de core}. Renvoie (événements, rapport) ; le rapport donne, par passage, la part de notes jouées
     à leur hauteur exacte, et la durée totale. Un instrument à frappes (conga) joue la batterie de la piste,
-    ramenée sur ses pads (percussion.fit), ou à défaut le rythme de ses notes ; il n'est pas transposé. `heard` : liste facultative qui reçoit les notes jouées
+    ramenée sur ses pads (percussion.fit), ou à défaut le rythme de ses notes ; il n'est pas transposé. `exact` :
+    aucune transposition (ni tonalité commune ni octave automatique), pour une musique du jeu rouverte, dont les
+    notes sont déjà celles des instruments. `heard` : liste facultative qui reçoit les notes jouées
     [début dans le fichier, durée, note MIDI, rang du passage dans le rapport], pour les faire entendre."""
     import percussion
     import sync
@@ -207,7 +263,7 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=N
     every = [n for g in grouped_of.values() for _, ns in g for n, _, _ in ns]
     if not every and not any(ns for g in drums_of.values() for _, ns in g):
         raise StudioError("aucune note dans les pistes retenues")
-    extra = sync.choose_common_extra(every) if every else 0     # la même tonalité pour toutes les pistes
+    extra = sync.choose_common_extra(every) if every and not exact else 0     # la même tonalité pour toutes les pistes
 
     presses, report = [], []
     for part in parts:
@@ -228,7 +284,7 @@ def build(path, cfg, parts, instruments, tables, uid, extra_default=1.0, heard=N
             drums = [(when, ns) for when, ns in drums_of[index] if lo <= when < hi]
             fitted, info = percussion.fit(drums, grouped, inst)
         else:
-            shift = core.choose_shift(notes, inst, cfg, extra) + 12 * octave
+            shift = (0 if exact else core.choose_shift(notes, inst, cfg, extra)) + 12 * octave
             fitted, info = core.fit_notes(grouped, inst, cfg, extra_fixed=extra, shift=shift)
         table = tables.get(inst.id) or {}
         value = float(table.get("extra") or extra_default)

@@ -487,6 +487,44 @@ class CreationsMixin:
                 "instruments": self.creations_studio_instruments()["instruments"],
                 "parts": studio.suggest(listing, duration)}
 
+    def creations_studio_edit(self, item_id):
+        """Rouvre une musique du jeu dans le studio : son arrangement mémorisé si elle a été faite au studio, sinon
+        l'enregistrement converti (une piste par joueur et par instrument, chacune avec l'instrument reconnu).
+        Renvoie la même chose que creations_studio_open, plus `replace` (la musique que l'éditeur peut remplacer)."""
+        it = self._creations_item(item_id)
+        if it is None or it["cat"] != "music":
+            self._notify(i18n.t("api.creations.unknown"), "warn")
+            return {"ok": False, "error": "unknown"}
+        backup_dir = self._creations_backup_dir()
+        insts, tables = self._studio_instruments()
+        try:
+            saved = studio.load_arrangement(backup_dir, it["base"])
+            if saved is not None:
+                path, guess, exact = saved["source"], {}, saved["exact"]
+            else:
+                exact = True                 # notes déjà à la hauteur des instruments : rien n'est transposé
+                path = os.path.join(backup_dir, "studio", it["base"] + ".jeu.mid")
+                guess = studio.from_record(it["path"], path)
+            listing, duration = studio.describe(path, self._cfg)
+        except studio.StudioError as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "danger")
+            return {"ok": False, "error": str(e)}
+        if not listing:
+            self._notify(i18n.t("api.creations.failed", error=i18n.t("api.creations.studio_no_tracks")), "warn")
+            return {"ok": False, "error": "no_tracks"}
+        known = {t["index"] for t in listing}
+        if saved is not None:
+            parts = [p for p in saved["parts"] if p.get("track") in known and p.get("instrument") in insts]
+        else:
+            parts = studio.suggest(listing, duration)
+            for p in parts:
+                inst = insts.get(guess.get(p["track"]))
+                if inst is not None and studio.is_available(inst, tables):
+                    p["instrument"] = inst.id
+        return {"ok": True, "path": path, "title": it["name"], "tracks": listing, "duration": duration,
+                "instruments": self.creations_studio_instruments()["instruments"],
+                "parts": parts or studio.suggest(listing, duration), "replace": it["id"], "exact": exact}
+
     def _studio_build(self, spec, heard=None):
         """(événements, rapport) pour la demande de l'interface {path, title, parts:[{track, instrument, octave, on,
         from, to}]}. `heard` : liste facultative qui reçoit les notes jouées (voir studio.build)."""
@@ -498,7 +536,7 @@ class CreationsMixin:
         st = self._creations_scan()
         uid, extra = self._creations_music_refs(st)
         insts, tables = self._studio_instruments()
-        return studio.build(path, self._cfg, parts, insts, tables, uid, extra, heard=heard)
+        return studio.build(path, self._cfg, parts, insts, tables, uid, extra, heard=heard, exact=bool(spec.get("exact")))
 
     def creations_studio_check(self, spec):
         """Rapport sans rien écrire : {ok, report:{parts:[{id, track, instrument, coverage, played, notes}], duration},
@@ -523,24 +561,40 @@ class CreationsMixin:
         return self._creations_preview({"events": events, "duration": events[-1][0]}, title)
 
     def creations_studio_add(self, spec):
-        """Écrit la répartition du studio comme une nouvelle musique d'Heartopia (rien n'est remplacé)."""
+        """Écrit la répartition du studio comme une nouvelle musique d'Heartopia (rien n'est remplacé), ou, avec
+        spec["replace"] (identifiant d'une musique), à la place de cette musique : son fichier garde son nom, donc
+        son titre dans le jeu, et l'original est sauvegardé une seule fois (« Remettre l'original »).
+        L'arrangement est mémorisé pour pouvoir rouvrir la musique dans le studio."""
         st = self._creations_scan()
         folder, my_id = st["folder"], st["my_id"]
         if not folder or not my_id:
             self._notify(i18n.t("api.creations.folder_missing" if not folder else "api.creations.no_player"), "warn")
             return {"ok": False, "error": "no_folder"}
+        backup_dir = self._creations_backup_dir()
         try:
             events, report = self._studio_build(spec)
             data = game_music.build(events)
-            d = os.path.join(creations.game_root(folder), "record", my_id)
-            base = game_music.file_name((spec or {}).get("title"), events[-1][0])
-            os.makedirs(d, exist_ok=True)
+            target = self._creations_item((spec or {}).get("replace")) if (spec or {}).get("replace") else None
+            if target is not None and target["cat"] == "music":
+                v = target["variants"][0]
+                d, base = os.path.dirname(v["path"]), os.path.basename(v["path"])
+                bk = creations.backup_path(backup_dir, v)
+                if not os.path.isfile(bk):
+                    os.makedirs(os.path.dirname(bk), exist_ok=True)
+                    shutil.copy2(v["path"], bk)
+            else:
+                target = None
+                d = os.path.join(creations.game_root(folder), "record", my_id)
+                base = game_music.file_name((spec or {}).get("title"), events[-1][0])
+                os.makedirs(d, exist_ok=True)
             creations._write_atomic(os.path.join(d, base), data)
         except (studio.StudioError, game_music.MusicError, OSError) as e:
             self._notify(i18n.t("api.creations.failed", error=e), "danger")
             return {"ok": False, "error": str(e)}
-        backup_dir = self._creations_backup_dir()
-        creations.added_record(backup_dir, [os.path.join(d, base)])
+        if target is None:
+            creations.added_record(backup_dir, [os.path.join(d, base)])
+        studio.save_arrangement(backup_dir, base, str(spec.get("path") or ""), spec.get("title"),
+                                [p for p in (spec.get("parts") or []) if isinstance(p, dict)], bool(spec.get("exact")))
         st = self._creations_scan(refresh=True)
         with st["lock"]:
             it = next((x for x in st["items"] if x["base"] == base), None)

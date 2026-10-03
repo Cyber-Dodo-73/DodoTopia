@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "Tocar este trecho",
   "creations.studio.whole_track": "Aplicar à faixa inteira",
   "creations.studio.layer_add": "Adicionar outro instrumento tocando esta faixa também",
-  "creations.studio.layer_del": "Remover este instrumento extra"
+  "creations.studio.layer_del": "Remover este instrumento extra",
+  "creations.studio.edit_menu": "Editar no estúdio…",
+  "creations.studio.replace": "Substituir esta música",
+  "creations.studio.add_new": "Adicionar como nova música"
 }

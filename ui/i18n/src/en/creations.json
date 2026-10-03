@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "Play this passage",
   "creations.studio.whole_track": "Apply to the whole track",
   "creations.studio.layer_add": "Add another instrument playing this track too",
-  "creations.studio.layer_del": "Remove this extra instrument"
+  "creations.studio.layer_del": "Remove this extra instrument",
+  "creations.studio.edit_menu": "Edit in the studio…",
+  "creations.studio.replace": "Replace this piece",
+  "creations.studio.add_new": "Add as a new piece"
 }

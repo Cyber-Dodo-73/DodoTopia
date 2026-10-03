@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "演奏这个段落",
   "creations.studio.whole_track": "应用到整条音轨",
   "creations.studio.layer_add": "再添加一种乐器同时演奏这条音轨",
-  "creations.studio.layer_del": "移除这个额外的乐器"
+  "creations.studio.layer_del": "移除这个额外的乐器",
+  "creations.studio.edit_menu": "在工作室中编辑…",
+  "creations.studio.replace": "替换这首音乐",
+  "creations.studio.add_new": "作为新音乐添加"
 }

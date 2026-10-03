@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "Diesen Abschnitt spielen",
   "creations.studio.whole_track": "Auf die ganze Spur anwenden",
   "creations.studio.layer_add": "Ein weiteres Instrument hinzufügen, das diese Spur mitspielt",
-  "creations.studio.layer_del": "Dieses zusätzliche Instrument entfernen"
+  "creations.studio.layer_del": "Dieses zusätzliche Instrument entfernen",
+  "creations.studio.edit_menu": "Im Studio bearbeiten…",
+  "creations.studio.replace": "Dieses Stück ersetzen",
+  "creations.studio.add_new": "Als neues Stück hinzufügen"
 }

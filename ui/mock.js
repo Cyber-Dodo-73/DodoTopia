@@ -282,6 +282,7 @@ function mockMain(){
       parts: [{id: 'p1', track: 1, instrument: 'piano', octave: 0, on: true, from: 0, to: 213.5}, {id: 'p2', track: 2, instrument: 'lute', octave: -1, on: true, from: 0, to: 213.5},
         {id: 'p3', track: 3, instrument: 'violin', octave: 0, on: true, from: 0, to: 213.5}, {id: 'p4', track: 4, instrument: 'conga', octave: 0, on: true, from: 0, to: 213.5}]};
       return window.MOCK_ST; }),
+    creations_studio_edit: id => window.MOCK_API.creations_studio_open().then(r => Object.assign({}, r, {replace: id})),
     creations_studio_check: spec => { const on = (spec.parts || []).filter(p => p.on), notes = [];
       on.forEach((p, k) => { const tr = window.MOCK_ST.tracks.find(x => x.index === p.track);
         for(const n of tr.roll) if(n[0] >= p.from && n[0] < p.to) notes.push([n[0], n[1], n[2] + 12 * (p.octave || 0), k]); });

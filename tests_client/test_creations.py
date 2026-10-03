@@ -802,3 +802,38 @@ def test_studio_deux_instruments_jouent_le_meme_passage(tmp_path):
     assert rep["instruments"] == [1, 17] and [p["id"] for p in rep["parts"]] == ["a", "b"]
     assert len(ev2) == 2 * len(ev1) and {n[3] for n in heard} == {0, 1}
     assert sorted({e[0] for e in ev2 if e[2] == 1 and e[3]}) == sorted({e[0] for e in ev2 if e[2] == 17 and e[3]})
+
+
+def test_api_studio_rouvre_une_musique_pour_la_modifier(api, music_tree, tmp_path):
+    """Une musique faite au studio se rouvre avec son arrangement ; une musique du jeu se rouvre convertie, chaque
+    piste avec son instrument reconnu ; « remplacer » réécrit le même fichier, original sauvegardé."""
+    api._player = type("P", (), {"instruments": instruments.build_instruments(api._cfg)})()
+    path = _midi_two_tracks(str(tmp_path / "Mon duo.mid"))
+    parts = [{"id": "a", "track": 0, "instrument": "lyre", "octave": 0, "on": True, "from": 0, "to": 0.7},
+             {"id": "b", "track": 0, "instrument": "violin", "octave": 0, "on": True, "from": 0.7, "to": 9},
+             {"id": "c", "track": 1, "instrument": "piano", "octave": 0, "on": False, "from": 0, "to": 9}]
+    out = api.creations_studio_add({"path": path, "title": "Mon duo", "parts": parts})
+    assert out["ok"] and out["item"]["added"] is True
+    os.remove(path)                                                   # le MIDI d'origine peut disparaître : une copie est gardée
+    again = api.creations_studio_edit(out["item"]["id"])
+    assert again["ok"] and again["replace"] == out["item"]["id"] and again["title"] == "Mon duo"
+    assert [(p["id"], p["instrument"], p["on"]) for p in again["parts"]] == [("a", "lyre", True), ("b", "violin", True), ("c", "piano", False)]
+    # modifier puis remplacer : même fichier, autre contenu, original sauvegardé
+    item_path = next(x for x in api._creations_scan()["items"] if x["id"] == out["item"]["id"])["path"]
+    before = open(item_path, "rb").read()
+    again["parts"][0]["instrument"] = "lute"
+    rep = api.creations_studio_add({"path": again["path"], "title": again["title"], "parts": again["parts"], "replace": again["replace"]})
+    assert rep["ok"] and rep["item"]["id"] == out["item"]["id"] and rep["item"]["backup"] is True
+    after = game_music.read(item_path)["events"]
+    assert open(item_path, "rb").read() != before and {e[2] for e in after} == {11, 20}
+    assert api.creations_studio_edit(out["item"]["id"])["parts"][0]["instrument"] == "lute"
+    # une musique enregistrée dans le jeu (pas d'arrangement) : convertie, luth reconnu à ses touches
+    rec = _lute_record(os.path.join(music_tree["record_dir"], "Luth_20261003120000000_4700.bin"), kind=11, first=11001)
+    it = next(x for x in api.creations_list(True)["items"] if x.get("name") == "Luth")
+    conv = api.creations_studio_edit(it["id"])
+    assert conv["ok"] and [p["instrument"] for p in conv["parts"]] == ["lute"] and conv["tracks"][0]["notes"] == 15
+    assert conv["exact"] is True and again["exact"] is False
+    chk = api.creations_studio_check({"path": conv["path"], "parts": conv["parts"], "exact": True})
+    assert sorted(n[2] for n in chk["notes"]) == sorted(studio.learned_tables({})["lute"]["midis"])     # aucune transposition
+    assert chk["ok"] and chk["report"]["parts"][0]["coverage"] == 100 and chk["report"]["parts"][0]["played"] == 15
+    assert api.creations_studio_edit("inconnu")["ok"] is False

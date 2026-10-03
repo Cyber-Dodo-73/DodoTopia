@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "เล่นช่วงนี้",
   "creations.studio.whole_track": "ใช้กับทั้งแทร็ก",
   "creations.studio.layer_add": "เพิ่มเครื่องดนตรีอีกชิ้นให้เล่นแทร็กนี้ด้วย",
-  "creations.studio.layer_del": "เอาเครื่องดนตรีที่เพิ่มนี้ออก"
+  "creations.studio.layer_del": "เอาเครื่องดนตรีที่เพิ่มนี้ออก",
+  "creations.studio.edit_menu": "แก้ไขในสตูดิโอ…",
+  "creations.studio.replace": "แทนที่เพลงนี้",
+  "creations.studio.add_new": "เพิ่มเป็นเพลงใหม่"
 }

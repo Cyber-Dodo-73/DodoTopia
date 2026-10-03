@@ -1537,6 +1537,7 @@ main.active{animation:dodo-rise var(--dur-slow) var(--ease)}
 .studio__foot{display:flex;align-items:center;gap:12px}
 .studio__foot .hint{flex:1;margin:0}
 .studio__foot .btn{margin-left:auto}
+.studio__foot .btn + .btn{margin-left:0}
 .crcard__disc{display:flex;flex-direction:column;align-items:center;gap:6px}
 .crcard__disc b{font-size:var(--fs-sm);font-weight:600;color:var(--c-text-2);font-variant-numeric:tabular-nums}
 #crSecs .chip .ic{width:16px;height:16px;margin-right:4px}

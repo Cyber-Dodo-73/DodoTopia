@@ -257,6 +257,7 @@ function crMore(anchor, it){
     {label: t('creations.card.restore'), icon: 'undo', disabled: !it.backup, help: it.backup ? '' : t('creations.card.no_backup'), fn: () => crRestore(it)},
   ];
   if(crIsMusic(it)) items.unshift({label: t('creations.card.listen'), icon: 'play', fn: () => crListen(it)});
+  if(crIsMusic(it)) items.push({label: t('creations.studio.edit_menu'), icon: 'scissors', fn: () => crStudioEdit(it)});
   if(crIsMusic(it)) items.push({label: t('creations.learn.menu'), icon: 'music', fn: () => crLearn(it)});
   if(it.added) items.push({label: t('creations.card.delete'), icon: 'trash', fn: () => crDelete(it)});
   items.push({label: t('creations.open_folder'), icon: 'folder', fn: () => api('creations_open_folder')});
@@ -321,13 +322,13 @@ try{
 // note, k]]} : ce que le jeu jouera (k = rang dans report.parts). L'éditeur le fait entendre lui-même (Web Audio,
 // son de synthèse) : lecture, pause, reprise où l'on clique sur la règle. creations_studio_add(spec) écrit la musique
 // dans le jeu.
-const ST = {data: null, parts: [], title: '', timer: null, seq: 0, n: 0, sel: null, tool: 'select', pps: 0, scroll: 0,
+const ST = {data: null, parts: [], title: '', replace: null, timer: null, seq: 0, n: 0, sel: null, tool: 'select', pps: 0, scroll: 0,
   report: null, ok: false, error: '',
   au: {ctx: null, out: null, bus: null, notes: [], kinds: [], pos: 0, base: 0, idx: 0, playing: false, timer: null}};
 const ST_HEAD_W = 230, ST_MIN = 0.5, ST_MAX_W = 16000, ST_LANE_H = 52;
 const ST_FAMILY = {conga: 'drum', recorder: 'wind', xiao: 'wind', ocarina: 'wind', conch: 'wind', saxophone: 'reed', bagpipe: 'reed', concertina: 'reed',
   violin: 'bow', cello: 'bow', 'wooden-bass': 'bow'};
-function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts}; }
+function stSpec(){ return {path: ST.data.path, title: ST.title, parts: ST.parts, exact: !!ST.data.exact}; }
 function stDur(){ return (ST.data && ST.data.duration) || 1; }
 function stEnd(p){ return p.to == null ? stDur() : p.to; }
 function stTrackName(tr){ return tr.name || t('creations.studio.track', {n: tr.index + 1}); }
@@ -403,7 +404,9 @@ function stHtml(){
       <div class="studio__insp" id="stInsp">${stInspHtml()}</div>
       <div class="studio__foot">
         <p class="hint left" id="stStatus" role="status"></p>
-        <button class="btn btn--cta" type="button" data-act="add">${icon('plus')}<span>${esc(t('creations.studio.add'))}</span></button>
+        ${ST.replace ? `<button class="btn btn--secondary" type="button" data-act="add">${icon('plus')}<span>${esc(t('creations.studio.add_new'))}</span></button>
+        <button class="btn btn--cta" type="button" data-act="replace">${icon('check')}<span>${esc(t('creations.studio.replace'))}</span></button>`
+        : `<button class="btn btn--cta" type="button" data-act="add">${icon('plus')}<span>${esc(t('creations.studio.add'))}</span></button>`}
       </div>
       <div class="hint left">${t('creations.studio.hint_html')}</div>
     </div>`;
@@ -519,7 +522,7 @@ function stReport(){
     if(p.id === ST.sel) txt('stSelCov', t('creations.studio.coverage', {n: p.coverage}));
   }
   txt('stStatus', ST.ok ? t('creations.studio.ready', {duration: crDur(r.duration)}) : (ST.error || t('creations.studio.none')));
-  document.querySelectorAll('.studio [data-act="add"]').forEach(b => { b.disabled = !ST.ok; });
+  document.querySelectorAll('.studio__foot [data-act]').forEach(b => { b.disabled = !ST.ok; });
   stTransport();
 }
 function stCheck(){
@@ -693,23 +696,29 @@ function stWire(box){
     e.preventDefault();
     if(ST.au.playing) stPause(); else stPlay();
   };
-  const ad = box.querySelector('[data-act="add"]');
-  if(ad) ad.onclick = () => apiAction(ad, 'creations_studio_add', stSpec()).then(r => {
-    if(r && r.ok){ closePanel(); CR.sort = 'recent'; $('crSort').value = 'recent'; loadCreations(true); }
+  // « Ajouter » écrit une nouvelle musique ; « Remplacer » (musique rouverte) réécrit celle qu'on modifie
+  box.querySelectorAll('.studio__foot [data-act]').forEach(b => b.onclick = () => {
+    const spec = b.dataset.act === 'replace' ? Object.assign(stSpec(), {replace: ST.replace}) : stSpec();
+    apiAction(b, 'creations_studio_add', spec).then(r => {
+      if(r && r.ok){ closePanel(); CR.sort = 'recent'; $('crSort').value = 'recent'; loadCreations(true); }
+    });
   });
   stReport();
 }
-function crStudio(btn){
-  apiAction(btn, 'creations_studio_open').then(r => {
+// modifier une musique du jeu : son arrangement du studio s'il existe, sinon l'enregistrement converti en pistes
+function crStudioEdit(it){ api('creations_studio_edit', it.id).then(r => stOpen(r, null)); }
+function crStudio(btn){ apiAction(btn, 'creations_studio_open').then(r => stOpen(r, btn)); }
+function stOpen(r, btn){
+  {
     if(!r || !r.ok) return;
     stPause();
-    Object.assign(ST, {data: r, title: r.title || '', n: 0, sel: null, tool: 'select', pps: 0, scroll: 0, report: null, ok: false, error: ''});
+    Object.assign(ST, {data: r, title: r.title || '', replace: r.replace || null, n: (r.parts || []).length, sel: null, tool: 'select', pps: 0, scroll: 0, report: null, ok: false, error: ''});
     Object.assign(ST.au, {notes: [], kinds: [], pos: 0, idx: 0});
     ST.parts = (r.parts || []).map(p => Object.assign({}, p, {from: p.from || 0, to: p.to == null ? r.duration : p.to}));
     openPanel({title: t('creations.studio.title'), full: true, opener: btn, render: stHtml, html: stHtml(), wire: stWire, closed: stPause});
     refreshPanel();                                      // le panneau est maintenant affiché : l'échelle se mesure
     stCheck();
-  });
+  }
 }
 // apprendre un instrument : une musique du jeu où toutes ses touches ont été jouées, de la plus grave à la plus aiguë
 function crLearn(it){

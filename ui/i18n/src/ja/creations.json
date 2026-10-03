@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "このパッセージを演奏する",
   "creations.studio.whole_track": "トラック全体に適用",
   "creations.studio.layer_add": "このトラックを一緒に演奏する楽器を追加",
-  "creations.studio.layer_del": "この追加の楽器を外す"
+  "creations.studio.layer_del": "この追加の楽器を外す",
+  "creations.studio.edit_menu": "スタジオで編集…",
+  "creations.studio.replace": "この曲を置き換える",
+  "creations.studio.add_new": "新しい曲として追加"
 }

@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "Mainkan bagian ini",
   "creations.studio.whole_track": "Terapkan ke seluruh trek",
   "creations.studio.layer_add": "Tambahkan instrumen lain yang juga memainkan trek ini",
-  "creations.studio.layer_del": "Hapus instrumen tambahan ini"
+  "creations.studio.layer_del": "Hapus instrumen tambahan ini",
+  "creations.studio.edit_menu": "Edit di studio…",
+  "creations.studio.replace": "Ganti musik ini",
+  "creations.studio.add_new": "Tambahkan sebagai musik baru"
 }

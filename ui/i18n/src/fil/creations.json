@@ -135,5 +135,8 @@
   "creations.studio.clip_on": "Tugtugin ang bahaging ito",
   "creations.studio.whole_track": "Ilapat sa buong track",
   "creations.studio.layer_add": "Magdagdag ng isa pang instrumentong tutugtog din ng track na ito",
-  "creations.studio.layer_del": "Alisin ang dagdag na instrumentong ito"
+  "creations.studio.layer_del": "Alisin ang dagdag na instrumentong ito",
+  "creations.studio.edit_menu": "I-edit sa studio…",
+  "creations.studio.replace": "Palitan ang musikang ito",
+  "creations.studio.add_new": "Idagdag bilang bagong musika"
 }
