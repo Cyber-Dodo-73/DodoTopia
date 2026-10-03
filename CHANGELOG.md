@@ -6,6 +6,7 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
 ## 2.2.3
+- **Cuisine, réaction rapide à la spatule** : l'anneau est maintenant cherché à part, en quelques dizaines de millisecondes, et cliqué dès qu'il est vu, la souris sautant directement dessus. Avant, il fallait deux lectures complètes de l'écran puis un déplacement de souris, soit plus de deux secondes : l'anneau avait le temps de virer à l'orange et le plat de cramer.
 - **Cuisine, spatule qui change de couleur** : l'anneau de la spatule passe du vert au jaune, à l'orange puis au rouge tant que le feu n'est pas réglé (le jeu n'a pas pris le clic, par exemple pendant que le personnage ramasse un plat). L'anneau n'est alors plus entier : c'est un arc qui se vide. DodoTopia clique maintenant sur ces anneaux et ces arcs aussi, le plus rouge d'abord, et insiste plus longtemps avant d'abandonner.
 - **Cuisine, ramassage** : le clic sur les gants est plus posé (survol et appui deux fois plus longs) parce que le jeu ne le prenait pas toujours ; quand il faut recliquer la même bulle, le plat n'est plus compté deux fois.
 - **Cuisine, plus de clic dans le vide** : la souris met plus d'une seconde à arriver sur une bulle. Juste avant d'appuyer, DodoTopia revérifie que la spatule, les gants ou la bulle « cuisiner » sont toujours là ; sinon il n'appuie pas. Avant, un clic arrivé trop tard touchait la cuisinière et retirait le plat pas fini.

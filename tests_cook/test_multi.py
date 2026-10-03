@@ -220,8 +220,8 @@ def souris_rapide(monkeypatch):
     la vraie mécanique de clic, mais en quelques dixièmes de seconde."""
     vrai = cook.Cooker._click
 
-    def rapide(self, x, y, delay=None, confirm=None, slow=1.0):
-        return vrai(self, x, y, delay=0.01 if delay is None else float(delay) / 10.0, confirm=confirm, slow=slow)
+    def rapide(self, x, y, delay=None, confirm=None, slow=1.0, glide=True):
+        return vrai(self, x, y, delay=0.01 if delay is None else float(delay) / 10.0, confirm=confirm, slow=slow, glide=glide)
     monkeypatch.setattr(cook.Cooker, "_click", rapide)
     monkeypatch.setattr(cook, "READY_AGAIN", cook.READY_AGAIN / 10.0)
 
@@ -687,8 +687,8 @@ def test_anneau_jaune_orange_rouge_et_urgence():
         return im
     need = cook.DEFAULT_COOK["green_px"]
     rouge = (251, 130, 96)                                   # mesuré sur une capture du jeu
-    for color, level in (((60, 220, 90), 0), ((245, 215, 60), 1), ((250, 170, 40), 2), (rouge, 3), ((235, 40, 45), 3),
-                         ((149, 95, 60), -1), ((150, 60, 60), -1)):
+    for color, level in (((60, 220, 90), 0), ((245, 215, 60), 1), ((200, 235, 60), 1), ((250, 170, 40), 2), (rouge, 3),
+                         ((235, 40, 45), 3), ((149, 95, 60), -1), ((150, 60, 60), -1)):
         assert cook.ring_read(scene(color), need=need)[1] == level, color
     n, level, _mask, centre = cook.ring_read(scene(rouge, arc=(180, 300)), need=need)     # un tiers d'anneau
     assert level == 3 and abs(centre[0] - 80) <= 3 and abs(centre[1] - 80) <= 3
