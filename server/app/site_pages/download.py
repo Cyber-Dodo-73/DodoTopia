@@ -146,8 +146,9 @@ def render(settings, lang: str, ctx) -> str:
     <p>{t(lang, "site.download.soon_text")}</p>
   </div>"""
         notes = ""
-    main = f"""{main}
-  {android_card(lang, ctx.mobile)}
+    # « dlstack » : sur un écran tactile, la carte Android remonte devant les versions PC (site.css).
+    main = f"""<div class="dlstack">{main}
+  {android_card(lang, ctx.mobile)}</div>
   {macos}"""
     header = page_header(lang, esc(t(lang, "site.download.eyebrow")), t(lang, "site.download.h1"),
                          t(lang, "site.download.lead"), actions)

@@ -4,6 +4,11 @@ Les versions Android ont leur propre numérotation, à part de l'appli PC (`CHAN
 Changer `versionName` dans `mobile/app/build.gradle.kts` et pousser sur `main` construit, signe et publie la version
 (`.github/workflows/mobile-release.yml`).
 
+## 0.7.1
+
+- Une mise à jour disponible est proposée dès le lancement de l'appli.
+- Version 0.7.0 non publiée : même contenu, détaillé ci-dessous.
+
 ## 0.7.0
 
 Première version publiée. Tout ce qui touche au jeu a été essayé sur émulateur (BlueStacks, Android 11) seulement.

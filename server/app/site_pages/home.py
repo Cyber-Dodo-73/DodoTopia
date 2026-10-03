@@ -20,7 +20,7 @@ TRUST = ("free", "no_account", "langs", "platforms")
 PREVIEW_N = 6
 
 
-def hero_actions(lang: str, latest: dict | None) -> str:
+def hero_actions(lang: str, latest: dict | None, mobile: dict | None = None) -> str:
     """Une action principale (télécharger) et une secondaire ; jamais de lien mort sans version publiée."""
     if not latest:
         return (f'<div class="dl-row"><a class="btn btn--quiet" href="{url_for(lang, "download")}">'
@@ -45,13 +45,18 @@ def hero_actions(lang: str, latest: dict | None) -> str:
     else:
         main = (f'<a class="btn btn--cta btn--lg" href="{url_for(lang, "download")}">{ico}'
                 f'{esc(t(lang, "site.common.download_cta"))}</a>')
+    if mobile:
+        # Sur un écran tactile, le bouton de l'APK remplace celui du PC (site.css : .dl-pc / .dl-apk).
+        from .download import android_button
+        main = (main.replace('class="btn btn--cta btn--lg"', 'class="btn btn--cta btn--lg dl-pc"', 1)
+                + android_button(lang, mobile, "btn btn--cta btn--lg dl-apk"))
     return (f'<div class="dl-row">{main}'
             f'<a class="btn btn--quiet btn--lg" href="#comment-ca-marche">{esc(t(lang, "site.home.cta_how"))}</a></div>'
             f'<p class="dl-note"><span class="vbadge">{t(lang, "site.home.version_badge", version=latest["version"])}'
             f'</span> <a href="{url_for(lang, "download")}">{esc(t(lang, "site.home.other_downloads"))}</a></p>')
 
 
-def hero(lang: str, latest: dict | None) -> str:
+def hero(lang: str, latest: dict | None, mobile: dict | None = None) -> str:
     shot = app_shot("musique", t(lang, "site.home.hero_shot_alt"), "shot", eager=True,
                     sizes="(max-width: 900px) 94vw, 760px")
     return f"""<section class="hero"><span class="sky" aria-hidden="true">{decor("cloud cloud--a", "cloud cloud--b", "cloud cloud--c")}</span>
@@ -60,7 +65,7 @@ def hero(lang: str, latest: dict | None) -> str:
     <p class="eyebrow">{esc(t(lang, "site.home.eyebrow"))}</p>
     <h1>{t(lang, "site.home.h1")}</h1>
     <p class="lead">{t(lang, "site.home.lead")}</p>
-    {hero_actions(lang, latest)}
+    {hero_actions(lang, latest, mobile)}
   </div>
   <div class="hero__visual">
     {window_frame(shot, "r")}
@@ -179,7 +184,7 @@ def render(settings, lang: str, ctx) -> str:
     faq = t_items(lang, "site.help.faq")[:4]
     if faq:
         ctx.head.append(site.ld_script(site.faq_ld(faq)))
-    return f"""{hero(lang, latest)}
+    return f"""{hero(lang, latest, ctx.mobile)}
 <div class="band">
 {trust_band(lang)}
 {stats_section(lang, ctx)}

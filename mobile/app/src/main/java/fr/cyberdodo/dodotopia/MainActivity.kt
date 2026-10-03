@@ -133,6 +133,24 @@ class MainActivity : AppCompatActivity() {
         val ouverte = savedInstanceState?.getInt(PAGE, 0) ?: 0
         ouvrirPage(if (pages.any { it.first == ouverte }) ouverte else R.id.navJouer)
 
+        // Mise à jour : la vérification part au lancement (PageBiblio). Une version plus récente est proposée
+        // une fois, où qu'on soit ; le téléchargement et l'installation se suivent sur la carte de la Bibliothèque.
+        var proposee = savedInstanceState != null
+        MiseAJour.etat.observe(this) { e ->
+            val v = e.version
+            if (v == null || proposee || e.fichier != null || e.progression != null) return@observe
+            proposee = true
+            MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.maj_titre, v.version))
+                .setMessage(v.notes.take(600).ifBlank { getString(R.string.maj_taille, "%.1f".format(v.taille / 1_048_576.0)) })
+                .setNegativeButton(R.string.continuer_sans, null)
+                .setPositiveButton(R.string.maj_telecharger) { _, _ ->
+                    ouvrirPage(R.id.navBiblio)
+                    if (MiseAJour.peutInstaller(this)) MiseAJour.telecharger(this, v) else Connexion.ouvrir(this, v.adresse)
+                }
+                .show()
+        }
+
         DodoAccessibilityService.actif.observe(this) { majService(it) }
 
         montrer(accueil = Preferences.configFaite(this) && savedInstanceState?.getBoolean(SUR_BIENVENUE) != true)
