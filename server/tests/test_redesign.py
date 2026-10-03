@@ -204,8 +204,9 @@ def test_download_page_hierarchy(client, publish_headers):
     primary = html.split('<li class="dlcard dlcard--primary', 1)[1].split("</li>", 1)[0]
     assert i18n.t("fr", "site.download.recommended") in primary and 'href="/telecharger/go/windows"' in primary
     assert html.count('<details class="dlcard__tech">') == 3
-    assert html.count('<details name="dl-more"') == 5 and 'class="faq__body" id="smartscreen"' in html
-    assert 'class="faq__body" id="apk"' in html                       # « Installer un APK », pour l'appli Android
+    assert html.count('<details name="dl-more"') == 6 and 'class="faq__body" id="smartscreen"' in html
+    assert 'class="faq__body" id="apk"' in html                       # « Installer un APK », pour l'appli Android
+    assert 'class="faq__body" id="play-protect"' in html              # aide « Play Protect bloque l'installation »
     assert '<span class="vbadge">' in html and 'class="pillnote"' in html
     news = client.get("/fr/nouveautes").text
     assert '<ol class="timeline">' in news and '<span class="timeline__v" aria-hidden="true">2.0.0</span>' in news

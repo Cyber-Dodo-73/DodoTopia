@@ -117,6 +117,10 @@ def more_section(lang: str) -> str:
         fold(esc(t(lang, "site.download.apk_title")),
              "".join(f'<p>{t(lang, f"site.download.apk_{part}")}</p>' for part in ("text", "access", "restricted")),
              anchor="apk"),
+        # Play Protect : avertissement « appli inconnue », blocage par pays (accessibilité, développeur non enregistré)
+        fold(esc(t(lang, "site.download.protect_title")),
+             "".join(f'<p>{t(lang, f"site.download.protect_{part}")}</p>' for part in ("text", "blocked")),
+             anchor="play-protect"),
     )
     return f"""<section class="section"><div class="wrap wrap--narrow">
   {section_head(esc(t(lang, "site.download.more_title")))}

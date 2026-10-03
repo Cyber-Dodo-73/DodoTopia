@@ -4,12 +4,11 @@
 
     <!-- Bibliothèque en ligne, salons et compte Discord. Jouer seul n'en a pas besoin. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Mise à jour depuis l'appli : lancer l'installation de l'APK téléchargé et vérifié. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Pas de REQUEST_INSTALL_PACKAGES : une mise à jour ouvre le téléchargement de l'APK dans le navigateur
+         (MiseAJour.installer). Une appli qui cumule accessibilité et installation de paquets ressemble à un
+         installateur caché pour Play Protect. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <!-- Exigée par AudioPlaybackCapture, même si on n'écoute jamais le micro. -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Pour le bouton « Ouvrir Heartopia » : sans cette déclaration, Android 11+ cache le jeu à l'appli. -->

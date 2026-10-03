@@ -2,7 +2,7 @@
 
 Version : 2026-10
 
-Dernière mise à jour : 28 septembre 2026 — entrée en vigueur : 1er octobre 2026
+Dernière mise à jour : 3 octobre 2026 — entrée en vigueur : 1er octobre 2026
 
 Les présentes conditions générales d'utilisation (les « CGU ») régissent l'installation et l'utilisation de l'application DodoTopia (l'« Application »), du site **dodotopia.cyber-dodo.fr** et du service en ligne associé (mises à jour, bibliothèque de fichiers MIDI partagée, salons synchronisés ; ensemble, le « Service »). La version française des CGU fait foi ; la traduction anglaise n'est fournie qu'à titre d'information.
 
@@ -26,6 +26,8 @@ Ce résumé est là pour t'aider ; en cas de doute, ce sont les articles ci-dess
 1.3. DodoTopia est un logiciel pour Windows et Linux qui automatise certaines actions répétitives dans le jeu vidéo Heartopia : jouer un fichier MIDI sur un instrument du jeu, reproduire une image dans l'outil de dessin du jeu, et répéter une recette de cuisine en boucle. Pour cela, l'Application **envoie des frappes de clavier et des clics de souris** à l'ordinateur de l'utilisateur et **analyse le contenu de son écran**. Le Service en ligne, facultatif, fournit la distribution des mises à jour, une bibliothèque de fichiers MIDI partagés entre utilisateurs, soumise à modération, et des salons permettant de jouer à plusieurs de façon synchronisée.
 
 1.4. Les CGU ont pour objet de définir les conditions dans lesquelles l'Éditeur met l'Application et le Service à disposition de toute personne physique qui les installe ou les utilise (l'« Utilisateur »).
+
+1.5. DodoTopia existe aussi sous la forme d'une application pour Android (« DodoTopia Mobile »), distribuée depuis le site sous forme de fichier APK. Les CGU s'y appliquent de la même façon. Sur Android, l'Application **envoie des appuis à l'écran** à la place de l'Utilisateur au moyen d'un **service d'accessibilité** que l'Utilisateur active lui-même, affiche une bulle par-dessus le jeu et, pour le dessin et la cuisine, **prend des captures de l'écran**, analysées sur l'appareil et jamais transmises. Les mots « ordinateur », « clavier » et « souris » employés dans les CGU désignent alors l'appareil Android et les appuis à l'écran.
 
 ## Article 2 — Acceptation obligatoire
 
@@ -165,7 +167,7 @@ Ce résumé est là pour t'aider ; en cas de doute, ce sont les articles ci-dess
 
 11.2. En résumé, sont traités :
 
-- pour la **vérification des mises à jour** (activée par défaut, désactivable dans les réglages) : la version installée et la plateforme (Windows ou Linux), transmises au serveur sans être enregistrées ;
+- pour la **vérification des mises à jour** (activée par défaut, désactivable dans les réglages) : la version installée et la plateforme (Windows, Linux ou Android), transmises au serveur sans être enregistrées ;
 - si l'Utilisateur **se connecte avec Discord** : son identifiant Discord, son pseudonyme, l'adresse de son avatar, ses sessions (empreinte du jeton), les contenus qu'il dépose et les signalements qu'il émet ;
 - si l'Utilisateur **active l'affichage de son activité dans Discord (Rich Presence)**, lorsque cette fonction est proposée : les informations d'activité (par exemple le titre en cours) sont envoyées localement, depuis son ordinateur, à l'application Discord installée sur ce même ordinateur, sans passer par le serveur de l'Éditeur ;
 - lors d'un **import par URL** : l'adresse indiquée est transmise au serveur pour qu'il télécharge le fichier ;

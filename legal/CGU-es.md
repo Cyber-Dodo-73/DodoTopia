@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Última actualización: 28 de septiembre de 2026 — entrada en vigor: 1 de octubre de 2026
+Última actualización: 3 de octubre de 2026 — entrada en vigor: 1 de octubre de 2026
 
 **La versión francesa prevalece.** Esta traducción al español se facilita únicamente por comodidad. En caso de discrepancia o controversia, el texto francés de las *Conditions générales d'utilisation* es la única versión auténtica.
 
@@ -28,6 +28,8 @@ Este resumen está aquí para ayudarte; en caso de duda, se aplican los artícul
 1.3. DodoTopia es un software para Windows y Linux que automatiza determinadas acciones repetitivas en el videojuego Heartopia: tocar un archivo MIDI con un instrumento del juego, reproducir una imagen en la herramienta de dibujo del juego y repetir una receta de cocina en bucle. Para ello, la Aplicación **envía pulsaciones de teclado y clics de ratón** al ordenador del usuario y **analiza el contenido de su pantalla**. El Servicio en línea, de carácter opcional, proporciona la distribución de las actualizaciones, una biblioteca de archivos MIDI compartidos entre usuarios, sujeta a moderación, y salas que permiten tocar entre varios de forma sincronizada.
 
 1.4. Las Condiciones tienen por objeto definir los términos en los que el Editor pone la Aplicación y el Servicio a disposición de toda persona física que los instale o los utilice (el «Usuario»).
+
+1.5. DodoTopia existe también como aplicación para Android («DodoTopia Mobile»), distribuida desde el sitio en forma de archivo APK. Las CGU se le aplican del mismo modo. En Android, la Aplicación **envía toques a la pantalla** en lugar del Usuario mediante un **servicio de accesibilidad** que el propio Usuario activa, muestra una burbuja sobre el juego y, para el dibujo y la cocina, **toma capturas de pantalla**, analizadas en el dispositivo y nunca transmitidas. Las palabras «ordenador», «teclado» y «ratón» empleadas en las CGU designan entonces el dispositivo Android y los toques en la pantalla.
 
 ## Artículo 2 — Aceptación obligatoria
 
@@ -167,7 +169,7 @@ Este resumen está aquí para ayudarte; en caso de duda, se aplican los artícul
 
 11.2. En resumen, se tratan:
 
-- para la **comprobación de actualizaciones** (activada por defecto, desactivable en los ajustes): la versión instalada y la plataforma (Windows o Linux), transmitidas al servidor sin ser registradas;
+- para la **comprobación de actualizaciones** (activada por defecto, desactivable en los ajustes): la versión instalada y la plataforma (Windows, Linux o Android), transmitidas al servidor sin ser registradas;
 - si el Usuario **inicia sesión con Discord**: su identificador de Discord, su seudónimo, la dirección de su avatar, sus sesiones (huella del token), los contenidos que sube y las denuncias que emite;
 - si el Usuario **activa la visualización de su actividad en Discord (Rich Presence)**, cuando se ofrezca esta función: la información de actividad (por ejemplo, el título en curso) se envía localmente, desde su ordenador, a la aplicación Discord instalada en ese mismo ordenador, sin pasar por el servidor del Editor;
 - en una **importación por URL**: la dirección indicada se transmite al servidor para que descargue el archivo;

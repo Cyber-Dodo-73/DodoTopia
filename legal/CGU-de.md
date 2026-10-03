@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Letzte Aktualisierung: 28. September 2026 — Inkrafttreten: 1. Oktober 2026
+Letzte Aktualisierung: 3. Oktober 2026 — Inkrafttreten: 1. Oktober 2026
 
 **Es gilt die französische Fassung.** Diese deutsche Übersetzung wird nur zur Vereinfachung bereitgestellt. Bei Abweichungen oder Streitigkeiten ist allein der französische Text der *Conditions générales d'utilisation* maßgeblich.
 
@@ -28,6 +28,8 @@ Diese Zusammenfassung soll dir helfen; im Zweifel gelten die nachstehenden Artik
 1.3. DodoTopia ist eine Software für Windows und Linux, die bestimmte wiederkehrende Handlungen im Videospiel Heartopia automatisiert: das Abspielen einer MIDI-Datei auf einem Instrument im Spiel, das Nachzeichnen eines Bildes im Zeichenwerkzeug des Spiels und das Wiederholen eines Kochrezepts in einer Schleife. Dazu **sendet die Anwendung Tastenanschläge und Mausklicks** an den Computer des Nutzers und **analysiert den Inhalt seines Bildschirms**. Der optionale Online-Dienst stellt die Verteilung von Updates, eine moderierte Bibliothek von zwischen Nutzern geteilten MIDI-Dateien sowie Räume zum synchronisierten gemeinsamen Spielen bereit.
 
 1.4. Gegenstand der Bedingungen ist die Festlegung der Bedingungen, unter denen der Herausgeber die Anwendung und den Dienst jeder natürlichen Person zur Verfügung stellt, die sie installiert oder nutzt (der „Nutzer“).
+
+1.5. DodoTopia gibt es auch als Anwendung für Android („DodoTopia Mobile“), die über die Website als APK-Datei verteilt wird. Die Nutzungsbedingungen gelten für sie in gleicher Weise. Unter Android **sendet die Anwendung Tipps an den Bildschirm** anstelle des Nutzers, und zwar über einen **Bedienungshilfen-Dienst**, den der Nutzer selbst aktiviert, zeigt eine Blase über dem Spiel an und **erstellt** für das Zeichnen und Kochen **Bildschirmaufnahmen**, die auf dem Gerät ausgewertet und nie übermittelt werden. Die in den Nutzungsbedingungen verwendeten Wörter „Computer“, „Tastatur“ und „Maus“ bezeichnen dann das Android-Gerät und die Tipps auf den Bildschirm.
 
 ## Artikel 2 — Verpflichtende Annahme
 
@@ -167,7 +169,7 @@ Diese Zusammenfassung soll dir helfen; im Zweifel gelten die nachstehenden Artik
 
 11.2. Zusammengefasst werden verarbeitet:
 
-- für die **Prüfung auf Updates** (standardmäßig aktiviert, in den Einstellungen deaktivierbar): die installierte Version und die Plattform (Windows oder Linux), die an den Server übermittelt werden, ohne gespeichert zu werden;
+- für die **Prüfung auf Updates** (standardmäßig aktiviert, in den Einstellungen deaktivierbar): die installierte Version und die Plattform (Windows, Linux oder Android), die an den Server übermittelt werden, ohne gespeichert zu werden;
 - wenn der Nutzer **sich mit Discord anmeldet**: seine Discord-Kennung, sein Pseudonym, die Adresse seines Avatars, seine Sitzungen (Fingerabdruck des Tokens), die von ihm hochgeladenen Inhalte und die von ihm abgegebenen Meldungen;
 - wenn der Nutzer **die Anzeige seiner Aktivität in Discord (Rich Presence) aktiviert**, sofern diese Funktion angeboten wird: Die Aktivitätsinformationen (zum Beispiel der aktuelle Titel) werden lokal von seinem Computer an die auf demselben Computer installierte Discord-Anwendung gesendet, ohne über den Server des Herausgebers zu laufen;
 - bei einem **Import über eine URL**: Die angegebene Adresse wird an den Server übermittelt, damit dieser die Datei herunterlädt;

@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Huling binago: 28 Setyembre 2026 — magkakabisa: 1 Oktubre 2026
+Huling binago: 3 Oktubre 2026 — magkakabisa: 1 Oktubre 2026
 
 **Ang bersyong Pranses ang masusunod.** Ang salin na ito sa Filipino ay ibinibigay lamang para sa kaginhawahan. Sa anumang pagkakaiba o hindi pagkakaunawaan, ang tekstong Pranses ng *Conditions générales d'utilisation* lamang ang may bisa bilang opisyal na bersyon.
 
@@ -28,6 +28,8 @@ Narito ang buod na ito upang tulungan ka; kung may pag-aalinlangan, ang mga arti
 1.3. Ang DodoTopia ay software para sa Windows at Linux na awtomatikong gumagawa ng ilang paulit-ulit na aksyon sa video game na Heartopia: pagtugtog ng MIDI file sa isang instrumento sa laro, paggaya ng isang larawan sa drawing tool ng laro, at pag-uulit ng isang recipe ng pagluluto nang paikot. Para rito, ang Application ay **nagpapadala ng mga keystroke at mouse click** sa computer ng User at **sinusuri ang nilalaman ng kanyang screen**. Ang opsyonal na online na Serbisyo ay nagbibigay ng pamamahagi ng mga update, isang library ng mga MIDI file na ibinabahagi ng mga user na sumasailalim sa moderation, at mga room para sa sabay-sabay na pagtugtog nang naka-synchronize.
 
 1.4. Ang layunin ng Mga Tuntunin ay itakda ang mga kondisyon kung saan ginagawang available ng Tagapaglathala ang Application at ang Serbisyo sa sinumang natural na tao na nag-i-install o gumagamit ng mga ito (ang "User").
+
+1.5. Mayroon ding DodoTopia bilang application para sa Android (“DodoTopia Mobile”), na ipinamamahagi mula sa site bilang APK file. Sa parehong paraan nalalapat dito ang mga Tuntunin. Sa Android, ang Application ay **nagpapadala ng mga tap sa screen** kapalit ng User sa pamamagitan ng isang **accessibility service** na ang User mismo ang nag-e-enable, nagpapakita ng bubble sa ibabaw ng laro at, para sa pagguhit at pagluluto, **kumukuha ng mga screenshot**, na sinusuri sa device at hindi kailanman ipinapadala. Ang mga salitang “computer”, “keyboard”, at “mouse” na ginamit sa mga Tuntunin ay tumutukoy noon sa Android device at sa mga tap sa screen.
 
 ## Artikulo 2 — Sapilitang pagtanggap
 
@@ -167,7 +169,7 @@ Narito ang buod na ito upang tulungan ka; kung may pag-aalinlangan, ang mga arti
 
 11.2. Sa buod, ang mga sumusunod ay pinoproseso:
 
-- para sa **pagsusuri ng mga update** (naka-enable bilang default, maaaring i-disable sa settings): ang naka-install na bersyon at ang platform (Windows o Linux), na ipinapadala sa server nang hindi itinatala;
+- para sa **pagsusuri ng mga update** (naka-enable bilang default, maaaring i-disable sa settings): ang naka-install na bersyon at ang platform (Windows, Linux, o Android), na ipinapadala sa server nang hindi itinatala;
 - kung ang User ay **nag-sign in gamit ang Discord**: ang kanyang Discord identifier, palayaw, address ng avatar, mga session (fingerprint ng token), ang nilalamang kanyang ina-upload at ang mga ulat na kanyang isinusumite;
 - kung **pinagana ng User ang pagpapakita ng aktibidad sa Discord (Rich Presence)**, kung saan inaalok ang feature na ito: ang impormasyon ng aktibidad (halimbawa ang kasalukuyang pamagat) ay ipinapadala nang lokal, mula sa kanyang computer, sa Discord application na naka-install sa parehong computer, nang hindi dumadaan sa server ng Tagapaglathala;
 - sa **pag-import mula sa isang URL**: ang ibinigay na address ay ipinapadala sa server upang ma-download nito ang file;

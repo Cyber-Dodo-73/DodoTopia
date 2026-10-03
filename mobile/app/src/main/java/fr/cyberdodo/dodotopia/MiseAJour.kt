@@ -42,8 +42,9 @@ object Versions {
  * de l'appli, son sha256 est vérifié, puis l'installateur d'Android prend le relais (il redemande l'accord
  * du joueur et refuse un APK signé par une autre clé que celle de l'appli installée).
  *
- * L'installation depuis l'appli demande la permission REQUEST_INSTALL_PACKAGES dans le manifeste ; tant
- * qu'elle n'y est pas, [installer] ouvre la page de téléchargement dans le navigateur à la place.
+ * L'installation depuis l'appli demande la permission REQUEST_INSTALL_PACKAGES dans le manifeste. Elle n'y
+ * est plus depuis la 0.7.2 (Play Protect) : [installer] et l'interface ouvrent le téléchargement de l'APK
+ * dans le navigateur, et c'est Android qui propose de l'installer par-dessus l'appli.
  */
 object MiseAJour {
 

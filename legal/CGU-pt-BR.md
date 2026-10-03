@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Última atualização: 28 de setembro de 2026 — entrada em vigor: 1º de outubro de 2026
+Última atualização: 3 de outubro de 2026 — entrada em vigor: 1º de outubro de 2026
 
 **A versão francesa prevalece.** Esta tradução para o português é fornecida apenas por conveniência. Em caso de divergência ou controvérsia, o texto francês das *Conditions générales d'utilisation* é a única versão que faz fé.
 
@@ -28,6 +28,8 @@ Este resumo está aqui para ajudar você; em caso de dúvida, prevalecem os arti
 1.3. O DodoTopia é um software para Windows e Linux que automatiza certas ações repetitivas no videogame Heartopia: tocar um arquivo MIDI em um instrumento do jogo, reproduzir uma imagem na ferramenta de desenho do jogo e repetir uma receita de culinária em loop. Para isso, o Aplicativo **envia pressionamentos de teclas e cliques de mouse** ao computador do usuário e **analisa o conteúdo da sua tela**. O Serviço on-line, facultativo, fornece a distribuição das atualizações, uma biblioteca de arquivos MIDI compartilhados entre usuários, sujeita a moderação, e salas que permitem tocar com outras pessoas de forma sincronizada.
 
 1.4. Os Termos têm por objeto definir as condições em que o Editor disponibiliza o Aplicativo e o Serviço a qualquer pessoa física que os instale ou utilize (o "Usuário").
+
+1.5. O DodoTopia existe também como aplicativo para Android (“DodoTopia Mobile”), distribuído pelo site na forma de arquivo APK. Os Termos se aplicam a ele da mesma forma. No Android, o Aplicativo **envia toques à tela** no lugar do Usuário por meio de um **serviço de acessibilidade** que o próprio Usuário ativa, exibe uma bolha sobre o jogo e, para o desenho e a culinária, **faz capturas da tela**, analisadas no aparelho e nunca transmitidas. As palavras “computador”, “teclado” e “mouse” usadas nos Termos designam então o aparelho Android e os toques na tela.
 
 ## Artigo 2 — Aceitação obrigatória
 
@@ -167,7 +169,7 @@ Este resumo está aqui para ajudar você; em caso de dúvida, prevalecem os arti
 
 11.2. Em resumo, são tratados:
 
-- para a **verificação de atualizações** (ativada por padrão, desativável nas configurações): a versão instalada e a plataforma (Windows ou Linux), transmitidas ao servidor sem serem registradas;
+- para a **verificação de atualizações** (ativada por padrão, desativável nas configurações): a versão instalada e a plataforma (Windows, Linux ou Android), transmitidas ao servidor sem serem registradas;
 - se o Usuário **entrar com o Discord**: o seu identificador do Discord, o seu apelido, o endereço do seu avatar, as suas sessões (impressão digital do token), os conteúdos que envia e as denúncias que faz;
 - se o Usuário **ativar a exibição da sua atividade no Discord (Rich Presence)**, quando essa função for oferecida: as informações de atividade (por exemplo, o título em reprodução) são enviadas localmente, a partir do seu computador, para o aplicativo Discord instalado nesse mesmo computador, sem passar pelo servidor do Editor;
 - em uma **importação por URL**: o endereço informado é transmitido ao servidor para que ele baixe o arquivo;

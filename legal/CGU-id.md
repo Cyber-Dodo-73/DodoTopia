@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Terakhir diperbarui: 28 September 2026 — berlaku sejak: 1 Oktober 2026
+Terakhir diperbarui: 3 Oktober 2026 — berlaku sejak: 1 Oktober 2026
 
 **Versi bahasa Prancis yang berlaku.** Terjemahan bahasa Indonesia ini disediakan hanya untuk kemudahan. Jika terdapat perbedaan atau sengketa, hanya teks bahasa Prancis dari *Conditions générales d'utilisation* yang menjadi versi yang sah.
 
@@ -28,6 +28,8 @@ Ringkasan ini ada untuk membantumu; jika ragu, pasal-pasal di bawah inilah yang 
 1.3. DodoTopia adalah perangkat lunak untuk Windows dan Linux yang mengotomatiskan tindakan berulang tertentu dalam gim video Heartopia: memainkan berkas MIDI pada instrumen di dalam gim, mereproduksi gambar di alat menggambar gim, dan mengulangi resep masakan secara berulang. Untuk itu, Aplikasi **mengirim ketukan papan ketik dan klik tetikus** ke komputer pengguna dan **menganalisis isi layarnya**. Layanan daring, yang bersifat opsional, menyediakan distribusi pembaruan, pustaka berkas MIDI yang dibagikan antarpengguna dan tunduk pada moderasi, serta ruang untuk bermain bersama secara tersinkronisasi.
 
 1.4. Ketentuan ini bertujuan menetapkan syarat-syarat yang berlaku bagi Penerbit dalam menyediakan Aplikasi dan Layanan kepada setiap orang perseorangan yang memasang atau menggunakannya (“Pengguna”).
+
+1.5. DodoTopia juga tersedia sebagai aplikasi untuk Android (“DodoTopia Mobile”), yang didistribusikan dari situs dalam bentuk berkas APK. Ketentuan ini berlaku untuknya dengan cara yang sama. Di Android, Aplikasi **mengirim ketukan ke layar** atas nama Pengguna melalui **layanan aksesibilitas** yang diaktifkan sendiri oleh Pengguna, menampilkan gelembung di atas gim dan, untuk menggambar dan memasak, **mengambil tangkapan layar**, yang dianalisis di perangkat dan tidak pernah dikirimkan. Kata “komputer”, “papan ketik”, dan “tetikus” yang digunakan dalam Ketentuan ini dengan demikian merujuk pada perangkat Android dan ketukan pada layar.
 
 ## Pasal 2 — Persetujuan wajib
 
@@ -167,7 +169,7 @@ Ringkasan ini ada untuk membantumu; jika ragu, pasal-pasal di bawah inilah yang 
 
 11.2. Singkatnya, yang diproses adalah:
 
-- untuk **pemeriksaan pembaruan** (aktif secara bawaan, dapat dinonaktifkan di pengaturan): versi yang terpasang dan platform (Windows atau Linux), yang dikirim ke server tanpa disimpan;
+- untuk **pemeriksaan pembaruan** (aktif secara bawaan, dapat dinonaktifkan di pengaturan): versi yang terpasang dan platform (Windows, Linux, atau Android), yang dikirim ke server tanpa disimpan;
 - jika Pengguna **masuk dengan Discord**: pengenal Discord-nya, nama samarannya, alamat avatarnya, sesi-sesinya (sidik token), konten yang diunggahnya, dan laporan yang dikirimnya;
 - jika Pengguna **mengaktifkan tampilan aktivitasnya di Discord (Rich Presence)**, bila fitur ini ditawarkan: informasi aktivitas (misalnya judul yang sedang diputar) dikirim secara lokal, dari komputernya, ke aplikasi Discord yang terpasang di komputer yang sama, tanpa melalui server Penerbit;
 - saat **impor melalui URL**: alamat yang dicantumkan dikirim ke server agar server mengunduh berkas tersebut;

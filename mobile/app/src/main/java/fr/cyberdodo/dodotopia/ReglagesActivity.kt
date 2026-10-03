@@ -176,9 +176,12 @@ class ReglagesActivity : AppCompatActivity() {
     }
 
     private fun lancerCapture() {
-        val demandes = mutableListOf(Manifest.permission.RECORD_AUDIO)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) demandes += Manifest.permission.POST_NOTIFICATIONS
-        permissions.launch(demandes.toTypedArray())
+        // Seule la notification du service de capture se demande (Android 13+) ; le consentement de capture suit.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+        } else {
+            consentement.launch(getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent())
+        }
     }
 
     private fun partagerJournal() {

@@ -2,7 +2,7 @@
 
 Version: 2026-10
 
-Last updated: 28 September 2026 — effective: 1 October 2026
+Last updated: 3 October 2026 — effective: 1 October 2026
 
 **The French version prevails.** This English translation is provided for convenience only. In the event of any discrepancy or dispute, the French text of the *Conditions générales d'utilisation* is the only authoritative version.
 
@@ -28,6 +28,8 @@ This summary is here to help you; in case of doubt, the articles below apply.
 1.3. DodoTopia is software for Windows and Linux that automates certain repetitive actions in the video game Heartopia: playing a MIDI file on an in-game instrument, reproducing an image in the game's drawing tool, and repeating a cooking recipe in a loop. To do so, the Application **sends keystrokes and mouse clicks** to the user's computer and **analyses the content of their screen**. The optional online Service provides update distribution, a moderated library of MIDI files shared between users, and rooms for playing together in a synchronised way.
 
 1.4. The purpose of the Terms is to define the conditions under which the Publisher makes the Application and the Service available to any natural person who installs or uses them (the "User").
+
+1.5. DodoTopia also exists as an application for Android (“DodoTopia Mobile”), distributed from the site as an APK file. The Terms apply to it in the same way. On Android, the Application **sends taps to the screen** on the User's behalf by means of an **accessibility service** that the User enables themselves, displays a bubble on top of the game and, for drawing and cooking, **takes screenshots**, which are analysed on the device and never transmitted. The words “computer”, “keyboard” and “mouse” used in the Terms then refer to the Android device and to taps on the screen.
 
 ## Article 2 — Mandatory acceptance
 
@@ -167,7 +169,7 @@ This summary is here to help you; in case of doubt, the articles below apply.
 
 11.2. In summary, the following are processed:
 
-- for **update checks** (enabled by default, can be disabled in the settings): the installed version and the platform (Windows or Linux), sent to the server without being recorded;
+- for **update checks** (enabled by default, can be disabled in the settings): the installed version and the platform (Windows, Linux or Android), sent to the server without being recorded;
 - if the User **signs in with Discord**: their Discord identifier, nickname, avatar address, sessions (token fingerprint), the content they upload and the reports they submit;
 - if the User **enables activity display in Discord (Rich Presence)**, where this feature is offered: activity information (for example the current title) is sent locally, from their computer, to the Discord application installed on that same computer, without going through the Publisher's server;
 - on **import from a URL**: the address given is sent to the server so that it can download the file;
