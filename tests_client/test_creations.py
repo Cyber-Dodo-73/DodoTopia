@@ -568,3 +568,45 @@ def test_api_ajoute_puis_supprime(api, music_tree, tmp_path):
     assert api.creations_delete(out2["item"]["id"]) == {"ok": True, "files": 1}
     assert api.creations_list()["sections"] == n0
     assert api.creations_add("painting", src)["error"] == "bad_section"
+
+
+def test_api_ecoute_une_musique_du_jeu_sans_doublon(api, music_tree, monkeypatch):
+    """« Écouter sur cet ordinateur » : convertie en MIDI dans la bibliothèque, sélectionnée, préécoutée."""
+    import mido
+
+    class FakeLibrary:
+        def meta(self, sid):
+            return {}
+
+    class FakePlayer:
+        def __init__(self, folder):
+            self.songs_folder, self.songs, self.state, self.played, self.index = folder, [], "stopped", [], 0
+            self.library = FakeLibrary()
+
+        def refresh_songs(self):
+            self.songs = sorted(os.path.join(self.songs_folder, f) for f in os.listdir(self.songs_folder))
+
+        def select(self, i):
+            self.index = i
+
+        def play(self, target):
+            self.played.append((target, os.path.basename(self.songs[self.index])))
+
+        def stop(self, join=False):
+            self.state = "stopped"
+
+    folder = os.path.join(os.path.dirname(music_tree["root"]), "songs")
+    os.makedirs(folder)
+    api._player = FakePlayer(folder)
+    api.get_state = lambda: {}
+    it = next(x for x in api.creations_list()["items"] if x["cat"] == "music")
+    for _ in range(2):                                                # deux écoutes : un seul fichier
+        out = api.creations_listen(it["id"])
+        assert out["ok"] and out["song"] == "Heartopia - Ma chanson.mid"
+    assert os.listdir(folder) == ["Heartopia - Ma chanson.mid"]
+    assert api._player.played == [("preview", "Heartopia - Ma chanson.mid")] * 2
+    notes = [m.note for tr in mido.MidiFile(os.path.join(folder, out["song"])).tracks for m in tr
+             if m.type == "note_on" and m.velocity]
+    assert notes == [48, 49, 84]
+    photo = next(x for x in api.creations_list()["items"] if x["section"] == "photo")
+    assert api.creations_listen(photo["id"])["ok"] is False           # une image ne s'écoute pas

@@ -102,5 +102,7 @@
   "api.creations.no_player": "hindi nahanap ang player ID (buksan ang Heartopia nang isang beses)",
   "api.dialog.game_music": "Musika (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "Hindi mapapalitan ang painting: nasa mga server ng laro ang tunay na drawing. Gamitin ang aktibidad na Pagguhit para magpinta ng larawan.",
-  "creations.card.export_short": "I-export"
+  "creations.card.export_short": "I-export",
+  "creations.card.listen": "Pakinggan sa computer na ito",
+  "api.creations.listening": "Pinatutugtog ang “{name}” sa computer na ito. Nasa library mo na rin ito."
 }

@@ -102,5 +102,7 @@
   "api.creations.no_player": "Spieler-ID nicht gefunden (starte Heartopia einmal)",
   "api.dialog.game_music": "Musik (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "Ein Gemälde lässt sich nicht ersetzen: Das Spiel speichert die eigentliche Zeichnung auf seinen Servern. Nutze die Aktivität Zeichnen, um ein Bild zu malen.",
-  "creations.card.export_short": "Exportieren"
+  "creations.card.export_short": "Exportieren",
+  "creations.card.listen": "Auf diesem Computer anhören",
+  "api.creations.listening": "„{name}“ wird auf diesem Computer abgespielt. Es ist auch in deiner Bibliothek."
 }

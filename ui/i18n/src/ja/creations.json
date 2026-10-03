@@ -102,5 +102,7 @@
   "api.creations.no_player": "プレイヤー ID が見つかりません（Heartopia を一度起動してください）",
   "api.dialog.game_music": "音楽 (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "絵は置き換えられません。実際の絵はゲームのサーバーに保存されています。画像を描くには、お絵かきアクティビティを使ってください。",
-  "creations.card.export_short": "書き出す"
+  "creations.card.export_short": "書き出す",
+  "creations.card.listen": "このパソコンで聴く",
+  "api.creations.listening": "「{name}」をこのパソコンで再生しています。ライブラリにも追加されました。"
 }

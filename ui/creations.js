@@ -14,7 +14,7 @@
 // t('creations.cat.announcement') t('creations.cat.music') t('creations.cat.other') t('creations.add.photo')
 // t('creations.add.music') t('creations.intro.photo') t('creations.intro.painting') t('creations.intro.music')
 // t('creations.intro.cache') t('creations.add_photo.title') t('creations.add_photo.body_html') t('creations.add_music.title')
-// t('creations.add_music.body_html') t('creations.card.details') t('creations.card.export') t('creations.card.export_midi') t('creations.card.export_short')
+// t('creations.add_music.body_html') t('creations.card.details') t('creations.card.export') t('creations.card.export_midi') t('creations.card.export_short') t('creations.card.listen')
 const CR = {items: [], cats: {}, sections: {}, folder: '', found: null, available: true, my_id: null, error: '', show_cache: false,
   sec: 'photo', cat: 'all', sort: 'recent', loading: false, loaded: false, at: 0, seq: 0, thumbs: new Map(), pending: new Set()};
 const CR_SECS = ['photo', 'painting', 'music', 'cache'];
@@ -243,6 +243,10 @@ function crDelete(it){
           html: `<p>${esc(t('creations.delete.body'))}</p>`})
     .then(yes => { if(yes) api('creations_delete', it.id).then(r => { if(r && r.ok) loadCreations(true); }); });
 }
+// écoute sur l'ordinateur : la musique du jeu passe dans la bibliothèque et la préécoute démarre (onglet Musique)
+function crListen(it){
+  return api('creations_listen', it.id).then(r => { if(r && r.ok && typeof showTab === 'function') showTab('music'); return r; });
+}
 function crExportLabel(it){ return t(crIsMusic(it) ? 'creations.card.export_midi' : 'creations.card.export'); }
 function crMore(anchor, it){
   const items = [
@@ -250,6 +254,7 @@ function crMore(anchor, it){
     {label: crExportLabel(it), icon: 'download', fn: () => api('creations_export', it.id)},
     {label: t('creations.card.restore'), icon: 'undo', disabled: !it.backup, help: it.backup ? '' : t('creations.card.no_backup'), fn: () => crRestore(it)},
   ];
+  if(crIsMusic(it)) items.unshift({label: t('creations.card.listen'), icon: 'play', fn: () => crListen(it)});
   if(it.added) items.push({label: t('creations.card.delete'), icon: 'trash', fn: () => crDelete(it)});
   items.push({label: t('creations.open_folder'), icon: 'folder', fn: () => api('creations_open_folder')});
   menu(anchor, items);
@@ -274,6 +279,7 @@ function crView(it){
       </dl>
       <div class="btnrow">
         ${crCanReplace(it) ? `<button class="btn btn--cta btn--sm" type="button" data-act="replace">${icon('import')}<span>${esc(t('creations.card.replace'))}</span></button>` : ''}
+        ${music ? `<button class="btn btn--secondary btn--sm" type="button" data-act="listen">${icon('play')}<span>${esc(t('creations.card.listen'))}</span></button>` : ''}
         <button class="btn btn--secondary btn--sm" type="button" data-act="export">${icon('download')}<span>${esc(crExportLabel(it))}</span></button>
         ${it.backup ? `<button class="btn btn--secondary btn--sm" type="button" data-act="restore">${icon('undo')}<span>${esc(t('creations.card.restore'))}</span></button>` : ''}
         ${it.added ? `<button class="btn btn--secondary btn--sm" type="button" data-act="delete">${icon('trash')}<span>${esc(t('creations.card.delete'))}</span></button>` : ''}
@@ -282,6 +288,7 @@ function crView(it){
     const rp = box.querySelector('[data-act="replace"]'); if(rp) rp.onclick = () => { closePanel(); crReplace(it, rp); };
     const ex = box.querySelector('[data-act="export"]'); if(ex) ex.onclick = () => api('creations_export', it.id);
     const rs = box.querySelector('[data-act="restore"]'); if(rs) rs.onclick = () => { closePanel(); crRestore(it); };
+    const ls = box.querySelector('[data-act="listen"]'); if(ls) ls.onclick = () => { closePanel(); crListen(it); };
     const dl = box.querySelector('[data-act="delete"]'); if(dl) dl.onclick = () => { closePanel(); crDelete(it); };
   };
   const loading = `<div class="empty"><div class="big" aria-hidden="true">${icon('spinner', 'ic--spin')}</div>${esc(t('creations.loading_image'))}</div>`;

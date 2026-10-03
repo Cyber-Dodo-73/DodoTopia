@@ -21,6 +21,7 @@ TERMS_GATED = (
     "gallery_report", "open_external", "save_drawing_png",
     "creations_replace_dialog", "creations_replace", "creations_restore", "creations_export",
     "creations_choose_folder", "creations_set_folder", "creations_add_dialog", "creations_add", "creations_delete",
+    "creations_listen",
 )
 
 UI_PATH = os.path.join(core.RES_DIR, "ui", "index.html")

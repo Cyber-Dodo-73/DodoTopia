@@ -102,5 +102,7 @@
   "api.creations.no_player": "ID pemain tidak ditemukan (jalankan Heartopia sekali)",
   "api.dialog.game_music": "Musik (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "Lukisan tidak bisa diganti: game menyimpan gambar aslinya di servernya. Gunakan aktivitas Menggambar untuk melukis sebuah gambar.",
-  "creations.card.export_short": "Ekspor"
+  "creations.card.export_short": "Ekspor",
+  "creations.card.listen": "Dengarkan di komputer ini",
+  "api.creations.listening": "Memutar “{name}” di komputer ini. Lagu ini juga ada di pustakamu."
 }

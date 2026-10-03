@@ -102,5 +102,7 @@
   "api.creations.no_player": "ไม่พบ ID ผู้เล่น (เปิด Heartopia หนึ่งครั้ง)",
   "api.dialog.game_music": "เพลง (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "ไม่สามารถแทนที่ภาพวาดได้: เกมเก็บภาพวาดจริงไว้บนเซิร์ฟเวอร์ ใช้กิจกรรมวาดภาพเพื่อวาดรูปภาพ",
-  "creations.card.export_short": "ส่งออก"
+  "creations.card.export_short": "ส่งออก",
+  "creations.card.listen": "ฟังบนคอมพิวเตอร์เครื่องนี้",
+  "api.creations.listening": "กำลังเล่น “{name}” บนคอมพิวเตอร์เครื่องนี้ เพลงนี้อยู่ในคลังของคุณแล้วด้วย"
 }

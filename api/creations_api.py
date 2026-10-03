@@ -409,3 +409,32 @@ class CreationsMixin:
         self._creations_scan(refresh=True)
         self._notify(i18n.t("api.creations.deleted"), "ok")
         return {"ok": True, "files": n}
+
+    # ---------------------------------------------------------- écoute sur cet ordinateur
+    def creations_listen(self, item_id):
+        """Écoute une musique du jeu sans retourner dans Heartopia : elle est convertie en MIDI, rangée dans la
+        bibliothèque sous « Heartopia - <titre> » (réécrite si elle y est déjà : pas de doublon à chaque écoute),
+        sélectionnée, puis préécoutée avec le son de synthèse. Rien n'est envoyé au jeu."""
+        it = self._creations_item(item_id)
+        if it is None or it["cat"] != "music":
+            self._notify(i18n.t("api.creations.unknown"), "warn")
+            return {"ok": False, "error": "unknown"}
+        p = self._player
+        try:
+            dst = core.safe_join(p.songs_folder, "Heartopia - " + game_music.safe_title(it["name"]))
+            if p.state != "stopped":
+                p.stop(join=True)
+            game_music.to_midi(game_music.read(it["path"]), dst)
+        except (ValueError, game_music.MusicError) as e:
+            self._notify(i18n.t("api.creations.failed", error=e), "danger")
+            return {"ok": False, "error": str(e)}
+        sid = os.path.basename(dst)
+        p.library.meta(sid)
+        p.refresh_songs()
+        names = [os.path.basename(s) for s in p.songs]
+        if sid not in names:
+            return {"ok": False, "error": "not_listed"}
+        p.select(names.index(sid))
+        p.play("preview")
+        self._notify(i18n.t("api.creations.listening", name=it["name"]), "ok")
+        return {"ok": True, "song": sid, "state": self.get_state()}

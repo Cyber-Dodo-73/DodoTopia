@@ -102,5 +102,7 @@
   "api.creations.no_player": "未找到玩家 ID（请先启动一次 Heartopia）",
   "api.dialog.game_music": "音乐 (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "画作无法替换：游戏把真正的画作保存在服务器上。请使用“绘画”功能来画出图片。",
-  "creations.card.export_short": "导出"
+  "creations.card.export_short": "导出",
+  "creations.card.listen": "在这台电脑上试听",
+  "api.creations.listening": "正在这台电脑上播放“{name}”。它也已加入你的曲库。"
 }

@@ -6,6 +6,7 @@ Une section `## x.y.z` par version : la CI envoie la section de la version publi
 La section du haut est la version **en préparation** : tant que `version.py` ne change pas, rien n'est publié.
 
 ## 2.2.1
+- **Écouter une musique du jeu sur l'ordinateur** : dans Mes créations › Musiques, « Écouter sur cet ordinateur » convertit l'enregistrement d'Heartopia et le joue avec le son de synthèse, sans retourner dans le jeu. Pratique pour vérifier une musique ajoutée ou remplacée ; elle est rangée dans ta bibliothèque sous « Heartopia - titre ».
 - **Conque** : jouable, avec ses touches du jeu (Y U I O pour do, ré, mi, fa ; H J K L pour sol, la, si, do). Tous les instruments du catalogue ont maintenant leur disposition.
 - **Connexion Discord sans code à recopier** : après « Se connecter avec Discord », tu autorises DodoTopia dans le navigateur et tu es connecté dans l'application, sans rien saisir. Le navigateur rapporte la connexion directement à DodoTopia sur ton ordinateur, ce qui garde la protection contre les liens piégés. Le code reste disponible pour se connecter depuis un autre appareil (« Me connecter depuis un autre appareil »).
 

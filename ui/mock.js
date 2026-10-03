@@ -268,6 +268,7 @@ function mockMain(){
         : Object.assign(crMk(MOCK_CR.length + 20, 'photo', 'Photo', 1920, 1080, true, [[256, 144, 'Photo'], [1920, 1080, 'Photo']]), {added: true, created: NOW});
       MOCK_CR.push(it); return later({ok: true, section: sec, item: it}, 500); },
     creations_add: sec => window.MOCK_API.creations_add_dialog(sec),
+    creations_listen: () => later({ok: true, song: 'Heartopia - Golden Brown.mid'}, 300),
     creations_delete: id => { const i = MOCK_CR.findIndex(x => x.id === id); if(i >= 0) MOCK_CR.splice(i, 1); return later({ok: true, files: 1}, 300); },
     creations_thumb: id => { const it = MOCK_CR.find(x => x.id === id); return later(it ? Object.assign({ok: true, id}, crPic(it, 240)) : {ok: false, id, error: 'unknown'}, 120); },
     creations_view: id => { const it = MOCK_CR.find(x => x.id === id); return later(!it ? {ok: false, id, error: 'unknown'}

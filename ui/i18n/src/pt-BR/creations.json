@@ -102,5 +102,7 @@
   "api.creations.no_player": "ID do jogador não encontrado (abra o Heartopia uma vez)",
   "api.dialog.game_music": "Músicas (*.mid;*.midi;*.bin)",
   "api.creations.painting_readonly": "Uma pintura não pode ser substituída: o jogo guarda o desenho de verdade nos servidores dele. Use a atividade Desenho para pintar uma imagem.",
-  "creations.card.export_short": "Exportar"
+  "creations.card.export_short": "Exportar",
+  "creations.card.listen": "Ouvir neste computador",
+  "api.creations.listening": "Tocando “{name}” neste computador. Ela também está na sua biblioteca."
 }
