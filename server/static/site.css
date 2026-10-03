@@ -416,6 +416,12 @@ details.news{margin-top:18px}
 .dlcard--android{margin:0 0 28px}
 .dlcard--android :is(.btn,.vbadges){width:auto;margin:0 0 14px}
 .dlcard--android .dlcard__ico::after{--i:url("art/phone.svg?v=1")}
+.dl-apk{display:none}
+@media (hover:none) and (pointer:coarse){
+ .dl-apk{display:inline-flex}.dl-pc{display:none}
+ .dlstack{display:flex;flex-direction:column}
+ .dlstack>#android{order:-1;border:3px solid var(--cta)}
+}
 .dlcard__tech summary{min-height:44px;font-weight:800;font-size:15px;color:var(--ink2)}
 .dlcard__tech summary::after{width:18px;height:18px;background:var(--ink3)}
 .dlmeta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:6px 0 0;font-size:15px}
