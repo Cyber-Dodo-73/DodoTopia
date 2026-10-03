@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     # Webhook des notifications d'administration (nouveaux comptes, modération, signalements, erreurs, résumé du
     # jour). Valeur par défaut : l'URL enregistrée depuis l'espace admin du site (/admin, Réglages) a priorité.
     DISCORD_ADMIN_WEBHOOK: str = ""
-    # --- Import par lien (Online Sequencer, BitMidi, URL .mid) ---
+    # --- Import par lien (BitMidi, URL .mid) ---
     IMPORT_TIMEOUT_S: float = 10                        # par requête sortante
     IMPORT_MAX_REDIRECTS: int = 2
     IMPORT_CACHE_DAYS: float = 7                        # cache disque DATA_DIR/import_cache

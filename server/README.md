@@ -199,7 +199,7 @@ compteurs recalculés ; puis la ligne `users`).
 métadonnée ni donnée après `IEND` ne survit) et vignette de 400 px. Fichiers dans `DATA_DIR/drawings/<sha256>.png`
 (+ `.thumb.png`). Même cycle que les morceaux : en attente, puis validé ou refusé par un administrateur.
 
-**Import par lien.** `POST /api/import {url}` récupère un MIDI sur Online Sequencer, BitMidi ou une URL https en
+**Import par lien.** `POST /api/import {url}` récupère un MIDI sur BitMidi ou une URL https en
 `.mid` (anti-SSRF : https et port 443 seulement, hôtes sur liste blanche pour les deux sites et, si
 `IMPORT_DIRECT_HOSTS` est renseigné, pour les liens directs ; résolution DNS et refus de toute adresse non publique à
 chaque redirection, 2 au plus ; 10 s ; `MAX_MIDI_BYTES`). Le fichier est validé comme un dépôt, gardé 7 jours dans

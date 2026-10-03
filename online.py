@@ -1714,7 +1714,7 @@ class OnlineService:
     def like_drawing(self, drawing_id, liked=True):
         return self.like("drawing", drawing_id, liked)
 
-    # ---- import par lien (Online Sequencer, BitMidi, lien .mid)
+    # ---- import par lien (BitMidi, lien .mid)
     def import_url(self, url, import_cb=None):
         """Le serveur va chercher le fichier (POST /api/import), le client le recupere une fois par son jeton
         (GET /api/import/{jeton}), verifie empreinte, taille et structure MIDI comme tout telechargement, puis

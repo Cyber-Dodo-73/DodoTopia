@@ -1,4 +1,4 @@
-"""Import par lien (Online Sequencer, BitMidi, URL .mid) : résolution, anti-SSRF, taille, validation, cache, jeton à
+"""Import par lien (BitMidi, URL .mid) : résolution, anti-SSRF, taille, validation, cache, jeton à
 usage unique. Aucun appel réseau réel : `importer.TRANSPORT` est un `httpx.MockTransport` et la résolution DNS est
 remplacée."""
 import hashlib
@@ -43,16 +43,16 @@ def do_import(client, token, url):
     return client.post("/api/import", headers=bearer(token), json={"url": url})
 
 
-def test_online_sequencer_nominal_and_single_use_token(client, user_token, web, midi_bytes):
-    web.add("https://onlinesequencer.net/app/midi.php?id=12345", midi_bytes)
-    assert client.post("/api/import", json={"url": "12345"}).status_code == 401
-    r = do_import(client, user_token, "https://onlinesequencer.net/12345")
+def test_nominal_and_single_use_token(client, user_token, web, midi_bytes):
+    web.add("https://files.example.net/12345.mid", midi_bytes)
+    assert client.post("/api/import", json={"url": "https://files.example.net/12345.mid"}).status_code == 401
+    r = do_import(client, user_token, "https://files.example.net/12345.mid")
     assert r.status_code == 200, r.text
     body = r.json()
     sha = hashlib.sha256(midi_bytes).hexdigest()
     assert body["ok"] is True and body["size"] == len(midi_bytes) and body["sha256"] == sha
-    assert body["source_url"] == "https://onlinesequencer.net/12345"
-    assert body["source_name"] == "Online Sequencer" and body["source_author"] is None
+    assert body["source_url"] == "https://files.example.net/12345.mid"
+    assert body["source_name"] == "files.example.net" and body["source_author"] is None
     assert body["filename"].endswith(".mid") and body["download_token"]
     ua = web.requests[0].headers["user-agent"]
     assert ua.startswith("DodoTopia/") and "(+https://dodotopia.cyber-dodo.fr)" in ua
@@ -64,12 +64,6 @@ def test_online_sequencer_nominal_and_single_use_token(client, user_token, web, 
     assert client.get("/api/songs").json()["total"] == 0                                # rien n'est publié
     assert client.get("/api/admin/songs?status=pending",
                       headers=bearer(login(client, "999")[0])).json()["total"] == 0
-
-
-def test_bare_id_and_app_url(client, user_token, web, midi_bytes):
-    web.add("https://onlinesequencer.net/app/midi.php?id=77", midi_bytes)
-    assert do_import(client, user_token, "77").status_code == 200
-    assert do_import(client, user_token, "https://onlinesequencer.net/app/sequencer.php?id=77").status_code == 200
 
 
 def test_bitmidi_page_then_file(client, user_token, web, midi_bytes):
@@ -97,7 +91,10 @@ def test_direct_url(client, user_token, web, midi_bytes):
     ("http://onlinesequencer.net/1", 422, "https_required"),
     ("ftp://files.example.net/a.mid", 422, "https_required"),
     ("https://example.com/page.html", 422, "host_not_allowed"),
-    ("https://onlinesequencer.net/forum/thread", 422, "unsupported_url"),
+    ("https://onlinesequencer.net/12345", 422, "host_not_allowed"),      # Online Sequencer n'est plus pris en charge
+    ("https://onlinesequencer.net/app/midi.php?id=12345", 422, "host_not_allowed"),
+    ("12345", 422, "https_required"),
+    ("https://bitmidi.com/forum/thread", 422, "unsupported_url"),
     ("https://user:pw@files.example.net/a.mid", 422, "bad_url"),
     ("https://files.example.net:8443/a.mid", 422, "bad_url"),
     ("https://internal.example.org/a.mid", 403, "private_address"),
@@ -125,9 +122,9 @@ def test_redirects_are_checked_hop_by_hop(client, user_token, web, midi_bytes):
     assert do_import(client, user_token, "https://files.example.net/b.mid").json()["detail"]["code"] == "https_required"
 
     # un site sur liste blanche ne peut pas rediriger ailleurs
-    web.add("https://onlinesequencer.net/app/midi.php?id=5", status=302,
+    web.add("https://bitmidi.com/uploads/5.mid", status=302,
             headers={"location": "https://files.example.net/c.mid"})
-    assert do_import(client, user_token, "5").json()["detail"]["code"] == "host_not_allowed"
+    assert do_import(client, user_token, "https://bitmidi.com/uploads/5.mid").json()["detail"]["code"] == "host_not_allowed"
 
     # deux redirections acceptées, pas trois
     web.add("https://files.example.net/r1.mid", status=302, headers={"location": "/r2.mid"})
@@ -187,18 +184,18 @@ def test_upstream_errors(client, user_token, web, monkeypatch):
 
 
 def test_cache_is_used_for_seven_days(client, user_token, web, midi_bytes, settings):
-    web.add("https://onlinesequencer.net/app/midi.php?id=9", midi_bytes)
-    first = do_import(client, user_token, "https://onlinesequencer.net/9").json()
+    web.add("https://bitmidi.com/uploads/9.mid", midi_bytes)
+    first = do_import(client, user_token, "https://bitmidi.com/uploads/9.mid").json()
     assert len(web.requests) == 1
-    second = do_import(client, user_token, "9").json()           # même source, autre écriture : cache
+    second = do_import(client, user_token, "https://www.bitmidi.com/uploads/9.mid").json()   # même source, autre écriture : cache
     assert len(web.requests) == 1
     assert second["sha256"] == first["sha256"] and second["download_token"] != first["download_token"]
     assert client.get(f"/api/import/{second['download_token']}").content == midi_bytes
-    cached = list(settings.import_cache_dir.glob("onlinesequencer-*.mid"))
+    cached = list(settings.import_cache_dir.glob("bitmidi-*.mid"))
     assert len(cached) == 1
     old = time.time() - 8 * 86400
     os.utime(cached[0], (old, old))
-    do_import(client, user_token, "9")
+    do_import(client, user_token, "https://bitmidi.com/uploads/9.mid")
     assert len(web.requests) == 2                               # périmé : téléchargé de nouveau
     for p in settings.import_cache_dir.glob("*"):
         os.utime(p, (old, old))
@@ -207,18 +204,18 @@ def test_cache_is_used_for_seven_days(client, user_token, web, midi_bytes, setti
 
 
 def test_token_expires(client, user_token, web, midi_bytes, monkeypatch):
-    web.add("https://onlinesequencer.net/app/midi.php?id=3", midi_bytes)
-    token = do_import(client, user_token, "3").json()["download_token"]
+    web.add("https://files.example.net/3.mid", midi_bytes)
+    token = do_import(client, user_token, "https://files.example.net/3.mid").json()["download_token"]
     client.app.state.import_tokens[token]["expires"] = time.monotonic() - 1
     assert client.get(f"/api/import/{token}").status_code == 404
     assert client.get("/api/import/n-importe-quoi").status_code == 404
 
 
 def test_import_rate_limited_10_per_min(tmp_path, web, midi_bytes):
-    web.add("https://onlinesequencer.net/app/midi.php?id=1", midi_bytes)
+    web.add("https://files.example.net/1.mid", midi_bytes)
     with make_client(make_settings(tmp_path, RATE_LIMIT=1)) as c:
         tok, _ = login(c, "111")
-        codes = [do_import(c, tok, "1").status_code for _ in range(11)]
+        codes = [do_import(c, tok, "https://files.example.net/1.mid").status_code for _ in range(11)]
         assert codes[:10] == [200] * 10 and codes[10] == 429
 
 

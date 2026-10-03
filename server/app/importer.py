@@ -1,11 +1,11 @@
-"""Import d'un MIDI par lien : Online Sequencer, BitMidi, ou URL https directe d'un `.mid`.
+"""Import d'un MIDI par lien : BitMidi, ou URL https directe d'un `.mid`.
 
 Le serveur va chercher le fichier à la place du client, le valide avec le même scanner que la bibliothèque, le
 garde en cache disque 7 jours et rend un jeton de téléchargement à usage unique (10 min). **Rien n'est publié
 dans la bibliothèque** : le joueur récupère le fichier, puis décide lui-même de le déposer.
 
 Anti-SSRF, à chaque requête sortante (redirections comprises, 2 au plus) : https seul, port 443, hôte sur liste
-blanche pour les deux sites (et pour les URL directes si IMPORT_DIRECT_HOSTS est défini), résolution DNS et refus
+blanche pour BitMidi (et pour les URL directes si IMPORT_DIRECT_HOSTS est défini), résolution DNS et refus
 de toute adresse non publique (privée, loopback, link-local, réservée, multicast…), pas de proxy d'environnement,
 délai de 10 s, taille plafonnée pendant la lecture. Limite connue : l'adresse est résolue une seconde fois par
 httpx au moment de la connexion (fenêtre de « DNS rebinding » très courte).
@@ -22,7 +22,7 @@ import socket
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urljoin, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, Request
@@ -39,12 +39,9 @@ log = logging.getLogger("dodo.import")
 router = APIRouter()
 
 USER_AGENT = f"DodoTopia/{SERVER_VERSION} (+https://dodotopia.cyber-dodo.fr)"
-OS_HOSTS = frozenset({"onlinesequencer.net", "www.onlinesequencer.net"})
 BITMIDI_HOSTS = frozenset({"bitmidi.com", "www.bitmidi.com"})
 MAX_PAGE_BYTES = 1024 * 1024                    # page HTML de BitMidi lue pour trouver le lien du fichier
 MAX_TOKENS = 5000
-_OS_ID = re.compile(r"^\d{1,10}$")
-_OS_PATH = re.compile(r"^/(\d{1,10})(?:/[^/]*)?/?$")
 _BITMIDI_SLUG = re.compile(r"^/([A-Za-z0-9][A-Za-z0-9._~-]{0,200})/?$")
 _BITMIDI_UPLOAD = re.compile(r"""["'](?:https://(?:www\.)?bitmidi\.com)?(/uploads/\d{1,12}\.midi?)["']""", re.I)
 _BITMIDI_TITLE = re.compile(r"<h1[^>]*>([^<]{1,300})</h1>", re.I)
@@ -62,8 +59,8 @@ class ImportFailure(Exception):
 
 @dataclass
 class Source:
-    kind: str                                   # onlinesequencer | bitmidi | direct
-    key: str                                    # identifiant dans la source (id, slug, URL)
+    kind: str                                   # bitmidi | direct
+    key: str                                    # identifiant dans la source (slug, URL)
     source_url: str                             # page d'origine, affichable
     source_name: str
     fetch_url: str                              # URL du fichier (BitMidi : de la page, résolue ensuite)
@@ -77,8 +74,6 @@ class Source:
 
 def resolve_source(url_text: str, settings: Settings) -> Source:
     text = (url_text or "").strip()
-    if _OS_ID.match(text):                       # id nu : Online Sequencer
-        return _online_sequencer(text)
     if re.search(r"[\s\x00-\x1f\x7f]", text):
         raise ImportFailure(422, "bad_url", "Lien invalide.")
     try:
@@ -91,14 +86,6 @@ def resolve_source(url_text: str, settings: Settings) -> Source:
         raise ImportFailure(422, "https_required", "Seuls les liens https:// sont acceptés.")
     if not host or parts.username or parts.password or port not in (None, 443):
         raise ImportFailure(422, "bad_url", "Lien invalide.")
-    if host in OS_HOSTS:
-        m = _OS_PATH.match(parts.path)
-        if m:
-            return _online_sequencer(m.group(1))
-        ids = parse_qs(parts.query).get("id") or []
-        if parts.path.startswith("/app/") and ids and _OS_ID.match(ids[0]):
-            return _online_sequencer(ids[0])
-        raise ImportFailure(422, "unsupported_url", "Lien Online Sequencer non reconnu (attendu onlinesequencer.net/<numéro>).")
     if host in BITMIDI_HOSTS:
         path = unquote(parts.path)
         m = _BITMIDI_SLUG.match(path)
@@ -119,14 +106,7 @@ def resolve_source(url_text: str, settings: Settings) -> Source:
         name = unquote(parts.path.rsplit("/", 1)[-1]) or "morceau.mid"
         return Source("direct", text, text, clean_text(host, 60), text, allowed, filename=name)
     raise ImportFailure(422, "host_not_allowed",
-                        "Lien non pris en charge : Online Sequencer, BitMidi ou lien direct vers un fichier .mid.")
-
-
-def _online_sequencer(seq_id: str) -> Source:
-    seq_id = str(int(seq_id))
-    return Source("onlinesequencer", seq_id, f"https://onlinesequencer.net/{seq_id}", "Online Sequencer",
-                  f"https://onlinesequencer.net/app/midi.php?id={seq_id}", OS_HOSTS,
-                  filename=f"onlinesequencer-{seq_id}.mid")
+                        "Lien non pris en charge : BitMidi ou lien direct vers un fichier .mid.")
 
 
 # --- Réseau ------------------------------------------------------------------------------------------------------

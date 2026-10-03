@@ -8,7 +8,7 @@ demande ensuite une confirmation avant d'agir (voir api/integrations.py).
     dodotopia://song/<id entier>          morceau de la bibliotheque partagee
     dodotopia://room/<code>               salon (6 caracteres de room.CODE_ALPHABET)
     dodotopia://drawing/<id entier>       dessin partage
-    dodotopia://import?url=<https://...>  fichier MIDI distant (onlinesequencer.net, bitmidi.com, ou .mid/.midi)
+    dodotopia://import?url=<https://...>  fichier MIDI distant (bitmidi.com, ou .mid/.midi)
 
 Une barre oblique finale est toleree (certains navigateurs l'ajoutent). Le nom de l'action et le code de
 salon sont insensibles a la casse ; tout le reste (port, identifiants, fragment, parametres en trop,
@@ -23,7 +23,7 @@ MAX_LEN = 2048
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LEN = 6
 MAX_ID = 2 ** 53 - 1                      # identifiant representable en JavaScript
-IMPORT_HOSTS = ("onlinesequencer.net", "bitmidi.com")
+IMPORT_HOSTS = ("bitmidi.com",)
 ACTIONS = ("song", "room", "drawing", "import")
 
 _ID_RE = re.compile(r"^[1-9][0-9]{0,15}$")
