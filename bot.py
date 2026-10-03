@@ -102,9 +102,10 @@ class MouseBot:
             raise RuntimeError(f"la souris ne se déplace pas dans le jeu (attendu {x},{y}, obtenu {cx},{cy})." + hint)
         self._expected_pos = (cx, cy)
 
-    def _glide(self, x, y):
+    def _glide(self, x, y, fast=False):
         """Deplace la souris jusqu'a (x, y) comme une main : positions intermediaires rapprochees, en accelerant
-        puis en freinant (au lieu d'un saut instantane). False si l'action est arretee pendant le mouvement."""
+        puis en freinant (au lieu d'un saut instantane). False si l'action est arretee pendant le mouvement.
+        `fast` : le meme geste, mais vif (0,05 a 0,14 s) pour une action minutee ; jamais un saut."""
         x0, y0 = self._expected_pos if self._expected_pos is not None else cursor_pos()
         dist = ((x - x0) ** 2 + (y - y0) ** 2) ** 0.5
         if dist < 4:
@@ -113,7 +114,10 @@ class MouseBot:
             return True
         # ~0.1 s pour 100 px, ~0.3 s pour 500 px, 0.45 s au plus, puis un alea de -25 % a +35 % ;
         # une position toutes les ~8 ms (cadence elle aussi irreguliere)
-        dur = min(0.45, 0.07 + dist / 1800) * float(self._mouse_cfg().get("glide_speed", 1.0) or 1.0)
+        if fast:
+            dur = min(0.14, 0.05 + dist / 6000)
+        else:
+            dur = min(0.45, 0.07 + dist / 1800) * float(self._mouse_cfg().get("glide_speed", 1.0) or 1.0)
         dur *= random.uniform(0.75, 1.35)
         n = max(3, int(dur / 0.008))
         # trajectoire pas tout a fait droite : une courbe (bosse perpendiculaire, cote et amplitude au hasard)
@@ -143,10 +147,10 @@ class MouseBot:
             self._expected_pos = (x, y)
         return True
 
-    def _move(self, x, y, glide=True):
+    def _move(self, x, y, glide=True, fast=False):
         """Deplacement bouton relache : en glissant (reglage « souris comme une main ») ou d'un saut."""
         if glide and self._mouse_cfg().get("mouse_glide", True):
-            return self._glide(x, y)
+            return self._glide(x, y, fast=fast)
         mouse_move(x, y)
         self._expected_pos = (x, y)
         return True
@@ -171,11 +175,11 @@ class MouseBot:
     SETTLE = (0.012, 0.045)      # secondes entre l'arrivee de la souris et l'appui
     HOLD = (0.02, 0.06)          # duree de l'appui
 
-    def _click(self, x, y, delay=None, confirm=None, slow=1.0, glide=True):
+    def _click(self, x, y, delay=None, confirm=None, slow=1.0, fast=False):
         """Clic en (x, y). `confirm` : fonction appelee une fois la souris arrivee, juste avant d'appuyer ; si elle
         renvoie faux, on n'appuie pas (la cible a change pendant le deplacement) et `_click_skipped` passe a vrai.
         `slow` : multiplie le temps de pose et d'appui (un clic plus pose pour une bulle qui le prend mal).
-        `glide=False` : la souris saute a la cible au lieu de glisser (action minutee).
+        `fast` : la souris glisse vite jusqu'a la cible (action minutee) ; elle ne saute jamais.
         Renvoie False seulement si l'action doit s'arreter."""
         self._click_skipped = False
         if self._user_moved():
@@ -183,7 +187,7 @@ class MouseBot:
             return False
         if not self._check_game_front():
             return False
-        if not self._move(x, y, glide=glide):
+        if not self._move(x, y, fast=fast):
             return False
         # temps de pose, d'appui et d'attente irreguliers (jamais plus courts qu'avant)
         if not self._sleep(random.uniform(*self.SETTLE) * slow):

@@ -220,8 +220,8 @@ def souris_rapide(monkeypatch):
     la vraie mécanique de clic, mais en quelques dixièmes de seconde."""
     vrai = cook.Cooker._click
 
-    def rapide(self, x, y, delay=None, confirm=None, slow=1.0, glide=True):
-        return vrai(self, x, y, delay=0.01 if delay is None else float(delay) / 10.0, confirm=confirm, slow=slow, glide=glide)
+    def rapide(self, x, y, delay=None, **kw):
+        return vrai(self, x, y, delay=0.01 if delay is None else float(delay) / 10.0, **kw)
     monkeypatch.setattr(cook.Cooker, "_click", rapide)
     monkeypatch.setattr(cook, "READY_AGAIN", cook.READY_AGAIN / 10.0)
 
@@ -710,3 +710,23 @@ def test_le_clic_est_annule_si_la_bulle_a_disparu(jeu):
     assert c._click_skipped is True and ecran.clics == []
     assert c._click(*d["pos"], delay=0.01, confirm=lambda: c._still(d["pos"], "ready")) is True
     assert c._click_skipped is False and len(ecran.clics) == 1
+
+
+def test_arc_au_bord_de_l_image_ne_plante_pas():
+    """Un arc dont le centre ajusté tombe hors de l'image (ou collé au bord) est ignoré, sans erreur de recadrage."""
+    im = Image.new("RGB", (200, 120), (120, 150, 90))
+    ImageDraw.Draw(im).arc((60, -70, 140, 10), 20, 160, fill=(251, 130, 96), width=6)     # centre vers y = -30
+    assert cook.warm_arcs(im, 60) == [] and cook.ring_read(im, need=60)[1] == -1
+
+
+def test_souris_glisse_vite_sans_sauter(monkeypatch):
+    """Le geste rapide de la spatule reste un glissé : plusieurs positions intermédiaires, en moins de 0,2 s."""
+    points = []
+    monkeypatch.setattr(bot, "mouse_move", lambda x, y: points.append((x, y)))
+    monkeypatch.setattr(bot, "cursor_pos", lambda: (100, 100))
+    b = bot.MouseBot()
+    b._stop, b._expected_pos = threading.Event(), None
+    t0 = time.perf_counter()
+    assert b._glide(700, 500, fast=True) is True
+    assert time.perf_counter() - t0 < 0.35 and len(points) >= 5 and points[-1] == (700, 500)
+    assert max(abs(a[0] - c[0]) + abs(a[1] - c[1]) for a, c in zip(points, points[1:])) < 400

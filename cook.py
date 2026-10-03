@@ -143,6 +143,7 @@ def green_mask(im, ring_color=None):
 
 
 ICON_BOX, ICON_MIN = 22, 150   # demi-cote (px) de la zone centrale d'une bulle et pixels blancs minimum de son icone
+RING_RETRY = 0.4    # secondes laissees au jeu pour retirer l'anneau apres un clic, avant de recliquer s'il est encore la
 RING_STUCK = 10     # clics de suite sans effet sur un meme anneau avant de le laisser de cote RING_IGNORE secondes
 RING_IGNORE = 6.0
 WARM_MIN = 120      # pixels minimum d'un arc jaune / orange / rouge (le lisere d'un anneau vert en donne ~70)
@@ -189,6 +190,8 @@ def warm_arcs(im, need):
     out = []
     half = RING_MAX // 2 + 6
     for cx, cy, n in find_arcs(union, need):
+        if not (ICON_BOX <= cx < im.size[0] - ICON_BOX and ICON_BOX <= cy < im.size[1] - ICON_BOX):
+            continue                 # centre hors de l'image (ou colle au bord) : pas une bulle cliquable
         # Un anneau entoure une bulle, et une bulle a une icone blanche au centre. Releve en jeu (2026-10-04) : le
         # bord jaune d'une cuisiniere formait un arc « jaune » ; le bot le cliquait en boucle et ne cuisinait plus.
         # Mesure sur capture : 450 a 720 pixels blancs dans les 44 px du centre d'une vraie bulle, 18 sur la cuisiniere.
@@ -932,7 +935,8 @@ class Cooker(MouseBot):
             # Releve en jeu (2026-10-04) : la boucle reagissait trop tard (lecture complete d'une grande zone, puis
             # une 2e lecture pour la stabilite, puis la souris qui glisse : plus de 2 s) et l'anneau virait a
             # l'orange, voire le plat cramait. Les anneaux sont donc lus a part, tres vite, et cliques au premier
-            # coup d'oeil ; la bulle est de toute facon reverifiee juste avant d'appuyer (_still).
+            # coup d'oeil ; la bulle est de toute facon reverifiee juste avant d'appuyer (_still). La souris glisse
+            # toujours (jamais de saut : le proprietaire l'a vu « se teleporter »), mais vite pour la spatule.
             rings = self._rings_quick()
             if ignored:
                 t_now = time.perf_counter()
@@ -969,7 +973,7 @@ class Cooker(MouseBot):
                 rings.sort(key=lambda d: -d["scores"].get("urgence", 0))
                 d = rings[0]
                 again = ring_pos is not None and near(d["pos"], ring_pos, 40) and now - ring_at < 3.0
-                if again and now - ring_at < 0.7:
+                if again and now - ring_at < RING_RETRY:
                     if not self._sleep(poll):                     # laisse au jeu le temps de retirer l'anneau
                         return
                     continue
@@ -984,7 +988,7 @@ class Cooker(MouseBot):
                 self.phase = "feu"
                 b = d.get("burner")
                 self._acted(b)
-                if not self._click(*d["pos"], delay=0.3, glide=False, confirm=lambda: self._still(d["pos"], "spatula")):
+                if not self._click(*d["pos"], delay=0.1, fast=True, confirm=lambda: self._still(d["pos"], "spatula")):
                     return
                 if self._click_skipped:
                     # l'anneau a disparu pendant le deplacement de la souris : un clic ici tomberait sur la
@@ -1525,15 +1529,21 @@ class Cooker(MouseBot):
         L'anneau ne dure que quelques secondes avant que le plat crame : il passe avant tout."""
         c = self.cook_cfg
         rect = [int(v) for v in c["points"]["search"]]
-        im = grab(tuple(rect))
-        if im is None:
+        try:
+            im = grab(tuple(rect))
+            if im is None:
+                return []
+            need = int(c.get("green_px", 60))
+            found = [(cx, cy, n, 0) for cx, cy, n in find_rings(green_mask(im, c.get("ring_color")), need)]
+            if c.get("red_ring", True):
+                # pas d'arc chaud colle a un anneau vert : c'est son lisere, et son « centre » tombe a cote de la bulle
+                found += [w for w in warm_arcs(im, need)
+                          if not any((w[0] - g[0]) ** 2 + (w[1] - g[1]) ** 2 < RING_MAX * RING_MAX for g in found)]
+        except Exception as e:  # noqa - la lecture rapide ne doit jamais arreter la cuisine : la lecture complete suit
+            if not getattr(self, "_quick_failed", False):
+                self._quick_failed = True
+                self.log(f"lecture rapide des anneaux impossible ({e}) : lecture complète seulement")
             return []
-        need = int(c.get("green_px", 60))
-        found = [(cx, cy, n, 0) for cx, cy, n in find_rings(green_mask(im, c.get("ring_color")), need)]
-        if c.get("red_ring", True):
-            # pas d'arc chaud colle a un anneau vert : c'est son lisere, et son « centre » tombe a cote de la bulle
-            found += [w for w in warm_arcs(im, need)
-                      if not any((w[0] - g[0]) ** 2 + (w[1] - g[1]) ** 2 < RING_MAX * RING_MAX for g in found)]
         return [{"pos": (rect[0] + cx, rect[1] + cy), "state": "spatula", "scores": {"vert": n, "urgence": lvl}}
                 for cx, cy, n, lvl in found]
 
