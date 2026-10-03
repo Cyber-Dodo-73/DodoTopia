@@ -190,7 +190,7 @@ kbd,.kbd{
 .card__section.game,.cookbody .card__section{background:var(--c-surface-2)}
 .card__section.listen{background:var(--c-surface)}
 .cookbody .card__section + .card__section{border-top:2px solid var(--c-line)}
-.card__section.game.is-room{flex:1;min-height:0}
+.card__section.game.is-room{flex:1 0 auto}
 .card__section.game .seg{align-self:center;justify-content:center;padding:3px;flex-wrap:nowrap;flex:none;gap:2px}
 .card__section.game .seg > button{min-height:32px;padding:2px 10px}
 
