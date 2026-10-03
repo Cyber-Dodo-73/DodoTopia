@@ -460,7 +460,8 @@ class CreationsMixin:
         """[{id, name, notes, available, learned}] : ce que le studio sait écrire, et ce qui reste à apprendre."""
         insts, tables = self._studio_instruments()
         return {"ok": True, "instruments": [
-            {"id": i.id, "name": i.name, "notes": len(i.bindings), "learned": i.id in tables,
+            {"id": i.id, "name": i.name, "notes": len(i.bindings),
+             "learned": i.id in tables and tables[i.id] != studio.BUILTIN_TABLES.get(i.id),
              "available": studio.is_available(i, tables)} for i in insts.values()]}
 
     def creations_studio_open(self):

@@ -660,6 +660,14 @@ def test_studio_apprend_un_instrument(tmp_path):
     tables = {"lute": table}
     assert studio.is_available(insts["piano"], {}) and not studio.is_available(insts["lute"], {})
     assert studio.is_available(insts["lute"], tables) and not studio.is_available(insts["conga"], tables)
+    # tables livrées : harpe, luth, flûte et lyre, identifiées dans le jeu par le propriétaire
+    builtin = studio.learned_tables({})
+    assert sorted(builtin) == ["harp", "lute", "lyre", "recorder"]
+    assert all(studio.is_available(insts[i], builtin) for i in builtin) and not studio.is_available(insts["violin"], builtin)
+    harp = studio.game_key_map(insts["harp"], builtin)
+    assert harp[48] == (6, 11201) and harp[49] == (6, 11223) and harp[50] == (6, 11202) and harp[84] == (6, 11222)
+    assert len({k for _, k in harp.values()}) == 37 and max(k for _, k in harp.values()) == 11237
+    assert studio.learned_tables({"creations": {"game_instruments": {"lute": table}}})["lute"]["type"] == 13   # l'appris l'emporte
     keymap = studio.game_key_map(insts["lute"], tables)
     notes = sorted(insts["lute"].bindings)
     assert keymap[notes[0]] == (13, 10071) and keymap[notes[-1]] == (13, 10085)
@@ -690,6 +698,9 @@ def test_studio_fabrique_un_enregistrement_a_deux_instruments(tmp_path):
         (pytest.approx(e[0], abs=1e-4),) + e[1:5] + (pytest.approx(e[5]),) for e in events]
     with pytest.raises(studio.StudioError):                           # violon pas appris
         studio.build(path, cfg, [{"track": 0, "instrument": "violin", "octave": 0}], insts, tables, UID)
+    # avec les tables livrées : la lyre (instrument 17 du jeu) sans rien apprendre
+    ev, rep = studio.build(path, cfg, [{"track": 0, "instrument": "lyre", "octave": 0}], insts, studio.learned_tables(cfg), UID, 4.2)
+    assert rep["instruments"] == [17] and all(11086 <= e[4] <= 11100 and e[5] == pytest.approx(4.2) for e in ev)
     with pytest.raises(studio.StudioError):
         studio.build(path, cfg, [], insts, tables, UID)
     with pytest.raises(studio.StudioError):                           # la batterie n'a pas de notes à jouer
@@ -702,20 +713,21 @@ def test_api_studio_apprend_puis_ajoute(api, music_tree, tmp_path):
     path = _midi_two_tracks(str(tmp_path / "Mon duo.mid"))
     lst = api.creations_studio_instruments()["instruments"]
     assert next(i for i in lst if i["id"] == "piano")["available"] is True
-    assert next(i for i in lst if i["id"] == "lute")["available"] is False
+    assert next(i for i in lst if i["id"] == "lute")["available"] is True          # table livrée
+    assert next(i for i in lst if i["id"] == "violin")["available"] is False
     assert all(i["id"] != "conga" for i in lst)
     # apprendre le luth depuis une musique du jeu où ses 15 touches ont été jouées
     rec = _lute_record(os.path.join(music_tree["record_dir"], "Luth_20261003120000000_4700.bin"))
     assert os.path.isfile(rec)
     item = next(x for x in api.creations_list(refresh=True)["items"] if x.get("name") == "Luth")
     assert api.creations_learn(item["id"], "piano")["ok"] is False
-    out = api.creations_learn(item["id"], "lute")
-    assert out == {"ok": True, "instrument": "lute", "type": 13, "keys": 15}
-    assert api._cfg["creations"]["game_instruments"]["lute"]["keys"][0] == 10071
-    assert next(i for i in api.creations_studio_instruments()["instruments"] if i["id"] == "lute")["learned"] is True
+    out = api.creations_learn(item["id"], "violin")
+    assert out == {"ok": True, "instrument": "violin", "type": 13, "keys": 15}
+    assert api._cfg["creations"]["game_instruments"]["violin"]["keys"][0] == 10071
+    assert next(i for i in api.creations_studio_instruments()["instruments"] if i["id"] == "violin")["learned"] is True
 
     spec = {"path": path, "title": "Mon duo", "parts": [
-        {"track": 0, "instrument": "lute", "octave": 0, "on": True},
+        {"track": 0, "instrument": "violin", "octave": 0, "on": True},
         {"track": 1, "instrument": "piano", "octave": 0, "on": True},
         {"track": 2, "instrument": "piano", "octave": 0, "on": False}]}
     chk = api.creations_studio_check(spec)

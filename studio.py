@@ -30,11 +30,39 @@ class StudioError(Exception):
     """Erreur lisible : instrument non appris, piste absente, aucune note jouable…"""
 
 
+def _white_then_black(first, notes=37, low=48):
+    """Touches d'un clavier à 37 notes numéroté comme la harpe du jeu : les 22 blanches à la suite, puis les 15
+    noires. Renvoie les numéros dans l'ordre des hauteurs (do grave -> do aigu)."""
+    whites = blacks = 0
+    out = []
+    for m in range(low, low + notes):
+        if m % 12 in (1, 3, 6, 8, 10):
+            out.append(first + 22 + blacks)
+            blacks += 1
+        else:
+            out.append(first + whites)
+            whites += 1
+    return out
+
+
+# Numéros du jeu relevés dans les enregistrements du propriétaire et identifiés par lui à l'écoute (2026-10-03,
+# musiques d'essai « Test instrument N ») : 6 = harpe, 11 = luth, 13 = flûte, 17 = lyre. Les 15 notes sont
+# numérotées à la suite. La harpe range ses blanches puis ses noires : les 21 touches d'un enregistrement réel
+# forment alors exactement une gamme de la majeur, alors qu'une numérotation chromatique donnait onze notes
+# différentes. `extra` absent : la valeur du joueur est reprise. Une table apprise remplace celle-ci.
+BUILTIN_TABLES = {
+    "harp": {"type": 6, "keys": _white_then_black(11201), "extra": 0.0},
+    "lute": {"type": 11, "keys": list(range(11001, 11016)), "extra": 0.0},
+    "recorder": {"type": 13, "keys": list(range(10071, 10086)), "extra": 0.0},
+    "lyre": {"type": 17, "keys": list(range(11086, 11101)), "extra": 0.0},
+}
+
+
 # ---------------------------------------------------------------- tables des instruments du jeu
 def learned_tables(cfg):
     node = cfg.get("creations") if isinstance(cfg.get("creations"), dict) else {}
     tables = node.get("game_instruments") if isinstance(node.get("game_instruments"), dict) else {}
-    out = {}
+    out = {k: dict(v) for k, v in BUILTIN_TABLES.items()}
     for inst_id, t in tables.items():
         try:
             keys = [int(k) for k in t["keys"]]
